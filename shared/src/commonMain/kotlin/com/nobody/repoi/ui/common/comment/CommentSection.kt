@@ -977,8 +977,7 @@ fun CommentReplyDialog(
             }
         },
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+            usePlatformDefaultWidth = false
         )
     ) {
         val density = LocalDensity.current
