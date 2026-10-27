@@ -187,7 +187,7 @@ class UserRepositoryTest {
                                 }
                             }""")
         // collect/top 按表单 state 动态返回（老 Dispatcher 嵌套 when 等价）
-        mock.dynamicResponder = { request ->
+        mock.dynamicResponder = responder@{ request ->
             if (!request.url.encodedPath.contains("api/user/collect/top")) {
                 null
             } else {
@@ -199,7 +199,7 @@ class UserRepositoryTest {
                         """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":201,"nameCN":"已入手办B"}]}}"""
                     body.contains("state=care") ->
                         """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":301,"nameCN":"想要手办C"}]}}"""
-                    else -> return@dynamicResponder "" to HttpStatusCode.NotFound
+                    else -> return@responder "" to HttpStatusCode.NotFound
                 }
                 payload to HttpStatusCode.OK
             }
