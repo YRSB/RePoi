@@ -59,9 +59,15 @@ class HobbyDetailTestEnv {
     lateinit var exApi: ExHobbyApi
     lateinit var exRepo: ExHobbyRepository
 
-    fun setUp() {
+    /**
+     * @param useVirtualEngine true=请求跑虚拟调度器（commonTest VM 测试，`advanceUntilIdle`
+     * 可驱动）；false=请求跑 IO 真线程（jvmTest Screen 测试，真 Main + `runBlocking`
+     * 等待，无人推进虚拟时钟，传 true 会 hang 到超时）。
+     */
+    fun setUp(useVirtualEngine: Boolean = true) {
         dispatchers.setUp()
-        mock = MockRepoEngine(dispatchers.engineDispatcher)
+        val engineDispatcher = if (useVirtualEngine) dispatchers.engineDispatcher else null
+        mock = MockRepoEngine(engineDispatcher)
         json = appJson()
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)
@@ -74,7 +80,7 @@ class HobbyDetailTestEnv {
         stickerRepo = StickerRepository(api)
         userRepo = UserRepository(api, tokenManager)
         delegate = CommentInteractionDelegate(commentRepo, stickerRepo, tokenManager, userRepo)
-        exMock = MockRepoEngine(dispatchers.engineDispatcher)
+        exMock = MockRepoEngine(engineDispatcher)
         exClient = HttpClient(exMock.engine) { expectSuccess = true }
         exApi = ExHobbyApi(exClient, json)
         exRepo = ExHobbyRepository(exApi)

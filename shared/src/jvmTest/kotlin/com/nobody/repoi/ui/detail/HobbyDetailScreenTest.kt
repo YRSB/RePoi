@@ -40,7 +40,8 @@ class HobbyDetailScreenTest {
         // 铁律），但 jvmTest 用真实 runBlocking 等待、无人推进虚拟时钟——必须在此用
         // Desktop 真 Main 覆盖，否则 VM 协程永远挂起、测试 hang 到 CI 超时。
         startTestKoin(FakePlatformActions())
-        env.setUp()
+        // 真线程 engine：jvmTest 真 Main + runBlocking 等待，无人推进虚拟时钟。
+        env.setUp(useVirtualEngine = false)
         Dispatchers.resetMain()
     }
 

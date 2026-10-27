@@ -22,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -87,9 +88,15 @@ class ItemHomeViewModelTest {
         }
     }
 
-    private fun stubPreviewFailure(message: String = "网络异常") {
+    /**
+     * 传输层失败桩：HTTP 500（`expectSuccess = true` 下 client 抛异常 → 仓储返回 failure →
+     * VM 置 errorMessage）。注意不能用业务 `success=false` 代替：老实现
+     * `getItemHomePreview` 对业务失败静默吞掉（返回空列表），老测试的 failure 靠 Mockito
+     * 直接伪造 `Result.failure`，真仓储侧只能造传输层 failure。
+     */
+    private fun stubPreviewFailure() {
         mock.dynamicResponder = {
-            """{"success":false,"code":500,"msg":"$message","data":null}""" to HttpStatusCode.OK
+            """{"success":false,"code":500,"msg":"server error","data":null}""" to HttpStatusCode.InternalServerError
         }
     }
 
@@ -124,7 +131,7 @@ class ItemHomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertTrue(state.errorMessage?.contains("网络异常") == true)
+        assertNotNull(state.errorMessage)
         assertTrue(state.preOrderItems.isEmpty())
         assertTrue(state.releaseItems.isEmpty())
         viewModel.viewModelScope.cancel()
@@ -190,14 +197,14 @@ class ItemHomeViewModelTest {
 
         val viewModel = createViewModel()
         advanceUntilIdle()
-        stubPreviewFailure("刷新失败")
+        stubPreviewFailure()
         viewModel.refresh()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(listOf(1L), state.preOrderItems.map { it.id })
         assertEquals(listOf(2L), state.releaseItems.map { it.id })
-        assertTrue(state.errorMessage?.contains("刷新失败") == true)
+        assertNotNull(state.errorMessage)
         assertFalse(state.isRefreshing)
         viewModel.viewModelScope.cancel()
     }
