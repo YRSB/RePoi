@@ -17,11 +17,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.example.repoi.MainKt"
+        mainClass = "com.nobody.repoi.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.example.repoi"
+            packageName = "com.nobody.repoi"
             packageVersion = "1.0.0"
         }
     }
