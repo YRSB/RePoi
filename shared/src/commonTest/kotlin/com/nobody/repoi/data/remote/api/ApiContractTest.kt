@@ -10,7 +10,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
-import io.ktor.util.InternalAPI
+import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -161,7 +161,6 @@ class ApiContractTest {
         assertTrue(request.body is io.ktor.client.utils.EmptyContent)
     }
 
-    @OptIn(InternalAPI::class) // MultiPartFormDataContent.parts 系 Ktor internal，仅测试断言使用
     @Test
     fun multipartUploadHasFileAndToIdParts() = runTest {
         val (client, engine) = mockClient()
@@ -174,18 +173,24 @@ class ApiContractTest {
         assertEquals(HttpMethod.Post, request.method)
         assertEquals("/api/message/upload-v2", request.url.encodedPath)
         val body = assertIs<MultiPartFormDataContent>(request.body)
-        val parts = body.parts.associate { part ->
-            val disposition = part.headers["Content-Disposition"] ?: ""
-            val name = Regex("name=\"?([^\"]+)\"?").find(disposition)?.groupValues?.get(1) ?: disposition
-            name to part
+        // MultiPartFormDataContent.parts 系 Ktor internal：改为渲染原始 multipart 文本断言，
+        // 只用 public API（writeTo + ByteChannel）。
+        val channel = ByteChannel()
+        body.writeTo(channel)
+        channel.flushAndClose()
+        val raw = buildString {
+            val buf = ByteArray(4096)
+            while (!channel.isClosedForRead) {
+                val n = channel.readAvailable(buf)
+                if (n <= 0) break
+                append(buf.decodeToString(0, n))
+            }
         }
-        assertTrue(parts.containsKey("toId"), "应包含 toId 文本 part")
-        val filePart = parts["file"] ?: error("应包含 file part")
-        assertEquals("image/jpeg", filePart.headers["Content-Type"])
-        assertTrue(
-            filePart.headers["Content-Disposition"]?.contains("pic.jpg") == true,
-            "file part 应携带 filename",
-        )
+        assertTrue(raw.contains("name=\"toId\""), "应包含 toId 文本 part：$raw")
+        assertTrue(raw.contains("42"), "toId part 值应为 42：$raw")
+        assertTrue(raw.contains("name=\"file\""), "应包含 file part：$raw")
+        assertTrue(raw.contains("filename=\"pic.jpg\""), "file part 应携带 filename：$raw")
+        assertTrue(raw.contains("image/jpeg"), "file part Content-Type 应为 image/jpeg：$raw")
     }
 
     @Test
