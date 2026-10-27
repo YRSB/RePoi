@@ -85,7 +85,11 @@ class HomeFeedScreenTest {
         mock.enqueue("""{"success":false,"code":500,"msg":"网络连接失败","data":null}""")
         stubZoneTabs()
         val vm = createViewModel()
-        runBlocking { vm.uiState.first { !it.isInitialLoading } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { !it.isInitialLoading }
+            }
+        }
 
         composeRule.setContent { HomeFeedScreen(viewModel = vm) }
 
@@ -112,7 +116,11 @@ class HomeFeedScreenTest {
         mock.enqueue(feedJson())
         stubZoneTabs()
         val vm = createViewModel()
-        runBlocking { vm.uiState.first { !it.isInitialLoading } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { !it.isInitialLoading }
+            }
+        }
 
         composeRule.setContent { HomeFeedScreen(viewModel = vm) }
 
@@ -141,7 +149,11 @@ class HomeFeedScreenTest {
         )
         stubZoneTabs()
         val vm = createViewModel()
-        runBlocking { vm.uiState.first { it.items.isNotEmpty() } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { it.items.isNotEmpty() }
+            }
+        }
 
         composeRule.setContent { HomeFeedScreen(viewModel = vm) }
 

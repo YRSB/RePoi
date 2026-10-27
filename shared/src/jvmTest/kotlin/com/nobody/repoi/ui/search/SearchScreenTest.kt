@@ -105,7 +105,11 @@ class SearchScreenTest {
         stubAutoFillEmpty()
         val vm = createViewModel()
         setScreen(vm, "手办")
-        runBlocking { vm.uiState.first { it.errorMessage != null } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { it.errorMessage != null }
+            }
+        }
 
         composeRule.onNodeWithText("搜索超时").assertIsDisplayed()
         val countBefore = mock.requestCount
@@ -130,7 +134,11 @@ class SearchScreenTest {
         stubAutoFillEmpty()
         val vm = createViewModel()
         setScreen(vm, "手办")
-        runBlocking { vm.uiState.first { it.isParamsReady && !it.isLoading } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { it.isParamsReady && !it.isLoading }
+            }
+        }
 
         composeRule.onNodeWithText("未找到相关搜索结果").assertIsDisplayed()
         composeRule.onNodeWithText("重试").assertDoesNotExist()
@@ -143,7 +151,9 @@ class SearchScreenTest {
         val vm = createViewModel()
         runBlocking {
             searchRepository.addSearchHistory("初音未来")
-            vm.uiState.first { it.searchHistory.contains("初音未来") }
+            withTimeout(10_000) {
+                vm.uiState.first { it.searchHistory.contains("初音未来") }
+            }
         }
         setScreen(vm, "")
 
@@ -175,7 +185,11 @@ class SearchScreenTest {
         setScreen(vm, "")
 
         composeRule.onNodeWithContentDescription("搜索输入框").performTextInput("新手办")
-        runBlocking { vm.uiState.first { it.keyword == "新手办" } }
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { it.keyword == "新手办" }
+            }
+        }
 
         assertEquals("新手办", vm.uiState.value.keyword)
     }

@@ -7,10 +7,12 @@ import androidx.compose.ui.test.performClick
 import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
@@ -34,8 +36,12 @@ class HobbyDetailScreenTest {
 
     @Before
     fun setUp() {
+        // 注意：env.setUp() 先挂一个 StandardTestDispatcher 到 Main（commonTest 共享调度器
+        // 铁律），但 jvmTest 用真实 runBlocking 等待、无人推进虚拟时钟——必须在此用
+        // Desktop 真 Main 覆盖，否则 VM 协程永远挂起、测试 hang 到 CI 超时。
         startTestKoin(FakePlatformActions())
         env.setUp()
+        Dispatchers.resetMain()
     }
 
     @After
@@ -61,7 +67,12 @@ class HobbyDetailScreenTest {
                 viewModel = vm
             )
         }
-        runBlocking { vm.uiState.first { !it.isInitialLoading } }
+        // jvmTest 铁律：任何 first{} 等待都必须包 withTimeout，宁可红不要 hang。
+        runBlocking {
+            withTimeout(10_000) {
+                vm.uiState.first { !it.isInitialLoading }
+            }
+        }
 
         composeRule.onNodeWithText("条目加载失败").assertIsDisplayed()
         composeRule.onNodeWithText("网络异常").assertIsDisplayed()
