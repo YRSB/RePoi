@@ -10,6 +10,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.util.InternalAPI
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -160,6 +161,7 @@ class ApiContractTest {
         assertTrue(request.body is io.ktor.client.utils.EmptyContent)
     }
 
+    @OptIn(InternalAPI::class) // MultiPartFormDataContent.parts 系 Ktor internal，仅测试断言使用
     @Test
     fun multipartUploadHasFileAndToIdParts() = runTest {
         val (client, engine) = mockClient()
