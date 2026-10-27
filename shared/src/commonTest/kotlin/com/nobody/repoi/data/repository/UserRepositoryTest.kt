@@ -186,6 +186,24 @@ class UserRepositoryTest {
                                     }
                                 }
                             }""")
+        // collect/top 按表单 state 动态返回（老 Dispatcher 嵌套 when 等价）
+        mock.dynamicResponder = { request ->
+            if (!request.url.encodedPath.contains("api/user/collect/top")) {
+                null
+            } else {
+                val body = request.recordedBody()
+                val payload = when {
+                    body.contains("state=preorder") ->
+                        """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":101,"nameCN":"预订手办A"}]}}"""
+                    body.contains("state=buy") ->
+                        """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":201,"nameCN":"已入手办B"}]}}"""
+                    body.contains("state=care") ->
+                        """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":301,"nameCN":"想要手办C"}]}}"""
+                    else -> return@dynamicResponder "" to HttpStatusCode.NotFound
+                }
+                payload to HttpStatusCode.OK
+            }
+        }
 
 
         val result = repository.loadFullProfile()

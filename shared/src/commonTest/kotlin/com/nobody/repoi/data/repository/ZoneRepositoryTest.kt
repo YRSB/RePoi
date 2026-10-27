@@ -139,8 +139,34 @@ class ZoneRepositoryTest {
 
     @Test
     fun getZoneInfo_productionObjectTabs_deserializesCorrectly() = runTest {
-                mock.respondWhen(Regex(".*"), "")
-
+        mock.respondWhen(
+            Regex(".*"),
+            """
+            {
+                "success": true,
+                "code": 200,
+                "msg": "ok",
+                "data": {
+                    "zone": {
+                        "nodeId": 39989602,
+                        "name": "26年10月新番",
+                        "nameCN": "26年10月新番",
+                        "description": "2026年10月新番",
+                        "icon": "zone/icon/2026/09/40daefb0c738482484352184c0267618.jpg",
+                        "cover": "zone/cover/2026/09/5f589d366a0e4bf9ae3c76a480d6403a.jpg",
+                        "webCover": "zone/web-cover/2026/09/6bc555853aee439681482bf42c6e2cf7.jpg"
+                    },
+                    "focusState": false,
+                    "followCount": 35,
+                    "tabs": [
+                        { "count": 44, "type": "action", "title": "动态" },
+                        { "count": 3, "type": "album", "title": "相册" },
+                        { "count": 65, "type": "works", "title": "作品" }
+                    ]
+                }
+            }
+            """.trimIndent()
+        )
 
         val result = repository.getZoneInfo(39989602L)
         assertTrue(result.isSuccess)
