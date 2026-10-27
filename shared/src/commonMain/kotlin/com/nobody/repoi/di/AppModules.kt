@@ -9,6 +9,8 @@ import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.api.ExHobbyApi
+import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.network.createExHobbyClient
 import com.nobody.repoi.network.createHpoiClient
@@ -25,7 +27,7 @@ import org.koin.dsl.module
 /**
  * 网络模块：Json + 三个 HttpClient + Coil ImageLoader。
  *
- * `HpoiApi`/`ExHobbyApi` 在 Wave 3 挂到对应 client 上。
+ * `HpoiApi`/`ExHobbyApi` 挂在各自 client 上（Wave 3）。
  */
 val networkModule = module {
     single<Json> { appJson() }
@@ -41,6 +43,9 @@ val networkModule = module {
     single<HttpClient>(named("exhobby")) {
         createExHobbyClient(json = get())
     }
+
+    single { HpoiApi(client = get(named("hpoi")), jsonCodec = get()) }
+    single { ExHobbyApi(client = get(named("exhobby")), jsonCodec = get()) }
 
     single<ImageLoader> {
         createImageLoader(
@@ -64,9 +69,8 @@ val dataModule = module {
     single { SearchHistoryManager(dataStore = get(named("search_history_prefs")), json = get()) }
     single { ViewPreferencesManager(dataStore = get(named("view_prefs"))) }
 
-    // TODO(Wave 3): 绑定 CategoryApi -> HpoiApi 适配。CategoryManager 在此之前无人注入，
-    // Koin 懒加载语义下缺绑定不会影响启动。
-    single { CategoryManager(apiService = get<CategoryApi>()) }
+    single<CategoryApi> { CategoryApi { get<HpoiApi>().getAllCategories() } }
+    single { CategoryManager(apiService = get()) }
 }
 
 /**
