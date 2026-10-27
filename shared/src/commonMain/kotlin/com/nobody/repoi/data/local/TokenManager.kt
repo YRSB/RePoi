@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -38,13 +39,14 @@ open class TokenManager(
     }
 
     init {
+        // 初始加载：只读一次历史数据回填内存。所有写操作都同步更新内存，
+        // 持续 collect 反而可能用旧快照覆盖内存新值（竞态），故不用 collect。
         runCatching {
             scope.launch {
-                dataStore.data.collect { prefs ->
-                    prefs[TOKEN_KEY]?.let { currentToken = it }
-                    prefs[USER_ID_KEY]?.let { currentUserId = it }
-                    prefs[USER_NAME_KEY]?.let { currentUserName = it }
-                }
+                val prefs = dataStore.data.first()
+                prefs[TOKEN_KEY]?.let { currentToken = it }
+                prefs[USER_ID_KEY]?.let { currentUserId = it }
+                prefs[USER_NAME_KEY]?.let { currentUserName = it }
             }
         }
     }

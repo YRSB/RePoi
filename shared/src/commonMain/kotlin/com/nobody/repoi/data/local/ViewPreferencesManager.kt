@@ -90,17 +90,17 @@ class ViewPreferencesManager(
     }
 
     init {
+        // 初始加载：只读一次历史数据回填内存（持续 collect 可能用旧快照覆盖内存新值）。
         scope.launch {
-            dataStore.data.collect { prefs ->
-                isHobbyListGridMode = prefs[KEY_HOBBY_LIST_GRID_MODE] ?: true
-                isCollectListGridMode = prefs[KEY_COLLECT_LIST_GRID_MODE] ?: true
-                feedCategoryId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
-                feedSubType = prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
-                feedZoneTabKey = prefs[KEY_FEED_ZONE_TAB_KEY] ?: "all"
-                isExHobbyEnabled = prefs[KEY_EXHOBBY_ENABLED] ?: true
-                cachedFocusZonesJson = prefs[KEY_CACHED_FOCUS_ZONES]
-                cachedZoneSettingsJson = prefs[KEY_CACHED_ZONE_SETTINGS]
-            }
+            val prefs = dataStore.data.first()
+            isHobbyListGridMode = prefs[KEY_HOBBY_LIST_GRID_MODE] ?: true
+            isCollectListGridMode = prefs[KEY_COLLECT_LIST_GRID_MODE] ?: true
+            feedCategoryId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
+            feedSubType = prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
+            feedZoneTabKey = prefs[KEY_FEED_ZONE_TAB_KEY] ?: "all"
+            isExHobbyEnabled = prefs[KEY_EXHOBBY_ENABLED] ?: true
+            cachedFocusZonesJson = prefs[KEY_CACHED_FOCUS_ZONES]
+            cachedZoneSettingsJson = prefs[KEY_CACHED_ZONE_SETTINGS]
         }
     }
 

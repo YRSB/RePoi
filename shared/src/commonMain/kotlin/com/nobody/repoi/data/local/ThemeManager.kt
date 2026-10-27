@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -52,17 +53,17 @@ class ThemeManager(
     }
 
     init {
+        // 初始加载：只读一次历史数据回填内存（持续 collect 可能用旧快照覆盖内存新值）。
         scope.launch {
-            dataStore.data.collect { prefs ->
-                val mode = when (prefs[THEME_MODE_KEY]) {
-                    ThemeMode.LIGHT.name -> ThemeMode.LIGHT
-                    ThemeMode.DARK.name -> ThemeMode.DARK
-                    else -> ThemeMode.SYSTEM
-                }
-                val dyn = prefs[DYNAMIC_COLOR_KEY] ?: defaultDynamicColor()
-                themeMode = mode
-                dynamicColor = dyn
+            val prefs = dataStore.data.first()
+            val mode = when (prefs[THEME_MODE_KEY]) {
+                ThemeMode.LIGHT.name -> ThemeMode.LIGHT
+                ThemeMode.DARK.name -> ThemeMode.DARK
+                else -> ThemeMode.SYSTEM
             }
+            val dyn = prefs[DYNAMIC_COLOR_KEY] ?: defaultDynamicColor()
+            themeMode = mode
+            dynamicColor = dyn
         }
     }
 
