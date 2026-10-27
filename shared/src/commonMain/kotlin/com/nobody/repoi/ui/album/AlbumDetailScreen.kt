@@ -105,6 +105,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.PicItem
@@ -765,6 +766,7 @@ private fun AlbumHeaderCard(
                                 HpoiLinkDispatcher.dispatch(
                                     url = url,
                                     uriHandler = uriHandler,
+                                    platformActions = platformActions,
                                     onNavigateToHobbyDetail = onNavigateToHobbyDetail,
                                     onNavigateToAlbum = onNavigateToAlbum
                                 )

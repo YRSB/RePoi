@@ -43,15 +43,16 @@ internal fun rankWindows(today: LocalDate): RankWindows {
     val yearFirst = LocalDate(today.year, 1, 1)
     val yearLast = LocalDate(today.year, 12, 31)
     return RankWindows(
-        month = Pair(formatRankTime(monthFirst, false), formatRankTime(monthLast, true))
-        week = Pair(formatRankTime(monday, false), formatRankTime(sunday, true))
+        month = Pair(formatRankTime(monthFirst, false), formatRankTime(monthLast, true)),
+        week = Pair(formatRankTime(monday, false), formatRankTime(sunday, true)),
         year = Pair(formatRankTime(yearFirst, false), formatRankTime(yearLast, true))
     )
 }
 
-private fun formatRankTime(date: LocalDate, endOfDay: Boolean): String =
-    "${date.year}-${date.monthNumber.toString().padStart(2, '0')}-${date.day.toString().padStart(2, '0')} " +
-
+private fun formatRankTime(date: LocalDate, endOfDay: Boolean): String {
+    val day = "${date.year}-${date.monthNumber.toString().padStart(2, '0')}-${date.day.toString().padStart(2, '0')}"
+    return if (endOfDay) "$day 23:59:59" else "$day 00:00:00"
+}
 data class AlbumUiState(
     val tabs: List<AlbumZoneTab> = listOf(AlbumZoneTab.ALL),
     val selectedTab: AlbumZoneTab = AlbumZoneTab.ALL,
