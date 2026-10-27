@@ -16,11 +16,15 @@ import com.nobody.repoi.data.repository.SearchRepository
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
 import com.nobody.repoi.test.TestDataStores
-import com.nobody.repoi.test.TestDispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -40,14 +44,13 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class SearchScreenTest {
 
-    private val dispatchers = TestDispatchers()
     private lateinit var mock: MockRepoEngine
     private lateinit var stores: TestDataStores
     private lateinit var searchRepository: SearchRepository
 
     @BeforeTest
     fun setUp() {
-        dispatchers.setUp()
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         startTestKoin(FakePlatformActions())
         mock = MockRepoEngine()
         stores = TestDataStores()
@@ -57,7 +60,7 @@ class SearchScreenTest {
     fun tearDown() {
         stopTestKoin()
         stores.cleanUp()
-        dispatchers.tearDown()
+        Dispatchers.resetMain()
     }
 
     private fun createViewModel(): SearchViewModel {
@@ -192,7 +195,7 @@ class SearchScreenTest {
     @Test
     fun loadingState_keepsResultPlaceholdersHidden() = runComposeUiTest {
         // Freeze requests on virtual engine (never advanced): VM stays in loading state.
-        mock = MockRepoEngine(dispatchers.engineDispatcher)
+        mock = MockRepoEngine(StandardTestDispatcher())
         stubAutoFillEmpty()
         val vm = createViewModel()
         setScreen(vm, "手办")
