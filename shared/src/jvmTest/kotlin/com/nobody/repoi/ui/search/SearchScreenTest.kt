@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.search
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -28,10 +30,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -40,17 +41,14 @@ import kotlin.test.assertTrue
  *
  * `verify(vm)` 翻译为请求计数/状态收敛断言；Screen 内部 LaunchedEffect 会自行调 initParams。
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class SearchScreenTest {
-
-    @get:Rule
-    val composeRule = createComposeRule()
 
     private lateinit var mock: MockRepoEngine
     private lateinit var stores: TestDataStores
     private lateinit var searchRepository: SearchRepository
 
-    @Before
+    @BeforeTest
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         startTestKoin(FakePlatformActions())
@@ -58,7 +56,7 @@ class SearchScreenTest {
         stores = TestDataStores()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         stopTestKoin()
         stores.cleanUp()
@@ -86,8 +84,8 @@ class SearchScreenTest {
         )
     }
 
-    private fun setScreen(vm: SearchViewModel, keyword: String) {
-        composeRule.setContent {
+    private fun ComposeUiTest.setScreen(vm: SearchViewModel, keyword: String) {
+        setContent {
             SearchScreen(
                 navParam = SearchNavParam(initialKeyword = keyword),
                 onBack = {},
@@ -99,7 +97,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun errorState_showsMessageAndRetries() {
+    fun errorState_showsMessageAndRetries() = runComposeUiTest {
         mock.enqueue("""{"success":false,"code":500,"msg":"搜索超时","data":null}""")
         mock.enqueue("""{"success":false,"code":500,"msg":"搜索超时","data":null}""")
         stubAutoFillEmpty()
@@ -111,9 +109,9 @@ class SearchScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("搜索超时").assertIsDisplayed()
+        onNodeWithText("搜索超时").assertIsDisplayed()
         val countBefore = mock.requestCount
-        composeRule.onNodeWithText("重试").performClick()
+        onNodeWithText("重试").performClick()
         // 点击后 `isRefreshing` 的 false→true→false 翻转可能快于 first{} 订阅而漏等；
         // 先轮询请求计数+1 再等状态收敛。
         runBlocking {
@@ -129,7 +127,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun emptyState_showsNoResultPlaceholder() {
+    fun emptyState_showsNoResultPlaceholder() = runComposeUiTest {
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"result":[],"query":{"totalCount":0,"pageCount":0}}}""")
         stubAutoFillEmpty()
         val vm = createViewModel()
@@ -140,12 +138,12 @@ class SearchScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("未找到相关搜索结果").assertIsDisplayed()
-        composeRule.onNodeWithText("重试").assertDoesNotExist()
+        onNodeWithText("未找到相关搜索结果").assertIsDisplayed()
+        onNodeWithText("重试").assertDoesNotExist()
     }
 
     @Test
-    fun inputMode_rendersHistoryAndDispatchesSearch() {
+    fun inputMode_rendersHistoryAndDispatchesSearch() = runComposeUiTest {
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"result":[],"query":{"totalCount":0,"pageCount":0}}}""")
         stubAutoFillEmpty()
         val vm = createViewModel()
@@ -157,9 +155,9 @@ class SearchScreenTest {
         }
         setScreen(vm, "")
 
-        composeRule.onNodeWithText("初音未来").assertIsDisplayed()
+        onNodeWithText("初音未来").assertIsDisplayed()
         val countBefore = mock.requestCount
-        composeRule.onNodeWithText("初音未来").performClick()
+        onNodeWithText("初音未来").performClick()
         // 历史点选直接 submit：同样先等请求计数+1 再等 isLoading 收敛，避免漏等。
         runBlocking {
             withTimeout(10_000) {
@@ -175,7 +173,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun inputMode_forwardsTypedKeyword() {
+    fun inputMode_forwardsTypedKeyword() = runComposeUiTest {
         stubAutoFillEmpty()
         mock.respondWhen(
             Regex.fromLiteral("api/search"),
@@ -184,7 +182,7 @@ class SearchScreenTest {
         val vm = createViewModel()
         setScreen(vm, "")
 
-        composeRule.onNodeWithContentDescription("搜索输入框").performTextInput("新手办")
+        onNodeWithContentDescription("搜索输入框").performTextInput("新手办")
         runBlocking {
             withTimeout(10_000) {
                 vm.uiState.first { it.keyword == "新手办" }
@@ -195,14 +193,15 @@ class SearchScreenTest {
     }
 
     @Test
-    fun loadingState_keepsResultPlaceholdersHidden() {
+    fun loadingState_keepsResultPlaceholdersHidden() = runComposeUiTest {
         // 冻结 Main：initParams 同步置 isLoading=true 后网络协程挂起，停留在加载态。
         Dispatchers.setMain(StandardTestDispatcher())
         stubAutoFillEmpty()
         val vm = createViewModel()
         setScreen(vm, "手办")
 
-        composeRule.onNodeWithText("未找到相关搜索结果").assertDoesNotExist()
-        composeRule.onNodeWithText("重试").assertDoesNotExist()
+        onNodeWithText("未找到相关搜索结果").assertDoesNotExist()
+        onNodeWithText("重试").assertDoesNotExist()
     }
 }
+

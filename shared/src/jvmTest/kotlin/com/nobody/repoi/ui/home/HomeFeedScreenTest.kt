@@ -1,7 +1,8 @@
 package com.nobody.repoi.ui.home
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.nobody.repoi.data.local.ViewPreferencesManager
@@ -24,10 +25,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
@@ -35,17 +35,14 @@ import kotlin.test.assertEquals
  *
  * `verify(vm)` 翻译为请求计数断言（点击重试/刷新必须发出新请求）。
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class HomeFeedScreenTest {
-
-    @get:Rule
-    val composeRule = createComposeRule()
 
     private lateinit var mock: MockRepoEngine
     private lateinit var stores: TestDataStores
     private lateinit var viewModel: HomeFeedViewModel
 
-    @Before
+    @BeforeTest
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         startTestKoin(FakePlatformActions())
@@ -53,7 +50,7 @@ class HomeFeedScreenTest {
         stores = TestDataStores()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         stopTestKoin()
         stores.cleanUp()
@@ -80,7 +77,7 @@ class HomeFeedScreenTest {
         """{"success":true,"code":200,"msg":"ok","data":{"list":[${items.joinToString(",")}]}}"""
 
     @Test
-    fun emptyErrorState_showsMessageAndRetriesInitialLoad() {
+    fun emptyErrorState_showsMessageAndRetriesInitialLoad() = runComposeUiTest {
         mock.enqueue("""{"success":false,"code":500,"msg":"网络连接失败","data":null}""")
         mock.enqueue("""{"success":false,"code":500,"msg":"网络连接失败","data":null}""")
         stubZoneTabs()
@@ -91,11 +88,11 @@ class HomeFeedScreenTest {
             }
         }
 
-        composeRule.setContent { HomeFeedScreen(viewModel = vm) }
+        setContent { HomeFeedScreen(viewModel = vm) }
 
-        composeRule.onNodeWithText("网络连接失败").assertIsDisplayed()
+        onNodeWithText("网络连接失败").assertIsDisplayed()
         val countBefore = mock.requestCount
-        composeRule.onNodeWithText("重新加载").performClick()
+        onNodeWithText("重新加载").performClick()
         // 重试后 `isInitialLoading` 的 false→true→false 翻转可能快于 first{} 的订阅，
         // 导致 first{} 命中翻转前的 false 而漏等。用请求计数做收敛轮询。
         runBlocking {
@@ -111,7 +108,7 @@ class HomeFeedScreenTest {
     }
 
     @Test
-    fun emptyState_showsHintAndRefreshes() {
+    fun emptyState_showsHintAndRefreshes() = runComposeUiTest {
         mock.enqueue(feedJson())
         mock.enqueue(feedJson())
         stubZoneTabs()
@@ -122,11 +119,11 @@ class HomeFeedScreenTest {
             }
         }
 
-        composeRule.setContent { HomeFeedScreen(viewModel = vm) }
+        setContent { HomeFeedScreen(viewModel = vm) }
 
-        composeRule.onNodeWithText("暂无该分类下的动态情报").assertIsDisplayed()
+        onNodeWithText("暂无该分类下的动态情报").assertIsDisplayed()
         val countBefore = mock.requestCount
-        composeRule.onNodeWithText("刷新看看").performClick()
+        onNodeWithText("刷新看看").performClick()
         // 同重试测试：先等请求计数+1 再等状态收敛，避免漏等翻转前的 isRefreshing=false。
         runBlocking {
             withTimeout(10_000) {
@@ -141,7 +138,7 @@ class HomeFeedScreenTest {
     }
 
     @Test
-    fun contentState_rendersActionCardAndDoesNotShowEmptyHint() {
+    fun contentState_rendersActionCardAndDoesNotShowEmptyHint() = runComposeUiTest {
         mock.enqueue(
             feedJson(
                 """{"id":1,"actionDate":"2026-10-21","actionComment":"这只手办涂装很稳","user":{"id":1,"nickname":"收藏家","level":3}}"""
@@ -155,22 +152,23 @@ class HomeFeedScreenTest {
             }
         }
 
-        composeRule.setContent { HomeFeedScreen(viewModel = vm) }
+        setContent { HomeFeedScreen(viewModel = vm) }
 
-        composeRule.onNodeWithText("这只手办涂装很稳").assertIsDisplayed()
-        composeRule.onNodeWithText("暂无该分类下的动态情报").assertDoesNotExist()
+        onNodeWithText("这只手办涂装很稳").assertIsDisplayed()
+        onNodeWithText("暂无该分类下的动态情报").assertDoesNotExist()
     }
 
     @Test
-    fun initialLoadingState_keepsSkeletonWithoutEmptyOrErrorCards() {
+    fun initialLoadingState_keepsSkeletonWithoutEmptyOrErrorCards() = runComposeUiTest {
         // 冻结 Main：VM init 的加载协程永不执行，停留在 isInitialLoading=true 初态。
         Dispatchers.setMain(StandardTestDispatcher())
         stubZoneTabs()
         val vm = createViewModel()
 
-        composeRule.setContent { HomeFeedScreen(viewModel = vm) }
+        setContent { HomeFeedScreen(viewModel = vm) }
 
-        composeRule.onNodeWithText("暂无该分类下的动态情报").assertDoesNotExist()
-        composeRule.onNodeWithText("重新加载").assertDoesNotExist()
+        onNodeWithText("暂无该分类下的动态情报").assertDoesNotExist()
+        onNodeWithText("重新加载").assertDoesNotExist()
     }
 }
+

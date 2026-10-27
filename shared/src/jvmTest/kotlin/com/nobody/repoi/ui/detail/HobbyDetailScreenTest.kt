@@ -1,7 +1,8 @@
 package com.nobody.repoi.ui.detail
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.nobody.repoi.ui.common.comment.FakePlatformActions
@@ -14,10 +15,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.withTimeout
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
@@ -26,15 +26,12 @@ import kotlin.test.assertEquals
  * 装配复用 commonTest 的 [HobbyDetailTestEnv]；原 `verify(times(2))` 翻译为
  * 详情接口请求计数 == 2（初次加载 + 点击重试）。
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class HobbyDetailScreenTest {
-
-    @get:Rule
-    val composeRule = createComposeRule()
 
     private val env = HobbyDetailTestEnv()
 
-    @Before
+    @BeforeTest
     fun setUp() {
         // 注意：env.setUp() 先挂一个 StandardTestDispatcher 到 Main（commonTest 共享调度器
         // 铁律），但 jvmTest 用真实 runBlocking 等待、无人推进虚拟时钟——必须在此用
@@ -45,14 +42,14 @@ class HobbyDetailScreenTest {
         Dispatchers.resetMain()
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         env.tearDown()
         stopTestKoin()
     }
 
     @Test
-    fun errorWithoutDetail_showsErrorStateAndRetriesLoad() {
+    fun errorWithoutDetail_showsErrorStateAndRetriesLoad() = runComposeUiTest {
         // 失败规则先注册优先命中（stubBasics 后注册的成功规则不会覆盖它）。
         env.mock.respondWhen(
             Regex.fromLiteral("api/item/get-v2"),
@@ -61,7 +58,7 @@ class HobbyDetailScreenTest {
         env.stubBasics()
         val vm = env.viewModel()
 
-        composeRule.setContent {
+        setContent {
             HobbyDetailScreen(
                 navParam = DetailNavParam(itemId = 59570L),
                 onBack = {},
@@ -75,9 +72,9 @@ class HobbyDetailScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("条目加载失败").assertIsDisplayed()
-        composeRule.onNodeWithText("网络异常").assertIsDisplayed()
-        composeRule.onNodeWithText("点击重新加载").performClick()
+        onNodeWithText("条目加载失败").assertIsDisplayed()
+        onNodeWithText("网络异常").assertIsDisplayed()
+        onNodeWithText("点击重新加载").performClick()
         // 点击后 `isInitialLoading` 的 false→true→false 翻转可能快于 first{} 订阅而漏等；
         // 先轮询详情请求计数==2 再等状态收敛。
         runBlocking {
@@ -98,3 +95,4 @@ class HobbyDetailScreenTest {
         assertEquals(2, detailCalls)
     }
 }
+

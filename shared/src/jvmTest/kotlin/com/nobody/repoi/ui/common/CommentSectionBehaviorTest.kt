@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -22,24 +22,21 @@ import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.commentSectionItems
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
-import org.junit.Rule
-import org.junit.Test
-import org.junit.After
-import org.junit.Before
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalTestApi::class)
 class CommentSectionBehaviorTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
-
-    @Before
+    @BeforeTest
     fun setUp() {
         startTestKoin(FakePlatformActions())
     }
 
-    @After
+    @AfterTest
     fun tearDown() {
         stopTestKoin()
     }
@@ -49,9 +46,9 @@ class CommentSectionBehaviorTest {
     }
 
     @Test
-    fun retryClick_triggersOnRetryOnce() {
+    fun retryClick_triggersOnRetryOnce() = runComposeUiTest {
         var retryCount = 0
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -68,14 +65,14 @@ class CommentSectionBehaviorTest {
                 )
             }
         }
-        composeRule.onNodeWithText("已加载全部讨论", substring = true).assertDoesNotExist()
-        composeRule.onNodeWithText("点击重试").performClick()
+        onNodeWithText("已加载全部讨论", substring = true).assertDoesNotExist()
+        onNodeWithText("点击重试").performClick()
         assertEquals(1, retryCount)
     }
 
     @Test
-    fun hasMoreFalse_showsFullLoadedAndNoRetry() {
-        composeRule.setContent {
+    fun hasMoreFalse_showsFullLoadedAndNoRetry() = runComposeUiTest {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -91,16 +88,16 @@ class CommentSectionBehaviorTest {
                 )
             }
         }
-        composeRule.onNodeWithText("已加载全部讨论", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("点击重试").assertDoesNotExist()
+        onNodeWithText("已加载全部讨论", substring = true).assertIsDisplayed()
+        onNodeWithText("点击重试").assertDoesNotExist()
     }
     @Test
-    fun replyDialog_showsReplyTargetHeader() {
+    fun replyDialog_showsReplyTargetHeader() = runComposeUiTest {
         // Desktop UI 测试无可靠的 StateRestorationTester（CMP desktop 的
         // StateRestorationTester 不提供 emulateSavedInstanceStateRestore），
         // 草稿保留语义由 rememberSaveable 框架保证，此处改为验证弹窗的
         // 回复目标提示行（有 target 显示"回复 @昵称"，无 target 不显示）。
-        composeRule.setContent {
+        setContent {
             CommentReplyDialog(
                 comment = comment(1L, "主楼"),
                 target = CommentReplyItem(
@@ -112,13 +109,13 @@ class CommentSectionBehaviorTest {
                 onSubmit = { _, _ -> true }
             )
         }
-        composeRule.onNodeWithText("回复").assertIsDisplayed()
-        composeRule.onNodeWithText("@胶友B").assertIsDisplayed()
+        onNodeWithText("回复").assertIsDisplayed()
+        onNodeWithText("@胶友B").assertIsDisplayed()
     }
 
     @Test
-    fun replyDialog_withoutTarget_hidesReplyHeader() {
-        composeRule.setContent {
+    fun replyDialog_withoutTarget_hidesReplyHeader() = runComposeUiTest {
+        setContent {
             CommentReplyDialog(
                 comment = comment(1L, "主楼"),
                 target = null,
@@ -126,12 +123,12 @@ class CommentSectionBehaviorTest {
                 onSubmit = { _, _ -> true }
             )
         }
-        composeRule.onNodeWithText("输入回复内容").assertIsDisplayed()
-        composeRule.onNodeWithText("@").assertDoesNotExist()
+        onNodeWithText("输入回复内容").assertIsDisplayed()
+        onNodeWithText("@").assertDoesNotExist()
     }
 
     @Test
-    fun replyRelation_rendersReplyTarget() {
+    fun replyRelation_rendersReplyTarget() = runComposeUiTest {
         val item = CommentItem(
             id = 1L,
             content = "主楼",
@@ -145,7 +142,7 @@ class CommentSectionBehaviorTest {
                 )
             )
         )
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -162,12 +159,12 @@ class CommentSectionBehaviorTest {
             }
         }
         // “XX 回复 YY”关系必须渲染出来
-        composeRule.onNodeWithText("回复", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("lie", substring = true).assertIsDisplayed()
+        onNodeWithText("回复", substring = true).assertIsDisplayed()
+        onNodeWithText("lie", substring = true).assertIsDisplayed()
     }
 
     @Test
-    fun moreThanThreeReplies_showsViewAllAndNavigates() {
+    fun moreThanThreeReplies_showsViewAllAndNavigates() = runComposeUiTest {
         var viewedId = -1L
         val item = CommentItem(
             id = 7L,
@@ -177,7 +174,7 @@ class CommentSectionBehaviorTest {
                 CommentReplyItem(id = it, content = "预览$it", user = CommentUser(id = it, nickname = "胶友$it"))
             }
         )
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -197,14 +194,14 @@ class CommentSectionBehaviorTest {
             }
         }
         // 预览只展示 3 条，且出现“共7条回复”
-        composeRule.onNodeWithText("共7条回复", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("共7条回复", substring = true).performClick()
+        onNodeWithText("共7条回复", substring = true).assertIsDisplayed()
+        onNodeWithText("共7条回复", substring = true).performClick()
         assertEquals(7L, viewedId)
         assertTrue(viewedId != -1L)
     }
 
     @Test
-    fun threeOrLessReplies_doesNotShowViewAllText() {
+    fun threeOrLessReplies_doesNotShowViewAllText() = runComposeUiTest {
         val item = CommentItem(
             id = 2L,
             content = "主楼",
@@ -214,7 +211,7 @@ class CommentSectionBehaviorTest {
                 CommentReplyItem(id = 2L, content = "回复2", user = CommentUser(id = 2L, nickname = "B"))
             )
         )
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -233,19 +230,19 @@ class CommentSectionBehaviorTest {
                 )
             }
         }
-        composeRule.onNodeWithText("回复1", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("条回复", substring = true).assertDoesNotExist()
+        onNodeWithText("回复1", substring = true).assertIsDisplayed()
+        onNodeWithText("条回复", substring = true).assertDoesNotExist()
     }
 
     @Test
-    fun commentCardClick_triggersViewAllReplies() {
+    fun commentCardClick_triggersViewAllReplies() = runComposeUiTest {
         var clickedCommentId = -1L
         val item = CommentItem(
             id = 99L,
             content = "卡片整体可点击进入楼中楼",
             user = CommentUser(id = 1L, nickname = "测试用户")
         )
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -265,14 +262,14 @@ class CommentSectionBehaviorTest {
             }
         }
         // 点击卡片正文区域
-        composeRule.onNodeWithText("卡片整体可点击进入楼中楼").performClick()
+        onNodeWithText("卡片整体可点击进入楼中楼").performClick()
         assertEquals(99L, clickedCommentId)
     }
 
     @Test
-    fun headerSortButton_cyclesFilterMode() {
+    fun headerSortButton_cyclesFilterMode() = runComposeUiTest {
         var newMode: CommentFilterMode? = null
-        composeRule.setContent {
+        setContent {
             LazyColumn {
                 commentSectionItems(
                     filterMode = CommentFilterMode.DEFAULT,
@@ -289,13 +286,13 @@ class CommentSectionBehaviorTest {
                 )
             }
         }
-        composeRule.onNodeWithText("默认").performClick()
+        onNodeWithText("默认").performClick()
         assertEquals(CommentFilterMode.HOT, newMode)
     }
 
     @Test
-    fun commentReplyDialog_rendersInputAndCanType() {
-        composeRule.setContent {
+    fun commentReplyDialog_rendersInputAndCanType() = runComposeUiTest {
+        setContent {
             CommentReplyDialog(
                 comment = CommentItem(id = 1L),
                 target = null,
@@ -303,16 +300,16 @@ class CommentSectionBehaviorTest {
                 onSubmit = { _, _ -> true }
             )
         }
-        composeRule.onNodeWithText("输入回复内容").assertIsDisplayed()
-        composeRule.onNodeWithText("输入回复内容").performTextInput("测试回复")
-        composeRule.onNodeWithText("测试回复").assertIsDisplayed()
+        onNodeWithText("输入回复内容").assertIsDisplayed()
+        onNodeWithText("输入回复内容").performTextInput("测试回复")
+        onNodeWithText("测试回复").assertIsDisplayed()
     }
 
     @Test
-    fun commentFeedPane_rendersBackAndCyclesSort() {
+    fun commentFeedPane_rendersBackAndCyclesSort() = runComposeUiTest {
         var backClicked = false
         var sortMode = CommentFilterMode.DEFAULT
-        composeRule.setContent {
+        setContent {
             CommentFeedPane(
                 filterMode = sortMode,
                 onFilterModeChange = { sortMode = it },
@@ -327,17 +324,17 @@ class CommentSectionBehaviorTest {
                 onBack = { backClicked = true }
             )
         }
-        composeRule.onNodeWithText("商品讨论").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("返回").performClick()
+        onNodeWithText("商品讨论").assertIsDisplayed()
+        onNodeWithContentDescription("返回").performClick()
         assertTrue(backClicked)
 
-        composeRule.onNodeWithText("默认").performClick()
+        onNodeWithText("默认").performClick()
         assertEquals(CommentFilterMode.HOT, sortMode)
     }
 
     @Test
-    fun commentFeedPane_fabOpensTopLevelCommentDialog() {
-        composeRule.setContent {
+    fun commentFeedPane_fabOpensTopLevelCommentDialog() = runComposeUiTest {
+        setContent {
             CommentFeedPane(
                 filterMode = CommentFilterMode.DEFAULT,
                 onFilterModeChange = {},
@@ -353,13 +350,13 @@ class CommentSectionBehaviorTest {
                 )
             )
         }
-        composeRule.onNodeWithContentDescription("我要说两句").performClick()
-        composeRule.onNodeWithText("输入回复内容").assertIsDisplayed()
+        onNodeWithContentDescription("我要说两句").performClick()
+        onNodeWithText("输入回复内容").assertIsDisplayed()
     }
 
     @Test
-    fun commentFeedPane_defaultMode_rendersCommentTitle() {
-        composeRule.setContent {
+    fun commentFeedPane_defaultMode_rendersCommentTitle() = runComposeUiTest {
+        setContent {
             CommentFeedPane(
                 filterMode = CommentFilterMode.DEFAULT,
                 onFilterModeChange = {},
@@ -372,14 +369,14 @@ class CommentSectionBehaviorTest {
                 isDark = false
             )
         }
-        composeRule.onNodeWithText("评论").assertIsDisplayed()
+        onNodeWithText("评论").assertIsDisplayed()
     }
 
     @Test
-    fun commentFeedPane_modeChangeScrollsToTop() {
+    fun commentFeedPane_modeChangeScrollsToTop() = runComposeUiTest {
         var sortMode = CommentFilterMode.DEFAULT
         var listState: LazyListState? = null
-        composeRule.setContent {
+        setContent {
             val state = rememberLazyListState(initialFirstVisibleItemIndex = 5)
             listState = state
             CommentFeedPane(
@@ -396,8 +393,8 @@ class CommentSectionBehaviorTest {
             )
         }
         assertEquals(5, listState?.firstVisibleItemIndex)
-        composeRule.onNodeWithText("默认").performClick()
-        composeRule.waitForIdle()
+        onNodeWithText("默认").performClick()
+        waitForIdle()
         assertEquals(0, listState?.firstVisibleItemIndex)
     }
 }
