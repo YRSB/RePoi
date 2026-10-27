@@ -48,7 +48,7 @@ class HobbyAlbumListViewModelTest {
     @BeforeTest
     fun setUp() {
         dispatchers.setUp()
-        mock = MockRepoEngine()
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         json = appJson()
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)

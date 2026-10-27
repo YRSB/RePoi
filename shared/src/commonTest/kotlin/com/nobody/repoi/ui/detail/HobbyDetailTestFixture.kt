@@ -61,7 +61,7 @@ class HobbyDetailTestEnv {
 
     fun setUp() {
         dispatchers.setUp()
-        mock = MockRepoEngine()
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         json = appJson()
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)
@@ -74,7 +74,7 @@ class HobbyDetailTestEnv {
         stickerRepo = StickerRepository(api)
         userRepo = UserRepository(api, tokenManager)
         delegate = CommentInteractionDelegate(commentRepo, stickerRepo, tokenManager, userRepo)
-        exMock = MockRepoEngine()
+        exMock = MockRepoEngine(dispatchers.engineDispatcher)
         exClient = HttpClient(exMock.engine) { expectSuccess = true }
         exApi = ExHobbyApi(exClient, json)
         exRepo = ExHobbyRepository(exApi)

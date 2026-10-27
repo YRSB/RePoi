@@ -45,12 +45,12 @@ class PictureGalleryViewModelTest {
     @BeforeTest
     fun setUp() {
         dispatchers.setUp()
-        mock = MockRepoEngine()
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         json = appJson()
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)
         repository = CollectRepository(api, json)
-        imageMock = MockRepoEngine()
+        imageMock = MockRepoEngine(dispatchers.engineDispatcher)
         imageClient = HttpClient(imageMock.engine) { expectSuccess = true }
     }
 

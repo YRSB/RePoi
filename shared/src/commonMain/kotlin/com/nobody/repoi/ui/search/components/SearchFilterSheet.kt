@@ -5,7 +5,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +60,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
@@ -232,23 +233,20 @@ fun ModalSideSheet(
             .zIndex(100f)
     ) {
         // 1. 全屏半透明遮罩 (Scrim)：全屏铺满压暗背景，抽屉圆角外切角处自然透出暗色遮罩，彻底消除白色直角
+        // 注意：必须用 clickable 而非裸 detectTapGestures(onTap)——后者无 touch-slop 语义，
+        // 拖拽松手时的 up 同样会触发 onTap 导致误关闭；clickable 超出 slop 即取消 press，
+        // 拖拽不会 dismiss（ModalSideSheetTest.draggingScrim_doesNotTriggerDismiss）。
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = scrimAlpha))
                 .testTag("modal_side_sheet_scrim")
-                .semantics(mergeDescendants = true) {
-                    contentDescription = "关闭遮罩"
-                    onClick {
-                        closeWithAnimation()
-                        true
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { closeWithAnimation() }
-                    )
-                }
+                .semantics { contentDescription = "关闭遮罩" }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = closeWithAnimation
+                )
         )
 
         // 2. 右侧抽屉面板：居右停靠浮于遮罩之上，自身消费空白处点击防止击穿到底层遮罩

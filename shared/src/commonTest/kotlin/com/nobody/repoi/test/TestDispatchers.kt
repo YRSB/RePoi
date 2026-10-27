@@ -30,13 +30,22 @@ import kotlinx.coroutines.test.setMain
  * 每个测试必须使用全新的 dispatcher 实例（本类在 setUp() 中重建）：
  * StandardTestDispatcher 持有虚拟时钟与任务队列，跨测试复用会导致旧任务/
  * 旧虚拟时间污染新测试（官方文档明确禁止跨测试共享）。
+ *
+ * [engineDispatcher] 专供 [MockRepoEngine] 构造时注入：Ktor MockEngine 默认
+ * `engine.dispatcher = Dispatchers.IO`（真线程），请求 handler 在 IO 线程执行，
+ * `advanceUntilIdle()` 驱动不了 → ViewModel 测试里请求永远 pending（本地 J1 实验证实）。
+ * engineDispatcher 与 testDispatcher 共享同一 TestCoroutineScheduler（不同实例），
+ * 保证请求与 ViewModel 协程同属一个虚拟时钟。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TestDispatchers {
     lateinit var testDispatcher: TestDispatcher
         private set
+    lateinit var engineDispatcher: TestDispatcher
+        private set
     fun setUp() {
         testDispatcher = StandardTestDispatcher()
+        engineDispatcher = StandardTestDispatcher(testDispatcher.scheduler)
         Dispatchers.setMain(testDispatcher)
     }
 

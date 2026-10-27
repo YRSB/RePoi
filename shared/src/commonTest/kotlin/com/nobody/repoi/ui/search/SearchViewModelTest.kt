@@ -9,6 +9,7 @@ import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
 import com.nobody.repoi.test.TestDataStores
 import com.nobody.repoi.test.TestDispatchers
+import com.nobody.repoi.test.recordedBody
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,7 +46,7 @@ class SearchViewModelTest {
     @BeforeTest
     fun setUp() {
         dispatchers.setUp()
-        mock = MockRepoEngine()
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         json = appJson()
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)
@@ -149,7 +150,10 @@ class SearchViewModelTest {
         assertTrue(state.isSubmitted)
         assertEquals(88L, state.selectedCompany?.nodeId)
         assertEquals("GSC", state.selectedCompany?.itemName)
-        assertEquals(1, state.availableCompanies.size)
+        // COMPANY-tab 搜索成功后 VM 用空列表覆盖 availableCompanies（仅 HOBBY-tab 填充聚合），
+        // 老测试此处是 verify(search).search(company=88L)，翻译为请求表单断言。
+        assertTrue(state.availableCompanies.isEmpty())
+        assertTrue(mock.lastRequest().recordedBody().contains("company=88"))
         viewModel.viewModelScope.cancel()
     }
 
