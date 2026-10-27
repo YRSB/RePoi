@@ -79,10 +79,10 @@ class AlbumDetailTestEnv {
     fun viewModel(): AlbumDetailViewModel =
         AlbumDetailViewModel(detailRepo, collectRepo, userRepo, delegate, exRepo, prefs)
 
-    /** 登录态：内存 currentToken/currentUserId 直接赋值即可（UserRepository.isLoggedIn 只看内存）。 */
-    fun login(userId: Long = 999L, token: String = "test_token") {
-        tokenManager.currentToken = token
-        tokenManager.currentUserId = userId
+    /** Login via real savers (currentUserId is private set). */
+    suspend fun login(userId: Long = 999L, token: String = "test_token") {
+        tokenManager.saveToken(token)
+        tokenManager.saveCurrentUser(userId)
     }
 
     /**
