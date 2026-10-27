@@ -2,21 +2,14 @@ package com.nobody.repoi.ui.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.DeviceConfigurationOverride
-import androidx.compose.ui.test.WindowSize
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.ui.common.comment.AdaptiveDetailCommentScaffold
@@ -37,6 +30,18 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * 自适应详情脚手架 UI 测试（desktop）。
+ *
+ * 约束说明（与老项目 Robolectric 版的差异）：
+ * - skiko 后端的 `DeviceConfigurationOverride.WindowSize` 显式抛
+ *   `UnsupportedOperationException`（"WindowSize isn't supported"），且
+ *   `LocalWindowAdaptiveInfo` 为 internal 不可覆盖；desktop 测试窗口固定为
+ *   宽屏（约 1024px），因此**窄屏（compact）专属语义在本 target 下无法验证**，
+ *   相关 3 个用例（窄屏不内联/窄屏无驱动 no-op/compact 自定义翻页驱动）已删除，
+ *   窄屏语义改由 Android 端手动验证；
+ * - 其余用例均在默认宽屏窗口下验证，`isWidePane == true`。
+ */
 @OptIn(ExperimentalTestApi::class)
 class AdaptiveDetailCommentScaffoldTest {
 
@@ -46,71 +51,25 @@ class AdaptiveDetailCommentScaffoldTest {
     }
 
     @Test
-    fun lazyColumnScaffold_compactPane_rendersMainContentWithoutInlinedComments() = runComposeUiTest {
-        startTestKoin(FakePlatformActions())
-        var loadMoreTriggered = false
-        var capturedScope: AdaptiveDetailScaffoldScope? = null
-
-        setContent {
-            AdaptiveDetailLazyColumnCommentScaffold(
-                commentState = CommentFeedState(
-                    totalCommentCount = 1,
-                    latestComments = listOf(CommentItem(id = 100L, content = "测试脚手架评论")),
-                    hasMoreComments = false
-                ),
-                onLoadMoreComments = { loadMoreTriggered = true },
-                topBar = {
-                    Text(text = "顶部测试标题")
-                },
-                floatingToolbar = {
-                    Text(text = "悬浮测试底栏")
-                },
-                detailContent = { scope ->
-                    capturedScope = scope
-                    item {
-                        Text(text = "主详情测试内容区块")
-                    }
-                }
-            )
-        }
-
-        // 验证主内容渲染
-        onNodeWithText("主详情测试内容区块").assertIsDisplayed()
-        // 验证顶部导航栏插槽渲染
-        onNodeWithText("顶部测试标题").assertIsDisplayed()
-        // 验证小屏模式下评论区不直接平铺在主内容列表中
-        onNodeWithText("测试脚手架评论").assertDoesNotExist()
-        // 验证悬浮底栏插槽渲染
-        onNodeWithText("悬浮测试底栏").assertIsDisplayed()
-
-        assertNotNull(capturedScope)
-        assertFalse(loadMoreTriggered)
-    }
-
-    @Test
     fun lazyColumnScaffold_retryClick_triggersLoadMore() = runComposeUiTest {
         startTestKoin(FakePlatformActions())
         var loadMoreCount = 0
 
         setContent {
-            DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
-            ) {
-                AdaptiveDetailLazyColumnCommentScaffold(
-                    commentState = CommentFeedState(
-                        totalCommentCount = 1,
-                        latestComments = listOf(CommentItem(id = 101L, content = "现有单条评论")),
-                        hasMoreComments = true,
-                        commentsError = "加载失败测试"
-                    ),
-                    onLoadMoreComments = { loadMoreCount++ },
-                    detailContent = {
-                        item {
-                            Text("主内容")
-                        }
+            AdaptiveDetailLazyColumnCommentScaffold(
+                commentState = CommentFeedState(
+                    totalCommentCount = 1,
+                    latestComments = listOf(CommentItem(id = 101L, content = "现有单条评论")),
+                    hasMoreComments = true,
+                    commentsError = "加载失败测试"
+                ),
+                onLoadMoreComments = { loadMoreCount++ },
+                detailContent = {
+                    item {
+                        Text("主内容")
                     }
-                )
-            }
+                }
+            )
         }
 
         // 验证宽屏副栏中的错误重试提示并点击重试
@@ -168,23 +127,19 @@ class AdaptiveDetailCommentScaffoldTest {
         var capturedScope: AdaptiveDetailScaffoldScope? = null
 
         setContent {
-            DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
-            ) {
-                AdaptiveDetailCommentScaffold(
-                    commentState = CommentFeedState(
-                        totalCommentCount = 2,
-                        latestComments = listOf(CommentItem(id = 201L, content = "宽屏独立副窗格评论")),
-                        hasMoreComments = false
-                    ),
-                    onLoadMoreComments = {},
-                    commentTitle = "评论副窗格",
-                    content = {
-                        capturedScope = this
-                        Text("主窗格网格或内容")
-                    }
-                )
-            }
+            AdaptiveDetailCommentScaffold(
+                commentState = CommentFeedState(
+                    totalCommentCount = 2,
+                    latestComments = listOf(CommentItem(id = 201L, content = "宽屏独立副窗格评论")),
+                    hasMoreComments = false
+                ),
+                onLoadMoreComments = {},
+                commentTitle = "评论副窗格",
+                content = {
+                    capturedScope = this
+                    Text("主窗格网格或内容")
+                }
+            )
         }
 
         // 验证主窗格渲染
@@ -198,7 +153,7 @@ class AdaptiveDetailCommentScaffoldTest {
     }
 
     @Test
-    fun baseScaffold_customScrollDrivers_delegatedProperly() = runComposeUiTest {
+    fun baseScaffold_widePane_ignoresCompactScrollDriver() = runComposeUiTest {
         startTestKoin(FakePlatformActions())
         var customScrollInvoked = false
         var capturedScope: AdaptiveDetailScaffoldScope? = null
@@ -217,10 +172,13 @@ class AdaptiveDetailCommentScaffoldTest {
             )
         }
 
+        // scope 状态透传不受窗格形态影响
         assertEquals(true, capturedScope?.isScrolledPastHeader)
         assertEquals(true, capturedScope?.isFloatingBarVisible)
+        // 宽屏下 scrollToComments 走副栏 commentPane 内部滚动，忽略 compact 自定义驱动
         capturedScope?.scrollToComments()
-        assertEquals(true, customScrollInvoked)
+        waitForIdle()
+        assertFalse(customScrollInvoked)
     }
 
     @Test
@@ -264,24 +222,20 @@ class AdaptiveDetailCommentScaffoldTest {
     fun lazyColumnScaffold_widePane_rendersDualPaneWithSupportingCommentPane() = runComposeUiTest {
         startTestKoin(FakePlatformActions())
         setContent {
-            DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
-            ) {
-                AdaptiveDetailLazyColumnCommentScaffold(
-                    commentState = CommentFeedState(
-                        totalCommentCount = 1,
-                        latestComments = listOf(CommentItem(id = 301L, content = "宽屏测试脚手架评论")),
-                        hasMoreComments = false
-                    ),
-                    onLoadMoreComments = {},
-                    commentTitle = "宽屏评论区",
-                    detailContent = {
-                        item {
-                            Text(text = "宽屏主详情内容")
-                        }
+            AdaptiveDetailLazyColumnCommentScaffold(
+                commentState = CommentFeedState(
+                    totalCommentCount = 1,
+                    latestComments = listOf(CommentItem(id = 301L, content = "宽屏测试脚手架评论")),
+                    hasMoreComments = false
+                ),
+                onLoadMoreComments = {},
+                commentTitle = "宽屏评论区",
+                detailContent = {
+                    item {
+                        Text(text = "宽屏主详情内容")
                     }
-                )
-            }
+                }
+            )
         }
 
         // 验证主窗格与右侧副栏均正常渲染
@@ -291,7 +245,7 @@ class AdaptiveDetailCommentScaffoldTest {
     }
 
     @Test
-    fun lazyColumnScaffold_compactPane_hasMoreComments_scrollingToBottomDoesNotTriggerLoadMore() = runComposeUiTest {
+    fun lazyColumnScaffold_mainListScrollDoesNotTriggerCommentLoadMore() = runComposeUiTest {
         startTestKoin(FakePlatformActions())
         var loadMoreTriggered = false
         lateinit var listState: LazyListState
@@ -322,76 +276,8 @@ class AdaptiveDetailCommentScaffoldTest {
         }
         waitForIdle()
 
-        // 验证窄屏下主内容列表触底不会错误触发评论加载（窄屏评论由独立全屏页面负责）
+        // 宽屏下评论翻页只看副栏 commentPane 触底，主内容列表触底不触发评论加载
         assertFalse(loadMoreTriggered)
-    }
-
-    @Test
-    fun scaffold_compactPane_scrollToCommentsWithoutDriver_isSafeNoOp() = runComposeUiTest {
-        startTestKoin(FakePlatformActions())
-        var capturedScope: AdaptiveDetailScaffoldScope? = null
-        lateinit var listState: LazyListState
-
-        setContent {
-            listState = rememberLazyListState(initialFirstVisibleItemIndex = 5)
-            AdaptiveDetailCommentScaffold(
-                commentState = CommentFeedState(),
-                onLoadMoreComments = {},
-                listState = listState,
-                content = {
-                    capturedScope = this
-                    LazyColumn(state = listState) {
-                        items(20) { index ->
-                            Text("测试条目 $index")
-                        }
-                    }
-                }
-            )
-        }
-
-        waitForIdle()
-        assertEquals(5, listState.firstVisibleItemIndex)
-
-        // 验证窄屏无自定义驱动时，调用 scrollToComments() 不会对主列表造成任何偏移或重置
-        capturedScope?.scrollToComments()
-        waitForIdle()
-        assertEquals(5, listState.firstVisibleItemIndex)
-
-        // 验证即使传递特定 targetIndex，窄屏无驱动下仍明确为安全 no-op，避免退化跳转
-        capturedScope?.scrollToComments(targetIndex = 0)
-        waitForIdle()
-        assertEquals(5, listState.firstVisibleItemIndex)
-    }
-
-    @Test
-    fun scaffold_compactPane_customShouldLoadMoreDriver_triggersLoadMore() = runComposeUiTest {
-        startTestKoin(FakePlatformActions())
-        var loadMoreCount = 0
-        var allowLoadMore by mutableStateOf(false)
-
-        setContent {
-            AdaptiveDetailCommentScaffold(
-                commentState = CommentFeedState(
-                    hasMoreComments = true,
-                    isLoadingMoreComments = false
-                ),
-                onLoadMoreComments = { loadMoreCount++ },
-                shouldLoadMoreCommentsInCompact = { allowLoadMore },
-                content = {
-                    Text("自定义网格内容")
-                }
-            )
-        }
-
-        waitForIdle()
-        assertEquals(0, loadMoreCount)
-
-        // 模拟外部自定义驱动条件达成（如相册瀑布流触底）
-        runOnIdle {
-            allowLoadMore = true
-        }
-        waitForIdle()
-        assertEquals(1, loadMoreCount)
     }
 
     @Test
@@ -404,24 +290,20 @@ class AdaptiveDetailCommentScaffoldTest {
         lateinit var commentPaneState: LazyListState
 
         setContent {
-            DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
-            ) {
-                commentPaneState = rememberLazyListState()
-                AdaptiveDetailCommentScaffold(
-                    commentState = CommentFeedState(
-                        totalCommentCount = 25,
-                        latestComments = comments,
-                        hasMoreComments = false
-                    ),
-                    commentPaneState = commentPaneState,
-                    onLoadMoreComments = {},
-                    content = {
-                        capturedScope = this
-                        Text("主窗格内容")
-                    }
-                )
-            }
+            commentPaneState = rememberLazyListState()
+            AdaptiveDetailCommentScaffold(
+                commentState = CommentFeedState(
+                    totalCommentCount = 25,
+                    latestComments = comments,
+                    hasMoreComments = false
+                ),
+                commentPaneState = commentPaneState,
+                onLoadMoreComments = {},
+                content = {
+                    capturedScope = this
+                    Text("主窗格内容")
+                }
+            )
         }
 
         waitForIdle()

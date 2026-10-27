@@ -7,10 +7,17 @@ import com.nobody.repoi.data.remote.model.CommentUser
 import com.nobody.repoi.test.MockRepoEngine
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -72,6 +79,12 @@ class CommentInteractionDelegateTest {
         stores.cleanUp()
     }
 
+    private suspend fun awaitCondition(timeoutMs: Long = 5000, cond: () -> Boolean) {
+        withTimeout(timeoutMs) {
+            while (!cond()) delay(10)
+        }
+    }
+
     private fun sampleComment(id: Long, praised: Boolean = false, praiseCount: Int = 0): CommentItem {
         return CommentItem(
             id = id,
@@ -84,63 +97,79 @@ class CommentInteractionDelegateTest {
     }
 
     @Test
-    fun observeCommentUpdates_mergesExternalUpdate() = runTest {
-        val stateFlow = MutableStateFlow(
-            TestCommentState(
-                hotComments = listOf(sampleComment(1L)),
-                latestComments = listOf(sampleComment(2L))
+    fun observeCommentUpdates_mergesExternalUpdate(): Unit = runBlocking {
+        // toggle 走 scope.launch + 真仓储（MockEngine 有真实 IO dispatcher 跳转），
+        // runTest 的 advanceUntilIdle 等不到真实 IO 线程，改用 runBlocking + 条件轮询。
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val stateFlow = MutableStateFlow(
+                TestCommentState(
+                    hotComments = listOf(sampleComment(1L)),
+                    latestComments = listOf(sampleComment(2L))
+                )
             )
-        )
-        delegate.observeCommentUpdates(backgroundScope, stateFlow)
-        testScheduler.runCurrent()
+            delegate.observeCommentUpdates(scope, stateFlow)
 
-        // 经 delegate 自身触发一次真实点赞成功广播（comment 1L 变为 praised=true/count=1），
-        // 观察者应将其合并进 hot 列表。
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        val praiseState = MutableStateFlow(TestCommentState(latestComments = listOf(sampleComment(1L))))
-        delegate.toggleCommentPraise(backgroundScope, praiseState, 1L, 100L)
-        advanceUntilIdle()
+            // 经 delegate 自身触发一次真实点赞成功广播（comment 1L 变为 praised=true/count=1），
+            // 观察者应将其合并进 hot 列表。
+            mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+            val praiseState = MutableStateFlow(TestCommentState(latestComments = listOf(sampleComment(1L))))
+            delegate.toggleCommentPraise(scope, praiseState, 1L, 100L)
+            awaitCondition { stateFlow.value.hotComments.first().praiseState }
 
-        assertEquals(true, stateFlow.value.hotComments.first().praiseState)
-        assertEquals(1, stateFlow.value.hotComments.first().praiseCount)
+            assertEquals(true, stateFlow.value.hotComments.first().praiseState)
+            assertEquals(1, stateFlow.value.hotComments.first().praiseCount)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test
-    fun toggleCommentPraise_successUpdatesAndEmits() = runTest {
-        val stateFlow = MutableStateFlow(
-            TestCommentState(
-                latestComments = listOf(sampleComment(10L, praised = false, praiseCount = 2))
+    fun toggleCommentPraise_successUpdatesAndEmits(): Unit = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val stateFlow = MutableStateFlow(
+                TestCommentState(
+                    latestComments = listOf(sampleComment(10L, praised = false, praiseCount = 2))
+                )
             )
-        )
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+            mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
 
-        delegate.toggleCommentPraise(this, stateFlow, 10L, 100L)
-        advanceUntilIdle()
+            delegate.toggleCommentPraise(scope, stateFlow, 10L, 100L)
+            awaitCondition { 10L !in stateFlow.value.pendingPraiseIds }
 
-        val comment = stateFlow.value.latestComments.first()
-        assertTrue(comment.praiseState)
-        assertEquals(3, comment.praiseCount)
-        assertFalse(10L in stateFlow.value.pendingPraiseIds)
-        assertEquals(1, mock.requestCount)
+            val comment = stateFlow.value.latestComments.first()
+            assertTrue(comment.praiseState)
+            assertEquals(3, comment.praiseCount)
+            assertFalse(10L in stateFlow.value.pendingPraiseIds)
+            assertEquals(1, mock.requestCount)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test
-    fun toggleCommentPraise_failureRollsBackSetsMessageAndBroadcasts() = runTest {
-        val stateFlow = MutableStateFlow(
-            TestCommentState(
-                latestComments = listOf(sampleComment(10L, praised = false, praiseCount = 2))
+    fun toggleCommentPraise_failureRollsBackSetsMessageAndBroadcasts(): Unit = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val stateFlow = MutableStateFlow(
+                TestCommentState(
+                    latestComments = listOf(sampleComment(10L, praised = false, praiseCount = 2))
+                )
             )
-        )
-        mock.enqueue("""{"success":false,"code":400,"msg":"点赞网络异常","data":null}""")
+            mock.enqueue("""{"success":false,"code":400,"msg":"点赞网络异常","data":null}""")
 
-        delegate.toggleCommentPraise(this, stateFlow, 10L, 100L)
-        advanceUntilIdle()
+            delegate.toggleCommentPraise(scope, stateFlow, 10L, 100L)
+            awaitCondition { 10L !in stateFlow.value.pendingPraiseIds }
 
-        val comment = stateFlow.value.latestComments.first()
-        assertFalse(comment.praiseState)
-        assertEquals(2, comment.praiseCount)
-        assertFalse(10L in stateFlow.value.pendingPraiseIds)
-        assertTrue(stateFlow.value.commentActionMessage?.contains("点赞网络异常") == true)
+            val comment = stateFlow.value.latestComments.first()
+            assertFalse(comment.praiseState)
+            assertEquals(2, comment.praiseCount)
+            assertFalse(10L in stateFlow.value.pendingPraiseIds)
+            assertTrue(stateFlow.value.commentActionMessage?.contains("点赞网络异常") == true)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test
@@ -295,7 +324,7 @@ class CommentInteractionDelegateTest {
                 latestComments = listOf(sampleComment(1L), sampleComment(2L))
             )
         )
-        delegate.observeCommentUpdates(backgroundScope, stateFlow)
+        delegate.observeCommentUpdates(this, stateFlow)
         testScheduler.runCurrent()
 
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")

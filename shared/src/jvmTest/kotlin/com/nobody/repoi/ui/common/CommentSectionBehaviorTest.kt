@@ -387,7 +387,7 @@ class CommentSectionBehaviorTest {
                 onFilterModeChange = { sortMode = it },
                 totalCommentCount = 10,
                 hotComments = emptyList(),
-                latestComments = (1..10).map { CommentItem(id = it.toLong(), content = "内容$it") },
+                latestComments = (1..50).map { CommentItem(id = it.toLong(), content = "内容$it") },
                 isCommentsLoading = false,
                 isLoadingMoreComments = false,
                 hasMoreComments = false,

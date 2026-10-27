@@ -1,6 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
+import kotlin.reflect.KClass
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -23,6 +26,15 @@ class NavEntryTestViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         isCleared = true
+    }
+}
+
+// Desktop 下 viewModel() 默认 Factory（SavedStateViewModelFactory.nonAndroid）
+// 不支持无参反射创建，必须显式提供 Factory.
+private val testVmFactory = object : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T {
+        @Suppress("UNCHECKED_CAST")
+        return NavEntryTestViewModel() as T
     }
 }
 
@@ -55,7 +67,7 @@ class NavEntryViewModelStoreTest {
                             // 首页
                         }
                         is HobbyDetailNavKey -> NavEntry(key) {
-                            val vm = viewModel<NavEntryTestViewModel>()
+                            val vm = viewModel<NavEntryTestViewModel>(factory = testVmFactory)
                             capturedVm = vm
                         }
                         else -> error("unexpected key $key")
@@ -106,7 +118,7 @@ class NavEntryViewModelStoreTest {
                 entryProvider = { key ->
                     when (key) {
                         is HobbyDetailNavKey -> NavEntry(key) {
-                            val vm = viewModel<NavEntryTestViewModel>()
+                            val vm = viewModel<NavEntryTestViewModel>(factory = testVmFactory)
                             vmMap[key.id] = vm
                         }
                         else -> error("unexpected key $key")
@@ -162,7 +174,7 @@ class NavEntryViewModelStoreTest {
                 entryProvider = { key ->
                     when (key) {
                         is HomeNavKey -> NavEntry(key) {
-                            val vm = viewModel<NavEntryTestViewModel>()
+                            val vm = viewModel<NavEntryTestViewModel>(factory = testVmFactory)
                             if (homeVm == null) {
                                 homeVm = vm
                             } else {
@@ -170,7 +182,7 @@ class NavEntryViewModelStoreTest {
                             }
                         }
                         is ProfileNavKey -> NavEntry(key) {
-                            val vm = viewModel<NavEntryTestViewModel>()
+                            val vm = viewModel<NavEntryTestViewModel>(factory = testVmFactory)
                             profileVm = vm
                         }
                         else -> error("unexpected key $key")
