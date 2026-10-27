@@ -7,7 +7,7 @@ import kotlin.test.Test
 
 class ImageAspectRatioCacheTest {
 
-    @Before
+    @BeforeTest
     fun setUp() {
         ImageAspectRatioCache.clear()
     }

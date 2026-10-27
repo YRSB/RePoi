@@ -346,7 +346,7 @@ class PagedListLoaderTest {
         loader.loadMore(isSilent = true)
         // 验证静默模式下虽然处于 Appending 阶段，但面向 UI 的 isLoadingMore 被抑制为 false
         assertEquals(LoadStage.Appending, loader.state.value.stage)
-        assertFalse("静默模式下 isLoadingMore 应为 false", loader.state.value.isLoadingMore)
+        assertFalse(loader.state.value.isLoadingMore, "静默模式下 isLoadingMore 应为 false")
         assertTrue(loader.state.value.isSilent)
 
         advanceUntilIdle()
