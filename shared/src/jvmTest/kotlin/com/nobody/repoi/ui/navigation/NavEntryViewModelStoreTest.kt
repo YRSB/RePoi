@@ -37,7 +37,7 @@ class NavEntryViewModelStoreTest {
         val detailKey = HobbyDetailNavKey(param = DetailNavParam(itemId = 1001L))
 
         setContent {
-            val backStack = remember { NavBackStack(HomeNavKey, detailKey) }
+            val backStack = remember { NavBackStack<NavKey>(HomeNavKey, detailKey) }
             backStackRef = backStack
 
             val decorators = listOf(
@@ -91,7 +91,7 @@ class NavEntryViewModelStoreTest {
         assertTrue(firstKey.id != secondKey.id)
 
         setContent {
-            val backStack = remember { NavBackStack(firstKey) }
+            val backStack = remember { NavBackStack<NavKey>(firstKey) }
             backStackRef = backStack
 
             val decorators = listOf(
@@ -147,7 +147,7 @@ class NavEntryViewModelStoreTest {
         var homeVmSecondVisit: NavEntryTestViewModel? = null
 
         setContent {
-            val backStack = remember { NavBackStack(HomeNavKey) }
+            val backStack = remember { NavBackStack<NavKey>(HomeNavKey) }
             backStackRef = backStack
 
             val decorators = listOf(
