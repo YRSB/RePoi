@@ -1,9 +1,8 @@
 package com.nobody.repoi.ui.search
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNode
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -156,7 +155,7 @@ class SearchScreenTest {
         val vm = createViewModel()
         setScreen(vm, "")
 
-        composeRule.onNode(hasSetTextAction()).performTextInput("新手办")
+        composeRule.onNodeWithContentDescription("搜索输入框").performTextInput("新手办")
         runBlocking { vm.uiState.first { it.keyword == "新手办" } }
 
         assertEquals("新手办", vm.uiState.value.keyword)

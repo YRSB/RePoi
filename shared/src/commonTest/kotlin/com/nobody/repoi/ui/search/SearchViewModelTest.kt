@@ -182,7 +182,8 @@ class SearchViewModelTest {
     @Test
     fun onKeywordChange_blank_clearsSuggestionsAndResults() = runTest {
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n        val viewModel = createViewModel()
+        stubAutoFillEmpty()
+        val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
 
@@ -224,7 +225,8 @@ class SearchViewModelTest {
     @Test
     fun onSelectTab_afterSubmission_resubmitsWithNewTab() = runTest {
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -253,7 +255,8 @@ class SearchViewModelTest {
     @Test
     fun onSortChange_resubmitsWithOrder() = runTest {
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -268,7 +271,8 @@ class SearchViewModelTest {
     @Test
     fun onFilterChange_passesCompanyAndYear() = runTest {
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -291,7 +295,8 @@ class SearchViewModelTest {
         viewModel.onSelectTab(SearchTab.ALBUM)
         advanceUntilIdle()
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n        viewModel.onSearch("初音")
+        stubAutoFillEmpty()
+        viewModel.onSearch("初音")
         advanceUntilIdle()
         mock.enqueue(searchJson(resultJson(2)))
         viewModel.onAlbumCategoryChange(AlbumSubCategory.FIGURE)
@@ -309,7 +314,8 @@ class SearchViewModelTest {
         viewModel.onSelectTab(SearchTab.WORKS_ELEMENT)
         advanceUntilIdle()
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n        viewModel.onSearch("初音")
+        stubAutoFillEmpty()
+        viewModel.onSearch("初音")
         advanceUntilIdle()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"attributeList":[{"id":15,"name":"主角","categoryId":40100}]}}""")
         mock.enqueue(searchJson(resultJson(2)))
@@ -330,7 +336,8 @@ class SearchViewModelTest {
         viewModel.onSelectTab(SearchTab.WORKS_ELEMENT)
         advanceUntilIdle()
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n        viewModel.onSearch("初音")
+        stubAutoFillEmpty()
+        viewModel.onSearch("初音")
         advanceUntilIdle()
         mock.enqueue(searchJson(resultJson(2)))
         viewModel.onAttributeChange(15)
@@ -349,7 +356,8 @@ class SearchViewModelTest {
 
         val firstPage = (1L..10L).map { userJson(it) }.toTypedArray()
         mock.enqueue(userSearchJson(*firstPage))
-        stubAutoFillEmpty()\r\n        viewModel.onSearch("胶友")
+        stubAutoFillEmpty()
+        viewModel.onSearch("胶友")
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.hasMore)
@@ -367,7 +375,8 @@ class SearchViewModelTest {
     @Test
     fun loadMore_appendsItemsAndComputesHasMore() = runTest {
         mock.enqueue(searchJson(resultJson(1), totalCount = 40, pageCount = 2))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -385,7 +394,8 @@ class SearchViewModelTest {
     @Test
     fun loadMore_withoutMorePages_skipsRequest() = runTest {
         mock.enqueue(searchJson(resultJson(1), pageCount = 1))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -398,7 +408,8 @@ class SearchViewModelTest {
 
     @Test
     fun searchFailure_setsErrorMessage() = runTest {
-        stubAutoFillEmpty()\r\n        mock.enqueue("""{"success":false,"code":500,"msg":"搜索服务不可用","data":null}""")
+        stubAutoFillEmpty()
+        mock.enqueue("""{"success":false,"code":500,"msg":"搜索服务不可用","data":null}""")
 
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
@@ -412,7 +423,8 @@ class SearchViewModelTest {
     @Test
     fun onRefresh_reloadsFirstPage() = runTest {
         mock.enqueue(searchJson(resultJson(1), pageCount = 2))
-        stubAutoFillEmpty()\r\n
+        stubAutoFillEmpty()
+
         val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
@@ -428,7 +440,8 @@ class SearchViewModelTest {
     @Test
     fun onClearKeyword_resetsResultsAndSuggestions() = runTest {
         mock.enqueue(searchJson(resultJson(1)))
-        stubAutoFillEmpty()\r\n        val viewModel = createViewModel()
+        stubAutoFillEmpty()
+        val viewModel = createViewModel()
         viewModel.onSearch("初音")
         advanceUntilIdle()
 
