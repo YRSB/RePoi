@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.data.remote.model.SeriesData
