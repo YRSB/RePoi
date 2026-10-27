@@ -18,9 +18,9 @@ class TestDataStores {
         // 文件名必须带 .preferences_pb 后缀（PreferenceDataStoreFactory 强制检查），
         // 且每个文件全局唯一（DataStore 禁止同文件多实例；JUnit 每个方法 new 一个
         // 测试类实例，实例计数器会重置，因此用进程级计数 + 时间戳）。
-        val id = nextId.getAndIncrement()
+        val id = nextUniqueId()
         val file = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
-            .resolve("repoi-test-${id}-${currentTimeMillis()}-$name.preferences_pb")
+            .resolve("repoi-test-$id-$name.preferences_pb")
         created.add(file)
         return PreferenceDataStoreFactory.createWithPath(produceFile = { file })
     }
@@ -31,9 +31,11 @@ class TestDataStores {
     }
 
     companion object {
-        private val nextId = kotlin.concurrent.atomics.AtomicInt(0)
+        private var nextId = 0
 
-        private fun currentTimeMillis(): Long =
-            kotlin.time.Clock.System.now().toEpochMilliseconds()
+        private fun nextUniqueId(): String {
+            // JUnit 默认单线程执行；nanoTime + 进程计数足以保证文件名唯一。
+            return "${nextId++}-${kotlin.time.Clock.System.now().toEpochMilliseconds()}"
+        }
     }
 }
