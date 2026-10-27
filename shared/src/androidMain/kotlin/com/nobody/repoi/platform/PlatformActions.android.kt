@@ -58,7 +58,7 @@ class AndroidPlatformActions(
 
     override suspend fun pickImage(): PickedImage? {
         val launcher = imagePicker.launcher ?: return null
-        val uri = suspendCoroutine { cont ->
+        val uri = suspendCoroutine<Uri?> { cont ->
             imagePicker.pendingContinuation = { cont.resume(it) }
             launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         } ?: return null

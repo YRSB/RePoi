@@ -254,8 +254,11 @@ object HtmlRichTextParser {
             "u" -> spans.add(ParsedSpan.Underline(open.start, end))
             "s", "strike", "del" -> spans.add(ParsedSpan.Strikethrough(open.start, end))
             "font" -> open.color?.let { spans.add(ParsedSpan.ForegroundColor(open.start, end, it)) }
-            "a" -> if (open.href.orEmpty().isNotBlank()) {
-                spans.add(ParsedSpan.Link(open.start, end, open.href))
+            "a" -> {
+                val href = open.href.orEmpty()
+                if (href.isNotBlank()) {
+                    spans.add(ParsedSpan.Link(open.start, end, href))
+                }
             }
         }
     }
