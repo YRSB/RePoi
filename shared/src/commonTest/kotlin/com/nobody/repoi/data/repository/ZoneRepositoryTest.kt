@@ -3,9 +3,12 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -234,7 +237,7 @@ class ZoneRepositoryTest {
         assertTrue(posts[0].isPinned)
 
         val request = mock.takeRequest()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.Get, request.method)
         assertTrue(request.recordedPath!!.contains("zoneNodeId=100"))
         assertTrue(request.recordedPath!!.contains("order=upd"))
     }
@@ -274,7 +277,7 @@ class ZoneRepositoryTest {
         assertEquals("Alter", payload.list[0].displayName)
 
         val request = mock.takeRequest()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.Get, request.method)
         assertTrue(request.recordedPath!!.contains("nodeId=100"))
         assertTrue(request.recordedPath!!.contains("itemType=company"))
     }

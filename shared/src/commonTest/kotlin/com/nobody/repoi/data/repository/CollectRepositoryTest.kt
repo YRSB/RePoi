@@ -3,8 +3,11 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -31,12 +34,6 @@ class CollectRepositoryTest {
     private lateinit var json: Json
     private lateinit var repository: CollectRepository
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-        isLenient = true
-    }
-
     @BeforeTest
     fun setUp() {
         mock = MockRepoEngine()
@@ -59,7 +56,7 @@ class CollectRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         // 服务端要求 "[1,2,3]" 形式的 JSON 数组字符串
         assertEquals("[1,2,3]", formOf(recorded.recordedBody())["idArr"])
     }
@@ -95,7 +92,7 @@ class CollectRepositoryTest {
         assertEquals(listOf("热血", "校园", "悬疑"), tags)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         val query = queryOf(recorded.recordedPath ?: "")
         assertEquals("1", query["page"])
         assertEquals("20", query["pageSize"])
@@ -128,7 +125,7 @@ class CollectRepositoryTest {
         assertEquals("热血,校园", data?.tagStr)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertEquals("/api/works/glean/get/20001", recorded.recordedPath)
     }
 
@@ -168,7 +165,7 @@ class CollectRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         val form = formOf(recorded.recordedBody())
         assertEquals("Works", form["itemType"])
         assertEquals("20001", form["itemId"])
@@ -185,7 +182,7 @@ class CollectRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         val form = formOf(recorded.recordedBody())
         assertEquals("Works", form["itemType"])
         assertEquals("20001", form["itemId"])
@@ -213,7 +210,7 @@ class CollectRepositoryTest {
         assertEquals("article", items[2].itemType)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertEquals("90001", formOf(recorded.recordedBody())["picId"])
     }
 
@@ -234,7 +231,7 @@ class CollectRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         // ⚠️ 原版字段名是 objId / userReason / type，不是 nodeId / content
         val form = formOf(recorded.recordedBody())
         assertEquals("90001", form["objId"])
@@ -271,8 +268,8 @@ class CollectRepositoryTest {
     private fun formOf(body: String): Map<String, String> =
         body.split("&").filter { it.isNotBlank() }.associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to
-                (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to
+                (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
 
     /** 解析 URL 查询串 */

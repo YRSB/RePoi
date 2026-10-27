@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
@@ -137,7 +139,7 @@ class HobbyDetailRepositoryTest {
 
     @Test
     fun getRelatedHobbies_whenOneFails_stillReturnsOtherItems() = runTest {
-                mock.respondWhen(Regex.fromLiteral("api/hobby/group"), "", HttpStatusCode.valueOf(500))
+                mock.respondWhen(Regex.fromLiteral("api/hobby/group"), "", HttpStatusCode.fromValue(500))
         mock.respondWhen(Regex.fromLiteral("api/hobby/push/list/V2"), """{"success":true,"code":200,"msg":"ok","data":{"hobbys":[{"id":301,"itemId":301,"nameCN":"降级推荐"}]}}""")
 
 
@@ -150,7 +152,7 @@ class HobbyDetailRepositoryTest {
 
     @Test
     fun getRelatedHobbies_whenAllFail_returnsFailureApiException() = runTest {
-                mock.respondWhen(Regex(".*"), "", HttpStatusCode.valueOf(500))
+                mock.respondWhen(Regex(".*"), "", HttpStatusCode.fromValue(500))
 
 
         val result = repository.getRelatedHobbies(5483525L)

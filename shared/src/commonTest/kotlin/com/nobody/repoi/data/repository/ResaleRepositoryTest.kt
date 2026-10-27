@@ -3,8 +3,11 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -64,7 +67,7 @@ class ResaleRepositoryTest {
         }
         """.trimIndent()
 
-        mock.enqueue(mockJson, HttpStatusCode.valueOf(200))
+        mock.enqueue(mockJson, HttpStatusCode.fromValue(200))
 
         val result = repository.searchResale(
             zones = 33476094L,
@@ -79,7 +82,7 @@ class ResaleRepositoryTest {
         assertEquals("¥999", payload.list[0].displayPriceText)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertEquals("/api/resale/search", recorded.recordedPath)
         val body = recorded.recordedBody()
         assertTrue(body.contains("zones=33476094"))
@@ -99,7 +102,7 @@ class ResaleRepositoryTest {
         }
         """.trimIndent()
 
-        mock.enqueue(mockJson, HttpStatusCode.valueOf(200))
+        mock.enqueue(mockJson, HttpStatusCode.fromValue(200))
 
         val result = repository.searchResale(
             hobbyId = 125698L,
@@ -109,11 +112,11 @@ class ResaleRepositoryTest {
         assertTrue(result.isSuccess)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertEquals("/api/resale/search", recorded.recordedPath)
         val body = recorded.recordedBody()
-        assertTrue("Request body must contain itemId parameter", body.contains("itemId=125698"))
-        assertFalse("Request body must not contain invalid hobbyId parameter", body.contains("hobbyId="))
+        assertTrue(body.contains("itemId=125698"), "Request body must contain itemId parameter")
+        assertFalse(body.contains("hobbyId="), "Request body must not contain invalid hobbyId parameter")
     }
 
     @Test
@@ -152,7 +155,7 @@ class ResaleRepositoryTest {
         }
         """.trimIndent()
 
-        mock.enqueue(mockJson, HttpStatusCode.valueOf(200))
+        mock.enqueue(mockJson, HttpStatusCode.fromValue(200))
 
         val result = repository.getResaleDetail(40855607L)
 
@@ -171,7 +174,7 @@ class ResaleRepositoryTest {
         assertTrue(detail.hasExternalLink)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertEquals("/api/resale/data/get?nodeId=40855607", recorded.recordedPath)
     }
 }

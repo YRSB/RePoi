@@ -3,9 +3,12 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -56,8 +59,8 @@ class MessageRepositoryTest {
             .filter { it.isNotBlank() }
             .associate {
                 val parts = it.split("=", limit = 2)
-                decodeURLPart(parts[0]) to
-                    decodeURLPart(parts.getOrElse(1) { "" })
+                parts[0].decodeURLPart() to
+                    (parts.getOrElse(1) { "" }).decodeURLPart()
             }
     }
 
@@ -114,7 +117,7 @@ class MessageRepositoryTest {
         assertTrue(result.isSuccess)
 
         val request = mock.takeRequest()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.Post, request.method)
         assertEquals("/api/message/add-v2", request.recordedPath)
         val form = parseForm(request.recordedBody())
         assertEquals("2002", form["toId"])
@@ -131,7 +134,7 @@ class MessageRepositoryTest {
         assertTrue(result.isSuccess)
 
         val request = mock.takeRequest()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.Post, request.method)
         assertEquals("/api/message/withdraw", request.recordedPath)
         assertEquals("888", parseForm(request.recordedBody())["messageId"])
     }
@@ -153,7 +156,7 @@ class MessageRepositoryTest {
     fun apiError_throwsApiException() = runTest {
         mock.enqueue(
                 """{"success":false,"code":403,"msg":"已被对方屏蔽","data":null}"""
-            , HttpStatusCode.valueOf(200))
+            , HttpStatusCode.fromValue(200))
         val result = repository.sendTextMessage(toId = 2002L, content = "你好")
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()

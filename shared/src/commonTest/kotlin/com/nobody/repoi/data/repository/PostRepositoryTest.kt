@@ -3,9 +3,12 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -110,7 +113,7 @@ class PostRepositoryTest {
         assertEquals(2, post.zoneIds?.size)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/posts/info-v2") == true)
         assertTrue(recorded.recordedPath?.contains("nodeId=12345") == true)
         assertTrue(recorded.recordedPath?.contains("itemId=12345") == true)
@@ -247,7 +250,7 @@ class PostRepositoryTest {
         assertEquals("楼主", reply.user?.nickname)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/discuss/get") == true)
         val body = recorded.recordedBody()
         assertTrue(body.contains("itemNodeId=12345"))
@@ -302,10 +305,10 @@ class PostRepositoryTest {
         assertTrue(result.isSuccess)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/discuss/add") == true)
         val body = recorded.recordedBody()
-        val decoded = java.net.decodeURLPart(body)
+        val decoded = java.net.body.decodeURLPart()
         assertTrue(decoded.contains("itemNodeId=12345"))
         assertTrue(decoded.contains("content=测试回帖"))
     }
@@ -323,7 +326,7 @@ class PostRepositoryTest {
         assertTrue(result.isSuccess)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/discuss/reply/add") == true)
         val body = recorded.recordedBody()
         assertTrue(body.contains("itemNodeId=12345"))
@@ -339,7 +342,7 @@ class PostRepositoryTest {
         assertTrue(result.isSuccess)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/discuss/del") == true)
         val body = recorded.recordedBody()
         assertTrue(body.contains("nodeId=2001"))
@@ -354,7 +357,7 @@ class PostRepositoryTest {
         assertTrue(result.isSuccess)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/posts/del") == true)
         val body = recorded.recordedBody()
         assertTrue(body.contains("nodeId=12345"))

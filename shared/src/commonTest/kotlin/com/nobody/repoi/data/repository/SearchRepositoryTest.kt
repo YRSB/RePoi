@@ -3,9 +3,12 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -56,8 +59,8 @@ class SearchRepositoryTest {
             .filter { it.isNotBlank() }
             .associate {
                 val parts = it.split("=", limit = 2)
-                decodeURLPart(parts[0]) to
-                    decodeURLPart(parts.getOrElse(1) { "" })
+                parts[0].decodeURLPart() to
+                    (parts.getOrElse(1) { "" }).decodeURLPart()
             }
     }
 
@@ -89,7 +92,7 @@ class SearchRepositoryTest {
         assertEquals(2, result.getOrThrow().query?.pageCount)
 
         val request = mock.takeRequest()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.Post, request.method)
         assertEquals("/api/search", request.recordedPath)
         val form = parseForm(request.recordedBody())
         assertEquals("10000", form["category"])
@@ -218,7 +221,7 @@ class SearchRepositoryTest {
         assertTrue(success.isSuccess)
         assertEquals("主角", success.getOrThrow().first().name)
         val request = mock.takeRequest()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.Get, request.method)
         assertTrue(request.recordedPath?.contains("categoryId=40100") == true)
 
         mock.enqueue("""{"success":false,"code":500,"msg":"属性加载失败","data":null}""")

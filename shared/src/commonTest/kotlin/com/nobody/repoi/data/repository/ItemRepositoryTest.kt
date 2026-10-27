@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
@@ -14,6 +16,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.minus
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -52,8 +55,8 @@ class ItemRepositoryTest {
             .filter { it.isNotBlank() }
             .associate {
                 val parts = it.split("=", limit = 2)
-                decodeURLPart(parts[0]) to
-                    decodeURLPart(parts.getOrElse(1) { "" })
+                parts[0].decodeURLPart() to
+                    (parts.getOrElse(1) { "" }).decodeURLPart()
             }
     }
 
@@ -138,7 +141,7 @@ class ItemRepositoryTest {
     @Test
     fun dateHelpers_matchCalendarContract() {
         // KMP：kotlinx-datetime 等价（Date.plus(MONTH) 为溢出钳制语义，与 Calendar 一致）
-        val today = LocalDate.todayIn(TimeZone.currentSystemDefault())
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
         assertEquals(today.plus(2, DateTimeUnit.MONTH).toString(), repository.calculatePreOrderStartDate())
         val shipRange = repository.calculateShipDateRange()
@@ -146,5 +149,5 @@ class ItemRepositoryTest {
         assertEquals(today.toString(), shipRange.second)
     }
 
-    private fun today(): String = LocalDate.todayIn(TimeZone.currentSystemDefault()).toString()
+    private fun today(): String = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 }

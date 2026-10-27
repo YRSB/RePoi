@@ -3,9 +3,12 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import com.nobody.repoi.test.TestDataStores
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.test.runTest
@@ -47,12 +50,6 @@ class UserRepositoryTest {
     private lateinit var repository: UserRepository
     private lateinit var tokenManager: TokenManager
     private lateinit var stores: TestDataStores
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-        isLenient = true
-    }
 
     @BeforeTest
     fun setUp() {
@@ -290,7 +287,7 @@ class UserRepositoryTest {
         assertEquals("/api/collect/hobby-v2", basePath)
         val queryPairs = queryString.split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
 
         assertEquals("99999", queryPairs["userId"])
@@ -321,7 +318,7 @@ class UserRepositoryTest {
         val query = recordedRequest.path?.substringAfter("?") ?: ""
         val pairs = query.split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("care", pairs["collectState"])
     }
@@ -348,7 +345,7 @@ class UserRepositoryTest {
     fun getUserCollectHobbyList_onApiFailure_throwsApiExceptionAndClearsTokenOnExpired() = runTest {
         mock.enqueue(
                 """{"success":false,"code":4001,"msg":"登录凭证已过期","data":null}"""
-            , HttpStatusCode.valueOf(200))
+            , HttpStatusCode.fromValue(200))
 
         val result = repository.getUserCollectHobbyList(
             userId = 123L,
@@ -376,7 +373,7 @@ class UserRepositoryTest {
                         }
                     }
                 }"""
-            , HttpStatusCode.valueOf(200))
+            , HttpStatusCode.fromValue(200))
 
         val dataResult = repository.getOrderStaticData(12345L)
         assertTrue(dataResult.isSuccess)
@@ -387,7 +384,7 @@ class UserRepositoryTest {
         // 验证 getOrderStatic 委托行为
         mock.enqueue(
                 """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":8,"preorder":4,"care":2}}}}"""
-            , HttpStatusCode.valueOf(200))
+            , HttpStatusCode.fromValue(200))
         val countResult = repository.getOrderStatic(12345L)
         assertTrue(countResult.isSuccess)
         assertEquals(8, countResult.getOrThrow().buy)
@@ -466,7 +463,7 @@ class UserRepositoryTest {
         assertEquals("/api/collect/hobby-v2", basePath)
         val queryParams = queryString.split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("88888", queryParams["userId"])
         assertEquals("88888", queryParams["userNodeId"])
@@ -517,11 +514,11 @@ class UserRepositoryTest {
         assertEquals(5000, item.collectCount)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertTrue(recorded.recordedPath?.startsWith("/api/collect/common-v3") == true)
         val queryParams = (recorded.recordedPath?.substringAfter("?") ?: "").split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("88888", queryParams["userId"])
         assertEquals("40000", queryParams["categoryId"])
@@ -588,7 +585,7 @@ class UserRepositoryTest {
 
         val queryParams = (mock.takeRequest().recordedPath?.substringAfter("?") ?: "").split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("works", queryParams["type"])
         assertEquals("actionDate", queryParams["order"])
@@ -615,7 +612,7 @@ class UserRepositoryTest {
 
         val queryParams = (mock.takeRequest().recordedPath?.substringAfter("?") ?: "").split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("series", queryParams["type"])
         assertEquals("collect", queryParams["order"])
@@ -716,11 +713,11 @@ class UserRepositoryTest {
         assertEquals(88L, item.actualPraiseCount)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertTrue(recorded.recordedPath?.startsWith("/api/collect/album-v2") == true)
         val queryParams = (recorded.recordedPath?.substringAfter("?") ?: "").split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("88888", queryParams["userId"])
         assertEquals("fav", queryParams["type"])
@@ -763,11 +760,11 @@ class UserRepositoryTest {
         assertEquals("2026/09/f8e12c472e2f4fc2b63f54f96f3a6f9b.jpg", item.actualUrl)
 
         val recorded = mock.takeRequest()
-        assertEquals("GET", recorded.method)
+        assertEquals(HttpMethod.Get, recorded.method)
         assertTrue(recorded.recordedPath?.startsWith("/api/collect/pic-v2") == true)
         val queryParams = (recorded.recordedPath?.substringAfter("?") ?: "").split("&").associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
         assertEquals("88888", queryParams["userId"])
         assertEquals("88888", queryParams["userNodeId"])
@@ -873,7 +870,7 @@ class UserRepositoryTest {
         val queryString = recorded.recordedPath?.substringAfter("?", "") ?: ""
         return queryString.split("&").filter { it.isNotBlank() }.associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
     }
 
@@ -937,7 +934,7 @@ class UserRepositoryTest {
         assertFalse(item2.isMutual)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         val form = formBodyOfRequest(recorded)
         assertEquals("88888", form["id"])
         assertEquals("0", form["type"])
@@ -1012,7 +1009,7 @@ class UserRepositoryTest {
         assertEquals("covers/miku.jpg", praiseItem.item?.cover)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         val form = formBodyOfRequest(recorded)
         assertEquals("88888", form["userNId"])
         assertEquals("1", form["page"])
@@ -1217,7 +1214,7 @@ class UserRepositoryTest {
         assertEquals("其他用户", profile.displayName)
 
         val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
+        assertEquals(HttpMethod.Post, recorded.method)
         val form = formBodyOfRequest(recorded)
         assertEquals("77777", form["id"])
     }
@@ -1264,7 +1261,7 @@ class UserRepositoryTest {
         val bodyString = recorded.recordedBody()
         return bodyString.split("&").filter { it.isNotBlank() }.associate {
             val parts = it.split("=")
-            decodeURLPart(parts[0]) to (if (parts.size > 1) decodeURLPart(parts[1]) else "")
+            parts[0].decodeURLPart() to (if (parts.size > 1) parts[1].decodeURLPart() else "")
         }
     }
 }

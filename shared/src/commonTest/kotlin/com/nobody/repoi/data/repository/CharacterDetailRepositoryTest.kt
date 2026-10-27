@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
@@ -46,8 +48,8 @@ class CharacterDetailRepositoryTest {
             .filter { it.isNotBlank() }
             .associate {
                 val parts = it.split("=", limit = 2)
-                decodeURLPart(parts[0]) to
-                    decodeURLPart(parts.getOrElse(1) { "" })
+                parts[0].decodeURLPart() to
+                    (parts.getOrElse(1) { "" }).decodeURLPart()
             }
     }
 
@@ -69,8 +71,8 @@ class CharacterDetailRepositoryTest {
         assertEquals(7L, data.actualNodeId)
         assertTrue(data.isAddFav)
         val request = mock.takeRequest()
-        assertEquals("/api/charactar/get", request.requestUrl?.encodedPath)
-        assertEquals("7", request.requestUrl?.queryParameter("charactarId"))
+        assertEquals("/api/charactar/get", request.url.encodedPath)
+        assertEquals("7", request.url.parameters["charactarId"))
     }
 
     @Test
@@ -101,11 +103,11 @@ class CharacterDetailRepositoryTest {
         val work = result.getOrThrow().single()
         assertEquals("作品A", work.displayName)
         assertEquals("主角", work.cNameCN)
-        val url = mock.takeRequest().requestUrl
-        assertEquals("/api/charactar/works/get", url?.encodedPath)
-        assertEquals("7", url?.queryParameter("charactarId"))
-        assertEquals("2", url?.queryParameter("page"))
-        assertEquals("5", url?.queryParameter("pageSize"))
+        val url = mock.takeRequest().url
+        assertEquals("/api/charactar/works/get", url.encodedPath)
+        assertEquals("7", url.parameters["charactarId"))
+        assertEquals("2", url.parameters["page"))
+        assertEquals("5", url.parameters["pageSize"))
     }
 
     @Test
@@ -116,7 +118,7 @@ class CharacterDetailRepositoryTest {
 
         assertEquals("周边A", result.getOrThrow().single().nameCN)
         val request = mock.takeRequest()
-        assertEquals("/api/hobby/query-v2", request.requestUrl?.encodedPath)
+        assertEquals("/api/hobby/query-v2", request.url.encodedPath)
         val form = parseForm(request.recordedBody())
         assertEquals("77", form["charactar"])
         assertEquals("77", form["character"])
@@ -139,20 +141,20 @@ class CharacterDetailRepositoryTest {
         assertEquals("相关角色", relevant.getOrThrow().single().nameCN)
         assertEquals("分区A", zones.getOrThrow().single().displayName)
 
-        val albumUrl = mock.takeRequest().requestUrl
-        assertEquals("/api/charactar/album/get", albumUrl?.encodedPath)
-        assertEquals("7", albumUrl?.queryParameter("charactarId"))
-        assertEquals("3", albumUrl?.queryParameter("page"))
-        assertEquals("4", albumUrl?.queryParameter("pageSize"))
+        val albumUrl = mock.takeRequest().url
+        assertEquals("/api/charactar/album/get", albumUrl.encodedPath)
+        assertEquals("7", albumUrl.parameters["charactarId"))
+        assertEquals("3", albumUrl.parameters["page"))
+        assertEquals("4", albumUrl.parameters["pageSize"))
 
-        val relevantUrl = mock.takeRequest().requestUrl
-        assertEquals("/api/charactar/relevant/get", relevantUrl?.encodedPath)
-        assertEquals("7", relevantUrl?.queryParameter("charactarId"))
-        assertEquals("10", relevantUrl?.queryParameter("pageSize"))
+        val relevantUrl = mock.takeRequest().url
+        assertEquals("/api/charactar/relevant/get", relevantUrl.encodedPath)
+        assertEquals("7", relevantUrl.parameters["charactarId"))
+        assertEquals("10", relevantUrl.parameters["pageSize"))
 
-        val zoneUrl = mock.takeRequest().requestUrl
-        assertEquals("/api/zone/item", zoneUrl?.encodedPath)
-        assertEquals("99", zoneUrl?.queryParameter("nodeId"))
+        val zoneUrl = mock.takeRequest().url
+        assertEquals("/api/zone/item", zoneUrl.encodedPath)
+        assertEquals("99", zoneUrl.parameters["nodeId"))
     }
 
     @Test
@@ -175,14 +177,14 @@ class CharacterDetailRepositoryTest {
         mock.enqueue("""{"success":true,"code":200,"data":{}}""")
         assertTrue(repository.toggleCollect(7L, isCollected = false).getOrThrow())
         val addRequest = mock.takeRequest()
-        assertEquals("/api/collect/item/add", addRequest.requestUrl?.encodedPath)
-        assertEquals("7", parseForm(addRequest.body.readUtf8())["id"])
+        assertEquals("/api/collect/item/add", addRequest.url.encodedPath)
+        assertEquals("7", parseForm(addRequest.recordedBody())["id"])
 
         mock.enqueue("""{"success":true,"code":200,"data":{}}""")
         assertFalse(repository.toggleCollect(7L, isCollected = true).getOrThrow())
         val delRequest = mock.takeRequest()
-        assertEquals("/api/collect/del", delRequest.requestUrl?.encodedPath)
-        assertEquals("7", parseForm(delRequest.body.readUtf8())["id"])
+        assertEquals("/api/collect/del", delRequest.url.encodedPath)
+        assertEquals("7", parseForm(delRequest.recordedBody())["id"])
 
         mock.enqueue("""{"success":false,"code":401,"msg":"请先登录","data":null}""")
         val failure = repository.toggleCollect(7L, isCollected = false)
@@ -197,7 +199,7 @@ class CharacterDetailRepositoryTest {
         val comments = repository.getComments(7L, type = "hot_top", page = 2, pageSize = 5)
         assertEquals("评论A", comments.getOrThrow().single().content)
         val request = mock.takeRequest()
-        assertEquals("/api/comment/get", request.requestUrl?.encodedPath)
+        assertEquals("/api/comment/get", request.url.encodedPath)
         val form = parseForm(request.recordedBody())
         assertEquals("7", form["id"])
         assertEquals("hot_top", form["type"])

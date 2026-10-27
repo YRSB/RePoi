@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
+import com.nobody.repoi.test.recordedBody
+import com.nobody.repoi.test.recordedPath
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
@@ -53,8 +55,8 @@ class PersonDetailRepositoryTest {
             .filter { it.isNotBlank() }
             .associate {
                 val parts = it.split("=", limit = 2)
-                decodeURLPart(parts[0]) to
-                    decodeURLPart(parts.getOrElse(1) { "" })
+                parts[0].decodeURLPart() to
+                    (parts.getOrElse(1) { "" }).decodeURLPart()
             }
     }
 
@@ -72,9 +74,9 @@ class PersonDetailRepositoryTest {
         val detail = result.getOrThrow()
         assertEquals("人物A", detail.person.displayName)
         assertEquals(3966L, detail.person.id)
-        val url = mock.takeRequest().requestUrl
-        assertEquals("/api/person/get", url?.encodedPath)
-        assertEquals("1589", url?.queryParameter("personId"))
+        val url = mock.takeRequest().url
+        assertEquals("/api/person/get", url.encodedPath)
+        assertEquals("1589", url.parameters["personId"))
     }
 
     @Test
@@ -101,15 +103,15 @@ class PersonDetailRepositoryTest {
         assertEquals("作品A", works.getOrThrow().single().w.displayName)
         assertEquals("角色原名", characters.getOrThrow().single().w.displayName)
 
-        val worksUrl = mock.takeRequest().requestUrl
-        assertEquals("/api/person/works/get", worksUrl?.encodedPath)
-        assertEquals("1589", worksUrl?.queryParameter("personId"))
-        assertEquals("1", worksUrl?.queryParameter("page"))
-        assertEquals("20", worksUrl?.queryParameter("pageSize"))
+        val worksUrl = mock.takeRequest().url
+        assertEquals("/api/person/works/get", worksUrl.encodedPath)
+        assertEquals("1589", worksUrl.parameters["personId"))
+        assertEquals("1", worksUrl.parameters["page"))
+        assertEquals("20", worksUrl.parameters["pageSize"))
 
-        val characterUrl = mock.takeRequest().requestUrl
-        assertEquals("/api/person/character/get", characterUrl?.encodedPath)
-        assertEquals("1589", characterUrl?.queryParameter("personId"))
+        val characterUrl = mock.takeRequest().url
+        assertEquals("/api/person/character/get", characterUrl.encodedPath)
+        assertEquals("1589", characterUrl.parameters["personId"))
     }
 
     @Test
@@ -123,9 +125,9 @@ class PersonDetailRepositoryTest {
         val entry = result.getOrThrow().single()
         assertEquals(listOf("原画", "作画監督"), entry.jobName)
         assertEquals("周边A", entry.h.displayName)
-        val url = mock.takeRequest().requestUrl
-        assertEquals("/api/person/hobby/get", url?.encodedPath)
-        assertEquals("1589", url?.queryParameter("personId"))
+        val url = mock.takeRequest().url
+        assertEquals("/api/person/hobby/get", url.encodedPath)
+        assertEquals("1589", url.parameters["personId"))
     }
 
     @Test
@@ -144,7 +146,7 @@ class PersonDetailRepositoryTest {
         val comments = repository.getComments(3966L, type = "hot_top", page = 2, pageSize = 5)
         assertEquals("评论A", comments.getOrThrow().single().content)
         val request = mock.takeRequest()
-        assertEquals("/api/comment/get", request.requestUrl?.encodedPath)
+        assertEquals("/api/comment/get", request.url.encodedPath)
         val form = parseForm(request.recordedBody())
         assertEquals("3966", form["id"])
         assertEquals("hot_top", form["type"])
@@ -159,7 +161,7 @@ class PersonDetailRepositoryTest {
     }
 
     @Test
-    fun getCollectState_delegatesAndMapsCollectData() = runTest<Unit> {
+    fun getCollectState_delegatesAndMapsCollectData() = runTest {
         mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"care"}}}")
         assertTrue(repository.getCollectState(3966L).getOrThrow())
 
