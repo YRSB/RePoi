@@ -103,6 +103,7 @@ kotlin {
             "androidx.compose.ui.ExperimentalComposeUiApi",
             "kotlinx.coroutines.ExperimentalCoroutinesApi",
             "kotlinx.serialization.ExperimentalSerializationApi",
+            "kotlin.time.ExperimentalTime",
             "coil3.annotation.ExperimentalCoilApi",
         )
     }
