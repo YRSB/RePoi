@@ -1,0 +1,66 @@
+# CI for the RePoi Kotlin Multiplatform project (Android + Desktop).
+#
+# Runs on pushes to main and on pull requests:
+# - assembles the Android debug APK
+# - runs shared unit tests (JVM) and Android host tests
+# - packages the desktop app for the runner OS
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew :androidApp:assembleDebug :desktopApp:packageDistributionForCurrentOS :shared:jvmTest :shared:testAndroidHostTest --stacktrace
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload desktop distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-dist-linux
+          path: desktopApp/build/compose/binaries/main/
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            shared/build/reports/tests/
+            shared/build/test-results/
