@@ -65,11 +65,11 @@ class AlbumViewModelTest {
         dispatchers.tearDown()
     }
 
-    private fun albumJson(id: Long): String =
-        """{"id":$id,"itemId":${1000L + id},"nameCN":"相册$id"}"""
+    private fun albumJson(id: Long, itemId: Long = 1000L + id): String =
+        """{"id":$id,"itemId":$itemId,"nameCN":"相册$id"}"""
 
-    private fun albumListJson(ids: List<Long>): String {
-        val items = ids.joinToString(",") { albumJson(it) }
+    private fun albumListJson(ids: List<Long>, itemIdOf: (Long) -> Long = { 1000L + it }): String {
+        val items = ids.joinToString(",") { albumJson(it, itemIdOf(it)) }
         return """{"success":true,"code":200,"msg":"ok","data":{"list":[$items]}}"""
     }
 
@@ -125,9 +125,11 @@ class AlbumViewModelTest {
     @Test
     fun loadMore_appendsAndDedups() = runTest(dispatchers.testDispatcher) {
         // page1 需 hasMore=true：塞 24 条 raw，其中 22 条 id=0 被 targetAlbumId>0 滤掉。
+        // page1 needs hasMore=true: 24 raw, 22 fillers with id=0 AND itemId=0 (targetAlbumId<=0 filtered).
         val page1Raw = listOf(1L, 2L) + List(22) { 0L }
+        val page1Body = albumListJson(page1Raw) { if (it == 0L) 0L else 1000L + it }
         mock.enqueue(tabsJson)
-        mock.enqueue(albumListJson(page1Raw))
+        mock.enqueue(page1Body)
         mock.enqueue(albumListJson(listOf(2L, 3L)))
 
         val viewModel = createViewModel()

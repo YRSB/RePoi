@@ -119,7 +119,8 @@ class SeriesDetailViewModelTest {
                 path.contains("api/comment/get") -> emptyComments to HttpStatusCode.OK
                 path.contains("api/series/link/series") -> {
                     val form = (req.body as? FormDataContent)?.formData
-                    val body = if (form?.get("isChild") == "2") relate else sub
+                    val isChild = form?.get("isChild") ?: req.url.parameters["isChild"]
+                    val body = if (isChild == "2") relate else sub
                     body to HttpStatusCode.OK
                 }
                 else -> null

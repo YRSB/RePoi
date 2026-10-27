@@ -63,11 +63,11 @@ class AlbumRankListViewModelTest {
         dispatchers.tearDown()
     }
 
-    private fun albumJson(id: Long): String =
-        """{"id":$id,"itemId":${1000L + id},"nameCN":"相册$id"}"""
+    private fun albumJson(id: Long, itemId: Long = 1000L + id): String =
+        """{"id":$id,"itemId":$itemId,"nameCN":"相册$id"}"""
 
-    private fun albumListJson(ids: List<Long>): String {
-        val items = ids.joinToString(",") { albumJson(it) }
+    private fun albumListJson(ids: List<Long>, itemIdOf: (Long) -> Long = { 1000L + it }): String {
+        val items = ids.joinToString(",") { albumJson(it, itemIdOf(it)) }
         return """{"success":true,"code":200,"msg":"ok","data":{"list":[$items]}}"""
     }
 
@@ -148,8 +148,9 @@ class AlbumRankListViewModelTest {
 
     @Test
     fun appendFailure_routesToLoadMoreError() = runTest(dispatchers.testDispatcher) {
-        stubPraisePages(albumListJson(listOf(1L)), failJson(500, "追加失败"))
-
+        // page1 needs hasMore=true (raw>=10): 1 valid + 9 fillers with targetAlbumId<=0.
+        val page1 = albumListJson(listOf(1L) + List(9) { 0L }) { if (it == 0L) 0L else 1000L + it }
+        stubPraisePages(page1, failJson(500, "追加失败"))
         val viewModel = AlbumRankListViewModel(repository)
         viewModel.loadInitial(praiseParam)
         advanceUntilIdle()

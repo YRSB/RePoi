@@ -16,20 +16,16 @@ import com.nobody.repoi.data.repository.SearchRepository
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
 import com.nobody.repoi.test.TestDataStores
+import com.nobody.repoi.test.TestDispatchers
 import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -44,13 +40,14 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class SearchScreenTest {
 
+    private val dispatchers = TestDispatchers()
     private lateinit var mock: MockRepoEngine
     private lateinit var stores: TestDataStores
     private lateinit var searchRepository: SearchRepository
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        dispatchers.setUp()
         startTestKoin(FakePlatformActions())
         mock = MockRepoEngine()
         stores = TestDataStores()
@@ -60,7 +57,7 @@ class SearchScreenTest {
     fun tearDown() {
         stopTestKoin()
         stores.cleanUp()
-        Dispatchers.resetMain()
+        dispatchers.tearDown()
     }
 
     private fun createViewModel(): SearchViewModel {
@@ -194,8 +191,8 @@ class SearchScreenTest {
 
     @Test
     fun loadingState_keepsResultPlaceholdersHidden() = runComposeUiTest {
-        // 冻结 Main：initParams 同步置 isLoading=true 后网络协程挂起，停留在加载态。
-        Dispatchers.setMain(StandardTestDispatcher())
+        // Freeze requests on virtual engine (never advanced): VM stays in loading state.
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         stubAutoFillEmpty()
         val vm = createViewModel()
         setScreen(vm, "手办")

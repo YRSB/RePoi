@@ -12,19 +12,15 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.test.MockRepoEngine
 import com.nobody.repoi.test.TestDataStores
+import com.nobody.repoi.test.TestDispatchers
 import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -38,13 +34,14 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalTestApi::class)
 class HomeFeedScreenTest {
 
+    private val dispatchers = TestDispatchers()
     private lateinit var mock: MockRepoEngine
     private lateinit var stores: TestDataStores
     private lateinit var viewModel: HomeFeedViewModel
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        dispatchers.setUp()
         startTestKoin(FakePlatformActions())
         mock = MockRepoEngine()
         stores = TestDataStores()
@@ -54,7 +51,7 @@ class HomeFeedScreenTest {
     fun tearDown() {
         stopTestKoin()
         stores.cleanUp()
-        Dispatchers.resetMain()
+        dispatchers.tearDown()
     }
 
     private fun createViewModel(): HomeFeedViewModel {
@@ -160,8 +157,8 @@ class HomeFeedScreenTest {
 
     @Test
     fun initialLoadingState_keepsSkeletonWithoutEmptyOrErrorCards() = runComposeUiTest {
-        // 冻结 Main：VM init 的加载协程永不执行，停留在 isInitialLoading=true 初态。
-        Dispatchers.setMain(StandardTestDispatcher())
+        // Freeze requests on virtual engine (never advanced): VM stays in initial loading.
+        mock = MockRepoEngine(dispatchers.engineDispatcher)
         stubZoneTabs()
         val vm = createViewModel()
 
