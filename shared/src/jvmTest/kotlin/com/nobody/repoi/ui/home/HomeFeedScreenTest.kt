@@ -164,6 +164,7 @@ class HomeFeedScreenTest {
         // Freeze requests on virtual engine (never advanced): VM stays in initial loading.
         println("DIAG Main=" + Dispatchers.Main + " testThread=" + Thread.currentThread().name)
         mock = MockRepoEngine(StandardTestDispatcher())
+        mock.diagTag = "LOADING"
         stubZoneTabs()
         val vm = createViewModel()
 

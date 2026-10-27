@@ -91,16 +91,18 @@ class MockRepoEngine(
     /** 已收到的请求总数（对应 `server.requestCount`）。 */
     val requestCount: Int get() = engine.requestHistory.size
 
+    // DIAG-ONLY: trace dispatch source to debug cross-test stub leakage.
+    var diagTag: String = ""
     private fun dispatch(request: HttpRequestData): PlannedResponse {
         dynamicResponder?.invoke(request)?.let { (body, status) ->
             return PlannedResponse(status, body)
         }
         val path = request.url.encodedPath
         for ((regex, planned) in rules) {
-            if (regex.containsMatchIn(path)) return planned
+            if (regex.containsMatchIn(path)) { if (diagTag.isNotEmpty()) println("DIAG-DISP tag=" + diagTag + " path=" + path + " src=RULE q=" + queue.size + " rules=" + rules.size); return planned }
         }
         check(queue.isNotEmpty()) { "MockRepoEngine: 响应队列已空，无规则命中 $path" }
-        return queue.removeFirst()
+        if (diagTag.isNotEmpty()) println("DIAG-DISP tag=" + diagTag + " path=" + path + " src=QUEUE q=" + queue.size + " rules=" + rules.size); return queue.removeFirst()
     }
 }
 
