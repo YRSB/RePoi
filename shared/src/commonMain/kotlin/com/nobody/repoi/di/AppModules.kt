@@ -12,6 +12,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.repository.*
+import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.network.createExHobbyClient
 import com.nobody.repoi.network.createHpoiClient
@@ -96,6 +97,7 @@ val dataModule = module {
     single { VendorDetailRepository(apiService = get(), collectRepository = get()) }
     single { WorksDetailRepository(apiService = get()) }
     single { ZoneRepository(apiService = get(), viewPreferencesManager = get()) }
+    single { CommentInteractionDelegate(get(), get(), get(), get()) }
 }
 
 /**

@@ -69,4 +69,13 @@ object DateTimeFormats {
             trimmed.substringBefore(" ")
         }
     }
+
+    /**
+     * 纪元毫秒 → "MM-dd"（ActionCard 7 天外相对时间展示，与老项目 MONTH_DAY_FORMATTER 一致）。
+     */
+    fun epochMillisToMonthDay(millis: Long): String {
+        val time = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${time.monthNumber.toString().padStart(2, '0')}-" +
+            time.day.toString().padStart(2, '0')
+    }
 }
