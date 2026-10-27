@@ -737,6 +737,14 @@ private fun GalleryBottomPanel(
 }
 
 /**
+ * 关联条目展示名（原版 `pe.c.j` 标题回退：nameCN → name）。
+ */
+private val PictureRelateItem.displayName: String
+    get() = nameCN?.takeIf { it.isNotBlank() }
+        ?: name?.takeIf { it.isNotBlank() }
+        ?: "相关条目"
+
+/**
  * 关联条目胶囊：类型标签 + 名称。
  */
 @Composable
