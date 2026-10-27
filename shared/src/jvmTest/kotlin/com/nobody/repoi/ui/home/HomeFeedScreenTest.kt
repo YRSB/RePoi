@@ -89,7 +89,7 @@ class HomeFeedScreenTest {
         }
 
         setContent { HomeFeedScreen(viewModel = vm) }
-        println("DIAG afterSetContent loading=" + vm.uiState.value.isInitialLoading + " err=" + vm.uiState.value.errorMessage + " reqCount=" + mock.requestCount)
+        println("DIAG afterSetContent loading=" + vm.uiState.value.isInitialLoading + " err=" + vm.uiState.value.errorMessage + " reqCount=" + mock.requestCount + " mockId=" + System.identityHashCode(mock) + " thisId=" + System.identityHashCode(this) + " paths=" + mock.engine.requestHistory.map { it.url.encodedPath })
 
         onNodeWithText("网络连接失败").assertIsDisplayed()
         val countBefore = mock.requestCount
