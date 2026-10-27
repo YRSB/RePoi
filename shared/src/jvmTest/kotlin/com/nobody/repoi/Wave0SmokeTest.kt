@@ -64,7 +64,7 @@ class Wave0SmokeTest {
         setContent {
             // 冒烟测试不验证跨进程恢复语义，直接 remember 一个 NavBackStack。
             // 生产代码（Wave 5+）用 rememberNavBackStack(configuration, ...) 并注册多态。
-            val backStack = remember { NavBackStack(SmokeHome) }
+            val backStack: NavBackStack<NavKey> = remember { NavBackStack(SmokeHome) }
             NavDisplay(
                 backStack = backStack,
                 onBack = { backStack.removeLastOrNull() },
