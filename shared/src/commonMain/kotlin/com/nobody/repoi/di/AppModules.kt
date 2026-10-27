@@ -44,8 +44,8 @@ val networkModule = module {
         createExHobbyClient(json = get())
     }
 
-    single { HpoiApi(client = get(named("hpoi")), json = get()) }
-    single { ExHobbyApi(client = get(named("exhobby")), json = get()) }
+    single { HpoiApi(client = get(named("hpoi")), jsonCodec = get()) }
+    single { ExHobbyApi(client = get(named("exhobby")), jsonCodec = get()) }
 
     single<ImageLoader> {
         createImageLoader(

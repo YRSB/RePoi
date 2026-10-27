@@ -115,7 +115,7 @@ private fun toParameters(map: Map<String, String>): Parameters = Parameters.buil
  */
 class HpoiApi(
     private val client: HttpClient,
-    private val json: Json
+    private val jsonCodec: Json
 ) {
 /**
      * 获取首页动态/信息流 (api/user-action/list-v3, GET)
@@ -137,7 +137,7 @@ class HpoiApi(
             zoneNodeId?.let { parameters.append("zoneNodeId", it.toString()) }
             zoneIds?.let { parameters.append("zoneIds", it.toString()) }
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取关注动态（条目/用户）(api/user-action/collect/care/list-v2, GET)
@@ -161,7 +161,7 @@ class HpoiApi(
             parameters.append("type", type.toString())
             isHome?.let { parameters.append("isHome", it.toString()) }
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询手办/周边列表 (api/hobby/query-v2, POST Form)
@@ -178,7 +178,7 @@ class HpoiApi(
             append("categoryId", categoryId.toString())
             order?.let { append("order", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 多维查询手办/周边列表 (api/hobby/query-v2, POST Form)
@@ -190,13 +190,13 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             appendAll(toParameters(params))
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取全部分类树结构 (api/category/web/all, POST Form 空参)
      */
     suspend fun getAllCategories(): CommonResponse<CategoryTreeData> =
-        client.post("api/category/web/all").bodyAsJsonRef(json)
+        client.post("api/category/web/all").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取条目详情 (api/item/get-v2, GET)
@@ -209,7 +209,7 @@ class HpoiApi(
             parameters.append("itemId", itemId.toString())
             parameters.append("itemType", itemType.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取条目结构化属性列表 (api/item/infoList, POST Form)
@@ -222,7 +222,7 @@ class HpoiApi(
             append("id", nodeId.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取手办发售情报时间轴 (api/user-action/item-info/list, GET)
@@ -237,7 +237,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取手办关联同款/再版分组列表 (api/hobby/group, POST Form)
@@ -248,7 +248,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", id.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取推荐手办列表 (api/hobby/push/list/V2, POST Form)
@@ -261,7 +261,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取关联图片列表 (api/pic/list/relate-v2, POST Form)
@@ -284,7 +284,7 @@ class HpoiApi(
             order?.let { append("order", it.toString()) }
             nodeId?.let { append("nodeId", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取相册详情 (api/album/detail, POST Form)
@@ -297,7 +297,7 @@ class HpoiApi(
             append("id", albumId.toString())
             itemId?.let { append("itemId", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取相关相册列表 (api/album/relate/album, POST Form)
@@ -312,7 +312,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取相册关联手办列表 (api/item/relate/hobby, POST Form)
@@ -327,7 +327,7 @@ class HpoiApi(
             append("itemType", itemType.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取条目/相册标签列表 (api/item/tags, POST Form)
@@ -338,13 +338,13 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", albumId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取相册频道分区 tabs (api/zone/home-tabs, GET)
      */
     suspend fun getZoneHomeTabs(): CommonResponse<ZoneHomeTabsPayload> =
-        client.get("api/zone/home-tabs").bodyAsJsonRef(json)
+        client.get("api/zone/home-tabs").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取专区详情资料 (api/zone/info, GET)
@@ -355,7 +355,7 @@ class HpoiApi(
         url {
             parameters.append("nodeId", nodeId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取专区分类关联实体条目列表 (api/zone/items, GET)
@@ -375,7 +375,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 检索二手交易列表 (api/resale/search, POST Form)
@@ -387,7 +387,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             appendAll(toParameters(params))
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取二手交易详情 (api/resale/data/get, GET)
@@ -400,7 +400,7 @@ class HpoiApi(
         url {
             parameters.append("nodeId", nodeId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 关注 / 取消关注专区 (api/zone/focus, POST Form)
@@ -411,7 +411,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("nodeId", nodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 更新专区首页设置 (api/zone/home-tabs/settings, POST Form)
@@ -428,7 +428,7 @@ class HpoiApi(
             append("hiddenZoneIds", hiddenZoneIds.toString())
             append("customOrder", customOrder.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 专区访问记录上报 (api/zone/home-tabs/visited, POST Form)
@@ -439,7 +439,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("nodeId", nodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询讨论贴列表 (api/posts/search, GET)
@@ -462,7 +462,7 @@ class HpoiApi(
             keyword?.let { parameters.append("keyword", it.toString()) }
             itemType?.let { parameters.append("itemType", it.toString()) }
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取帖子详情 (api/posts/info-v2, GET)
@@ -475,7 +475,7 @@ class HpoiApi(
             nodeId?.let { parameters.append("nodeId", it.toString()) }
             itemId?.let { parameters.append("itemId", it.toString()) }
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取帖子详情基础版 (api/posts/info, GET)
@@ -489,7 +489,7 @@ class HpoiApi(
             nodeId?.let { parameters.append("nodeId", it.toString()) }
             itemId?.let { parameters.append("itemId", it.toString()) }
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取讨论贴回帖列表 (api/discuss/get, POST Form)
@@ -507,7 +507,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取讨论贴楼中楼回复列表 (api/discuss/reply/get, POST Form)
@@ -520,7 +520,7 @@ class HpoiApi(
             append("discussNodeId", discussNodeId.toString())
             append("page", page.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发表讨论贴主楼回帖 (api/discuss/add, POST Form)
@@ -535,7 +535,7 @@ class HpoiApi(
             append("content", content.toString())
             emoticon?.let { append("emoticon", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发表讨论贴楼中楼回复 (api/discuss/reply/add, POST Form)
@@ -556,7 +556,7 @@ class HpoiApi(
             toReplyNodeId?.let { append("toReplyNodeId", it.toString()) }
             emoticon?.let { append("emoticon", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 删除讨论回帖或楼中楼 (api/discuss/del, POST Form)
@@ -570,7 +570,7 @@ class HpoiApi(
             append("nodeId", nodeId.toString())
             append("type", type.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 删除讨论贴自身 (api/posts/del, POST Form)
@@ -581,7 +581,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("nodeId", nodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取已关注版块列表 (api/forum/focus/list, POST Form)
@@ -592,7 +592,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("forumPage", forumPage.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取未关注版块列表 (api/forum/not/focus/list, POST Form)
@@ -603,7 +603,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("forumPage", forumPage.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 关注或取关版块 (api/forum/focus, POST Form)
@@ -617,7 +617,7 @@ class HpoiApi(
             append("forumNodeId", forumNodeId.toString())
             append("state", state.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 保存已关注版块排序 (api/forum/focus/sort/upd, POST Form)
@@ -629,7 +629,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("order", order.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取版块详情 (api/forum/{id}, GET)
@@ -637,7 +637,7 @@ class HpoiApi(
     suspend fun getForumDetail(
         forumId: Long
     ): CommonResponse<ForumDetailPayload> = client.get("api/forum/${forumId}") {
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取相册频道列表 (api/album/list, POST Form)
@@ -661,7 +661,7 @@ class HpoiApi(
             releaseStart?.let { append("releaseStart", it.toString()) }
             releaseEnd?.let { append("releaseEnd", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取点赞榜 (api/item/praise/top, GET)
@@ -676,7 +676,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户相册列表 (api/hobby/album, POST Form)
@@ -695,7 +695,7 @@ class HpoiApi(
             append("pageSize", pageSize.toString())
             append("order", order.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取评论列表 (api/comment/get, POST Form)
@@ -713,7 +713,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取单条主评论的子评论详情（评论详情页，api/comment/getreply, POST Form）
@@ -729,7 +729,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 主评论点赞（api/item/praise/add, POST Form）
@@ -745,7 +745,7 @@ class HpoiApi(
             append("relateItemNodeId", relateNodeId.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 取消主评论点赞（api/item/praise/del, POST Form）
@@ -760,7 +760,7 @@ class HpoiApi(
             append("relateItemNodeId", relateNodeId.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询相册/条目点赞状态 (api/item/likeInfo, POST Form)
@@ -773,7 +773,7 @@ class HpoiApi(
             append("nodeId", nodeId.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 相册点赞 (api/item/praise/add, POST Form)
@@ -786,7 +786,7 @@ class HpoiApi(
             append("id", id.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 取消相册点赞 (api/item/praise/del, POST Form)
@@ -799,7 +799,7 @@ class HpoiApi(
             append("id", id.toString())
             append("itemType", itemType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发表主楼评论（api/comment/add, POST Form，原版成功后直接刷新列表）。
@@ -815,7 +815,7 @@ class HpoiApi(
             append("content", content.toString())
             emoticon?.let { append("emoticon", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发表子评论回复（api/comment/add/reply, POST Form）
@@ -836,7 +836,7 @@ class HpoiApi(
             toReplyId?.let { append("toReply", it.toString()) }
             emoticon?.let { append("emoticon", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
     suspend fun deleteComment(
         nodeId: Long,
@@ -846,19 +846,19 @@ class HpoiApi(
             append("nodeId", nodeId.toString())
             append("type", type.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
     suspend fun getStickerPacks(): CommonResponse<StickerPackPayload> =
-        client.get("api/sticker/pack/list").bodyAsJsonRef(json)
+        client.get("api/sticker/pack/list").bodyAsJsonRef(jsonCodec)
 
     suspend fun getStickerBuyTime(): CommonResponse<StickerBuyTimePayload> =
-        client.get("api/sticker/pack/buyTime").bodyAsJsonRef(json)
+        client.get("api/sticker/pack/buyTime").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取当前登录用户信息 (api/user/self, POST Form)
      */
     suspend fun getUserSelf(): CommonResponse<UserSelfPayload> =
-        client.post("api/user/self").bodyAsJsonRef(json)
+        client.post("api/user/self").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户社交统计 (api/user/fellow/count, POST Form)
@@ -869,7 +869,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("userNodeId", userNodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询用户关注关系类型 (api/user/fellow/type, POST Form)
@@ -881,7 +881,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("userNId", userNId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 更新用户好友/关注状态 (api/user/friend/upd, POST Form)
@@ -896,7 +896,7 @@ class HpoiApi(
             append("userId", userId.toString())
             append("state", state.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户社交列表 (关注/粉丝) (api/user/fellow, POST Form)
@@ -915,7 +915,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户获赞条目列表 (api/item/praise/forUser, POST Form)
@@ -931,7 +931,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 更新用户基本资料 (api/user/base/upd, POST Form)
@@ -946,7 +946,7 @@ class HpoiApi(
             append("key", key.toString())
             append("val", value.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询指定用户的资料详情 (api/user/getinfo, POST Form)
@@ -960,7 +960,7 @@ class HpoiApi(
             id?.let { append("id", it.toString()) }
             userId?.let { append("userId", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户订单统计 (api/user/orderStatic, POST Form)
@@ -971,7 +971,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", userId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户收藏相似度 (api/user/collect/similarity, POST Form)
@@ -983,7 +983,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("userNodeId", userNodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户个人动态列表 (api/user-action/user/list, GET)
@@ -1001,7 +1001,7 @@ class HpoiApi(
             parameters.append("pageSize", pageSize.toString())
             parameters.append("lastTime", lastTime.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户收藏封面展示条目 (api/user/collect/top, POST Form)
@@ -1015,7 +1015,7 @@ class HpoiApi(
             append("id", userId.toString())
             append("state", state.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户自己发布的相册列表 (api/album/user-v2, GET)
@@ -1034,7 +1034,7 @@ class HpoiApi(
             parameters.append("type", type.toString())
             parameters.append("order", order.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户发布的图片列表 (api/pic/user, GET)
@@ -1053,25 +1053,25 @@ class HpoiApi(
             parameters.append("collectState", collectState.toString())
             parameters.append("order", order.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取每日签到状态 (api/mp/task/checkIn/get, POST Form)
      */
     suspend fun getCheckInStatus(): CommonResponse<CheckInStatusPayload> =
-        client.post("api/mp/task/checkIn/get").bodyAsJsonRef(json)
+        client.post("api/mp/task/checkIn/get").bodyAsJsonRef(jsonCodec)
 
 /**
      * 执行每日签到打卡 (api/mp/task/checkIn, POST Form)
      */
     suspend fun checkIn(): CommonResponse<JsonObject> =
-        client.post("api/mp/task/checkIn").bodyAsJsonRef(json)
+        client.post("api/mp/task/checkIn").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户魔力值/积分 (api/mp/get, POST Form)
      */
     suspend fun getUserMp(): CommonResponse<UserMpPayload> =
-        client.post("api/mp/get").bodyAsJsonRef(json)
+        client.post("api/mp/get").bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询用户全量手办收藏列表 (api/collect/hobby-v2, GET)
@@ -1082,7 +1082,7 @@ class HpoiApi(
         url {
             parameters.appendAll(toParameters(params))
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询用户通用实体收藏列表 (厂商/系列/作品/角色/人物) (api/collect/common-v3, GET)
@@ -1093,7 +1093,7 @@ class HpoiApi(
         url {
             parameters.appendAll(toParameters(params))
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询用户相册收藏列表 (api/collect/album-v2, GET)
@@ -1104,7 +1104,7 @@ class HpoiApi(
         url {
             parameters.appendAll(toParameters(params))
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询用户图片收藏列表 (api/collect/pic-v2, GET)
@@ -1115,7 +1115,7 @@ class HpoiApi(
         url {
             parameters.appendAll(toParameters(params))
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 用户账号密码登录 (api/user/loginV2, POST Form)
@@ -1130,7 +1130,7 @@ class HpoiApi(
             append("password", password.toString())
             append("loginType", loginType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 全局主搜 (api/search, POST Form)
@@ -1143,7 +1143,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             appendAll(toParameters(params))
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取分类热词 (api/search/hotword, POST Form)
@@ -1154,7 +1154,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("category", category.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 输入联想 (api/search/auto/fill, POST Form)
@@ -1167,7 +1167,7 @@ class HpoiApi(
             append("type", type.toString())
             append("keywords", keywords.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 用户搜索 (api/search/user, POST Form)
@@ -1182,7 +1182,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 要素属性列表 (api/charactar/attribute/list, GET)
@@ -1194,7 +1194,7 @@ class HpoiApi(
         url {
             parameters.append("categoryId", categoryId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取厂商主体详情 (api/company/v2/get, GET)
@@ -1206,7 +1206,7 @@ class HpoiApi(
         url {
             parameters.append("companyId", companyId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取厂商最新动态列表 (api/user-action/company/list, GET)
@@ -1223,7 +1223,7 @@ class HpoiApi(
             parameters.append("category", category.toString())
             parameters.append("lastId", lastId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取厂商旗下系列列表 (api/company/series, GET)
@@ -1238,7 +1238,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取厂商官方/品牌标签列表 (api/company/tag/display, GET)
@@ -1249,7 +1249,7 @@ class HpoiApi(
         url {
             parameters.append("companyId", companyId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取当前用户的厂商印象/投票状态及所有候选标签 (api/company/tag/myVotes, GET)
@@ -1260,7 +1260,7 @@ class HpoiApi(
         url {
             parameters.append("companyId", companyId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 提交厂商印象投票 (api/company/tag/vote, POST Form)
@@ -1275,7 +1275,7 @@ class HpoiApi(
             append("normalTagIds", normalTagIds.toString())
             append("scoreTagIds", scoreTagIds.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询条目收藏状态 (api/collect/state, POST Form)
@@ -1286,7 +1286,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", id.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 添加条目/相册收藏 (api/collect/item/add, POST Form)
@@ -1297,7 +1297,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", id.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 取消条目/相册收藏 (api/collect/del, POST Form)
@@ -1308,7 +1308,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", id.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 批量取消收藏 (api/collect/batch/cancel, POST Form)
@@ -1321,7 +1321,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("idArr", idArr.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取作品收藏候选标签池 (api/user/glean/textTag/get, GET)
@@ -1335,7 +1335,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询作品收藏详情 (api/works/glean/get/{worksId}, GET)
@@ -1344,7 +1344,7 @@ class HpoiApi(
     suspend fun getWorksCollect(
         worksId: Long
     ): CommonResponse<JsonElement> = client.get("api/works/glean/get/${worksId}") {
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 保存作品收藏 (api/works/glean/add, POST Form)
@@ -1364,7 +1364,7 @@ class HpoiApi(
             append("comment", comment.toString())
             append("state", state.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 取消作品收藏 (api/works/glean/del, POST Form)
@@ -1377,7 +1377,7 @@ class HpoiApi(
             append("itemType", itemType.toString())
             append("itemId", itemId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取图片关联条目（相册/手办/文章三类）(api/pic/relate, POST Form)
@@ -1388,7 +1388,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("picId", picId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 提交举报 (api/web-report/add, POST Form)
@@ -1411,7 +1411,7 @@ class HpoiApi(
             append("userReason", userReason.toString())
             append("type", type.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取条目收藏分类统计人数 (api/hobby/collectCount, POST Form)
@@ -1422,7 +1422,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("id", id.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取候选推荐标签列表 (api/collect/tag, GET)
@@ -1437,7 +1437,7 @@ class HpoiApi(
             parameters.append("pageSize", pageSize.toString())
             parameters.append("categoryId", categoryId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 保存/更新/取消条目收藏信息 (api/collect/hobby/upd, POST Form)
@@ -1450,7 +1450,7 @@ class HpoiApi(
             append("nodeId", nodeId.toString())
             append("json", json.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询条目屏蔽状态 (api/mask/state-v2, GET)
@@ -1461,7 +1461,7 @@ class HpoiApi(
         url {
             parameters.append("itemNodeId", itemNodeId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列主体详情 (api/item/get-v2, GET)
@@ -1474,7 +1474,7 @@ class HpoiApi(
             parameters.append("itemId", itemId.toString())
             parameters.append("itemType", itemType.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列关联手办列表 (api/item/relate/hobby, POST Form)
@@ -1489,7 +1489,7 @@ class HpoiApi(
             append("itemType", itemType.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列子系列或相关系列列表 (api/series/link/series, GET)
@@ -1507,7 +1507,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列关联相册列表 (api/series/album, GET)
@@ -1522,7 +1522,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列在售周边推荐列表 (api/goods/tb/more-v2, GET)
@@ -1537,7 +1537,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取系列论坛与帖子 (api/series/forum, GET)
@@ -1548,7 +1548,7 @@ class HpoiApi(
         url {
             parameters.append("seriesId", seriesId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取人物主体详情 (api/person/get, GET)
@@ -1559,7 +1559,7 @@ class HpoiApi(
         url {
             parameters.append("personId", personId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取人物参与作品列表 (api/person/works/get, GET)
@@ -1574,7 +1574,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取人物出演角色列表 (api/person/character/get, GET)
@@ -1589,7 +1589,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取人物参与周边列表 (api/person/hobby/get, GET)
@@ -1600,7 +1600,7 @@ class HpoiApi(
         url {
             parameters.append("personId", personId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
     suspend fun getWorksDetail(
         worksId: Long
@@ -1608,7 +1608,7 @@ class HpoiApi(
         url {
             parameters.append("worksId", worksId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
     suspend fun getWorksAlbums(
         worksId: Long,
@@ -1620,7 +1620,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
     suspend fun getWorksCharacters(
         worksId: Long
@@ -1628,7 +1628,7 @@ class HpoiApi(
         url {
             parameters.append("worksId", worksId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取角色/要素主体详情 (api/charactar/get, GET)
@@ -1639,7 +1639,7 @@ class HpoiApi(
         url {
             parameters.append("charactarId", characterId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取角色登场作品列表 (api/charactar/works/get, GET)
@@ -1654,7 +1654,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取角色相关相册列表 (api/charactar/album/get, GET)
@@ -1669,7 +1669,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取推荐要素/相关角色列表 (api/charactar/relevant/get, GET)
@@ -1682,7 +1682,7 @@ class HpoiApi(
             parameters.append("charactarId", characterId.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取条目关联的分区/属性标签 (api/zone/item, GET)
@@ -1693,7 +1693,7 @@ class HpoiApi(
         url {
             parameters.append("nodeId", nodeId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取用户浏览历史列表 (api/user/read/item/get, POST Form)
@@ -1706,7 +1706,7 @@ class HpoiApi(
             append("itemType", itemType.toString())
             append("page", page.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 上报/添加浏览历史 (api/user/read/item/add, POST Form)
@@ -1717,7 +1717,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("itemNodeId", itemNodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 批量删除用户浏览历史 (api/user/read/item/del, POST Form)
@@ -1729,13 +1729,13 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("ids", ids.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取未读通知消息数 (api/unread/push-message/count-v2, GET)
      */
     suspend fun getUnreadPushCount(): CommonResponse<UnreadPushCountPayload> =
-        client.get("api/unread/push-message/count-v2").bodyAsJsonRef(json)
+        client.get("api/unread/push-message/count-v2").bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取私信联系人列表 (api/message/contact/get, POST Form)
@@ -1746,7 +1746,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("page", page.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 更新私信联系人置顶状态 (api/message/contact/top/upd, POST Form)
@@ -1760,7 +1760,7 @@ class HpoiApi(
             append("id", id.toString())
             append("state", state.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 删除私信联系人会话 (api/message/contact/del, POST Form)
@@ -1773,7 +1773,7 @@ class HpoiApi(
             append("id", id.toString())
             append("userNodeId", userNodeId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取分类推送通知列表 (api/push/{type}, POST Form)
@@ -1788,7 +1788,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 标记推送通知已读 (api/push/read, POST Form)
@@ -1803,7 +1803,7 @@ class HpoiApi(
             append("type", type.toString())
             messageId?.let { append("messageId", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 删除单条推送通知 (api/push/del, POST Form)
@@ -1816,7 +1816,7 @@ class HpoiApi(
             append("messageId", messageId.toString())
             append("pushType", pushType.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 批量删除推送通知 (api/push/batch/del, POST Form)
@@ -1836,7 +1836,7 @@ class HpoiApi(
             ids?.let { append("ids", it.toString()) }
             read?.let { append("read", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取与指定用户的私信聊天记录 (api/message/get-v2, GET)
@@ -1851,7 +1851,7 @@ class HpoiApi(
             parameters.append("page", page.toString())
             parameters.append("pageSize", pageSize.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发送文本私信消息 (api/message/add-v2, POST Form)
@@ -1866,7 +1866,7 @@ class HpoiApi(
             append("content", content.toString())
             emoticon?.let { append("emoticon", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 发送二手/条目卡片私信 (api/message/add/resale-v2, POST Form)
@@ -1881,7 +1881,7 @@ class HpoiApi(
             append("resaleId", resaleId.toString())
             content?.let { append("content", it.toString()) }
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 上传并发送私信图片 (api/message/upload-v2, Multipart POST)
@@ -1901,7 +1901,7 @@ class HpoiApi(
                 append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
             })
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 撤回私信消息 (api/message/withdraw, POST Form)
@@ -1912,7 +1912,7 @@ class HpoiApi(
         setBody(FormDataContent(Parameters.build {
             append("messageId", messageId.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 查询最新私信消息 ID (api/message/latestMsgId/get, GET)
@@ -1923,7 +1923,7 @@ class HpoiApi(
         url {
             parameters.append("userId", userId.toString())
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 获取黑名单屏蔽列表 (api/block/list, POST Form)
@@ -1936,7 +1936,7 @@ class HpoiApi(
             append("page", page.toString())
             append("pageSize", pageSize.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 
 /**
      * 更新用户黑名单屏蔽状态 (api/block/upd, POST Form)
@@ -1950,5 +1950,5 @@ class HpoiApi(
             append("userId", userId.toString())
             append("blockState", blockState.toString())
         }))
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 }

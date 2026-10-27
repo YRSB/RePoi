@@ -15,7 +15,7 @@ import kotlinx.serialization.json.Json
  */
 class ExHobbyApi(
     private val client: HttpClient,
-    private val json: Json
+    private val jsonCodec: Json
 ) {
     /**
      * 分页拉取条目扩展图片列表。
@@ -37,5 +37,5 @@ class ExHobbyApi(
             parameters.append("item", item.toString())
             parameters.append("type", type)
         }
-    }.bodyAsJsonRef(json)
+    }.bodyAsJsonRef(jsonCodec)
 }
