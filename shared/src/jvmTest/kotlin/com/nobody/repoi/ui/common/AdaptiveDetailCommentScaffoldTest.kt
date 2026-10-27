@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.WindowSize
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
@@ -93,7 +94,7 @@ class AdaptiveDetailCommentScaffoldTest {
 
         setContent {
             DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
+                WindowSize(DpSize(1024.dp, 800.dp))
             ) {
                 AdaptiveDetailLazyColumnCommentScaffold(
                     commentState = CommentFeedState(
@@ -168,7 +169,7 @@ class AdaptiveDetailCommentScaffoldTest {
 
         setContent {
             DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
+                WindowSize(DpSize(1024.dp, 800.dp))
             ) {
                 AdaptiveDetailCommentScaffold(
                     commentState = CommentFeedState(
@@ -264,7 +265,7 @@ class AdaptiveDetailCommentScaffoldTest {
         startTestKoin(FakePlatformActions())
         setContent {
             DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
+                WindowSize(DpSize(1024.dp, 800.dp))
             ) {
                 AdaptiveDetailLazyColumnCommentScaffold(
                     commentState = CommentFeedState(
@@ -404,7 +405,7 @@ class AdaptiveDetailCommentScaffoldTest {
 
         setContent {
             DeviceConfigurationOverride(
-                DeviceConfigurationOverride.WindowSize(DpSize(1024.dp, 800.dp))
+                WindowSize(DpSize(1024.dp, 800.dp))
             ) {
                 commentPaneState = rememberLazyListState()
                 AdaptiveDetailCommentScaffold(
