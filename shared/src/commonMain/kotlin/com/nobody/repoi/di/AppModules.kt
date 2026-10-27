@@ -1,10 +1,19 @@
 package com.nobody.repoi.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import coil3.ImageLoader
+import com.nobody.repoi.data.local.CategoryApi
+import com.nobody.repoi.data.local.CategoryManager
+import com.nobody.repoi.data.local.SearchHistoryManager
+import com.nobody.repoi.data.local.ThemeManager
+import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.network.createExHobbyClient
 import com.nobody.repoi.network.createHpoiClient
 import com.nobody.repoi.network.createImageClient
+import com.nobody.repoi.platform.createDataStore
 import com.nobody.repoi.platform.createImageLoader
 import com.nobody.repoi.platform.platformContext
 import io.ktor.client.HttpClient
@@ -16,14 +25,12 @@ import org.koin.dsl.module
 /**
  * 网络模块：Json + 三个 HttpClient + Coil ImageLoader。
  *
- * Token 提供方在 Wave 1（TokenManager 迁移）后接入；Wave 0 返回空串占位。
  * `HpoiApi`/`ExHobbyApi` 在 Wave 3 挂到对应 client 上。
  */
 val networkModule = module {
     single<Json> { appJson() }
 
-    // TODO(Wave 1): tokenProvider 改为 { get<TokenManager>().currentToken }。
-    single<() -> String>(named("tokenProvider")) { { "" } }
+    single<() -> String>(named("tokenProvider")) { { get<TokenManager>().currentToken } }
 
     single<HttpClient>(named("hpoi")) {
         createHpoiClient(json = get(), tokenProvider = get(named("tokenProvider")))
@@ -45,11 +52,21 @@ val networkModule = module {
 
 /**
  * 数据模块：DataStore / Managers / Repositories。
- * Wave 0 为空壳，按波次陆续填充（Wave 1 起）。
  */
 val dataModule = module {
-    // Wave 1+: DataStore singles + TokenManager/ThemeManager/...
-    // Wave 4+: Repositories
+    single<DataStore<Preferences>>(named("user_prefs")) { createDataStore("user_prefs.preferences_pb") }
+    single<DataStore<Preferences>>(named("theme_prefs")) { createDataStore("theme_prefs.preferences_pb") }
+    single<DataStore<Preferences>>(named("search_history_prefs")) { createDataStore("search_history_prefs.preferences_pb") }
+    single<DataStore<Preferences>>(named("view_prefs")) { createDataStore("view_prefs.preferences_pb") }
+
+    single { TokenManager(dataStore = get(named("user_prefs"))) }
+    single { ThemeManager(dataStore = get(named("theme_prefs"))) }
+    single { SearchHistoryManager(dataStore = get(named("search_history_prefs")), json = get()) }
+    single { ViewPreferencesManager(dataStore = get(named("view_prefs"))) }
+
+    // TODO(Wave 3): 绑定 CategoryApi -> HpoiApi 适配。CategoryManager 在此之前无人注入，
+    // Koin 懒加载语义下缺绑定不会影响启动。
+    single { CategoryManager(apiService = get<CategoryApi>()) }
 }
 
 /**
