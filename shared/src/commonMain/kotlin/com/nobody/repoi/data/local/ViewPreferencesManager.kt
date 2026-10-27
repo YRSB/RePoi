@@ -91,16 +91,18 @@ class ViewPreferencesManager(
 
     init {
         // 初始加载：只读一次历史数据回填内存（持续 collect 可能用旧快照覆盖内存新值）。
+        // 回填跑在 IO 后台协程时序不定，必须只在 key 存在时赋值（TokenManager 同款模式）：
+        // 空 DataStore 的无条件赋值会用默认值覆盖构造后已 set 的内存新值。
         scope.launch {
             val prefs = dataStore.data.first()
-            isHobbyListGridMode = prefs[KEY_HOBBY_LIST_GRID_MODE] ?: true
-            isCollectListGridMode = prefs[KEY_COLLECT_LIST_GRID_MODE] ?: true
-            feedCategoryId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
-            feedSubType = prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
-            feedZoneTabKey = prefs[KEY_FEED_ZONE_TAB_KEY] ?: "all"
-            isExHobbyEnabled = prefs[KEY_EXHOBBY_ENABLED] ?: true
-            cachedFocusZonesJson = prefs[KEY_CACHED_FOCUS_ZONES]
-            cachedZoneSettingsJson = prefs[KEY_CACHED_ZONE_SETTINGS]
+            prefs[KEY_HOBBY_LIST_GRID_MODE]?.let { isHobbyListGridMode = it }
+            prefs[KEY_COLLECT_LIST_GRID_MODE]?.let { isCollectListGridMode = it }
+            prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
+            prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = it }
+            prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
+            prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
+            prefs[KEY_CACHED_FOCUS_ZONES]?.let { cachedFocusZonesJson = it }
+            prefs[KEY_CACHED_ZONE_SETTINGS]?.let { cachedZoneSettingsJson = it }
         }
     }
 

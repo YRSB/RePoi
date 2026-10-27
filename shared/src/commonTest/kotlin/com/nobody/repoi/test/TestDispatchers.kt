@@ -3,7 +3,7 @@ package com.nobody.repoi.test
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 
@@ -22,12 +22,30 @@ import kotlinx.coroutines.test.setMain
  * @AfterTest
  * fun tearDown() = dispatchers.tearDown()
  * ```
+ *
+ * 注意：测试体必须通过 `runTest(dispatchers.testDispatcher)` 与 Main 共享同一调度器，
+ * 否则 ViewModel 协程挂起后无人驱动（调度器分裂）；且每个测试末尾必须 `viewModelScope.cancel()`，
+ * 否则泄漏的协程会在 `tearDown → resetMain()` 之后恢复并污染后续测试。
+ *
+ * 每个测试必须使用全新的 dispatcher 实例（本类在 setUp() 中重建）：
+ * StandardTestDispatcher 持有虚拟时钟与任务队列，跨测试复用会导致旧任务/
+ * 旧虚拟时间污染新测试（官方文档明确禁止跨测试共享）。
+ *
+ * [engineDispatcher] 专供 [MockRepoEngine] 构造时注入：Ktor MockEngine 默认
+ * `engine.dispatcher = Dispatchers.IO`（真线程），请求 handler 在 IO 线程执行，
+ * `advanceUntilIdle()` 驱动不了 → ViewModel 测试里请求永远 pending（本地 J1 实验证实）。
+ * engineDispatcher 与 testDispatcher 共享同一 TestCoroutineScheduler（不同实例），
+ * 保证请求与 ViewModel 协程同属一个虚拟时钟。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class TestDispatchers(
-    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
-) {
+class TestDispatchers {
+    lateinit var testDispatcher: TestDispatcher
+        private set
+    lateinit var engineDispatcher: TestDispatcher
+        private set
     fun setUp() {
+        testDispatcher = StandardTestDispatcher()
+        engineDispatcher = StandardTestDispatcher(testDispatcher.scheduler)
         Dispatchers.setMain(testDispatcher)
     }
 

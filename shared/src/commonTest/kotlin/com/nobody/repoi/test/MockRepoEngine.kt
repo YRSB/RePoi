@@ -2,6 +2,7 @@ package com.nobody.repoi.test
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngineConfig
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.forms.FormDataContent
@@ -10,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.formUrlEncode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Repository 测试用的 MockWebServer 等价替身（Ktor MockEngine 封装）。
@@ -26,8 +28,17 @@ import io.ktor.utils.io.ByteReadChannel
  *
  * 多端点测试（老 `Dispatcher` 形态）改用 [respondWhen] 注册 path 规则，
  * 或 [dynamicResponder] 按请求内容动态返回。
+ *
+ * @param dispatcher MockEngine 的执行调度器。Ktor 默认 `engine.dispatcher = Dispatchers.IO`
+ * （真线程）：请求 handler 在 IO 真线程执行，真线程的恢复不受 `advanceUntilIdle()` 驱动——
+ * Repository 测试（直接 await）不受影响，但 ViewModel 测试（launch + advanceUntilIdle）
+ * 里请求会永远 pending。因此所有 ViewModel 测试必须传入
+ * `TestDispatchers.engineDispatcher`（与 testDispatcher 同 scheduler 的虚拟调度器），
+ * 使请求 handler 跑在虚拟时钟上（本地 H1/J1 实验证实）。
  */
-class MockRepoEngine {
+class MockRepoEngine(
+    dispatcher: CoroutineDispatcher? = null
+) {
     private data class PlannedResponse(val status: HttpStatusCode, val body: String)
 
     private val queue = ArrayDeque<PlannedResponse>()
@@ -40,9 +51,21 @@ class MockRepoEngine {
     var dynamicResponder: ((HttpRequestData) -> Pair<String, HttpStatusCode>?)? = null
     private var cursor = 0
 
-    val engine = MockEngine { request ->
+    val engine = if (dispatcher == null) {
+        MockEngine { request -> respondPlanned(request) }
+    } else {
+        val config = MockEngineConfig().apply {
+            this.dispatcher = dispatcher
+            addHandler { request -> respondPlanned(request) }
+        }
+        MockEngine(config)
+    }
+
+    private suspend fun io.ktor.client.engine.mock.MockRequestHandleScope.respondPlanned(
+        request: HttpRequestData
+    ): io.ktor.client.request.HttpResponseData {
         val planned = dispatch(request)
-        respond(
+        return respond(
             content = ByteReadChannel(planned.body),
             status = planned.status,
             headers = headersOf(HttpHeaders.ContentType, "application/json"),
