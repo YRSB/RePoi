@@ -277,7 +277,7 @@ class UserRepositoryTest {
 
         // 验证请求中传递的参数 (GET Query)
         val recordedRequest = mock.takeRequest()
-        assertEquals("GET", recordedRequest.method)
+        assertEquals(HttpMethod.Get, recordedRequest.method)
         val fullPath = recordedRequest.recordedPath ?: ""
         val (basePath, queryString) = if (fullPath.contains("?")) {
             fullPath.substringBefore("?") to fullPath.substringAfter("?")
@@ -457,7 +457,7 @@ class UserRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recordedRequest = mock.takeRequest()
-        assertEquals("GET", recordedRequest.method)
+        assertEquals(HttpMethod.Get, recordedRequest.method)
         val fullPath = recordedRequest.recordedPath ?: ""
         val (basePath, queryString) = fullPath.substringBefore("?") to fullPath.substringAfter("?")
         assertEquals("/api/collect/hobby-v2", basePath)
@@ -1024,7 +1024,7 @@ class UserRepositoryTest {
         assertTrue(followResult.isSuccess)
 
         val followReq = mock.takeRequest()
-        assertEquals("POST", followReq.method)
+        assertEquals(HttpMethod.Post, followReq.method)
         assertEquals("/api/user/friend/upd", followReq.recordedPath)
         val followForm = formBodyOfRequest(followReq)
         assertEquals("99999", followForm["userId"])
@@ -1036,7 +1036,7 @@ class UserRepositoryTest {
         assertTrue(unfollowResult.isSuccess)
 
         val unfollowReq = mock.takeRequest()
-        assertEquals("POST", unfollowReq.method)
+        assertEquals(HttpMethod.Post, unfollowReq.method)
         assertEquals("/api/user/friend/upd", unfollowReq.recordedPath)
         val unfollowForm = formBodyOfRequest(unfollowReq)
         assertEquals("99999", unfollowForm["userId"])
@@ -1101,7 +1101,7 @@ class UserRepositoryTest {
 
         // 验证第 1 个请求：updateUserBase
         val req1 = mock.takeRequest()
-        assertEquals("POST", req1.method)
+        assertEquals(HttpMethod.Post, req1.method)
         assertEquals("/api/user/base/upd", req1.recordedPath)
         val form1 = formBodyOfRequest(req1)
         assertEquals("sign", form1["key"])
@@ -1109,7 +1109,7 @@ class UserRepositoryTest {
 
         // 验证第 2 个请求：getUserProfile (getUserSelf)
         val req2 = mock.takeRequest()
-        assertEquals("POST", req2.method)
+        assertEquals(HttpMethod.Post, req2.method)
         assertEquals("/api/user/self", req2.recordedPath)
 
         // 验证缓存流更新
