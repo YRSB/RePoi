@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -233,15 +234,21 @@ fun ModalSideSheet(
             .zIndex(100f)
     ) {
         // 1. 全屏半透明遮罩 (Scrim)：全屏铺满压暗背景，抽屉圆角外切角处自然透出暗色遮罩，彻底消除白色直角
-        // 注意：必须用 clickable 而非裸 detectTapGestures(onTap)——后者无 touch-slop 语义，
-        // 拖拽松手时的 up 同样会触发 onTap 导致误关闭；clickable 超出 slop 即取消 press，
-        // 拖拽不会 dismiss（ModalSideSheetTest.draggingScrim_doesNotTriggerDismiss）。
+        // 注意：clickable 自身无位移语义——裸 tap 检测下任何 down...up（含大位移拖拽）
+        // 都会走到 onClick（无其他手势竞争者消费事件时 press 永不取消）。因此必须并列
+        // 一个空 detectDragGestures 与之竞争：拖拽超 touch slop 后事件被消费，
+        // press 取消 → 拖拽不 dismiss；点击无位移 → tap 正常触发 dismiss。
+        // （ModalSideSheetTest.draggingScrim_doesNotTriggerDismiss；老 Robolectric 版
+        // 靠主时钟巧合通过，Desktop 下必须显式竞争。）
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = scrimAlpha))
                 .testTag("modal_side_sheet_scrim")
                 .semantics { contentDescription = "关闭遮罩" }
+                .pointerInput(Unit) {
+                    detectDragGestures { _, _ -> }
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
