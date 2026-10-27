@@ -11,6 +11,7 @@ import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.remote.api.HpoiApi
+import com.nobody.repoi.data.repository.*
 import com.nobody.repoi.network.appJson
 import com.nobody.repoi.network.createExHobbyClient
 import com.nobody.repoi.network.createHpoiClient
@@ -71,6 +72,30 @@ val dataModule = module {
 
     single<CategoryApi> { CategoryApi { get<HpoiApi>().getAllCategories() } }
     single { CategoryManager(apiService = get()) }
+
+    single { AlbumDetailRepository(apiService = get()) }
+    single { AlbumRepository(apiService = get()) }
+    single { CharacterDetailRepository(apiService = get()) }
+    single { CollectRepository(apiService = get(), json = get()) }
+    single { CommentRepository(apiService = get(), tokenManager = get()) }
+    single { ExHobbyRepository(apiService = get()) }
+    single { FollowRepository(apiService = get(), json = get()) }
+    single { ForumRepository(apiService = get(), tokenManager = get()) }
+    single { HobbyDetailRepository(apiService = get()) }
+    single { HomeRepository(apiService = get()) }
+    single { ItemRepository(apiService = get()) }
+    single { MessageRepository(apiService = get(), tokenManager = get()) }
+    single { PersonDetailRepository(apiService = get(), collectRepository = get()) }
+    single { PictureListRepository(apiService = get()) }
+    single { PostRepository(apiService = get(), tokenManager = get()) }
+    single { ResaleRepository(apiService = get()) }
+    single { SearchRepository(apiService = get(), historyManager = get()) }
+    single { SeriesDetailRepository(apiService = get(), collectRepository = get()) }
+    single { StickerRepository(apiService = get()) }
+    single { UserRepository(apiService = get(), tokenManager = get()) }
+    single { VendorDetailRepository(apiService = get(), collectRepository = get()) }
+    single { WorksDetailRepository(apiService = get()) }
+    single { ZoneRepository(apiService = get(), viewPreferencesManager = get()) }
 }
 
 /**
