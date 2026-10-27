@@ -16,8 +16,9 @@ class TestDataStores {
     private var counter = 0
 
     fun createDataStore(name: String): DataStore<Preferences> {
+        // 文件名必须带 .preferences_pb 后缀（PreferenceDataStoreFactory 强制检查）。
         val file = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
-            .resolve("repoi-test-${(counter++).toString()}-$name")
+            .resolve("repoi-test-${(counter++).toString()}-$name.preferences_pb")
         created.add(file)
         return PreferenceDataStoreFactory.createWithPath(produceFile = { file })
     }
