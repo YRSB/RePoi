@@ -2,7 +2,6 @@ package com.nobody.repoi.network
 
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.setBody
 import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
@@ -19,9 +18,10 @@ import io.ktor.http.parameters
  * - 非表单 POST body（如 multipart 上传）：只加头，不碰 body。
  *
  * 注意 Ktor pipeline 语义：[onRequest] 挂在 `HttpRequestPipeline.State`，
- * 此时 `request.body` 是用户设置的**原始 body**（`Parameters`/`EmptyContent`/自定义类型），
- * 而 `FormDataContent` 是 `Transform` 阶段才生成的 `OutgoingContent`。
- * 因此合并逻辑必须处理原始类型，不能只匹配 `FormDataContent`。
+ * 此时修改 `request.body` 不会同步到已固定的 pipeline subject（Transform/Render
+ * 阶段用的是 subject）。因此 POST 表单合并必须在 [transformRequestBody]
+ * （挂在 `Transform` 阶段，用 `proceedWith` 更新 subject）中完成；
+ * [onRequest] 只负责头与 GET query（这两者直接改 builder，即时生效）。
  */
 val CommonParamsPlugin = createClientPlugin("CommonParamsPlugin", ::CommonParamsConfig) {
     val tokenProvider = pluginConfig.tokenProvider
@@ -48,33 +48,29 @@ val CommonParamsPlugin = createClientPlugin("CommonParamsPlugin", ::CommonParams
         request.headers.append("Referer", CommonParamsConfig.REFERER_URL)
         request.headers.append("User-Agent", CommonParamsConfig.USER_AGENT)
 
-        val common = commonParams()
-
-        if (request.method == HttpMethod.Post) {
-            when (val body = request.body) {
-                // 常见写法：setBody(FormDataContent(...)) 或 submitForm 全路径。
-                // FormDataContent 在 State 阶段仍是原始 body，直接合并重设。
-                is FormDataContent -> {
-                    request.setBody(FormDataContent(mergeInto(body.formData, common)))
-                }
-                // submitForm(parameters { ... }) 传的是原始 Parameters。
-                is Parameters -> {
-                    request.setBody(FormDataContent(mergeInto(body, common)))
-                }
-                // 空 POST：创建仅含公共参数的表单体。
-                is EmptyContent -> {
-                    request.setBody(FormDataContent(mergeInto(Parameters.Empty, common)))
-                }
-                // 非表单 body（如 multipart 上传）：只加头，不合并参数。
-                else -> Unit
-            }
-        } else {
+        if (request.method != HttpMethod.Post) {
+            val common = commonParams()
             val existingNames = request.url.parameters.names()
             common.forEach { (key, value) ->
                 if (!existingNames.contains(key)) {
                     request.url.parameters.append(key, value)
                 }
             }
+        }
+    }
+
+    transformRequestBody { request, content, _ ->
+        if (request.method != HttpMethod.Post) return@transformRequestBody null
+        val common = commonParams()
+        when (content) {
+            // setBody(FormDataContent(...))：原始 body 即 FormDataContent，直接合并。
+            is FormDataContent -> FormDataContent(mergeInto(content.formData, common))
+            // submitForm(parameters { ... })：原始 body 是 Parameters。
+            is Parameters -> FormDataContent(mergeInto(content, common))
+            // 空 POST：创建仅含公共参数的表单体。
+            is EmptyContent -> FormDataContent(mergeInto(Parameters.Empty, common))
+            // 非表单 body（如 multipart 上传）：返回 null，不碰 body。
+            else -> null
         }
     }
 }
