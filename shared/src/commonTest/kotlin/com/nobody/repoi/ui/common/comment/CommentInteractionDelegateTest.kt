@@ -314,26 +314,33 @@ class CommentInteractionDelegateTest {
     }
 
     @Test
-    fun observeDeletedComments_removesFromBothLists() = runTest {
+    fun observeDeletedComments_removesFromBothLists(): Unit = runBlocking {
         // 新增用例：覆盖 observeCommentUpdates 的 deletedComments 分支
         // （老项目无此用例；删除广播由 deleteMainComment 内部 emit，
         // 观察者收到后应从两路列表移除，删除广播本身不写 commentActionMessage）。
-        val stateFlow = MutableStateFlow(
-            TestCommentState(
-                hotComments = listOf(sampleComment(1L)),
-                latestComments = listOf(sampleComment(1L), sampleComment(2L))
+        // runBlocking + 真实 scope：observe 的 collect 是无限挂起协程，
+        // 传 runTest 的 this 会导致 UncompletedCoroutinesError，传 backgroundScope
+        // 又收不到 advanceUntilIdle 驱动；真实 scope + 条件轮询最稳。
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val stateFlow = MutableStateFlow(
+                TestCommentState(
+                    hotComments = listOf(sampleComment(1L)),
+                    latestComments = listOf(sampleComment(1L), sampleComment(2L))
+                )
             )
-        )
-        delegate.observeCommentUpdates(this, stateFlow)
-        testScheduler.runCurrent()
+            delegate.observeCommentUpdates(scope, stateFlow)
 
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        val deleteState = MutableStateFlow(TestCommentState(latestComments = listOf(sampleComment(1L))))
-        delegate.deleteMainComment(deleteState, 1L)
-        advanceUntilIdle()
+            mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+            val deleteState = MutableStateFlow(TestCommentState(latestComments = listOf(sampleComment(1L))))
+            delegate.deleteMainComment(deleteState, 1L)
+            awaitCondition { stateFlow.value.hotComments.isEmpty() }
 
-        assertTrue(stateFlow.value.hotComments.isEmpty())
-        assertEquals(listOf(2L), stateFlow.value.latestComments.map { it.id })
-        assertNull(stateFlow.value.commentActionMessage)
+            assertTrue(stateFlow.value.hotComments.isEmpty())
+            assertEquals(listOf(2L), stateFlow.value.latestComments.map { it.id })
+            assertNull(stateFlow.value.commentActionMessage)
+        } finally {
+            scope.cancel()
+        }
     }
 }
