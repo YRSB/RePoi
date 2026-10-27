@@ -3,6 +3,8 @@ package com.nobody.repoi.ui.detail
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -67,7 +69,7 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(10, viewModel.uiState.value.latestComments.size)
         assertTrue(viewModel.uiState.value.hasMoreComments)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -81,7 +83,7 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(3, viewModel.uiState.value.latestComments.size)
         assertFalse(viewModel.uiState.value.hasMoreComments)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -102,7 +104,7 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(18, viewModel.uiState.value.latestComments.size)
         assertTrue(viewModel.uiState.value.hasMoreComments)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -123,7 +125,7 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(10, viewModel.uiState.value.latestComments.size)
         assertFalse(viewModel.uiState.value.hasMoreComments)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -144,6 +146,6 @@ class HobbyDetailViewModelPagingTest {
 
         assertFalse(viewModel.uiState.value.isLoadingMoreComments)
         assertNotNull(viewModel.uiState.value.commentsError)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

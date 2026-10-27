@@ -10,6 +10,8 @@ import com.nobody.repoi.ui.navigation.PictureListNavParam
 import io.ktor.client.HttpClient
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -88,7 +90,7 @@ class PictureListViewModelTest {
         assertEquals(20, state.items.size)
         assertTrue(state.hasMore)
         assertEquals(1, state.currentPage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -103,7 +105,7 @@ class PictureListViewModelTest {
         assertFalse(state.isLoading)
         assertTrue(state.items.isEmpty())
         assertEquals("网络异常", state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -128,7 +130,7 @@ class PictureListViewModelTest {
         // page2 返回 6 项 (< 20)，说明已到达末尾
         assertFalse(state.hasMore)
         assertEquals(2, state.currentPage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -148,7 +150,7 @@ class PictureListViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(30, state.items.size)
         assertFalse(state.isAppending)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -169,7 +171,7 @@ class PictureListViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(1, state.items.size)
         assertEquals(99L, state.items.first().id)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -192,6 +194,6 @@ class PictureListViewModelTest {
         // page=2 的请求只发出一次
         val page2Count = mock.engine.requestHistory.count { pageOf(it.recordedBody()) == "2" }
         assertEquals(1, page2Count)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

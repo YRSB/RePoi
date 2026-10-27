@@ -1,6 +1,8 @@
 package com.nobody.repoi.ui.detail
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -39,7 +41,7 @@ class HobbyDetailViewModelTimelineTest {
         assertEquals(2, state.timeline.size)
         assertEquals("出荷延期", state.timeline[0].displayTypeLabel)
         assertEquals("开订时间", state.timeline[1].displayTypeLabel)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -53,6 +55,6 @@ class HobbyDetailViewModelTimelineTest {
         val state = viewModel.uiState.value
         assertFalse(state.isTimelineLoading)
         assertTrue(state.timeline.isEmpty())
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

@@ -12,6 +12,8 @@ import io.ktor.client.HttpClient
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -110,7 +112,7 @@ class ItemHomeViewModelTest {
         assertFalse(state.isLoading)
         assertFalse(state.isRefreshing)
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -125,7 +127,7 @@ class ItemHomeViewModelTest {
         assertTrue(state.errorMessage?.contains("网络异常") == true)
         assertTrue(state.preOrderItems.isEmpty())
         assertTrue(state.releaseItems.isEmpty())
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -145,7 +147,7 @@ class ItemHomeViewModelTest {
         assertEquals(listOf(4L), state.releaseItems.map { it.id })
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -159,7 +161,7 @@ class ItemHomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -179,7 +181,7 @@ class ItemHomeViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -197,7 +199,7 @@ class ItemHomeViewModelTest {
         assertEquals(listOf(2L), state.releaseItems.map { it.id })
         assertTrue(state.errorMessage?.contains("刷新失败") == true)
         assertFalse(state.isRefreshing)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -213,7 +215,7 @@ class ItemHomeViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf(1L), state.preOrderItems.map { it.id })
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -229,6 +231,6 @@ class ItemHomeViewModelTest {
         viewModel.resetScrollPosition()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

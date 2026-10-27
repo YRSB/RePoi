@@ -10,6 +10,8 @@ import com.nobody.repoi.test.TestDataStores
 import com.nobody.repoi.test.TestDispatchers
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -108,7 +110,7 @@ class HomeFeedViewModelTest {
         assertTrue(state.hasMore)
         assertFalse(state.isInitialLoading)
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -123,7 +125,7 @@ class HomeFeedViewModelTest {
         assertTrue(state.items.isEmpty())
         assertFalse(state.isInitialLoading)
         assertTrue(state.errorMessage?.contains("网络异常") == true)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -137,7 +139,7 @@ class HomeFeedViewModelTest {
         assertTrue(viewModel.uiState.value.items.isEmpty())
         assertFalse(viewModel.uiState.value.hasMore)
         assertEquals(0L, viewModel.uiState.value.lastTime)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -158,7 +160,7 @@ class HomeFeedViewModelTest {
         assertEquals(200L, state.lastTime)
         // 真 DataStore 持久化验证
         assertEquals("z100", preferences.feedZoneTabKey)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -173,7 +175,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -190,7 +192,7 @@ class HomeFeedViewModelTest {
         assertEquals("confirm", viewModel.uiState.value.selectedSubType)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
         assertEquals("confirm", preferences.feedSubType)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -210,7 +212,7 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(2L), state.items.map { it.id })
         assertEquals("all", preferences.feedZoneTabKey)
         assertEquals("recommend", preferences.feedSubType)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -229,7 +231,7 @@ class HomeFeedViewModelTest {
         assertEquals(200L, state.lastTime)
         assertFalse(state.isRefreshing)
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -247,7 +249,7 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), state.items.map { it.id })
         assertFalse(state.isRefreshing)
         assertTrue(state.errorMessage?.contains("刷新失败") == true)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -266,7 +268,7 @@ class HomeFeedViewModelTest {
         assertEquals(300L, state.lastTime)
         assertFalse(state.isLoadingMore)
         assertTrue(state.hasMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -283,7 +285,7 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), viewModel.uiState.value.items.map { it.id })
         assertFalse(viewModel.uiState.value.hasMore)
         assertFalse(viewModel.uiState.value.isLoadingMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -301,7 +303,7 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), state.items.map { it.id })
         assertTrue(state.loadMoreError?.contains("翻页失败") == true)
         assertFalse(state.isLoadingMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -316,7 +318,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -333,7 +335,7 @@ class HomeFeedViewModelTest {
         viewModel.resetScrollPosition()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -362,7 +364,7 @@ class HomeFeedViewModelTest {
         assertEquals("z100", categories[2].tabKey)
         assertEquals("手办", categories[2].name)
         assertEquals(100L, categories[2].nodeId)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -385,7 +387,7 @@ class HomeFeedViewModelTest {
         assertEquals("all", categories[0].tabKey)
         assertEquals("follow", categories[1].tabKey)
         assertEquals("z100", categories[2].tabKey)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -408,7 +410,7 @@ class HomeFeedViewModelTest {
         assertEquals("follow", categories[0].tabKey)
         assertEquals("z200", categories[1].tabKey)
         assertEquals("z100", categories[2].tabKey)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -425,6 +427,6 @@ class HomeFeedViewModelTest {
         assertFalse(state.isInitialLoading)
         // 验证没有向 feed 接口请求：只有 zone-tabs 1 个请求
         assertEquals(1, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

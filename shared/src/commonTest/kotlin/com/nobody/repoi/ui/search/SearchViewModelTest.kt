@@ -12,6 +12,8 @@ import com.nobody.repoi.test.TestDispatchers
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -114,7 +116,7 @@ class SearchViewModelTest {
         assertTrue(state.hasMore)
         assertFalse(state.isLoading)
         assertEquals(1, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -131,7 +133,7 @@ class SearchViewModelTest {
         assertFalse(state.isLoadingHotwords)
         // 只有热词 1 个请求，无搜索请求
         assertEquals(1, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -148,7 +150,7 @@ class SearchViewModelTest {
         assertEquals(88L, state.selectedCompany?.nodeId)
         assertEquals("GSC", state.selectedCompany?.itemName)
         assertEquals(1, state.availableCompanies.size)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -164,7 +166,7 @@ class SearchViewModelTest {
         assertEquals("初音", viewModel.uiState.value.keyword)
         assertEquals(SearchTab.HOBBY, viewModel.uiState.value.selectedTab)
         assertEquals(1, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -181,7 +183,7 @@ class SearchViewModelTest {
         assertEquals(1, mock.requestCount)
         assertEquals(listOf("初音未来"), viewModel.uiState.value.suggestions)
         assertTrue(viewModel.uiState.value.isSuggestionsVisible)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -200,7 +202,7 @@ class SearchViewModelTest {
         assertFalse(state.isSuggestionsVisible)
         assertTrue(state.items.isEmpty())
         assertFalse(state.isSubmitted)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -211,7 +213,7 @@ class SearchViewModelTest {
 
         assertFalse(viewModel.uiState.value.isSubmitted)
         assertEquals(0, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -227,7 +229,7 @@ class SearchViewModelTest {
         assertTrue(viewModel.uiState.value.isSubmitted)
         // 真历史仓储验证
         assertTrue(searchRepository.searchHistoryFlow.first().contains("初音"))
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -245,7 +247,7 @@ class SearchViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(SearchTab.ALBUM, state.selectedTab)
         assertEquals(listOf(2L), state.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -259,7 +261,7 @@ class SearchViewModelTest {
 
         assertEquals("相册热词", viewModel.uiState.value.hotwordsMap[70000]?.first()?.word)
         assertEquals(countBefore + 1, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -276,7 +278,7 @@ class SearchViewModelTest {
 
         assertEquals("hits", viewModel.uiState.value.order)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -297,7 +299,7 @@ class SearchViewModelTest {
         assertEquals(88L, viewModel.uiState.value.selectedCompany?.nodeId)
         assertEquals("2025", viewModel.uiState.value.selectedYear)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -316,7 +318,7 @@ class SearchViewModelTest {
 
         assertEquals(AlbumSubCategory.FIGURE, viewModel.uiState.value.selectedAlbumCategory)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -339,7 +341,7 @@ class SearchViewModelTest {
         assertEquals(ElementsSubCategory.CHARACTER, state.selectedElementsCategory)
         assertEquals("主角", state.attributeMap[40100]?.first()?.name)
         assertEquals(listOf(2L), state.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -359,7 +361,7 @@ class SearchViewModelTest {
 
         assertEquals(15, viewModel.uiState.value.selectedAttribute)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -385,7 +387,7 @@ class SearchViewModelTest {
         assertEquals(12L, state.userItems.last().userId)
         assertEquals(2, state.page)
         assertFalse(state.hasMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -405,7 +407,7 @@ class SearchViewModelTest {
         assertEquals(2, state.page)
         assertEquals(40, state.totalCount)
         assertFalse(state.hasMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -421,7 +423,7 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -436,7 +438,7 @@ class SearchViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertTrue(state.errorMessage?.contains("搜索服务不可用") == true)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -454,7 +456,7 @@ class SearchViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf(9L), state.items.map { it.id })
         assertFalse(state.isRefreshing)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -475,7 +477,7 @@ class SearchViewModelTest {
         assertTrue(state.suggestions.isEmpty())
         assertFalse(state.isSuggestionsVisible)
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -490,7 +492,7 @@ class SearchViewModelTest {
 
         assertEquals(1, mock.requestCount)
         assertEquals(1, viewModel.uiState.value.attributeMap[40100]?.size)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -506,7 +508,7 @@ class SearchViewModelTest {
 
         assertEquals("新热词", viewModel.uiState.value.hotwordsMap[10000]?.first()?.word)
         assertEquals(2, mock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -530,6 +532,6 @@ class SearchViewModelTest {
         viewModel.onClearHistory()
         advanceUntilIdle()
         assertTrue(searchRepository.searchHistoryFlow.first().isEmpty())
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

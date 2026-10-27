@@ -11,6 +11,8 @@ import com.nobody.repoi.test.TestDispatchers
 import com.nobody.repoi.test.recordedBody
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -116,7 +118,7 @@ class PictureGalleryViewModelTest {
         assertFalse(state.isRelateLoading)
         assertFalse(state.showRaw)
         assertFalse(state.isLongImage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -138,7 +140,7 @@ class PictureGalleryViewModelTest {
         // 第一次切页的延迟回填任务被取消，getCollectState(1) 永不发出
         assertEquals(0, countRequests("api/collect/state", 1L))
         assertEquals(1, countRequests("api/collect/state", 2L))
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -171,7 +173,7 @@ class PictureGalleryViewModelTest {
         assertEquals(5, viewModel.uiState.value.collectCount)
         assertEquals("收藏失败", viewModel.uiState.value.toastMessage)
         assertEquals(1, countRequests("api/collect/item/add", item.id))
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -198,7 +200,7 @@ class PictureGalleryViewModelTest {
         assertFalse(viewModel.uiState.value.isCollected)
         assertEquals(4, viewModel.uiState.value.collectCount)
         assertEquals(1, countRequests("api/collect/del", item.id))
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -222,7 +224,7 @@ class PictureGalleryViewModelTest {
         viewModel.loadRelate(item)
         advanceUntilIdle()
         assertEquals(2, countRequests("api/pic/relate"))
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -243,7 +245,7 @@ class PictureGalleryViewModelTest {
         viewModel.submitReport(item, "失败")
         advanceUntilIdle()
         assertEquals("举报失败", viewModel.uiState.value.toastMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -257,6 +259,6 @@ class PictureGalleryViewModelTest {
 
         viewModel.markLongImage()
         assertTrue(viewModel.uiState.value.isLongImage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

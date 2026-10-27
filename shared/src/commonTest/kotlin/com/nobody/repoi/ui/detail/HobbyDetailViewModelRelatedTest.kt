@@ -2,6 +2,8 @@ package com.nobody.repoi.ui.detail
 
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -43,7 +45,7 @@ class HobbyDetailViewModelRelatedTest {
         assertEquals("再版", state.relatedHobbies[0].typeName)
         assertEquals("初音未来 再版", state.relatedHobbies[0].displayName)
         assertEquals(102L, state.relatedHobbies[1].actualItemId)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -59,6 +61,6 @@ class HobbyDetailViewModelRelatedTest {
 
         val state = viewModel.uiState.value
         assertTrue(state.relatedHobbies.isEmpty())
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

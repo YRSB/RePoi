@@ -10,6 +10,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -85,7 +87,7 @@ class HobbyAlbumListViewModelTest {
         assertEquals(HobbyAlbumSortOrder.HOT, state.selectedOrder)
         assertTrue(state.hasMore)
         assertNull(state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -101,7 +103,7 @@ class HobbyAlbumListViewModelTest {
         assertTrue(state.albums.isEmpty())
         assertNotNull(state.errorMessage)
         assertEquals("网络异常", state.errorMessage)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -132,7 +134,7 @@ class HobbyAlbumListViewModelTest {
         assertFalse(state.isInitialLoading)
         assertEquals(6, state.albums.size)
         assertEquals("最新 10", state.albums.first().displayName)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -151,7 +153,7 @@ class HobbyAlbumListViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(6, state.albums.size)
         assertEquals("刷新 10", state.albums.first().displayName)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -173,6 +175,6 @@ class HobbyAlbumListViewModelTest {
         assertEquals(30, state.albums.size)
         assertEquals(2, state.page)
         assertFalse(state.hasMore)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

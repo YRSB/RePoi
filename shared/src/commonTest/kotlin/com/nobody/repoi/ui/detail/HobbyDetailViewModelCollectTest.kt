@@ -4,6 +4,8 @@ import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectData
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -50,7 +52,7 @@ class HobbyDetailViewModelCollectTest {
             CollectData(id = 100L, state = CollectConstants.STATE_CARE),
             viewModel.uiState.value.currentCollectData
         )
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -62,7 +64,7 @@ class HobbyDetailViewModelCollectTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isFavorite)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -94,7 +96,7 @@ class HobbyDetailViewModelCollectTest {
 
         assertFalse(viewModel.uiState.value.isFavorite)
         assertEquals(0, viewModel.uiState.value.collectCountDelta)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -127,7 +129,7 @@ class HobbyDetailViewModelCollectTest {
 
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -141,6 +143,6 @@ class HobbyDetailViewModelCollectTest {
         // 失败不误报为未收藏，保持初始态
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

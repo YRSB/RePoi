@@ -2,6 +2,8 @@ package com.nobody.repoi.ui.detail
 
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -44,7 +46,7 @@ class HobbyDetailViewModelExHobbyTest {
         assertEquals(2, state.exHobbyPics.size)
         assertEquals("path/pic1.jpg", state.exHobbyPics[0].path)
         assertEquals(1, env.exMock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -61,7 +63,7 @@ class HobbyDetailViewModelExHobbyTest {
         assertFalse(state.isExHobbyLoading)
         assertTrue(state.exHobbyPics.isEmpty())
         assertEquals(0, env.exMock.requestCount)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -81,7 +83,7 @@ class HobbyDetailViewModelExHobbyTest {
         val state = viewModel.uiState.value
         assertFalse(state.isExHobbyLoading)
         assertTrue(state.exHobbyPics.isEmpty())
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -112,6 +114,6 @@ class HobbyDetailViewModelExHobbyTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isExHobbyEnabled)
-        viewModel.close()
+        viewModel.viewModelScope.cancel()
     }
 }

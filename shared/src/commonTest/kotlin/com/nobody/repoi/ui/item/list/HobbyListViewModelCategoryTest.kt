@@ -13,6 +13,8 @@ import com.nobody.repoi.test.recordedBody
 import io.ktor.client.HttpClient
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -92,7 +94,7 @@ class HobbyListViewModelCategoryTest {
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertEquals(1, vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -102,7 +104,7 @@ class HobbyListViewModelCategoryTest {
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -112,7 +114,7 @@ class HobbyListViewModelCategoryTest {
         advanceUntilIdle()
         assertEquals(9999, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -124,7 +126,7 @@ class HobbyListViewModelCategoryTest {
         assertEquals(1, vm.uiState.value.subCategoryId)
         advanceUntilIdle()
         assertEquals("1", lastForm()["category"])
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -135,7 +137,7 @@ class HobbyListViewModelCategoryTest {
         vm.setCategory(100)
         advanceUntilIdle()
         assertNull(vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -150,7 +152,7 @@ class HobbyListViewModelCategoryTest {
         assertEquals("320", last["r18"])
         assertEquals("649231,649234", last["specs"])
         assertEquals("24", last["pageSize"])
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -163,7 +165,7 @@ class HobbyListViewModelCategoryTest {
         assertNull(vm.uiState.value.r18)
         assertNull(vm.uiState.value.workers)
         assertNull(vm.uiState.value.tag)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -198,7 +200,7 @@ class HobbyListViewModelCategoryTest {
         assertNull(vm.uiState.value.r18)
         assertEquals(10000, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 
     @Test
@@ -218,6 +220,6 @@ class HobbyListViewModelCategoryTest {
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
-        vm.close()
+        vm.viewModelScope.cancel()
     }
 }
