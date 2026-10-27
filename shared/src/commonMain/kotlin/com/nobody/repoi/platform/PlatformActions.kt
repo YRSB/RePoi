@@ -15,6 +15,7 @@ interface PlatformActions {
     suspend fun pickImage(): PickedImage?
     suspend fun saveImage(bytes: ByteArray, displayName: String): Result<String>
     suspend fun shareTextFile(fileName: String, content: String)
+    fun shareText(title: String, text: String)
     fun appVersionName(): String
 }
 

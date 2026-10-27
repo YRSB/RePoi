@@ -74,6 +74,12 @@ class JvmPlatformActions : PlatformActions {
         }
     }
 
+    override fun shareText(title: String, text: String) {
+        // 桌面端无系统分享面板：降级为复制到剪贴板 + 提示。
+        copyToClipboard(title, text)
+        showToast("已复制到剪贴板，可粘贴分享")
+    }
+
     override fun appVersionName(): String = "1.0.0"
 
     private fun guessMimeType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {

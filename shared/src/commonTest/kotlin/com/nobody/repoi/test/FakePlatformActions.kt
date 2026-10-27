@@ -19,5 +19,6 @@ class FakePlatformActions(
     override suspend fun saveImage(bytes: ByteArray, displayName: String): Result<String> =
         Result.success("fake-path")
     override suspend fun shareTextFile(fileName: String, content: String) = Unit
+    override fun shareText(title: String, text: String) = Unit
     override fun appVersionName(): String = "test"
 }
