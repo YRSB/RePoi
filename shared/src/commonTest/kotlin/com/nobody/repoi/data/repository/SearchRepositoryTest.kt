@@ -44,7 +44,6 @@ class SearchRepositoryTest {
         api = HpoiApi(client, json)
         stores = TestDataStores()
         historyManager = SearchHistoryManager(stores.createDataStore("search_history"), json)
-        apiService = api
         repository = SearchRepository(api, historyManager)
     }
 

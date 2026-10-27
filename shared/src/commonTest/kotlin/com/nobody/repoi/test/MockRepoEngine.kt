@@ -83,7 +83,7 @@ class MockRepoEngine {
 
 /** 对应 `RecordedRequest.path`：encodedPath + query。 */
 val HttpRequestData.recordedPath: String
-    get() = url.fullPath
+    get() = url.encodedPathAndQuery
 
 /** 对应 `RecordedRequest.body.readUtf8()`：表单体重编码为 `k=v&...`；空 body 返回空串。 */
 fun HttpRequestData.recordedBody(): String {

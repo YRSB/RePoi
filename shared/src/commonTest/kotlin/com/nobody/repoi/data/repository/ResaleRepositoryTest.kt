@@ -36,8 +36,7 @@ class ResaleRepositoryTest {
         client = HttpClient(mock.engine) { expectSuccess = true }
         api = HpoiApi(client, json)
         repository = ResaleRepository(
-            apiService = api
-        )
+            )
     }
 
     @AfterTest

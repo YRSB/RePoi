@@ -188,10 +188,10 @@ class PostRepositoryTest {
         assertEquals("补齐的手办", post.relateItem?.displayName)
 
         val req1 = mock.takeRequest()
-        assertTrue(req1.path?.contains("api/posts/info") == true)
+        assertTrue(req1.recordedPath?.contains("api/posts/info") == true)
         val req2 = mock.takeRequest()
-        assertTrue(req2.path?.contains("api/posts/info-v2") == true)
-        assertTrue(req2.path?.contains("itemId=5450") == true)
+        assertTrue(req2.recordedPath?.contains("api/posts/info-v2") == true)
+        assertTrue(req2.recordedPath?.contains("itemId=5450") == true)
     }
 
     @Test
@@ -308,7 +308,7 @@ class PostRepositoryTest {
         assertEquals(HttpMethod.Post, recorded.method)
         assertTrue(recorded.recordedPath?.contains("api/discuss/add") == true)
         val body = recorded.recordedBody()
-        val decoded = java.net.body.decodeURLPart()
+        val decoded = body.decodeURLPart()
         assertTrue(decoded.contains("itemNodeId=12345"))
         assertTrue(decoded.contains("content=测试回帖"))
     }
