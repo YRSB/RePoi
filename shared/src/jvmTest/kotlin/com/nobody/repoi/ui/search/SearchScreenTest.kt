@@ -20,8 +20,10 @@ import com.nobody.repoi.ui.common.comment.stopTestKoin
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -108,7 +110,16 @@ class SearchScreenTest {
         composeRule.onNodeWithText("搜索超时").assertIsDisplayed()
         val countBefore = mock.requestCount
         composeRule.onNodeWithText("重试").performClick()
-        runBlocking { vm.uiState.first { !it.isRefreshing } }
+        // 点击后 `isRefreshing` 的 false→true→false 翻转可能快于 first{} 订阅而漏等；
+        // 先轮询请求计数+1 再等状态收敛。
+        runBlocking {
+            withTimeout(10_000) {
+                while (mock.requestCount < countBefore + 1) {
+                    delay(10)
+                }
+                vm.uiState.first { !it.isRefreshing }
+            }
+        }
 
         assertTrue(mock.requestCount > countBefore)
     }
@@ -139,7 +150,15 @@ class SearchScreenTest {
         composeRule.onNodeWithText("初音未来").assertIsDisplayed()
         val countBefore = mock.requestCount
         composeRule.onNodeWithText("初音未来").performClick()
-        runBlocking { vm.uiState.first { !it.isLoading } }
+        // 历史点选直接 submit：同样先等请求计数+1 再等 isLoading 收敛，避免漏等。
+        runBlocking {
+            withTimeout(10_000) {
+                while (mock.requestCount < countBefore + 1) {
+                    delay(10)
+                }
+                vm.uiState.first { !it.isLoading }
+            }
+        }
 
         assertTrue(mock.requestCount > countBefore)
         assertEquals("初音未来", vm.uiState.value.keyword)

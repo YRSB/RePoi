@@ -96,7 +96,7 @@ class ItemHomeViewModelTest {
     }
 
     @Test
-    fun initialLoad_populatesCategoriesAndBothSections() = runTest {
+    fun initialLoad_populatesCategoriesAndBothSections() = runTest(dispatchers.testDispatcher) {
         stubPreview()
 
         val viewModel = createViewModel()
@@ -110,10 +110,11 @@ class ItemHomeViewModelTest {
         assertFalse(state.isLoading)
         assertFalse(state.isRefreshing)
         assertNull(state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun initialLoad_failureSetsError() = runTest {
+    fun initialLoad_failureSetsError() = runTest(dispatchers.testDispatcher) {
         stubPreviewFailure()
 
         val viewModel = createViewModel()
@@ -124,10 +125,11 @@ class ItemHomeViewModelTest {
         assertTrue(state.errorMessage?.contains("网络异常") == true)
         assertTrue(state.preOrderItems.isEmpty())
         assertTrue(state.releaseItems.isEmpty())
+        viewModel.close()
     }
 
     @Test
-    fun selectCategory_reloadsWithNewCategory() = runTest {
+    fun selectCategory_reloadsWithNewCategory() = runTest(dispatchers.testDispatcher) {
         stubPreview()
 
         val viewModel = createViewModel()
@@ -143,10 +145,11 @@ class ItemHomeViewModelTest {
         assertEquals(listOf(4L), state.releaseItems.map { it.id })
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+        viewModel.close()
     }
 
     @Test
-    fun selectSameCategory_doesNotReload() = runTest {
+    fun selectSameCategory_doesNotReload() = runTest(dispatchers.testDispatcher) {
         stubPreview()
 
         val viewModel = createViewModel()
@@ -156,10 +159,11 @@ class ItemHomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
+        viewModel.close()
     }
 
     @Test
-    fun refresh_keepsItemsWhileReloadingAndUpdatesThem() = runTest {
+    fun refresh_keepsItemsWhileReloadingAndUpdatesThem() = runTest(dispatchers.testDispatcher) {
         stubPreview()
 
         val viewModel = createViewModel()
@@ -175,10 +179,11 @@ class ItemHomeViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+        viewModel.close()
     }
 
     @Test
-    fun refresh_failureKeepsPreviousItems() = runTest {
+    fun refresh_failureKeepsPreviousItems() = runTest(dispatchers.testDispatcher) {
         stubPreview()
 
         val viewModel = createViewModel()
@@ -192,10 +197,11 @@ class ItemHomeViewModelTest {
         assertEquals(listOf(2L), state.releaseItems.map { it.id })
         assertTrue(state.errorMessage?.contains("刷新失败") == true)
         assertFalse(state.isRefreshing)
+        viewModel.close()
     }
 
     @Test
-    fun retry_reloadsCurrentCategory() = runTest {
+    fun retry_reloadsCurrentCategory() = runTest(dispatchers.testDispatcher) {
         stubPreviewFailure()
 
         val viewModel = createViewModel()
@@ -207,10 +213,11 @@ class ItemHomeViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf(1L), state.preOrderItems.map { it.id })
         assertNull(state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun savingScrollPosition_isIndependentFromReload() = runTest {
+    fun savingScrollPosition_isIndependentFromReload() = runTest(dispatchers.testDispatcher) {
         stubPreview()
         val viewModel = createViewModel()
         advanceUntilIdle()
@@ -222,5 +229,6 @@ class ItemHomeViewModelTest {
         viewModel.resetScrollPosition()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+        viewModel.close()
     }
 }

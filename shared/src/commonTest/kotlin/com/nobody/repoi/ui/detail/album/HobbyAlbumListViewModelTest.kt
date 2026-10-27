@@ -71,7 +71,7 @@ class HobbyAlbumListViewModelTest {
         (req.body as? io.ktor.client.request.forms.FormDataContent)?.formData?.get(key)
 
     @Test
-    fun loadInitial_success_populatesAlbumsAndUpdatesState() = runTest {
+    fun loadInitial_success_populatesAlbumsAndUpdatesState() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(albumsJson(1L..20L) { "相册 $it" })
 
         val viewModel = HobbyAlbumListViewModel(repository)
@@ -85,10 +85,11 @@ class HobbyAlbumListViewModelTest {
         assertEquals(HobbyAlbumSortOrder.HOT, state.selectedOrder)
         assertTrue(state.hasMore)
         assertNull(state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun loadInitial_failure_setsErrorMessage() = runTest {
+    fun loadInitial_failure_setsErrorMessage() = runTest(dispatchers.testDispatcher) {
         mock.enqueue("""{"success":false,"code":500,"msg":"网络异常","data":null}""")
 
         val viewModel = HobbyAlbumListViewModel(repository)
@@ -100,10 +101,11 @@ class HobbyAlbumListViewModelTest {
         assertTrue(state.albums.isEmpty())
         assertNotNull(state.errorMessage)
         assertEquals("网络异常", state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun selectOrder_switchesOrderAndReloadsList() = runTest {
+    fun selectOrder_switchesOrderAndReloadsList() = runTest(dispatchers.testDispatcher) {
         mock.dynamicResponder = { req ->
             val order = formField(req, "order") ?: "hits"
             val body = if (order == "addTime") {
@@ -130,10 +132,11 @@ class HobbyAlbumListViewModelTest {
         assertFalse(state.isInitialLoading)
         assertEquals(6, state.albums.size)
         assertEquals("最新 10", state.albums.first().displayName)
+        viewModel.close()
     }
 
     @Test
-    fun refresh_success_updatesAlbums() = runTest {
+    fun refresh_success_updatesAlbums() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(albumsJson(1L..5L) { "初始 $it" })
         mock.enqueue(albumsJson(10L..15L) { "刷新 $it" })
 
@@ -148,10 +151,11 @@ class HobbyAlbumListViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(6, state.albums.size)
         assertEquals("刷新 10", state.albums.first().displayName)
+        viewModel.close()
     }
 
     @Test
-    fun loadMore_success_appendsNewAlbumsWithoutDuplicates() = runTest {
+    fun loadMore_success_appendsNewAlbumsWithoutDuplicates() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(albumsJson(1L..20L) { "相册 $it" })
         val page2 = "[${albumJson(20L, "相册 20 重复")}," +
             (21L..30L).joinToString(",") { albumJson(it, "相册 $it") } + "]"
@@ -169,5 +173,6 @@ class HobbyAlbumListViewModelTest {
         assertEquals(30, state.albums.size)
         assertEquals(2, state.page)
         assertFalse(state.hasMore)
+        viewModel.close()
     }
 }

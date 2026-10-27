@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
  *
  * 原测试用 StandardTestDispatcher + setMain 冻结协程以断言静默/重入语义；
  * KMP 侧 loader 的 stage 切换是同步的（`_state.update` 在 launch 之前），
- * 因此 Unconfined 下直接断言即可，`verify(times(1))` 翻译为请求历史计数。
+ * 因此 `advanceUntilIdle()` 后直接断言即可，`verify(times(1))` 翻译为请求历史计数。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PictureListViewModelTest {
@@ -74,7 +74,7 @@ class PictureListViewModelTest {
             ?.substringAfter("=")?.decodeURLPart() ?: ""
 
     @Test
-    fun loadInitial_success_populatesItemsAndUpdatesState() = runTest {
+    fun loadInitial_success_populatesItemsAndUpdatesState() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(picsJson(1L..20L))
 
         val viewModel = PictureListViewModel(repository)
@@ -88,10 +88,11 @@ class PictureListViewModelTest {
         assertEquals(20, state.items.size)
         assertTrue(state.hasMore)
         assertEquals(1, state.currentPage)
+        viewModel.close()
     }
 
     @Test
-    fun loadInitial_failure_setsErrorMessage() = runTest {
+    fun loadInitial_failure_setsErrorMessage() = runTest(dispatchers.testDispatcher) {
         mock.enqueue("""{"success":false,"code":500,"msg":"网络异常","data":null}""")
 
         val viewModel = PictureListViewModel(repository)
@@ -102,10 +103,11 @@ class PictureListViewModelTest {
         assertFalse(state.isLoading)
         assertTrue(state.items.isEmpty())
         assertEquals("网络异常", state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun loadMore_success_appendsItemsAndDeduplicates() = runTest {
+    fun loadMore_success_appendsItemsAndDeduplicates() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(picsJson(1L..20L))
         mock.enqueue(picsJson(20L..25L)) // 包含重复 ID 20
 
@@ -126,10 +128,11 @@ class PictureListViewModelTest {
         // page2 返回 6 项 (< 20)，说明已到达末尾
         assertFalse(state.hasMore)
         assertEquals(2, state.currentPage)
+        viewModel.close()
     }
 
     @Test
-    fun loadMoreSilently_success_doesNotTriggerAppendingState() = runTest {
+    fun loadMoreSilently_success_doesNotTriggerAppendingState() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(picsJson(1L..20L))
         mock.enqueue(picsJson(21L..30L))
 
@@ -145,10 +148,11 @@ class PictureListViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(30, state.items.size)
         assertFalse(state.isAppending)
+        viewModel.close()
     }
 
     @Test
-    fun refresh_success_reloadsPage1() = runTest {
+    fun refresh_success_reloadsPage1() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(picsJson(1L..20L))
         mock.enqueue(picsJson(listOf(99L)))
 
@@ -165,10 +169,11 @@ class PictureListViewModelTest {
         assertFalse(state.isRefreshing)
         assertEquals(1, state.items.size)
         assertEquals(99L, state.items.first().id)
+        viewModel.close()
     }
 
     @Test
-    fun loadMore_whileActive_ignoresReentrantCalls() = runTest {
+    fun loadMore_whileActive_ignoresReentrantCalls() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(picsJson(1L..20L))
         mock.enqueue(picsJson(21L..30L))
 
@@ -187,5 +192,6 @@ class PictureListViewModelTest {
         // page=2 的请求只发出一次
         val page2Count = mock.engine.requestHistory.count { pageOf(it.recordedBody()) == "2" }
         assertEquals(1, page2Count)
+        viewModel.close()
     }
 }

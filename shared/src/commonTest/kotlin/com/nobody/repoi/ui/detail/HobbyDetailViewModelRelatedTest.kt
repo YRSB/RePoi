@@ -28,7 +28,7 @@ class HobbyDetailViewModelRelatedTest {
     fun tearDown() = env.tearDown()
 
     @Test
-    fun loadDetail_whenRelatedHobbiesSuccess_updatesUiState() = runTest {
+    fun loadDetail_whenRelatedHobbiesSuccess_updatesUiState() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(
             groupBody = """{"success":true,"code":200,"msg":"ok","data":{"groups":[{"typeName":"再版","items":[{"id":101,"itemId":101,"nameCN":"初音未来 再版"},{"id":102,"itemId":102,"nameCN":"初音未来 韶华"}]}]}}"""
         )
@@ -43,10 +43,11 @@ class HobbyDetailViewModelRelatedTest {
         assertEquals("再版", state.relatedHobbies[0].typeName)
         assertEquals("初音未来 再版", state.relatedHobbies[0].displayName)
         assertEquals(102L, state.relatedHobbies[1].actualItemId)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenRelatedHobbiesFails_silentlyDegradesToEmpty() = runTest {
+    fun loadDetail_whenRelatedHobbiesFails_silentlyDegradesToEmpty() = runTest(env.dispatchers.testDispatcher) {
         // 两路均 HTTP 500：仓储抛 ApiException，VM 静默降级为空（规则先注册优先命中）。
         env.mock.respondWhen(Regex.fromLiteral("api/hobby/group"), "", HttpStatusCode.InternalServerError)
         env.mock.respondWhen(Regex.fromLiteral("api/hobby/push/list/V2"), "", HttpStatusCode.InternalServerError)
@@ -58,5 +59,6 @@ class HobbyDetailViewModelRelatedTest {
 
         val state = viewModel.uiState.value
         assertTrue(state.relatedHobbies.isEmpty())
+        viewModel.close()
     }
 }

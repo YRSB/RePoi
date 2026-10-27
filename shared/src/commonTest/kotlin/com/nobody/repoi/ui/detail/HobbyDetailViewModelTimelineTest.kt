@@ -25,7 +25,7 @@ class HobbyDetailViewModelTimelineTest {
     fun tearDown() = env.tearDown()
 
     @Test
-    fun loadDetail_whenTimelineSuccess_updatesTimelineState() = runTest {
+    fun loadDetail_whenTimelineSuccess_updatesTimelineState() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(
             timelineBody = """{"success":true,"code":200,"msg":"ok","data":{"list":[{"actionData":"delay","actionComment":"延期至7月","actionDateString":"2024-05-20"},{"actionData":"preorder","actionComment":"开启预订","actionDateString":"2024-01-10"}]}}"""
         )
@@ -39,10 +39,11 @@ class HobbyDetailViewModelTimelineTest {
         assertEquals(2, state.timeline.size)
         assertEquals("出荷延期", state.timeline[0].displayTypeLabel)
         assertEquals("开订时间", state.timeline[1].displayTypeLabel)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenTimelineFails_silentlyDegradesToEmpty() = runTest {
+    fun loadDetail_whenTimelineFails_silentlyDegradesToEmpty() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(timelineBody = env.failEnvelope())
 
         val viewModel = env.viewModel()
@@ -52,5 +53,6 @@ class HobbyDetailViewModelTimelineTest {
         val state = viewModel.uiState.value
         assertFalse(state.isTimelineLoading)
         assertTrue(state.timeline.isEmpty())
+        viewModel.close()
     }
 }

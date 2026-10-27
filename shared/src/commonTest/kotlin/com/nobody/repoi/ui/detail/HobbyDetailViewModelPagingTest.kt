@@ -57,7 +57,7 @@ class HobbyDetailViewModelPagingTest {
     private fun stubBasicsWithoutComments() = env.stubBasics(commentsBody = null)
 
     @Test
-    fun firstPageFull_hasMoreTrue() = runTest {
+    fun firstPageFull_hasMoreTrue() = runTest(env.dispatchers.testDispatcher) {
         stubBasicsWithoutComments()
         stubComments(mapOf("latest|1" to commentsJson(1..10)))
 
@@ -67,10 +67,11 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(10, viewModel.uiState.value.latestComments.size)
         assertTrue(viewModel.uiState.value.hasMoreComments)
+        viewModel.close()
     }
 
     @Test
-    fun firstPageShort_hasMoreFalse() = runTest {
+    fun firstPageShort_hasMoreFalse() = runTest(env.dispatchers.testDispatcher) {
         stubBasicsWithoutComments()
         stubComments(mapOf("latest|1" to commentsJson(1..3)))
 
@@ -80,10 +81,11 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(3, viewModel.uiState.value.latestComments.size)
         assertFalse(viewModel.uiState.value.hasMoreComments)
+        viewModel.close()
     }
 
     @Test
-    fun secondPage_dedupMerge() = runTest {
+    fun secondPage_dedupMerge() = runTest(env.dispatchers.testDispatcher) {
         stubBasicsWithoutComments()
         stubComments(
             mapOf(
@@ -100,10 +102,11 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(18, viewModel.uiState.value.latestComments.size)
         assertTrue(viewModel.uiState.value.hasMoreComments)
+        viewModel.close()
     }
 
     @Test
-    fun duplicatePage_blocksLoopWithoutGrowth() = runTest {
+    fun duplicatePage_blocksLoopWithoutGrowth() = runTest(env.dispatchers.testDispatcher) {
         stubBasicsWithoutComments()
         stubComments(
             mapOf(
@@ -120,10 +123,11 @@ class HobbyDetailViewModelPagingTest {
 
         assertEquals(10, viewModel.uiState.value.latestComments.size)
         assertFalse(viewModel.uiState.value.hasMoreComments)
+        viewModel.close()
     }
 
     @Test
-    fun nextPageFailure_reportsErrorAndStopsLoading() = runTest {
+    fun nextPageFailure_reportsErrorAndStopsLoading() = runTest(env.dispatchers.testDispatcher) {
         stubBasicsWithoutComments()
         stubComments(
             mapOf(
@@ -140,5 +144,6 @@ class HobbyDetailViewModelPagingTest {
 
         assertFalse(viewModel.uiState.value.isLoadingMoreComments)
         assertNotNull(viewModel.uiState.value.commentsError)
+        viewModel.close()
     }
 }

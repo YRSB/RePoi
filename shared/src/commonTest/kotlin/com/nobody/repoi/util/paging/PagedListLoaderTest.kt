@@ -28,7 +28,7 @@ class PagedListLoaderTest {
     fun tearDown() = dispatchers.tearDown()
 
     @Test
-    fun loadInitial_successPopulatesItemsAndResetsFlags() = runTest {
+    fun loadInitial_successPopulatesItemsAndResetsFlags() = runTest(dispatchers.testDispatcher) {
         val loader = pagedListLoader<TestItem>(
             scope = this,
             pageSize = 2,
@@ -53,7 +53,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun loadInitial_failureSetsInitialError() = runTest {
+    fun loadInitial_failureSetsInitialError() = runTest(dispatchers.testDispatcher) {
         val loader = pagedListLoader<TestItem>(
             scope = this,
             pageSize = 2
@@ -73,7 +73,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun refresh_replacesItemsAndMaintainsVisibilityDuringLoading() = runTest {
+    fun refresh_replacesItemsAndMaintainsVisibilityDuringLoading() = runTest(dispatchers.testDispatcher) {
         var fetchCount = 0
         val deferred = CompletableDeferred<List<TestItem>>()
 
@@ -110,7 +110,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun loadMore_appendsItemsAndDeduplicatesByStableKey() = runTest {
+    fun loadMore_appendsItemsAndDeduplicatesByStableKey() = runTest(dispatchers.testDispatcher) {
         val loader = pagedListLoader<TestItem>(
             scope = this,
             pageSize = 2,
@@ -139,7 +139,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun loadMore_concurrencyGuardDropsRepeatedCalls() = runTest {
+    fun loadMore_concurrencyGuardDropsRepeatedCalls() = runTest(dispatchers.testDispatcher) {
         var fetchCalls = 0
         val firstPageGate = CompletableDeferred<Unit>()
         val loader = pagedListLoader<TestItem>(
@@ -177,7 +177,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun inFlightCancellation_cancelsOldJobWhenNewInitialLoaded() = runTest {
+    fun inFlightCancellation_cancelsOldJobWhenNewInitialLoaded() = runTest(dispatchers.testDispatcher) {
         val slowDeferred = CompletableDeferred<List<TestItem>>()
         var callCount = 0
 
@@ -213,7 +213,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun mutateItems_updateAndRemoveItemsLocally() = runTest {
+    fun mutateItems_updateAndRemoveItemsLocally() = runTest(dispatchers.testDispatcher) {
         val loader = pagedListLoader<TestItem>(
             scope = this,
             pageSize = 3,
@@ -235,7 +235,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun retry_intelligentlyRecoversFromInitialAndAppendErrors() = runTest {
+    fun retry_intelligentlyRecoversFromInitialAndAppendErrors() = runTest(dispatchers.testDispatcher) {
         var failFirst = true
         var failMore = true
 
@@ -284,7 +284,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun pagedChunkLoader_explicitHasMoreHonored() = runTest {
+    fun pagedChunkLoader_explicitHasMoreHonored() = runTest(dispatchers.testDispatcher) {
         val loader = pagedChunkLoader<TestItem>(
             scope = this,
             pageSize = 2
@@ -303,7 +303,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun loadMore_whenInitialError_isGuardedAndDoesNotSkipPage() = runTest {
+    fun loadMore_whenInitialError_isGuardedAndDoesNotSkipPage() = runTest(dispatchers.testDispatcher) {
         var requestedPage = 0
         val loader = pagedListLoader<TestItem>(
             scope = this,
@@ -329,7 +329,7 @@ class PagedListLoaderTest {
     }
 
     @Test
-    fun loadMore_silent_suppressesVisualLoadingMoreState() = runTest {
+    fun loadMore_silent_suppressesVisualLoadingMoreState() = runTest(dispatchers.testDispatcher) {
         val loader = pagedListLoader<TestItem>(
             scope = this,
             pageSize = 2

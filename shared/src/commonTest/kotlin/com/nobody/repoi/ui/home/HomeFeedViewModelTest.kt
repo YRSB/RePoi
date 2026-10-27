@@ -93,7 +93,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest {
+    fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "1700000000000"), itemJson(2, "1600000000000")))
         stubZoneTabs()
 
@@ -108,10 +108,11 @@ class HomeFeedViewModelTest {
         assertTrue(state.hasMore)
         assertFalse(state.isInitialLoading)
         assertNull(state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun initialLoad_failureSetsErrorMessage() = runTest {
+    fun initialLoad_failureSetsErrorMessage() = runTest(dispatchers.testDispatcher) {
         mock.enqueue("""{"success":false,"code":500,"msg":"网络异常","data":null}""")
         stubZoneTabs()
 
@@ -122,10 +123,11 @@ class HomeFeedViewModelTest {
         assertTrue(state.items.isEmpty())
         assertFalse(state.isInitialLoading)
         assertTrue(state.errorMessage?.contains("网络异常") == true)
+        viewModel.close()
     }
 
     @Test
-    fun initialLoad_emptyPageClearsHasMore() = runTest {
+    fun initialLoad_emptyPageClearsHasMore() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson())
         stubZoneTabs()
 
@@ -135,10 +137,11 @@ class HomeFeedViewModelTest {
         assertTrue(viewModel.uiState.value.items.isEmpty())
         assertFalse(viewModel.uiState.value.hasMore)
         assertEquals(0L, viewModel.uiState.value.lastTime)
+        viewModel.close()
     }
 
     @Test
-    fun selectCategory_persistsFilterAndReloads() = runTest {
+    fun selectCategory_persistsFilterAndReloads() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -155,10 +158,11 @@ class HomeFeedViewModelTest {
         assertEquals(200L, state.lastTime)
         // 真 DataStore 持久化验证
         assertEquals("z100", preferences.feedZoneTabKey)
+        viewModel.close()
     }
 
     @Test
-    fun selectSameCategory_doesNotReload() = runTest {
+    fun selectSameCategory_doesNotReload() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -169,10 +173,11 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
+        viewModel.close()
     }
 
     @Test
-    fun selectSubType_persistsFilterAndReloads() = runTest {
+    fun selectSubType_persistsFilterAndReloads() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -185,10 +190,11 @@ class HomeFeedViewModelTest {
         assertEquals("confirm", viewModel.uiState.value.selectedSubType)
         assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
         assertEquals("confirm", preferences.feedSubType)
+        viewModel.close()
     }
 
     @Test
-    fun resetFilters_restoresDefaultsAndPersists() = runTest {
+    fun resetFilters_restoresDefaultsAndPersists() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -204,10 +210,11 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(2L), state.items.map { it.id })
         assertEquals("all", preferences.feedZoneTabKey)
         assertEquals("recommend", preferences.feedSubType)
+        viewModel.close()
     }
 
     @Test
-    fun refreshFeed_replacesItemsAndClearsError() = runTest {
+    fun refreshFeed_replacesItemsAndClearsError() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -222,10 +229,11 @@ class HomeFeedViewModelTest {
         assertEquals(200L, state.lastTime)
         assertFalse(state.isRefreshing)
         assertNull(state.errorMessage)
+        viewModel.close()
     }
 
     @Test
-    fun refreshFeed_failureKeepsExistingItems() = runTest {
+    fun refreshFeed_failureKeepsExistingItems() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -239,10 +247,11 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), state.items.map { it.id })
         assertFalse(state.isRefreshing)
         assertTrue(state.errorMessage?.contains("刷新失败") == true)
+        viewModel.close()
     }
 
     @Test
-    fun loadNextPage_appendsAndUsesLastTimeCursor() = runTest {
+    fun loadNextPage_appendsAndUsesLastTimeCursor() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -257,10 +266,11 @@ class HomeFeedViewModelTest {
         assertEquals(300L, state.lastTime)
         assertFalse(state.isLoadingMore)
         assertTrue(state.hasMore)
+        viewModel.close()
     }
 
     @Test
-    fun loadNextPage_emptyPageClearsHasMore() = runTest {
+    fun loadNextPage_emptyPageClearsHasMore() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -273,10 +283,11 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), viewModel.uiState.value.items.map { it.id })
         assertFalse(viewModel.uiState.value.hasMore)
         assertFalse(viewModel.uiState.value.isLoadingMore)
+        viewModel.close()
     }
 
     @Test
-    fun loadNextPage_failureKeepsItemsAndSetsLoadMoreError() = runTest {
+    fun loadNextPage_failureKeepsItemsAndSetsLoadMoreError() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -290,10 +301,11 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), state.items.map { it.id })
         assertTrue(state.loadMoreError?.contains("翻页失败") == true)
         assertFalse(state.isLoadingMore)
+        viewModel.close()
     }
 
     @Test
-    fun loadNextPage_whenHasMoreIsFalse_skipsRequest() = runTest {
+    fun loadNextPage_whenHasMoreIsFalse_skipsRequest() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson())
         stubZoneTabs()
 
@@ -304,10 +316,11 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(countBefore, mock.requestCount)
+        viewModel.close()
     }
 
     @Test
-    fun scrollPosition_saveAndReset() = runTest {
+    fun scrollPosition_saveAndReset() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson())
         stubZoneTabs()
         val viewModel = createViewModel()
@@ -320,10 +333,11 @@ class HomeFeedViewModelTest {
         viewModel.resetScrollPosition()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+        viewModel.close()
     }
 
     @Test
-    fun dynamicCategories_updatesWhenFocusZonesEmit() = runTest {
+    fun dynamicCategories_updatesWhenFocusZonesEmit() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson(itemJson(1, "100")))
         stubZoneTabs()
 
@@ -348,10 +362,11 @@ class HomeFeedViewModelTest {
         assertEquals("z100", categories[2].tabKey)
         assertEquals("手办", categories[2].name)
         assertEquals(100L, categories[2].nodeId)
+        viewModel.close()
     }
 
     @Test
-    fun dynamicCategories_respectsHiddenZoneIds() = runTest {
+    fun dynamicCategories_respectsHiddenZoneIds() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson())
         stubZoneTabs()
 
@@ -370,10 +385,11 @@ class HomeFeedViewModelTest {
         assertEquals("all", categories[0].tabKey)
         assertEquals("follow", categories[1].tabKey)
         assertEquals("z100", categories[2].tabKey)
+        viewModel.close()
     }
 
     @Test
-    fun dynamicCategories_respectsCustomOrder() = runTest {
+    fun dynamicCategories_respectsCustomOrder() = runTest(dispatchers.testDispatcher) {
         mock.enqueue(feedJson())
         stubZoneTabs()
 
@@ -392,10 +408,11 @@ class HomeFeedViewModelTest {
         assertEquals("follow", categories[0].tabKey)
         assertEquals("z200", categories[1].tabKey)
         assertEquals("z100", categories[2].tabKey)
+        viewModel.close()
     }
 
     @Test
-    fun emptyFollow_doesNotQueryAllFeed() = runTest {
+    fun emptyFollow_doesNotQueryAllFeed() = runTest(dispatchers.testDispatcher) {
         stubZoneTabs()
 
         val viewModel = createViewModel(savedTabKey = "follow")
@@ -408,5 +425,6 @@ class HomeFeedViewModelTest {
         assertFalse(state.isInitialLoading)
         // 验证没有向 feed 接口请求：只有 zone-tabs 1 个请求
         assertEquals(1, mock.requestCount)
+        viewModel.close()
     }
 }

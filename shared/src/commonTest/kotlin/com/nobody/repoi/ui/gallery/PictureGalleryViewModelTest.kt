@@ -91,7 +91,7 @@ class PictureGalleryViewModelTest {
         }
 
     @Test
-    fun onPageChanged_resetsStateAndBackfillsCollectAndRelate() = runTest {
+    fun onPageChanged_resetsStateAndBackfillsCollectAndRelate() = runTest(dispatchers.testDispatcher) {
         val item = pic()
         mock.respondWhen(
             Regex.fromLiteral("api/collect/state"),
@@ -116,10 +116,11 @@ class PictureGalleryViewModelTest {
         assertFalse(state.isRelateLoading)
         assertFalse(state.showRaw)
         assertFalse(state.isLongImage)
+        viewModel.close()
     }
 
     @Test
-    fun onPageChanged_onlyLatestIndexBackfillsCollectState() = runTest {
+    fun onPageChanged_onlyLatestIndexBackfillsCollectState() = runTest(dispatchers.testDispatcher) {
         val first = pic(1L)
         val second = pic(2L)
         mock.respondWhen(
@@ -137,10 +138,11 @@ class PictureGalleryViewModelTest {
         // 第一次切页的延迟回填任务被取消，getCollectState(1) 永不发出
         assertEquals(0, countRequests("api/collect/state", 1L))
         assertEquals(1, countRequests("api/collect/state", 2L))
+        viewModel.close()
     }
 
     @Test
-    fun toggleCollect_optimisticSuccessAndFailureRollback() = runTest {
+    fun toggleCollect_optimisticSuccessAndFailureRollback() = runTest(dispatchers.testDispatcher) {
         val item = pic()
         mock.respondWhen(
             Regex.fromLiteral("api/collect/state"),
@@ -169,10 +171,11 @@ class PictureGalleryViewModelTest {
         assertEquals(5, viewModel.uiState.value.collectCount)
         assertEquals("收藏失败", viewModel.uiState.value.toastMessage)
         assertEquals(1, countRequests("api/collect/item/add", item.id))
+        viewModel.close()
     }
 
     @Test
-    fun toggleCollect_uncollectUsesDeleteEndpoint() = runTest {
+    fun toggleCollect_uncollectUsesDeleteEndpoint() = runTest(dispatchers.testDispatcher) {
         val item = pic()
         mock.respondWhen(
             Regex.fromLiteral("api/collect/state"),
@@ -195,10 +198,11 @@ class PictureGalleryViewModelTest {
         assertFalse(viewModel.uiState.value.isCollected)
         assertEquals(4, viewModel.uiState.value.collectCount)
         assertEquals(1, countRequests("api/collect/del", item.id))
+        viewModel.close()
     }
 
     @Test
-    fun loadRelate_requestsEachPictureOnlyOnceUnlessFailed() = runTest {
+    fun loadRelate_requestsEachPictureOnlyOnceUnlessFailed() = runTest(dispatchers.testDispatcher) {
         val item = pic()
         mock.enqueue("""{"success":false,"code":500,"msg":"关联失败","data":null}""")
         mock.enqueue(relateBody("""{"relateItem":{"id":8}}"""))
@@ -218,10 +222,11 @@ class PictureGalleryViewModelTest {
         viewModel.loadRelate(item)
         advanceUntilIdle()
         assertEquals(2, countRequests("api/pic/relate"))
+        viewModel.close()
     }
 
     @Test
-    fun submitReport_successAndFailureSetToast() = runTest {
+    fun submitReport_successAndFailureSetToast() = runTest(dispatchers.testDispatcher) {
         val item = pic()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         mock.enqueue("""{"success":false,"code":500,"msg":"举报失败","data":null}""")
@@ -238,6 +243,7 @@ class PictureGalleryViewModelTest {
         viewModel.submitReport(item, "失败")
         advanceUntilIdle()
         assertEquals("举报失败", viewModel.uiState.value.toastMessage)
+        viewModel.close()
     }
 
     @Test
@@ -251,5 +257,6 @@ class PictureGalleryViewModelTest {
 
         viewModel.markLongImage()
         assertTrue(viewModel.uiState.value.isLongImage)
+        viewModel.close()
     }
 }

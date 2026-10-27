@@ -8,8 +8,10 @@ import com.nobody.repoi.ui.common.comment.FakePlatformActions
 import com.nobody.repoi.ui.common.comment.startTestKoin
 import com.nobody.repoi.ui.common.comment.stopTestKoin
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -64,7 +66,19 @@ class HobbyDetailScreenTest {
         composeRule.onNodeWithText("条目加载失败").assertIsDisplayed()
         composeRule.onNodeWithText("网络异常").assertIsDisplayed()
         composeRule.onNodeWithText("点击重新加载").performClick()
-        runBlocking { vm.uiState.first { !it.isInitialLoading } }
+        // 点击后 `isInitialLoading` 的 false→true→false 翻转可能快于 first{} 订阅而漏等；
+        // 先轮询详情请求计数==2 再等状态收敛。
+        runBlocking {
+            withTimeout(10_000) {
+                while (env.mock.engine.requestHistory.count {
+                        it.url.encodedPath.contains("api/item/get-v2")
+                    } < 2
+                ) {
+                    delay(10)
+                }
+                vm.uiState.first { !it.isInitialLoading }
+            }
+        }
 
         val detailCalls = env.mock.engine.requestHistory.count {
             it.url.encodedPath.contains("api/item/get-v2")

@@ -38,7 +38,7 @@ class HobbyDetailViewModelCollectTest {
         """{"success":true,"code":200,"msg":"ok","data":{"collect":null}}"""
 
     @Test
-    fun loadDetail_whenCollected_isFavoriteTrue() = runTest {
+    fun loadDetail_whenCollected_isFavoriteTrue() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(collectBody = careBody)
 
         val viewModel = env.viewModel()
@@ -50,10 +50,11 @@ class HobbyDetailViewModelCollectTest {
             CollectData(id = 100L, state = CollectConstants.STATE_CARE),
             viewModel.uiState.value.currentCollectData
         )
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenNotCollected_isFavoriteFalse() = runTest {
+    fun loadDetail_whenNotCollected_isFavoriteFalse() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(collectBody = nullBody)
 
         val viewModel = env.viewModel()
@@ -61,10 +62,11 @@ class HobbyDetailViewModelCollectTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isFavorite)
+        viewModel.close()
     }
 
     @Test
-    fun collectUpdates_broadcastSync_updatesFavoriteAndCountDelta() = runTest {
+    fun collectUpdates_broadcastSync_updatesFavoriteAndCountDelta() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(collectBody = nullBody)
         env.mock.respondWhen(
             Regex.fromLiteral("api/collect/hobby/upd"),
@@ -92,10 +94,11 @@ class HobbyDetailViewModelCollectTest {
 
         assertFalse(viewModel.uiState.value.isFavorite)
         assertEquals(0, viewModel.uiState.value.collectCountDelta)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenCollectStateReturnsNull_explicitlyResetsFavoriteToFalse() = runTest {
+    fun loadDetail_whenCollectStateReturnsNull_explicitlyResetsFavoriteToFalse() = runTest(env.dispatchers.testDispatcher) {
         // 按 itemId/nodeId 分流：59570/100 走已收藏，60000/200 走未收藏
         env.mock.dynamicResponder = { req ->
             when {
@@ -124,10 +127,11 @@ class HobbyDetailViewModelCollectTest {
 
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenCollectFails_keepsInitialState() = runTest {
+    fun loadDetail_whenCollectFails_keepsInitialState() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(collectBody = env.failEnvelope(msg = "网络异常"))
 
         val viewModel = env.viewModel()
@@ -137,5 +141,6 @@ class HobbyDetailViewModelCollectTest {
         // 失败不误报为未收藏，保持初始态
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
+        viewModel.close()
     }
 }

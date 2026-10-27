@@ -14,7 +14,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.Test
@@ -88,11 +88,19 @@ class ModalSideSheetTest {
             }
         }
 
-        // 在遮罩区域上下拖拽手势
+        // 在遮罩区域做一次明确的长距离拖拽手势：起点/终点都落在左侧遮罩区（避开右侧
+        // 380dp 抽屉），位移远超 touch slop。语义等同老 Robolectric 版的 swipeDown()——
+        // 后者在本机窗口尺寸下可能落在斜对角/过短位移，难以保证是"拖拽"而非"点击"。
         composeTestRule.onNodeWithTag("modal_side_sheet_scrim").performTouchInput {
-            swipeDown()
+            swipe(
+                start = percentOffset(0.2f, 0.2f),
+                end = percentOffset(0.2f, 0.8f),
+                durationMillis = 500
+            )
         }
+        composeTestRule.waitForIdle()
         composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.waitForIdle()
 
         assertFalse(dismissed, "在遮罩区域拖动手势不应触发关闭")
     }

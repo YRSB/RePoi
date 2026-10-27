@@ -31,7 +31,7 @@ class HobbyDetailViewModelExHobbyTest {
     fun tearDown() = env.tearDown()
 
     @Test
-    fun loadDetail_whenExHobbyEnabled_loadsAndUpdatesExHobbyPics() = runTest {
+    fun loadDetail_whenExHobbyEnabled_loadsAndUpdatesExHobbyPics() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics(exHobbyBody = """[{"path":"path/pic1.jpg"},{"path":"path/pic2.jpg"}]""")
 
         val viewModel = env.viewModel()
@@ -44,10 +44,11 @@ class HobbyDetailViewModelExHobbyTest {
         assertEquals(2, state.exHobbyPics.size)
         assertEquals("path/pic1.jpg", state.exHobbyPics[0].path)
         assertEquals(1, env.exMock.requestCount)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenExHobbyDisabled_doesNotCallExHobbyRepo() = runTest {
+    fun loadDetail_whenExHobbyDisabled_doesNotCallExHobbyRepo() = runTest(env.dispatchers.testDispatcher) {
         env.prefs.setExHobbyEnabled(false)
         env.stubBasics()
 
@@ -60,10 +61,11 @@ class HobbyDetailViewModelExHobbyTest {
         assertFalse(state.isExHobbyLoading)
         assertTrue(state.exHobbyPics.isEmpty())
         assertEquals(0, env.exMock.requestCount)
+        viewModel.close()
     }
 
     @Test
-    fun loadDetail_whenExHobbyFails_silentlyDegradesToEmpty() = runTest {
+    fun loadDetail_whenExHobbyFails_silentlyDegradesToEmpty() = runTest(env.dispatchers.testDispatcher) {
         env.stubBasics()
         // HTTP 500：仓储 Result.failure，VM 静默降级为空。
         // 注意必须用 dynamicResponder 覆盖（规则按注册顺序命中，stubBasics 的空规则在先）。
@@ -79,10 +81,11 @@ class HobbyDetailViewModelExHobbyTest {
         val state = viewModel.uiState.value
         assertFalse(state.isExHobbyLoading)
         assertTrue(state.exHobbyPics.isEmpty())
+        viewModel.close()
     }
 
     @Test
-    fun whenExHobbyEnabledFlowChanges_dynamicallyUpdatesStateAndLoadsPictures() = runTest {
+    fun whenExHobbyEnabledFlowChanges_dynamicallyUpdatesStateAndLoadsPictures() = runTest(env.dispatchers.testDispatcher) {
         env.prefs.setExHobbyEnabled(false)
         env.stubBasics(exHobbyBody = """[{"path":"path/pic1.jpg"}]""")
 
@@ -109,5 +112,6 @@ class HobbyDetailViewModelExHobbyTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isExHobbyEnabled)
+        viewModel.close()
     }
 }

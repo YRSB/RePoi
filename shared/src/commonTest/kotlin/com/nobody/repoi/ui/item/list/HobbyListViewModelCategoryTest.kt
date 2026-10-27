@@ -86,34 +86,37 @@ class HobbyListViewModelCategoryTest {
     }
 
     @Test
-    fun subCategoryLink_splitsIntoPrimaryAndSub() = runTest {
+    fun subCategoryLink_splitsIntoPrimaryAndSub() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(title = "比例人形", categoryId = 1))
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertEquals(1, vm.uiState.value.subCategoryId)
+        vm.close()
     }
 
     @Test
-    fun primaryLink_keepsNoSub() = runTest {
+    fun primaryLink_keepsNoSub() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(title = "手办", categoryId = 100))
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
+        vm.close()
     }
 
     @Test
-    fun unknownCategory_passesThroughWithoutSub() = runTest {
+    fun unknownCategory_passesThroughWithoutSub() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 9999))
         advanceUntilIdle()
         assertEquals(9999, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
+        vm.close()
     }
 
     @Test
-    fun setSubCategory_queriesWithSubId() = runTest {
+    fun setSubCategory_queriesWithSubId() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 100))
         advanceUntilIdle()
@@ -121,20 +124,22 @@ class HobbyListViewModelCategoryTest {
         assertEquals(1, vm.uiState.value.subCategoryId)
         advanceUntilIdle()
         assertEquals("1", lastForm()["category"])
+        vm.close()
     }
 
     @Test
-    fun setCategory_clearsSub() = runTest {
+    fun setCategory_clearsSub() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 1))
         advanceUntilIdle()
         vm.setCategory(100)
         advanceUntilIdle()
         assertNull(vm.uiState.value.subCategoryId)
+        vm.close()
     }
 
     @Test
-    fun applyAdvancedFilters_sendsR18AndMultiSpecs() = runTest {
+    fun applyAdvancedFilters_sendsR18AndMultiSpecs() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 100))
         advanceUntilIdle()
@@ -145,10 +150,11 @@ class HobbyListViewModelCategoryTest {
         assertEquals("320", last["r18"])
         assertEquals("649231,649234", last["specs"])
         assertEquals("24", last["pageSize"])
+        vm.close()
     }
 
     @Test
-    fun resetAdvancedFilters_clearsR18WorkersTag() = runTest {
+    fun resetAdvancedFilters_clearsR18WorkersTag() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 100, r18 = 320, workers = "1", tag = "联动"))
         advanceUntilIdle()
@@ -157,10 +163,11 @@ class HobbyListViewModelCategoryTest {
         assertNull(vm.uiState.value.r18)
         assertNull(vm.uiState.value.workers)
         assertNull(vm.uiState.value.tag)
+        vm.close()
     }
 
     @Test
-    fun resetAllFilters_clearsAllFiltersAndResetsDefaults() = runTest {
+    fun resetAllFilters_clearsAllFiltersAndResetsDefaults() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(
             HobbyListNavParam(
@@ -191,10 +198,11 @@ class HobbyListViewModelCategoryTest {
         assertNull(vm.uiState.value.r18)
         assertEquals(10000, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
+        vm.close()
     }
 
     @Test
-    fun selectCategory_updatesPrimaryAndSubAtomically() = runTest {
+    fun selectCategory_updatesPrimaryAndSubAtomically() = runTest(dispatchers.testDispatcher) {
         val vm = viewModel()
         vm.initParams(HobbyListNavParam(categoryId = 10000))
         advanceUntilIdle()
@@ -210,5 +218,6 @@ class HobbyListViewModelCategoryTest {
         advanceUntilIdle()
         assertEquals(100, vm.uiState.value.categoryId)
         assertNull(vm.uiState.value.subCategoryId)
+        vm.close()
     }
 }
