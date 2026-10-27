@@ -184,8 +184,8 @@ class SeriesDetailRepositoryTest {
 
     @Test
     fun getCollectState_delegatesAndMapsCollectedFlag() = runTest {
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"buy"}}}")
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":null}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"buy"}}}""")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":null}}""")
 
         assertTrue(repository.getCollectState(2L).getOrThrow())
         assertFalse(repository.getCollectState(2L).getOrThrow())

@@ -72,7 +72,7 @@ class CharacterDetailRepositoryTest {
         assertTrue(data.isAddFav)
         val request = mock.takeRequest()
         assertEquals("/api/charactar/get", request.url.encodedPath)
-        assertEquals("7", request.url.parameters["charactarId"))
+        assertEquals("7", request.url.parameters["charactarId"])
     }
 
     @Test
@@ -105,9 +105,9 @@ class CharacterDetailRepositoryTest {
         assertEquals("主角", work.cNameCN)
         val url = mock.takeRequest().url
         assertEquals("/api/charactar/works/get", url.encodedPath)
-        assertEquals("7", url.parameters["charactarId"))
-        assertEquals("2", url.parameters["page"))
-        assertEquals("5", url.parameters["pageSize"))
+        assertEquals("7", url.parameters["charactarId"])
+        assertEquals("2", url.parameters["page"])
+        assertEquals("5", url.parameters["pageSize"])
     }
 
     @Test
@@ -143,18 +143,18 @@ class CharacterDetailRepositoryTest {
 
         val albumUrl = mock.takeRequest().url
         assertEquals("/api/charactar/album/get", albumUrl.encodedPath)
-        assertEquals("7", albumUrl.parameters["charactarId"))
-        assertEquals("3", albumUrl.parameters["page"))
-        assertEquals("4", albumUrl.parameters["pageSize"))
+        assertEquals("7", albumUrl.parameters["charactarId"])
+        assertEquals("3", albumUrl.parameters["page"])
+        assertEquals("4", albumUrl.parameters["pageSize"])
 
         val relevantUrl = mock.takeRequest().url
         assertEquals("/api/charactar/relevant/get", relevantUrl.encodedPath)
-        assertEquals("7", relevantUrl.parameters["charactarId"))
-        assertEquals("10", relevantUrl.parameters["pageSize"))
+        assertEquals("7", relevantUrl.parameters["charactarId"])
+        assertEquals("10", relevantUrl.parameters["pageSize"])
 
         val zoneUrl = mock.takeRequest().url
         assertEquals("/api/zone/item", zoneUrl.encodedPath)
-        assertEquals("99", zoneUrl.parameters["nodeId"))
+        assertEquals("99", zoneUrl.parameters["nodeId"])
     }
 
     @Test

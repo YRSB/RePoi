@@ -73,7 +73,7 @@ class VendorDetailRepositoryTest {
         assertEquals("https://a.example", result.getOrThrow().website)
         val url = mock.takeRequest().url
         assertEquals("/api/company/v2/get", url.encodedPath)
-        assertEquals("100", url.parameters["companyId"))
+        assertEquals("100", url.parameters["companyId"])
     }
 
     @Test
@@ -101,10 +101,10 @@ class VendorDetailRepositoryTest {
         assertEquals("开订时间", action.actionTitle)
         val url = mock.takeRequest().url
         assertEquals("/api/user-action/company/list", url.encodedPath)
-        assertEquals("20", url.parameters["companyNodeId"))
-        assertEquals("news", url.parameters["subType"))
-        assertEquals("2", url.parameters["category"))
-        assertEquals("33", url.parameters["lastId"))
+        assertEquals("20", url.parameters["companyNodeId"])
+        assertEquals("news", url.parameters["subType"])
+        assertEquals("2", url.parameters["category"])
+        assertEquals("33", url.parameters["lastId"])
 
         mock.enqueue("""{"success":false,"code":500,"msg":"error","data":null}""")
         assertTrue(repository.getCompanyActions(20L).getOrThrow().isEmpty())
@@ -125,7 +125,7 @@ class VendorDetailRepositoryTest {
         assertEquals(4.5, votes.userVotes.single().score)
         val url = mock.takeRequest().url
         assertEquals("/api/company/tag/myVotes", url.encodedPath)
-        assertEquals("100", url.parameters["companyId"))
+        assertEquals("100", url.parameters["companyId"])
 
         mock.enqueue(body("null"))
         val defaults = repository.getCompanyMyVotes(100L).getOrThrow()
@@ -173,13 +173,13 @@ class VendorDetailRepositoryTest {
 
         val seriesUrl = mock.takeRequest().url
         assertEquals("/api/company/series", seriesUrl.encodedPath)
-        assertEquals("20", seriesUrl.parameters["companyNodeId"))
-        assertEquals("2", seriesUrl.parameters["page"))
-        assertEquals("5", seriesUrl.parameters["pageSize"))
+        assertEquals("20", seriesUrl.parameters["companyNodeId"])
+        assertEquals("2", seriesUrl.parameters["page"])
+        assertEquals("5", seriesUrl.parameters["pageSize"])
 
         val tagUrl = mock.takeRequest().url
         assertEquals("/api/company/tag/display", tagUrl.encodedPath)
-        assertEquals("100", tagUrl.parameters["companyId"))
+        assertEquals("100", tagUrl.parameters["companyId"])
 
         val failure = """{"success":false,"code":500,"msg":"error","data":null}"""
         repeat(2) { mock.enqueue(failure) }
@@ -224,10 +224,10 @@ class VendorDetailRepositoryTest {
 
     @Test
     fun getCollectState_delegatesToCollectRepository() = runTest {
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"want"}}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"want"}}}""")
         assertTrue(repository.getCollectState(20L).getOrThrow())
 
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"delete"}}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"delete"}}}""")
         assertFalse(repository.getCollectState(20L).getOrThrow())
 
         mock.enqueue("""{"success":false,"code":500,"msg":"error","data":null}""")
@@ -242,7 +242,7 @@ class VendorDetailRepositoryTest {
         assertTrue(repository.getMaskState(20L).getOrThrow())
         val url = mock.takeRequest().url
         assertEquals("/api/mask/state-v2", url.encodedPath)
-        assertEquals("20", url.parameters["itemNodeId"))
+        assertEquals("20", url.parameters["itemNodeId"])
 
         mock.enqueue(body("""{"state":0}"""))
         assertFalse(repository.getMaskState(20L).getOrThrow())

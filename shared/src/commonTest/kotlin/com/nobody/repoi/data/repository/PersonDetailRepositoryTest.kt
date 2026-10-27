@@ -76,7 +76,7 @@ class PersonDetailRepositoryTest {
         assertEquals(3966L, detail.person.id)
         val url = mock.takeRequest().url
         assertEquals("/api/person/get", url.encodedPath)
-        assertEquals("1589", url.parameters["personId"))
+        assertEquals("1589", url.parameters["personId"])
     }
 
     @Test
@@ -105,13 +105,13 @@ class PersonDetailRepositoryTest {
 
         val worksUrl = mock.takeRequest().url
         assertEquals("/api/person/works/get", worksUrl.encodedPath)
-        assertEquals("1589", worksUrl.parameters["personId"))
-        assertEquals("1", worksUrl.parameters["page"))
-        assertEquals("20", worksUrl.parameters["pageSize"))
+        assertEquals("1589", worksUrl.parameters["personId"])
+        assertEquals("1", worksUrl.parameters["page"])
+        assertEquals("20", worksUrl.parameters["pageSize"])
 
         val characterUrl = mock.takeRequest().url
         assertEquals("/api/person/character/get", characterUrl.encodedPath)
-        assertEquals("1589", characterUrl.parameters["personId"))
+        assertEquals("1589", characterUrl.parameters["personId"])
     }
 
     @Test
@@ -127,7 +127,7 @@ class PersonDetailRepositoryTest {
         assertEquals("周边A", entry.h.displayName)
         val url = mock.takeRequest().url
         assertEquals("/api/person/hobby/get", url.encodedPath)
-        assertEquals("1589", url.parameters["personId"))
+        assertEquals("1589", url.parameters["personId"])
     }
 
     @Test
@@ -162,13 +162,13 @@ class PersonDetailRepositoryTest {
 
     @Test
     fun getCollectState_delegatesAndMapsCollectData() = runTest {
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"care"}}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"care"}}}""")
         assertTrue(repository.getCollectState(3966L).getOrThrow())
 
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"delete"}}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":{"state":"delete"}}}""")
         assertFalse(repository.getCollectState(3966L).getOrThrow())
 
-        mock.enqueue("{"success":true,"code":200,"msg":"ok","data":{"collect":null}}")
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"collect":null}}""")
         assertFalse(repository.getCollectState(3966L).getOrThrow())
 
         mock.enqueue("""{"success":false,"code":401,"msg":"请先登录","data":null}""")
