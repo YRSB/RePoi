@@ -92,7 +92,7 @@ private fun HttpClientConfig<*>.applyCommonConfig(json: Json) {
         json(json)
     }
     install(Logging) {
-        logger = Logger.DEFAULT
+        logger = Logger.SIMPLE
         level = LogLevel.BODY
     }
     install(HttpTimeout) {

@@ -2,6 +2,7 @@ package com.nobody.repoi.network
 
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.setBody
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
 import io.ktor.http.parameters
@@ -42,7 +43,7 @@ val CommonParamsPlugin = createClientPlugin("CommonParamsPlugin", ::CommonParams
                             if (!existingNames.contains(key)) append(key, value)
                         }
                     }
-                    request.body = FormDataContent(merged)
+                    request.setBody(FormDataContent(merged))
                 }
                 else -> {
                     // 非表单 body（如 multipart 上传）只加头，不合并参数。
@@ -51,7 +52,7 @@ val CommonParamsPlugin = createClientPlugin("CommonParamsPlugin", ::CommonParams
                         val form = Parameters.build {
                             for ((key, value) in commonParams) append(key, value)
                         }
-                        request.body = FormDataContent(form)
+                        request.setBody(FormDataContent(form))
                     }
                 }
             }
