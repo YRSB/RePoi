@@ -89,6 +89,7 @@ class HomeFeedScreenTest {
         }
 
         setContent { HomeFeedScreen(viewModel = vm) }
+        println("DIAG afterSetContent loading=" + vm.uiState.value.isInitialLoading + " err=" + vm.uiState.value.errorMessage + " reqCount=" + mock.requestCount)
 
         onNodeWithText("网络连接失败").assertIsDisplayed()
         val countBefore = mock.requestCount
@@ -161,6 +162,7 @@ class HomeFeedScreenTest {
     @Test
     fun initialLoadingState_keepsSkeletonWithoutEmptyOrErrorCards() = runComposeUiTest {
         // Freeze requests on virtual engine (never advanced): VM stays in initial loading.
+        println("DIAG Main=" + Dispatchers.Main + " testThread=" + Thread.currentThread().name)
         mock = MockRepoEngine(StandardTestDispatcher())
         stubZoneTabs()
         val vm = createViewModel()
