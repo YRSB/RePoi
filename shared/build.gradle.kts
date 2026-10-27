@@ -88,7 +88,6 @@ kotlin {
         jvmTest.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.compose.uiTestJunit4)
-            implementation(libs.androidx.savedstate.compose)
         }
     }
 

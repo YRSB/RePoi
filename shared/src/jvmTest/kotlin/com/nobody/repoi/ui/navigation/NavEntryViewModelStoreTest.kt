@@ -6,16 +6,12 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
-import androidx.savedstate.compose.serialization.SavedStateConfiguration
 import com.nobody.repoi.ui.detail.DetailNavParam
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -33,16 +29,6 @@ class NavEntryTestViewModel : ViewModel() {
 @OptIn(ExperimentalTestApi::class)
 class NavEntryViewModelStoreTest {
 
-    private val testConfiguration = SavedStateConfiguration {
-        serializersModule = SerializersModule {
-            polymorphic(NavKey::class) {
-                subclass(HomeNavKey::class, HomeNavKey.serializer())
-                subclass(ProfileNavKey::class, ProfileNavKey.serializer())
-                subclass(HobbyDetailNavKey::class, HobbyDetailNavKey.serializer())
-            }
-        }
-    }
-
     @Test
     fun navEntryViewModelStore_whenEntryPopped_triggersOnCleared() = runComposeUiTest {
         lateinit var backStackRef: NavBackStack<NavKey>
@@ -51,11 +37,7 @@ class NavEntryViewModelStoreTest {
         val detailKey = HobbyDetailNavKey(param = DetailNavParam(itemId = 1001L))
 
         setContent {
-            val backStack = rememberNavBackStack(
-                testConfiguration,
-                HomeNavKey,
-                detailKey
-            )
+            val backStack = remember { NavBackStack(HomeNavKey, detailKey) }
             backStackRef = backStack
 
             val decorators = listOf(
@@ -109,7 +91,7 @@ class NavEntryViewModelStoreTest {
         assertTrue(firstKey.id != secondKey.id)
 
         setContent {
-            val backStack = rememberNavBackStack(testConfiguration, firstKey)
+            val backStack = remember { NavBackStack(firstKey) }
             backStackRef = backStack
 
             val decorators = listOf(
@@ -165,7 +147,7 @@ class NavEntryViewModelStoreTest {
         var homeVmSecondVisit: NavEntryTestViewModel? = null
 
         setContent {
-            val backStack = rememberNavBackStack(testConfiguration, HomeNavKey)
+            val backStack = remember { NavBackStack(HomeNavKey) }
             backStackRef = backStack
 
             val decorators = listOf(
