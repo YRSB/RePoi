@@ -45,9 +45,7 @@ class CommonParamsPluginTest {
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         }
-        return HttpClient(mock) {
-            installCommonParams(tokenProvider = { token })
-        }
+        return HttpClient(mock) {}.installCommonParams(tokenProvider = { token })
     }
 
     @Test

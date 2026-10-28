@@ -4,8 +4,8 @@ import com.nobody.poishelf.data.remote.model.JsonRefResolver
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 @PublishedApi
 internal const val REF_MARK_A = "\"@ref\""
@@ -22,9 +22,8 @@ internal const val REF_MARK_B = "\"\$ref\""
 suspend inline fun <reified T> HttpResponse.decodeRefAware(json: Json): T {
     val text = bodyAsText()
     return if (REF_MARK_A in text || REF_MARK_B in text) {
-        @Suppress("UNCHECKED_CAST")
-        val serializer = serializer<T>()
-        json.decodeFromJsonElement(serializer as kotlinx.serialization.DeserializationStrategy<T>, JsonRefResolver.resolveRefs(json.parseToJsonElement(text)))
+        val strategy = serializer<T>()
+        json.decodeFromJsonElement(strategy, JsonRefResolver.resolveRefs(json.parseToJsonElement(text)))
     } else {
         json.decodeFromString(text)
     }

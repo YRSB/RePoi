@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import com.nobody.poishelf.data.remote.model.CommentItem
 import com.nobody.poishelf.data.remote.model.ActionItem
 
 /**

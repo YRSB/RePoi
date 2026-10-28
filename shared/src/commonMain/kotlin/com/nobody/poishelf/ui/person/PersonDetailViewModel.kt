@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import com.nobody.poishelf.data.remote.model.CommentItem
 
 /**
  * 人物详情页路由导航参数。

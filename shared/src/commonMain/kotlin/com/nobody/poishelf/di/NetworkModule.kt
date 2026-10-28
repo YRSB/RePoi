@@ -39,7 +39,7 @@ val networkModule = module {
         }
     }
     single {
-        val config: HttpClientConfig<*>.() -> Unit = { _ ->
+        val config: HttpClientConfig<*>.() -> Unit = {
             install(Logging) {
                 logger = KermitKtorLogger(
                     severity = Severity.Verbose,
@@ -57,7 +57,6 @@ val networkModule = module {
     single(named("hpoi")) {
         HttpClient(OkHttp) {
             get<HttpClientConfig<*>.() -> Unit>()(this)
-            installCommonParams(tokenProvider = { get<TokenManager>().currentToken })
             install(HttpTimeout) {
                 requestTimeoutMillis = 15_000
                 connectTimeoutMillis = 15_000
@@ -66,7 +65,7 @@ val networkModule = module {
             defaultRequest {
                 url(CommonParams.BASE_URL)
             }
-        }
+        }.installCommonParams(tokenProvider = { get<TokenManager>().currentToken })
     }
     single(named("exhobby")) {
         HttpClient(OkHttp) {

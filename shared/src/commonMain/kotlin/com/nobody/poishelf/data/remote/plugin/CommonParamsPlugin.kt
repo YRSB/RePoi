@@ -60,12 +60,10 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
                     val existing = body.formData.entries()
                         .associate { it.key to it.value.firstOrNull() }
                     val merged = CommonParams.merge(existing, token)
-                    request.setBody(
-                        FormDataContent(
-                            Parameters.build {
-                                merged.forEach { (k, v) -> append(k, v) }
-                            },
-                        ),
+                    request.body = FormDataContent(
+                        Parameters.build {
+                            merged.forEach { (k, v) -> append(k, v) }
+                        },
                     )
                 }
                 is MultiPartFormDataContent -> {
@@ -79,12 +77,10 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
                         else -> true
                     }
                     if (needsSyntheticForm) {
-                        request.setBody(
-                            FormDataContent(
-                                Parameters.build {
-                                    common.forEach { (k, v) -> append(k, v) }
-                                },
-                            ),
+                        request.body = FormDataContent(
+                            Parameters.build {
+                                common.forEach { (k, v) -> append(k, v) }
+                            },
                         )
                     }
                 }
@@ -101,13 +97,9 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
     }
 }
 
-/** HttpClient DSL 作用域安装入口（`HttpClient(engine) { installCommonParams(tokenProvider = { ... }) }` 内调用）。 */
-fun io.ktor.client.HttpClientConfig<*>.installCommonParams(tokenProvider: () -> String) {
-    val plugin = CommonParamsPlugin(tokenProvider)
-    install(HttpSend) {
-        intercept { request ->
-            plugin.intercept(this, request)
-        }
-    }
+/** 已构建 HttpClient 作用域安装入口（链式调用：`HttpClient(engine) { ... }.installCommonParams(...)`）。 */
+fun HttpClient.installCommonParams(tokenProvider: () -> String): HttpClient {
+    CommonParamsPlugin.install(this, tokenProvider)
+    return this
 }
 
