@@ -11,7 +11,7 @@ class PureUtilsTest {
 
     @Test
     fun formatFixedRoundsHalfUp() {
-        assertEquals("4.40", PriceFormatter.formatFixed(4.4, 1))
+        assertEquals("4.4", PriceFormatter.formatFixed(4.4, 1))
         assertEquals("4.35", PriceFormatter.formatFixed(4.35, 2))
         assertEquals("100.00", PriceFormatter.formatFixed(100.0, 2))
         assertEquals("0.00", PriceFormatter.formatFixed(0.0, 2))
