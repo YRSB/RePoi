@@ -13,6 +13,11 @@ dependencies {
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)
+
+    // main.kt 调用 shared 的 initKoin()（签名含 KoinAppDeclaration/KoinApplication）：
+    // shared 的 implementation 依赖不向消费端编译期泄漏（PodAura 同范式：
+    // 其 androidApp 自行声明 koin-core），故桌面壳直引 koin-core。
+    implementation(libs.koin.core)
 }
 
 compose.desktop {

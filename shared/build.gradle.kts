@@ -95,6 +95,10 @@ kotlin {
             implementation(libs.jetbrains.compose.desktop.common)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.ktor.client.okhttp)
+            // initKoin()（commonMain Koin.kt）签名暴露 koin-core 类型
+            //（KoinApplication 返回值 / KoinAppDeclaration 参数）：JVM 消费端
+            //（desktopApp main.kt）编译期可见性所需；对应 androidApp 侧 koin-android 行。
+            implementation(libs.koin.core)
         }
         jvmTest.dependencies {
             implementation(compose.desktop.currentOs)
