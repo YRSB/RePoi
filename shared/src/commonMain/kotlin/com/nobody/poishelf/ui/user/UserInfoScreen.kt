@@ -163,7 +163,6 @@ fun UserInfoScreen(
     // KMP 无 android Configuration：横屏判定经 BoxWithConstraints 宽高比（原 orientation==LANDSCAPE 语义）
     val isLandscapeState = remember { mutableStateOf(false) }
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isDualPane = isLandscape && isWideScreen
 
     LaunchedEffect(userId) {
         viewModel.initUserId(userId)
@@ -286,7 +285,7 @@ fun UserInfoScreen(
                                 onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) },
                                 onCopyUid = { uid ->
                                     coroutineScope.launch {
-                                        clipboard.setClipEntry(plainTextClipEntry("UID", uid.toString()))
+                                        clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
                                         snackbarHostState.showSnackbar("UID 已复制")
                                     }
                                 },
@@ -396,7 +395,7 @@ fun UserInfoScreen(
                                     profile = profile,
                                     onCopyUid = { uid ->
                                         coroutineScope.launch {
-                                            clipboard.setClipEntry(plainTextClipEntry("UID", uid.toString()))
+                                            clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
                                             snackbarHostState.showSnackbar("UID 已复制")
                                         }
                                     }
