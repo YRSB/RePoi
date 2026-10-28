@@ -15,7 +15,6 @@ import com.nobody.poishelf.ui.collect.UserCollectViewModel
 import com.nobody.poishelf.ui.collect.WorksCollectEditViewModel
 import com.nobody.poishelf.ui.comment.CommentDetailViewModel
 import com.nobody.poishelf.ui.comment.HobbyCommentsViewModel
-import com.nobody.poishelf.ui.debug.DebugApiViewModel
 import com.nobody.poishelf.ui.detail.HobbyDetailViewModel
 import com.nobody.poishelf.ui.detail.album.HobbyAlbumListViewModel
 import com.nobody.poishelf.ui.exhobby.ExHobbyListViewModel
@@ -55,7 +54,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：46 `viewModel { }`（含 dev-only DebugApiViewModel；M3 起按 NavKey 传参）。
+ * ViewModel 模块：45 `viewModel { }`（dev-only DebugApiViewModel 已移至 androidMain；M3 起按 NavKey 传参）。
  *
  * SavedStateHandle 已删除（见各 VM 注释）：NavKey 字段经 `koinViewModel(parameters = ...)`
  * 或 `loadInitial/initParam` 传入；plain `koinViewModel()` 保持条目作用域。
@@ -72,7 +71,6 @@ val viewModelModule = module {
     viewModel { WorksCollectEditViewModel(get()) }
     viewModel { CommentDetailViewModel(get(), get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }
-    viewModel { DebugApiViewModel(get()) }
     viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { HobbyAlbumListViewModel(get()) }
     viewModel { ExHobbyListViewModel(get()) }
