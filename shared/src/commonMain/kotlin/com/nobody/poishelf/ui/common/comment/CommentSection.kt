@@ -1,6 +1,6 @@
 package com.nobody.poishelf.ui.common.comment
 
-import androidx.activity.compose.BackHandler
+import com.nobody.poishelf.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -8,7 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import com.nobody.poishelf.ui.comment.CommentDetailNavParam
-import com.nobody.poishelf.ui.comment.CommentDetailScreen
+import com.nobody.poishelf.ui.common.comment.CommentDetailScreen
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -102,6 +102,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -131,18 +132,10 @@ import com.nobody.poishelf.util.FaceTextItem
 import com.nobody.poishelf.util.loadFaceTexts
 
 /**
- * 评论区内容过滤与展示模式。
+ * M3 注意：评论区内容过滤与展示模式唯一定义归属 M2
+ * `ui/common/comment/CommentSectionInteraction.kt`（`CommentFilterMode`），
+ * 本文件不再重复声明（CI Redeclaration 修复）。
  */
-enum class CommentFilterMode(val label: String) {
-    /** 默认模式：展示前 5 条热门评论 + 分隔线 + 最新时序评论流 */
-    DEFAULT("默认"),
-
-    /** 热门模式：只展示所有热门神评 */
-    HOT("热门"),
-
-    /** 最新评论模式：只展示按时间倒序的最新评论流 */
-    LATEST("最新")
-}
 
 /**
  * 共享评论区组件：LazyListScope 扩展函数体系。
@@ -992,15 +985,16 @@ fun CommentReplyDialog(
             }
         },
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+            usePlatformDefaultWidth = false
+            // KMP：CMP common 无 decorFitsSystemWindows 参数；导航栏沉浸由各 shell 按平台惯例处理。
         )
     ) {
         // KMP：Dialog 窗口导航栏沉浸由各 shell 按平台惯例处理，此处仅保留输入法内边距逻辑。
-        val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
-        val navBarBottom = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+        val density = LocalDensity.current
+        val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
+        val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }
         val bottomContentPadding = remember(imeBottom, navBarBottom) {
-            if (imeBottom > 0) 6.dp else with(LocalDensity.current) { (navBarBottom.toDp() + 6.dp) }
+            if (imeBottom > 0) 6.dp else with(density) { (navBarBottom.toDp() + 6.dp) }
         }
 
         Box(
@@ -1770,7 +1764,7 @@ fun SupportingCommentPane(
     var activeThreadComment by remember { mutableStateOf<CommentItem?>(null) }
 
     // 拦截返回按键：如果副栏正在展示楼中楼，则先收起楼中楼
-    BackHandler(enabled = activeThreadComment != null) {
+    PoiShelfBackHandler(enabled = activeThreadComment != null) {
         activeThreadComment = null
     }
 

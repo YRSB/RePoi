@@ -1,6 +1,6 @@
 package com.nobody.poishelf.ui.common
 
-import androidx.activity.compose.BackHandler
+import com.nobody.poishelf.platform.PoiShelfBackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -91,7 +91,7 @@ fun ModalSideSheet(
         }
     }
 
-    BackHandler(enabled = true, onBack = closeWithAnimation)
+    PoiShelfBackHandler(enabled = true, onBack = closeWithAnimation)
 
     val sideSheetNestedScrollConnection = remember {
         object : NestedScrollConnection {

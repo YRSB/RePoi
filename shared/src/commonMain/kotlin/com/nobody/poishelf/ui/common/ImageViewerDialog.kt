@@ -57,6 +57,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.request.CachePolicy
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -144,7 +145,7 @@ fun ImageViewerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
+            // KMP：CMP common 无 decorFitsSystemWindows 参数；导航栏沉浸由各 shell 按平台惯例处理。
             dismissOnBackPress = true,
             dismissOnClickOutside = true
         )

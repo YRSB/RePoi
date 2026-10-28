@@ -81,7 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import com.nobody.poishelf.platform.isLandscapeOrientation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CardDefaults
@@ -529,9 +529,8 @@ fun HomeFeedScreen(
 @Composable
 fun rememberFeedStaggeredGridColumns(): StaggeredGridCells {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val configuration = LocalConfiguration.current
-    // CMP common: `android.content.res.Configuration` 不可用；用数值 2（ORIENTATION_LANDSCAPE）判定横屏。
-    val isLandscape = configuration.orientation == 2
+    // KMP：横屏判定经 expect/actual 垫片（Android 读 Configuration，桌面恒竖屏 + 宽度断点兜底）。
+    val isLandscape = isLandscapeOrientation()
     val windowSizeClass = adaptiveInfo.windowSizeClass
     return remember(windowSizeClass, isLandscape) {
         when {

@@ -42,18 +42,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * 评论区只读状态快照模型。
- * 聚合评论列表、加载标记与分页状态，精简调用点 10+ 个零散参数。
+ * M3 注意：`CommentFeedState` 唯一定义归属 M2 `ui/common/comment/CommentAwareUiState.kt`，
+ * 本文件不再重复声明（CI Redeclaration 修复）。
  */
-data class CommentFeedState(
-    val totalCommentCount: Int = 0,
-    val hotComments: List<CommentItem> = emptyList(),
-    val latestComments: List<CommentItem> = emptyList(),
-    val isCommentsLoading: Boolean = false,
-    val isLoadingMoreComments: Boolean = false,
-    val hasMoreComments: Boolean = false,
-    val commentsError: String? = null
-)
 
 /**
  * 自适应双窗格详情脚手架作用域契约。

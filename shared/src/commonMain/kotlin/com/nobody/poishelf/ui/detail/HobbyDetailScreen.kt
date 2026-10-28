@@ -100,6 +100,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
@@ -496,7 +497,7 @@ fun HobbyDetailScreen(
                             val targetId = if ((detail?.actualNodeId ?: 0L) > 0L) detail!!.actualNodeId else navParam.itemId
                             ExHobbyPreviewSection(
                                 pics = uiState.exHobbyPics,
-                                onPicClick = { index ->
+                                onPicClick = { index: Int ->
                                     val allFullUrls = uiState.exHobbyPics.map { CdnUrlUtils.getExHobbyFullUrl(it.path) }
                                     if (allFullUrls.isNotEmpty()) {
                                         imageViewer.show(allFullUrls, index)

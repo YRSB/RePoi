@@ -44,7 +44,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
@@ -54,7 +53,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -853,11 +851,13 @@ private fun CollectOrderDetailsSection(
                         readOnly = true,
                         label = { Text("币种") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        // KMP CMP 1.12.1：menuAnchor() 无 AnchorType 参数（material3 旧 ExposedDropdownMenu API 已更名）。
+                        modifier = Modifier.menuAnchor(),
                         shape = ExpressiveTokens.MediumCardShape,
                         singleLine = true
                     )
-                    ExposedDropdownMenu(
+                    // KMP CMP 1.12.1：旧 ExposedDropdownMenu 更名为 DropdownMenu（同 Box 作用域 API）。
+                    androidx.compose.material3.DropdownMenu(
                         expanded = currencyExpanded,
                         onDismissRequest = { currencyExpanded = false }
                     ) {

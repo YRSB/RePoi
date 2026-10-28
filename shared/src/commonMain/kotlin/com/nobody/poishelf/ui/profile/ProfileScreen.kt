@@ -83,7 +83,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalConfiguration
+import com.nobody.poishelf.platform.isLandscapeOrientation
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -134,9 +134,8 @@ fun ProfileScreen(
     val isDark = LocalIsDarkTheme.current
     val scrollState = rememberScrollState()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val configuration = LocalConfiguration.current
-    // CMP common: `Configuration.ORIENTATION_LANDSCAPE == 2`（android 常量不可用）。
-    val isLandscape = configuration.orientation == 2
+    // KMP：横屏判定经 expect/actual 垫片（Android 读 Configuration，桌面恒竖屏 + 宽度断点兜底）。
+    val isLandscape = isLandscapeOrientation()
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     // 仅在横屏且宽度达到 Medium / Expanded 时启用双列布局，平板竖屏及手机竖屏均采用单列流式布局
     val isDualPane = isLandscape && isWideScreen

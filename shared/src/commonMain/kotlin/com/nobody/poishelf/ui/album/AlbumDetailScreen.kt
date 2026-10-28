@@ -102,6 +102,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.nobody.poishelf.platform.LocalAppMessages
 import com.nobody.poishelf.platform.rememberTextSharing
 import org.koin.compose.viewmodel.koinViewModel
@@ -542,7 +543,7 @@ fun AlbumDetailScreen(
                     item(key = "section_exhobby", span = StaggeredGridItemSpan.FullLine) {
                         ExHobbyPreviewSection(
                             pics = uiState.exHobbyPics,
-                            onPicClick = { index ->
+                            onPicClick = { index: Int ->
                                 val allFullUrls = uiState.exHobbyPics.map { CdnUrlUtils.getExHobbyFullUrl(it.path) }
                                 if (allFullUrls.isNotEmpty()) {
                                     imageViewer.show(allFullUrls, index)

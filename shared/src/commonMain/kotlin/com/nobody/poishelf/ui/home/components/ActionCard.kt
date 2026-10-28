@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.nobody.poishelf.data.remote.model.ActionItem
 import com.nobody.poishelf.data.remote.model.RelateItem
 import com.nobody.poishelf.data.remote.model.UserProfileSummary
@@ -107,7 +108,7 @@ fun ActionCard(
         } else null
     }
     val extraImageRequests = remember(context, displayExtraImages) {
-        displayExtraImages.take(3).map { path ->
+        displayExtraImages.take(3).map { path: String ->
             ImageRequest.Builder(context)
                 .data(CdnUrlUtils.getPicSmallUrl(path))
                 .crossfade(false)

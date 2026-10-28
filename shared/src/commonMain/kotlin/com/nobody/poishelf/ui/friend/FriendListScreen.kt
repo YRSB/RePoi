@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.poishelf.ui.common.LevelPill
 import com.nobody.poishelf.ui.theme.ExpressiveTokens

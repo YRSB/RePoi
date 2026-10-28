@@ -1,6 +1,6 @@
 package com.nobody.poishelf.ui.item.list
 
-import androidx.activity.compose.BackHandler
+import com.nobody.poishelf.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -145,7 +145,7 @@ fun HobbyListScreen(
     }
 
     // 系统返回键：优先退出搜索激活态，否则正常退出页面
-    BackHandler(enabled = isSearchActive) {
+    PoiShelfBackHandler(enabled = isSearchActive) {
         exitSearch()
     }
 

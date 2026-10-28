@@ -44,18 +44,14 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.poishelf.ui.item.list.FilterLabels
 import com.nobody.poishelf.ui.item.list.HobbyListNavParam
-import com.nobody.poishelf.ui.search.components.ModalSideSheet
+import com.nobody.poishelf.ui.common.ModalSideSheet
 import com.nobody.poishelf.ui.theme.ExpressiveTokens
 
 /**
- * 高级多维筛选参数数据类，消除参数泥团 (Data Clumps)
+ * M3 注意：高级多维筛选参数数据类唯一定义归属 M2
+ * `ui/item/list/components/HobbyAdvancedFilterParam.kt`，
+ * 本文件不再重复声明（CI Redeclaration 修复）。
  */
-data class HobbyAdvancedFilterParam(
-    val sex: Int? = null,
-    val specs: String? = null,
-    val scale: String? = null,
-    val r18: Int? = null
-)
 
 /**
  * 自适应高级多维筛选抽屉：
