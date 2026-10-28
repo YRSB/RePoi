@@ -17,3 +17,8 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# 迁移参考源（PoiShelf 原生源码，只读参考，不进版本库）
+/PoiShelf/
+# 架构参考源（PodAura KMP 源码，只读参考，不进版本库，不编译）
+/PodAura-ref/
