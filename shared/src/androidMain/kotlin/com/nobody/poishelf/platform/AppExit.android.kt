@@ -11,7 +11,10 @@ import java.lang.ref.WeakReference
  */
 actual fun moveAppToBackground(): Boolean {
     val activity = foregroundActivityRef?.get()
-    return activity?.let { it.moveTaskToBack(true) || it.finish() } ?: false
+    if (activity == null) return false
+    if (activity.moveTaskToBack(true)) return true
+    activity.finish()
+    return true
 }
 
 private var foregroundActivityRef: WeakReference<Activity>? = null

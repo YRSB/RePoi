@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.message.center
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.MessageContactItem
 import com.nobody.poishelf.data.remote.model.PushCountCategory
 import com.nobody.poishelf.data.repository.MessageRepository
 import kotlinx.coroutines.async

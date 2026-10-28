@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.message.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.ChatMessageItem
 import com.nobody.poishelf.data.repository.MessageRepository
 import com.nobody.poishelf.ui.navigation.MessageChatNavParam
 import kotlinx.coroutines.Job

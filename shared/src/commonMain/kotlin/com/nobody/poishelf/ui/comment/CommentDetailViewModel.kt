@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.comment
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.CommentItem
 import com.nobody.poishelf.data.remote.model.CommentReplyItem
 import com.nobody.poishelf.data.remote.model.CommentThreadPage
 import com.nobody.poishelf.data.local.TokenManager

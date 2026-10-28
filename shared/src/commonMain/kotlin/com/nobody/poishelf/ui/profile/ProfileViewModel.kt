@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.local.ThemeManager
 import com.nobody.poishelf.data.local.ThemeMode
 import com.nobody.poishelf.data.remote.model.AlbumListItem
 import com.nobody.poishelf.data.remote.model.CheckInStatusPayload

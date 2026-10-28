@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.collect
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.WorksCollectData
 import com.nobody.poishelf.data.repository.CollectRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

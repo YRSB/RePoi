@@ -853,9 +853,9 @@ class HpoiApi(
         parameter("categoryId", categoryId)
     }.decodeRefAware(json)
 
-    suspend fun updateCollect(nodeId: Long, json: String): CommonResponse<JsonObject> =
+    suspend fun updateCollect(nodeId: Long, payloadJson: String): CommonResponse<JsonObject> =
         client.post("api/collect/hobby/upd") {
-            setBody(formOf("nodeId" to nodeId, "json" to json))
+            setBody(formOf("nodeId" to nodeId, "json" to payloadJson))
         }.decodeRefAware(json)
 
     suspend fun getMaskState(itemNodeId: Long): CommonResponse<JsonElement> =

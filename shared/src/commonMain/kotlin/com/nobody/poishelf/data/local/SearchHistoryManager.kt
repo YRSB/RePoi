@@ -22,7 +22,7 @@ class SearchHistoryManager(
     }
 
     suspend fun getHistory(): List<String> =
-        first(dataStore.data).let { prefs ->
+        dataStore.data.first().let { prefs ->
             decode(prefs[SEARCH_HISTORY_KEY].orEmpty())
         }
 

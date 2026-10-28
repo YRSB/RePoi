@@ -174,7 +174,7 @@ class UserRepository(
     }
 
     suspend fun getCollectTop(userId: Long, state: String): Result<List<CollectTopItem>> = runCatching {
-        val response = api.getCollectTop(userId = userId, state = state)
+        val response = api.getCollectTop(id = userId, state = state)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {

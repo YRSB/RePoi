@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.user.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.UserHistoryItem
 import com.nobody.poishelf.data.repository.UserRepository
 import com.nobody.poishelf.util.paging.PagedListLoader
 import com.nobody.poishelf.util.paging.pagedListLoader

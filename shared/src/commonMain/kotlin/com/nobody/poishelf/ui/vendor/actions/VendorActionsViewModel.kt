@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.vendor.actions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.CompanyActionItem
 import com.nobody.poishelf.data.repository.VendorDetailRepository
 import com.nobody.poishelf.ui.navigation.VendorActionsNavParam
 import com.nobody.poishelf.util.paging.KeyedListLoader

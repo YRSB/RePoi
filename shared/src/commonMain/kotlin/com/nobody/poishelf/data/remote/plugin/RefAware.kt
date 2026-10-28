@@ -4,10 +4,13 @@ import com.nobody.poishelf.data.remote.model.JsonRefResolver
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
-private const val REF_MARK_A = "\"@ref\""
-private const val REF_MARK_B = "\"\$ref\""
+@PublishedApi
+internal const val REF_MARK_A = "\"@ref\""
+@PublishedApi
+internal const val REF_MARK_B = "\"\$ref\""
 
 /**
  * `@ref` 感知解码（`FastJsonRefConverterFactory` 的 Ktor 等价实现）。
@@ -19,7 +22,9 @@ private const val REF_MARK_B = "\"\$ref\""
 suspend inline fun <reified T> HttpResponse.decodeRefAware(json: Json): T {
     val text = bodyAsText()
     return if (REF_MARK_A in text || REF_MARK_B in text) {
-        json.decodeFromJsonElement(JsonRefResolver.resolveRefs(json.parseToJsonElement(text)))
+        @Suppress("UNCHECKED_CAST")
+        val serializer = serializer<T>()
+        json.decodeFromJsonElement(serializer as kotlinx.serialization.DeserializationStrategy<T>, JsonRefResolver.resolveRefs(json.parseToJsonElement(text)))
     } else {
         json.decodeFromString(text)
     }

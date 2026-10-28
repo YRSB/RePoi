@@ -1,10 +1,11 @@
-package com.nobody.poishelf.ui.collect
+﻿package com.nobody.poishelf.ui.collect
 
 import com.nobody.poishelf.data.remote.model.UserCollectAlbumItem
 import com.nobody.poishelf.data.remote.model.UserCollectCategory
 import com.nobody.poishelf.data.remote.model.UserCollectCommonItem
 import com.nobody.poishelf.data.remote.model.UserCollectHobbyItem
 import com.nobody.poishelf.data.remote.model.UserCollectPicItem
+import com.nobody.poishelf.data.remote.model.PicItem
 
 /**
  * 分页子页状态容器（按大类隔离列表与分页状态，支持独立懒加载与缓存）。

@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.vendor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.CommentItem
 import com.nobody.poishelf.data.remote.model.CommentReplyItem
 import com.nobody.poishelf.data.remote.model.CompanyActionItem
 import com.nobody.poishelf.data.remote.model.CompanyData
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import com.nobody.poishelf.data.remote.model.CommentItem
+import com.nobody.poishelf.data.remote.model.ActionItem
 
 /**
  * 厂商详情页路由导航参数。

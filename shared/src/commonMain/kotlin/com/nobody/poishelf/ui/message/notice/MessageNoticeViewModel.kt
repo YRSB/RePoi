@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.message.notice
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.PushMessageItem
 import com.nobody.poishelf.data.repository.MessageRepository
 import com.nobody.poishelf.ui.navigation.MessageNoticeNavParam
 import com.nobody.poishelf.util.paging.PagedListLoader

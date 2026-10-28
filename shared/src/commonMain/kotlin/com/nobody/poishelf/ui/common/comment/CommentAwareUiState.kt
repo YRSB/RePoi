@@ -21,3 +21,19 @@ interface CommentAwareUiState {
         commentActionMessage: String? = this.commentActionMessage
     ): CommentAwareUiState
 }
+
+/**
+ * 评论区只读状态快照模型（原 `AdaptiveDetailCommentScaffold.kt:48`，M2 上到本包：
+ * 纯数据 + [CommentItem] 引用，无 Compose 依赖；M3/M4 评论区 UI 共用）。
+ *
+ * 聚合评论列表、加载标记与分页状态，精简调用点 10+ 个零散参数。
+ */
+data class CommentFeedState(
+    val totalCommentCount: Int = 0,
+    val hotComments: List<CommentItem> = emptyList(),
+    val latestComments: List<CommentItem> = emptyList(),
+    val isCommentsLoading: Boolean = false,
+    val isLoadingMoreComments: Boolean = false,
+    val hasMoreComments: Boolean = false,
+    val commentsError: String? = null
+)

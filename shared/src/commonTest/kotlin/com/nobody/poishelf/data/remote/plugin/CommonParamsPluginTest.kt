@@ -30,6 +30,9 @@ import kotlin.test.assertTrue
  */
 class CommonParamsPluginTest {
 
+    private fun plugin(token: String = "test_token_123") =
+        CommonParamsPlugin(tokenProvider = { token })
+
     private fun testClient(
         token: String = "test_token_123",
         onRequest: suspend (io.ktor.client.request.HttpRequestData) -> Unit = {},

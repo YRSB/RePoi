@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.zone
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.local.CategoryItem
 import com.nobody.poishelf.data.local.CategoryManager
 import com.nobody.poishelf.data.local.ViewPreferencesManager
 import com.nobody.poishelf.data.remote.model.ActionItem
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.nobody.poishelf.data.remote.model.ZoneItem
 
 /**
  * 专区产品 (hobby) 分类状态

@@ -34,21 +34,22 @@ class UserCollectViewModel(
     private val collectRepository: CollectRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val tokenManager: TokenManager,
-    userId: Long = 0L,
-    initialCollectState: String? = null,
-    initialOrder: String? = null,
-    initialCategory: Int? = null,
+    navUserId: Long = 0L,
+    navInitialCollectState: String? = null,
+    navInitialOrder: String? = null,
+    navInitialCategory: Int? = null,
 ) : ViewModel() {
 
     /**
      * 进程恢复/深链透传状态槽（原 `SavedStateHandle` 的 NavKey 等价实现）。
      * 构造入参即 NavKey 字段；运行时写入仅保活内存（附带 DataStore 持久化见 persist*）。
+     * 构造参数以 nav 前缀命名，避免与下方同名成员属性产生遮蔽歧义。
      */
     private val savedState: MutableMap<String, Any?> = mutableMapOf<String, Any?>().also { map ->
-        map["userId"] = userId
-        initialCollectState?.let { map["initialCollectState"] = it }
-        initialOrder?.let { map["initialOrder"] = it }
-        initialCategory?.let { map["initialCategory"] = it }
+        map["userId"] = navUserId
+        navInitialCollectState?.let { map["initialCollectState"] = it }
+        navInitialOrder?.let { map["initialOrder"] = it }
+        navInitialCategory?.let { map["initialCategory"] = it }
     }
 
     @Suppress("UNCHECKED_CAST")

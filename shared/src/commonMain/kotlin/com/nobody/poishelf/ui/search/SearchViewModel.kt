@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.local.CategoryItem
 import com.nobody.poishelf.data.local.CategoryManager
 import com.nobody.poishelf.data.remote.model.AttributeItem
 import com.nobody.poishelf.data.remote.model.HotwordItem

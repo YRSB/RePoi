@@ -1,4 +1,4 @@
-package com.nobody.poishelf.ui.gallery
+﻿package com.nobody.poishelf.ui.gallery
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.nobody.poishelf.data.remote.model.RelateItem
+import com.nobody.poishelf.data.remote.model.PicItem
+import com.nobody.poishelf.data.remote.model.CollectConstants
 
 /**
  * 大图画廊 UI 状态。

@@ -3,11 +3,16 @@ package com.nobody.poishelf.data.remote.plugin
 import com.nobody.poishelf.data.remote.interceptor.CommonParams
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.Sender
 import io.ktor.client.plugins.plugin
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.http.Parameters
-import io.ktor.http.parameters
+import io.ktor.http.content.OutgoingContent
+import io.ktor.util.AttributeKey
+
+private val CommonParamsAttributeKey = AttributeKey<Boolean>("PoiShelfCommonParamsApplied")
 
 /**
  * 公共参数 Ktor 插件（`CommonParamsInterceptor` 的 Ktor 等价实现）。
@@ -19,6 +24,7 @@ import io.ktor.http.parameters
  * - Multipart/其他 body：仅补 Referer/User-Agent 头（服务端上传链路现状：不注入）。
  *
  * 通过 HttpSend 拦截实现（DefaultRequest 无法读取/合并 form body）。
+ * 同一请求最多应用一次（重试路径经 HttpSend 重放时不再叠加）。
  */
 class CommonParamsPlugin(val tokenProvider: () -> String) {
 
@@ -26,13 +32,16 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
         fun install(client: HttpClient, tokenProvider: () -> String) {
             val plugin = CommonParamsPlugin(tokenProvider)
             client.plugin(HttpSend).intercept { request ->
-                plugin.intercept(request)
-                execute(request)
+                plugin.intercept(this, request)
             }
         }
     }
 
-    internal fun intercept(request: io.ktor.client.request.HttpRequestBuilder) {
+    suspend fun intercept(sender: Sender, request: HttpRequestBuilder) =
+        sender.execute(applyCommonParams(request))
+
+    internal fun applyCommonParams(request: HttpRequestBuilder): HttpRequestBuilder {
+        if (request.attributes.getOrNull(CommonParamsAttributeKey) == true) return request
         if (request.headers["Referer"] == null) {
             request.headers.append("Referer", CommonParams.REFERER_URL)
         }
@@ -63,10 +72,13 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
                     // 与 OkHttp 版一致：Multipart 不注入公共参数。
                 }
                 else -> {
-                    val empty = body is io.ktor.http.content.OutgoingContent.NoContent ||
-                        body is io.ktor.http.content.OutgoingContent.ByteArrayContent &&
-                        (body as io.ktor.http.content.OutgoingContent.ByteArrayContent).bytes().isEmpty()
-                    if (empty || body !is io.ktor.http.content.OutgoingContent) {
+                    val needsSyntheticForm = when (body) {
+                        is OutgoingContent.NoContent -> true
+                        is OutgoingContent.ByteArrayContent -> body.bytes().isEmpty()
+                        is OutgoingContent -> false
+                        else -> true
+                    }
+                    if (needsSyntheticForm) {
                         request.setBody(
                             FormDataContent(
                                 Parameters.build {
@@ -78,17 +90,24 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
                 }
             }
         } else {
-            request.url.parameters {
+            request.url.parameters.let { params ->
                 for ((key, value) in common) {
-                    if (!contains(key)) append(key, value)
+                    if (!params.contains(key)) params.append(key, value)
                 }
             }
+        }
+        request.attributes.put(CommonParamsAttributeKey, true)
+        return request
+    }
+}
+
+/** HttpClient DSL 作用域安装入口（`HttpClient(engine) { installCommonParams(tokenProvider = { ... }) }` 内调用）。 */
+fun io.ktor.client.HttpClientConfig<*>.installCommonParams(tokenProvider: () -> String) {
+    val plugin = CommonParamsPlugin(tokenProvider)
+    install(HttpSend) {
+        intercept { request ->
+            plugin.intercept(this, request)
         }
     }
 }
 
-/** HttpClient 作用域安装入口。 */
-fun HttpClient.installCommonParams(tokenProvider: () -> String): HttpClient {
-    CommonParamsPlugin.install(this, tokenProvider)
-    return this
-}

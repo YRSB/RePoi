@@ -1,4 +1,4 @@
-package com.nobody.poishelf.ui.item.home
+﻿package com.nobody.poishelf.ui.item.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.nobody.poishelf.data.local.CategoryItem
 
 data class ItemHomeUiState(
     val selectedCategoryId: Int = 10000,

@@ -81,7 +81,7 @@ class CollectRepository(
      */
     suspend fun saveCollect(nodeId: Long, collectData: CollectData): Result<Unit> = runCatching {
         val jsonPayload = json.encodeToString(collectData)
-        val response = api.updateCollect(nodeId = nodeId, json = jsonPayload)
+        val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
             _collectUpdates.tryEmit(nodeId to collectData)
         } else {
@@ -95,7 +95,7 @@ class CollectRepository(
     suspend fun deleteCollect(nodeId: Long, currentData: CollectData): Result<Unit> = runCatching {
         val deletedData = currentData.copy(state = CollectConstants.STATE_DELETE)
         val jsonPayload = json.encodeToString(deletedData)
-        val response = api.updateCollect(nodeId = nodeId, json = jsonPayload)
+        val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
             _collectUpdates.tryEmit(nodeId to null)
         } else {

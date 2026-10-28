@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.picture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.PicItem
 import com.nobody.poishelf.data.repository.PictureListRepository
 import com.nobody.poishelf.ui.navigation.PictureListNavParam
 import com.nobody.poishelf.util.paging.PagedListLoader

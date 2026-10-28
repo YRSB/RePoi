@@ -3,6 +3,7 @@ package com.nobody.poishelf.di
 import co.touchlab.kermit.Logger as KermitLogger
 import co.touchlab.kermit.Severity
 import co.touchlab.kermit.ktor.KermitKtorLogger
+import com.nobody.poishelf.data.local.TokenManager
 import com.nobody.poishelf.data.remote.api.ExHobbyApi
 import com.nobody.poishelf.data.remote.api.HpoiApi
 import com.nobody.poishelf.data.remote.interceptor.CommonParams
@@ -38,7 +39,7 @@ val networkModule = module {
         }
     }
     single {
-        val config: HttpClientConfig<*>.() -> Unit = {
+        val config: HttpClientConfig<*>.() -> Unit = { _ ->
             install(Logging) {
                 logger = KermitKtorLogger(
                     severity = Severity.Verbose,
@@ -55,8 +56,8 @@ val networkModule = module {
     }
     single(named("hpoi")) {
         HttpClient(OkHttp) {
-            get<HttpClientConfig<*>.() -> Unit>()()
-            installCommonParams(tokenProvider = { get<com.nobody.poishelf.data.local.TokenManager>().currentToken })
+            get<HttpClientConfig<*>.() -> Unit>()(this)
+            installCommonParams(tokenProvider = { get<TokenManager>().currentToken })
             install(HttpTimeout) {
                 requestTimeoutMillis = 15_000
                 connectTimeoutMillis = 15_000
@@ -102,5 +103,5 @@ val networkModule = module {
     }
     single { HpoiApi(get(named("hpoi")), get()) }
     single { ExHobbyApi(get(named("exhobby")), get()) }
-    single { com.nobody.poishelf.data.remote.interceptor.CommonParamsInterceptor(get()) }
+    single { com.nobody.poishelf.data.remote.interceptor.CommonParamsInterceptor(tokenProvider = { get<TokenManager>().currentToken }) }
 }

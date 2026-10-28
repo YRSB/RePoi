@@ -67,7 +67,14 @@ data class ResaleSearchItem(
         get() {
             val d = detail ?: return ""
             if (!d.contains('<') && !d.contains('&')) return d.trim()
-            return androidx.core.text.HtmlCompat.fromHtml(d, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+            return d
+                .replace(Regex("(?i)<br\\s*/?>"), "\n")
+                .replace(Regex("<[^>]+>"), "")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .trim()
         }
 
     /** 关联手办条目主封面相对路径 */

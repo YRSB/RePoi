@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.nobody.poishelf.data.remote.model.ExHobbyImageItem
 
 /**
  * ExHobby 扩展图库二级列表页面 UI 状态。
@@ -85,7 +86,7 @@ class ExHobbyListViewModel(
     fun refresh(itemId: Long) {
         if (_uiState.value.isRefreshing) return
         currentItemId = itemId
-        repository.clearCache(itemId)
+        viewModelScope.launch { repository.clearCache(itemId) }
         loader.refresh()
     }
 

@@ -2,6 +2,18 @@ package com.nobody.poishelf.data.remote.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import com.nobody.poishelf.platform.DateTimeFormats
 
 // ── 1. 未读通知计数模型 ──────────────────────────────────────────────────────────
 
@@ -143,7 +155,7 @@ data class ChatMessageItem(
     val fromId: Long = 0L,
     val toId: Long = 0L,
     val content: String = "",
-    @Serializable(with = LenientDateTimeToEpochSerializer::class)
+    @Serializable(with = MessageLenientDateTimeToEpochSerializer::class)
     val date: Long = 0L,
     val type: Int = 1, // 1: 文本, 8: 图片
     val emoticon: String? = null,
@@ -156,6 +168,43 @@ data class ChatMessageItem(
     /** 是否为图片消息 */
     val isPicture: Boolean
         get() = type == 8
+}
+
+/**
+ * 容错时间戳序列化器（MessageModels 本地副本，与 CollectModels 侧同逻辑；
+ * 同包跨文件引用在 KMP metadata 编译期不可见，故各持一份）。
+ *
+ * 支持毫秒/秒级数字时间戳，以及形如 "yyyy-MM-dd HH:mm:ss" 的日期字符串，
+ * 统一反序列化为毫秒级时间戳 (Long)。
+ */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+object MessageLenientDateTimeToEpochSerializer : KSerializer<Long> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("MessageLenientDateTimeToEpoch", PrimitiveKind.LONG)
+
+    override fun serialize(encoder: Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+
+    override fun deserialize(decoder: Decoder): Long {
+        val jsonDecoder = decoder as? JsonDecoder ?: return runCatching { decoder.decodeLong() }.getOrDefault(0L)
+        val element = jsonDecoder.decodeJsonElement()
+        if (element is JsonNull) return 0L
+        val content = (element as? JsonPrimitive)?.contentOrNull?.trim() ?: return 0L
+        if (content.isEmpty() || content.equals("null", ignoreCase = true)) return 0L
+
+        // 1. 优先尝试纯数字解析（兼容量级：毫秒/秒）
+        content.toLongOrNull()?.let { num ->
+            return when {
+                num > 100_000_000_000L -> num
+                num > 1_000_000_000L -> num * 1000L
+                else -> num
+            }
+        }
+
+        // 2. 尝试标准日期时间格式解析（kotlinx-datetime 通用实现）
+        DateTimeFormats.parseServerDateTime(content)?.let { return it }
+        return 0L
+    }
 }
 
 /**

@@ -2,6 +2,7 @@ package com.nobody.poishelf.ui.zone
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobody.poishelf.data.remote.model.ZoneGroup
 import com.nobody.poishelf.data.remote.model.ZoneItem
 import com.nobody.poishelf.data.repository.ZoneRepository
 import kotlinx.coroutines.flow.MutableStateFlow

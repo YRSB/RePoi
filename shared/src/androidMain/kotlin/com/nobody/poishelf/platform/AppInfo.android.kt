@@ -1,7 +1,7 @@
 package com.nobody.poishelf.platform
 
 import android.content.Context
-import android.content.pm.PackageInfoCompat
+import androidx.core.content.pm.PackageInfoCompat
 import android.os.Build
 
 actual object AppInfo {

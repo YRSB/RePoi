@@ -1,4 +1,4 @@
-package com.nobody.poishelf.ui.collect
+﻿package com.nobody.poishelf.ui.collect
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.poishelf.platform.DateTimeFormats
+import com.nobody.poishelf.data.remote.model.CollectConstants
 
 /**
  * 收藏管理与编辑页面 ViewModel。

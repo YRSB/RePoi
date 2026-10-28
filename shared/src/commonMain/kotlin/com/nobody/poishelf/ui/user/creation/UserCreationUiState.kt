@@ -1,7 +1,8 @@
-package com.nobody.poishelf.ui.user.creation
+﻿package com.nobody.poishelf.ui.user.creation
 
 import com.nobody.poishelf.data.remote.model.UserCollectAlbumItem
 import com.nobody.poishelf.data.remote.model.UserCollectPicItem
+import com.nobody.poishelf.data.remote.model.PicItem
 
 /**
  * 用户发布一级分类（对齐原版 UserCreationActivity 的 titles）。

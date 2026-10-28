@@ -7,7 +7,7 @@ import com.nobody.poishelf.data.local.TokenManager
  *
  * OkHttp 已由 Ktor 替代：发包合并逻辑在
  * `data.remote.plugin.CommonParamsPlugin`（HttpSend）。
- * 本类保留 `CommonParamsInterceptor(get())` 单例形态，供 networkModule 绑定与
+ * 本类保留单例绑定形态（networkModule 显式 tokenProvider 具名绑定），供
  * 旧单测语义对照；实际 Header/Param 合并常量见 [CommonParams]。
  */
 class CommonParamsInterceptor(
