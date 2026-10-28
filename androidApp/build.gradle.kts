@@ -15,6 +15,9 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
 
+    // M2: Koin android 扩展（androidLogger/androidContext，供 RepoiApp thin init）。
+    implementation(libs.koin.android)
+
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }
