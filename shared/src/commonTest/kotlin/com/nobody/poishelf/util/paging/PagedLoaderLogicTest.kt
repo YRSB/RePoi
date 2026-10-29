@@ -54,7 +54,7 @@ class PagedLoaderLogicTest {
             scope = backgroundScope,
             pageSize = 3,
             keySelector = { it }
-        ) { page, _ ->
+        ) { page ->
             if (page == 1) Result.success(PageChunk.of(listOf(1L, 2L, 3L), 3))
             else Result.success(PageChunk.of(listOf(4L), 3))
         }
@@ -76,7 +76,7 @@ class PagedLoaderLogicTest {
             scope = backgroundScope,
             pageSize = 3,
             keySelector = { it }
-        ) { page, _ ->
+        ) { page ->
             if (page == 1) Result.success(PageChunk.of(listOf(1L, 2L, 3L), 3))
             else Result.success(PageChunk.of(listOf(3L, 4L), 3))
         }
@@ -100,7 +100,7 @@ class PagedLoaderLogicTest {
             scope = backgroundScope,
             pageSize = 3,
             keySelector = { it }
-        ) { _, _ ->
+        ) { _ ->
             if (fail) Result.failure(RuntimeException("boom"))
             else Result.success(PageChunk.of(listOf(9L), 3))
         }
