@@ -44,10 +44,12 @@ class StickerRepositoryTest {
     @Test
     fun getCommentPacks_sameBuyTimeUsesCache() = runTest {
         val mock = MockApi()
-        // M7 注：helper 每次调用都先拉 buyTime（比对缓存），故同一 buyTime 需入队两次；
-        // 第 2 次命中内存缓存，不再发 packs 请求（3 = buyTime×2 + packs×1）。
-        mock.enqueue(buyTimeJson("\"2024-05-05\""), buyTimeJson("\"2024-05-05\""))
+        // M7 注：MockApi 无路由时按 FIFO 顺序消费——入队顺序必须与 helper 的
+        // 实际调用顺序一致：call-1 取 buyTime + packs（2），call-2 取 buyTime
+        // 命中内存缓存（3 = buyTime×2 + packs×1）。
+        mock.enqueue(buyTimeJson("\"2024-05-05\""))
         mock.enqueue(packsJson("\"2024-05-05\"", pack("A", 1)))
+        mock.enqueue(buyTimeJson("\"2024-05-05\""))
         val repository = StickerRepository(mock.api())
 
         val first = repository.getCommentPacks()
