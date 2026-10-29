@@ -91,8 +91,8 @@ class ResaleRepositoryTest {
         assertEquals("POST", recorded.method)
         assertEquals("/api/resale/search", recorded.path)
         val body = recorded.formBodyText()
-        assertTrue("Request body must contain itemId parameter", body.contains("itemId=125698"))
-        assertFalse("Request body must not contain invalid hobbyId parameter", body.contains("hobbyId="))
+        assertTrue(body.contains("itemId=125698"), "Request body must contain itemId parameter")
+        assertFalse(body.contains("hobbyId="), "Request body must not contain invalid hobbyId parameter")
     }
 
     @Test

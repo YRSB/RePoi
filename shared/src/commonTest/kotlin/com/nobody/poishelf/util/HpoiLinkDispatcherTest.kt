@@ -27,7 +27,7 @@ class HpoiLinkDispatcherTest {
 
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
-            assertTrue("Expected Hobby route for $url but was $route", route is HpoiRoute.Hobby)
+            assertTrue(route is HpoiRoute.Hobby, "Expected Hobby route for $url but was $route")
             assertEquals(59570L, (route as HpoiRoute.Hobby).hobbyId)
         }
     }
@@ -44,7 +44,7 @@ class HpoiLinkDispatcherTest {
 
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
-            assertTrue("Expected Album route for $url but was $route", route is HpoiRoute.Album)
+            assertTrue(route is HpoiRoute.Album, "Expected Album route for $url but was $route")
             assertEquals(8888L, (route as HpoiRoute.Album).albumId)
         }
     }
@@ -61,7 +61,7 @@ class HpoiLinkDispatcherTest {
 
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
-            assertTrue("Expected Character route for $url but was $route", route is HpoiRoute.Character)
+            assertTrue(route is HpoiRoute.Character, "Expected Character route for $url but was $route")
             assertEquals(8110L, (route as HpoiRoute.Character).characterId)
         }
     }
@@ -79,7 +79,7 @@ class HpoiLinkDispatcherTest {
 
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
-            assertTrue("Expected Post route for $url but was $route", route is HpoiRoute.Post)
+            assertTrue(route is HpoiRoute.Post, "Expected Post route for $url but was $route")
             assertEquals(12345L, (route as HpoiRoute.Post).postId)
         }
     }

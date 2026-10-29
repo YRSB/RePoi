@@ -114,9 +114,13 @@ class RecordedHttpRequest internal constructor(private val request: HttpRequestD
     val method: String
         get() = request.method.value
 
-    /** 原始 path 含查询串（如 `/api/works/glean/get/20001?x=1` 形态；MockEngine 下查询多已编码进 url）。 */
+    /** 原始 path 含查询串（MockWebServer `request.path` 语义；无查询时不带 `?`）。 */
     val path: String?
-        get() = request.url.encodedPathWithQuery.ifEmpty { null }
+        get() {
+            val p = request.url.encodedPath
+            val q = request.url.encodedQuery
+            return (if (q.isEmpty()) p else "$p?$q").ifEmpty { null }
+        }
 
     val encodedPath: String?
         get() = request.url.encodedPath.ifEmpty { null }

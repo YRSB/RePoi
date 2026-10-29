@@ -3,7 +3,7 @@ package com.nobody.poishelf.data.repository
 import com.nobody.poishelf.data.remote.model.AmazonMoneyData
 import com.nobody.poishelf.data.remote.model.ApiException
 import com.nobody.poishelf.data.remote.model.CollectConstants
-import com.nobody.poishelf.data.remote.model.FriendState
+import com.nobody.poishelf.data.repository.FriendState
 import com.nobody.poishelf.data.remote.model.OrderCount
 import com.nobody.poishelf.data.remote.model.OrderStaticData
 import com.nobody.poishelf.data.remote.model.UserCollectCategory
@@ -14,9 +14,11 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
-import kotlinx.serialization.buildJsonArray
-import kotlinx.serialization.buildJsonObject
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -847,7 +849,7 @@ class UserRepositoryTest {
     @Test
     fun updateFriend_success_emitsFriendChangeEvent() = runTest {
         val (mock, _, repository) = setup()
-        val events = mutableListOf<com.nobody.poishelf.data.remote.model.FriendChangeEvent>()
+        val events = mutableListOf<FriendChangeEvent>()
         val collectJob = launch(start = CoroutineStart.UNDISPATCHED) {
             repository.friendChangeEvent.collect { events.add(it) }
         }
