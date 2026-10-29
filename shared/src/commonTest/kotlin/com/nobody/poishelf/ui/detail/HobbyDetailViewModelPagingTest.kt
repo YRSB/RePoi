@@ -69,7 +69,7 @@ class HobbyDetailViewModelPagingTest {
     }
 
     @Test
-    fun firstPageFull_hasMoreTrue() = runTest {
+    fun firstPageFull_hasMoreTrue() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
@@ -83,7 +83,7 @@ class HobbyDetailViewModelPagingTest {
     }
 
     @Test
-    fun firstPageShort_hasMoreFalse() = runTest {
+    fun firstPageShort_hasMoreFalse() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
@@ -97,7 +97,7 @@ class HobbyDetailViewModelPagingTest {
     }
 
     @Test
-    fun secondPage_dedupMerge() = runTest {
+    fun secondPage_dedupMerge() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
@@ -114,7 +114,7 @@ class HobbyDetailViewModelPagingTest {
     }
 
     @Test
-    fun duplicatePage_blocksLoopWithoutGrowth() = runTest {
+    fun duplicatePage_blocksLoopWithoutGrowth() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
@@ -131,7 +131,7 @@ class HobbyDetailViewModelPagingTest {
     }
 
     @Test
-    fun nextPageFailure_reportsErrorAndStopsLoading() = runTest {
+    fun nextPageFailure_reportsErrorAndStopsLoading() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))

@@ -113,7 +113,7 @@ class HobbyDetailViewModelExHobbyTest {
     }
 
     @Test
-    fun loadDetail_whenExHobbyEnabled_loadsAndUpdatesExHobbyPics() = runTest {
+    fun loadDetail_whenExHobbyEnabled_loadsAndUpdatesExHobbyPics() = runTest(testDispatcher) {
         val exhobby = ExHobbyConfig().apply {
             body = """[{"path":"path/pic1.jpg"},{"path":"path/pic2.jpg"}]"""
         }
@@ -132,7 +132,7 @@ class HobbyDetailViewModelExHobbyTest {
     }
 
     @Test
-    fun loadDetail_whenExHobbyDisabled_doesNotCallExHobbyRepo() = runTest {
+    fun loadDetail_whenExHobbyDisabled_doesNotCallExHobbyRepo() = runTest(testDispatcher) {
         val exhobby = ExHobbyConfig()
         val env = Env(exhobby, enabled = false)
         env.stubBasics()
@@ -148,7 +148,7 @@ class HobbyDetailViewModelExHobbyTest {
     }
 
     @Test
-    fun loadDetail_whenExHobbyFails_silentlyDegradesToEmpty() = runTest {
+    fun loadDetail_whenExHobbyFails_silentlyDegradesToEmpty() = runTest(testDispatcher) {
         val exhobby = ExHobbyConfig().apply {
             failure = RuntimeException("网络超时")
         }
@@ -165,7 +165,7 @@ class HobbyDetailViewModelExHobbyTest {
     }
 
     @Test
-    fun whenExHobbyEnabledFlowChanges_dynamicallyUpdatesStateAndLoadsPictures() = runTest {
+    fun whenExHobbyEnabledFlowChanges_dynamicallyUpdatesStateAndLoadsPictures() = runTest(testDispatcher) {
         val exhobby = ExHobbyConfig().apply {
             body = """[{"path":"path/pic1.jpg"}]"""
         }

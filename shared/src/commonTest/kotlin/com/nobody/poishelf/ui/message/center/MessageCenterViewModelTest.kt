@@ -48,7 +48,7 @@ class MessageCenterViewModelTest {
     }
 
     @Test
-    fun loadInitial_successPopulatesPushCountAndContacts() = runTest {
+    fun loadInitial_successPopulatesPushCountAndContacts() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":3,"reply":2,"praise":1}}}}""")
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"contact":[{"id":1,"otherId":100,"otherName":"测试用户1","unreadCount":1},{"id":2,"otherId":200,"otherName":"测试用户2","unreadCount":0}]}}""")
@@ -66,7 +66,7 @@ class MessageCenterViewModelTest {
     }
 
     @Test
-    fun toggleContactTop_successUpdatesList() = runTest {
+    fun toggleContactTop_successUpdatesList() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{}}}}""")
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"contact":[{"id":10,"otherId":100,"otherName":"测试用户"}]}}""")
@@ -86,7 +86,7 @@ class MessageCenterViewModelTest {
     }
 
     @Test
-    fun deleteContact_successRemovesFromList() = runTest {
+    fun deleteContact_successRemovesFromList() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{}}}}""")
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"contact":[{"id":10,"otherId":100,"otherName":"测试用户"}]}}""")
@@ -104,7 +104,7 @@ class MessageCenterViewModelTest {
     }
 
     @Test
-    fun markAllRead_successCallsSingleApiAndResetsUnreadCounts() = runTest {
+    fun markAllRead_successCallsSingleApiAndResetsUnreadCounts() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":5}}}}""")
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"contact":[]}}""")

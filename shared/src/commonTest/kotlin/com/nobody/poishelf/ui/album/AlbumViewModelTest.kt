@@ -73,13 +73,17 @@ class AlbumViewModelTest {
     private fun MockApi.stubPraiseTop(type: String, bodies: List<String>) {
         var call = 0
         routeWhen(
-            predicate = { path, _ -> path.contains("type=$type") || (type.isEmpty() && path.contains("praise")) },
-            body = { _, _ -> bodies.getOrElse(call++) { bodies.last() } }
+            // M7 fix-2：getPraiseTop 为 GET + query——按 query["type"] 精确匹配。
+            predicate = { path, _, query ->
+                path.contains("api/item/praise/top") &&
+                    (type.isEmpty() || query["type"] == type)
+            },
+            body = { _, _, _ -> bodies.getOrElse(call++) { bodies.last() } }
         )
     }
 
     @Test
-    fun initialLoad_tabsAndFirstPage() = runTest {
+    fun initialLoad_tabsAndFirstPage() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1, 2))))
@@ -95,7 +99,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun selectOrder_resetsPageWithNewOrder() = runTest {
+    fun selectOrder_resetsPageWithNewOrder() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))
@@ -112,7 +116,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun loadMore_appendsAndDedups() = runTest {
+    fun loadMore_appendsAndDedups() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         // 满页（24 条）触发 hasMore=true，第二页去重追加
@@ -131,7 +135,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun followZoneWithoutToken_showsLoginGuide() = runTest {
+    fun followZoneWithoutToken_showsLoginGuide() = runTest(testDispatcher) {
         val mock = MockApi()
         val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager(""))
         viewModel.selectZone(AlbumZoneTab.FOLLOW)
@@ -141,7 +145,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun rankingSingleFailure_hidesFailedSectionOnly() = runTest {
+    fun rankingSingleFailure_hidesFailedSectionOnly() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(emptyList())))
@@ -162,7 +166,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun feedUnauthorized_flagsLoginRequired() = runTest {
+    fun feedUnauthorized_flagsLoginRequired() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(mock.failure(4001, "登录过期")))
@@ -175,7 +179,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun tabsFailure_fallsBackToAllAndLoadsFeed() = runTest {
+    fun tabsFailure_fallsBackToAllAndLoadsFeed() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/album/tabs", mock.failure(500, "分区失败"))
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))
@@ -188,7 +192,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun unauthorizedThenSuccess_clearsLoginRequired() = runTest {
+    fun unauthorizedThenSuccess_clearsLoginRequired() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(
@@ -215,7 +219,7 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun selectZone_resetsSavedScrollPosition() = runTest {
+    fun selectZone_resetsSavedScrollPosition() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))

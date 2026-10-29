@@ -99,16 +99,18 @@ class HomeFeedViewModelTest {
         zoneIds: String? = null,
         items: List<ActionItem>,
     ) {
+        // M7 fix-2：getActionList 为 GET + query——按 query 映射匹配（encodedPath
+        // 不含查询串；MockApi.routeWhen 第三入参透传 request.url.parameters）。
         feedMock.routeWhen(
-            predicate = { path, form ->
+            predicate = { path, _, query ->
                 path.contains("api/user-action/list-v3") &&
-                    form["categoryId"] == categoryId.toString() &&
-                    form["subType"] == subType &&
-                    form["lastTime"] == lastTime.toString() &&
-                    (form["zoneNodeId"]?.toLongOrNull() == zoneNodeId) &&
-                    ((form["zoneIds"] ?: "") == (zoneIds ?: ""))
+                    query["categoryId"] == categoryId.toString() &&
+                    query["subType"] == subType &&
+                    query["lastTime"] == lastTime.toString() &&
+                    ((query["zoneNodeId"]?.toLongOrNull() ?: zoneNodeId) == zoneNodeId) &&
+                    ((query["zoneIds"] ?: "") == (zoneIds ?: ""))
             },
-            body = { _, _ -> feedJson(items) }
+            body = { _, _, _ -> feedJson(items) }
         )
     }
 
@@ -121,22 +123,28 @@ class HomeFeedViewModelTest {
         message: String = "网络异常",
     ) {
         feedMock.routeWhen(
-            predicate = { path, form ->
+            predicate = { path, _, query ->
                 path.contains("api/user-action/list-v3") &&
-                    form["categoryId"] == categoryId.toString() &&
-                    form["subType"] == subType &&
-                    form["lastTime"] == lastTime.toString() &&
-                    (form["zoneNodeId"]?.toLongOrNull() == zoneNodeId) &&
-                    ((form["zoneIds"] ?: "") == (zoneIds ?: ""))
+                    query["categoryId"] == categoryId.toString() &&
+                    query["subType"] == subType &&
+                    query["lastTime"] == lastTime.toString() &&
+                    ((query["zoneNodeId"]?.toLongOrNull() ?: zoneNodeId) == zoneNodeId) &&
+                    ((query["zoneIds"] ?: "") == (zoneIds ?: ""))
             },
-            body = { _, _ -> feedMock.failure(500, message) }
+            body = { _, _, _ -> feedMock.failure(500, message) }
         )
     }
 
-    private fun Env.lastFeedForm(): Map<String, String> = feedMock.takeRequest().formEntries()
+    private fun Env.lastFeedForm(): Map<String, String> {
+        // M7 fix-2：GET 请求无 POST form——按 queryParameter 逐键读取查询串。
+        val recorded = feedMock.takeRequest()
+        return listOf("categoryId", "subType", "lastTime", "zoneNodeId", "zoneIds", "pageSize")
+            .mapNotNull { key -> recorded.queryParameter(key)?.let { key to it } }
+            .toMap()
+    }
 
     @Test
-    fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest {
+    fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest(testDispatcher) {
         val env = env(savedTabKey = "all", savedSubType = "all")
         env.stubFeed(
             categoryId = 0,
@@ -164,7 +172,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun initialLoad_failureSetsErrorMessage() = runTest {
+    fun initialLoad_failureSetsErrorMessage() = runTest(testDispatcher) {
         val env = env()
         env.stubFeedFailure(message = "网络异常")
 
@@ -178,7 +186,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun initialLoad_emptyPageClearsHasMore() = runTest {
+    fun initialLoad_emptyPageClearsHasMore() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
 
@@ -191,7 +199,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun selectCategory_persistsFilterAndReloads() = runTest {
+    fun selectCategory_persistsFilterAndReloads() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = listOf(item(2, "200")))
@@ -214,7 +222,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun selectSameCategory_doesNotReload() = runTest {
+    fun selectSameCategory_doesNotReload() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
 
@@ -228,7 +236,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun selectSubType_persistsFilterAndReloads() = runTest {
+    fun selectSubType_persistsFilterAndReloads() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         env.stubFeed(subType = "confirm", items = listOf(item(2, "200")))
@@ -245,7 +253,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun resetFilters_restoresDefaultsAndPersists() = runTest {
+    fun resetFilters_restoresDefaultsAndPersists() = runTest(testDispatcher) {
         val env = env(savedTabKey = "z100", savedSubType = "all")
         // 首屏 tabs 即带 z100 聚焦（init 静默同步消费）
         env.zoneMock.route(
@@ -269,7 +277,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun refreshFeed_replacesItemsAndClearsError() = runTest {
+    fun refreshFeed_replacesItemsAndClearsError() = runTest(testDispatcher) {
         val env = env()
         var call = 0
         env.feedMock.routeWhen(
@@ -292,7 +300,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun refreshFeed_failureKeepsExistingItems() = runTest {
+    fun refreshFeed_failureKeepsExistingItems() = runTest(testDispatcher) {
         val env = env()
         var call = 0
         env.feedMock.routeWhen(
@@ -314,7 +322,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun loadNextPage_appendsAndUsesLastTimeCursor() = runTest {
+    fun loadNextPage_appendsAndUsesLastTimeCursor() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         env.stubFeed(lastTime = 100L, items = listOf(item(2, "200"), item(3, "300")))
@@ -333,7 +341,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun loadNextPage_emptyPageClearsHasMore() = runTest {
+    fun loadNextPage_emptyPageClearsHasMore() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         env.stubFeed(lastTime = 100L, items = emptyList())
@@ -349,7 +357,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun loadNextPage_failureKeepsItemsAndSetsLoadMoreError() = runTest {
+    fun loadNextPage_failureKeepsItemsAndSetsLoadMoreError() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         env.stubFeedFailure(lastTime = 100L, message = "翻页失败")
@@ -366,7 +374,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun loadNextPage_whenHasMoreIsFalse_skipsRequest() = runTest {
+    fun loadNextPage_whenHasMoreIsFalse_skipsRequest() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
 
@@ -380,7 +388,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun dynamicCategories_updatesWhenFocusZonesEmit() = runTest {
+    fun dynamicCategories_updatesWhenFocusZonesEmit() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
 
@@ -406,7 +414,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun dynamicCategories_respectsHiddenZoneIds() = runTest {
+    fun dynamicCategories_respectsHiddenZoneIds() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
 
@@ -433,7 +441,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun dynamicCategories_respectsCustomOrder() = runTest {
+    fun dynamicCategories_respectsCustomOrder() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
 
@@ -460,7 +468,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun emptyFollow_doesNotQueryAllFeed() = runTest {
+    fun emptyFollow_doesNotQueryAllFeed() = runTest(testDispatcher) {
         val env = env(savedTabKey = "follow")
         env.stubFeed(items = listOf(item(1, "100")))
 
@@ -477,7 +485,7 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun scrollPosition_saveAndReset() = runTest {
+    fun scrollPosition_saveAndReset() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
         val viewModel = env.viewModel()

@@ -66,6 +66,7 @@ class AlbumRankListViewModelTest {
     ) {
         var call = 0
         routeWhen(
+            // M7 fix-2：getAlbums 为 POST + form——form 匹配保持；本注释锚定传输以便复核。
             predicate = { path, form ->
                 path.contains("api/album") &&
                     (releaseStart == null || form["releaseStart"] == releaseStart) &&
@@ -78,13 +79,18 @@ class AlbumRankListViewModelTest {
     private fun MockApi.stubPraiseTop(bodies: List<String>) {
         var call = 0
         routeWhen(
-            predicate = { path, _ -> path.contains("type=month") || path.contains("praise") },
-            body = { _, _ -> bodies.getOrElse(call++) { bodies.last() } }
+            // M7 fix-2：getPraiseTop 为 GET + query——按 query["type"] 匹配
+            //（encodedPath 不含查询串；request.url.parameters 由 MockApi 透传）。
+            predicate = { path, _, query ->
+                path.contains("api/item/praise/top") &&
+                    (query["type"].isNullOrEmpty() || query["type"] == "month")
+            },
+            body = { _, _, _ -> bodies.getOrElse(call++) { bodies.last() } }
         )
     }
 
     @Test
-    fun windowInitial_loadsPraiseWindow() = runTest {
+    fun windowInitial_loadsPraiseWindow() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubAlbums(
             releaseStart = "2026-09-07 00:00:00",
@@ -101,7 +107,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun praiseInitial_loadsPraiseTop() = runTest {
+    fun praiseInitial_loadsPraiseTop() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubPraiseTop(listOf(pageJson(listOf(3), 1)))
         val viewModel = AlbumRankListViewModel(AlbumRepository(mock.api()))
@@ -111,7 +117,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun loadMore_appendsSecondPage() = runTest {
+    fun loadMore_appendsSecondPage() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubPraiseTop(
             listOf(pageJson((1L..10L).toList(), 1), pageJson(listOf(11), 2))
@@ -128,7 +134,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun loadMoreOverlap_ranksFollowServerPositions() = runTest {
+    fun loadMoreOverlap_ranksFollowServerPositions() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubPraiseTop(
             listOf(pageJson((1L..10L).toList(), 1), pageJson(listOf(10, 11), 2))
@@ -144,7 +150,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun appendFailure_routesToLoadMoreError() = runTest {
+    fun appendFailure_routesToLoadMoreError() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubPraiseTop(
             listOf(pageJson(listOf(1), 1), mock.failure(500, "追加失败"))
@@ -162,7 +168,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun failure_showsErrorAndRetryRecovers() = runTest {
+    fun failure_showsErrorAndRetryRecovers() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubPraiseTop(
             listOf(mock.failure(500, "榜单失败"), pageJson(listOf(4), 1))
@@ -179,7 +185,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun shiftPeriod_previousWeekReloadsWindow() = runTest {
+    fun shiftPeriod_previousWeekReloadsWindow() = runTest(testDispatcher) {
         val mock = MockApi()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val current = periodWindow(RankPeriod.WEEK, 0, now)
@@ -205,7 +211,7 @@ class AlbumRankListViewModelTest {
     }
 
     @Test
-    fun shiftPeriod_cannotGoFuture() = runTest {
+    fun shiftPeriod_cannotGoFuture() = runTest(testDispatcher) {
         val mock = MockApi()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val current = periodWindow(RankPeriod.WEEK, 0, now)

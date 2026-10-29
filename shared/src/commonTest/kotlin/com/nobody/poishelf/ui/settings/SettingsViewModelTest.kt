@@ -45,7 +45,7 @@ class SettingsViewModelTest {
         ViewPreferencesManager(TestDataStore.viewPrefs())
 
     @Test
-    fun initialValue_readsSynchronousPreference() = runTest {
+    fun initialValue_readsSynchronousPreference() = runTest(testDispatcher) {
         val prefs = preferences()
         prefs.setExHobbyEnabled(true)
         val viewModel = SettingsViewModel(prefs)
@@ -54,7 +54,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun setExHobbyEnabled_persistsPreference() = runTest {
+    fun setExHobbyEnabled_persistsPreference() = runTest(testDispatcher) {
         val prefs = preferences()
         val viewModel = SettingsViewModel(prefs)
 
@@ -66,7 +66,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun upstreamFlow_updatesExposedState() = runTest {
+    fun upstreamFlow_updatesExposedState() = runTest(testDispatcher) {
         val prefs = preferences()
         prefs.setExHobbyEnabled(true)
         val viewModel = SettingsViewModel(prefs)
@@ -82,7 +82,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun firstCollection_startsWhileSubscribedFlow() = runTest {
+    fun firstCollection_startsWhileSubscribedFlow() = runTest(testDispatcher) {
         val prefs = preferences()
         prefs.setExHobbyEnabled(true)
         val viewModel = SettingsViewModel(prefs)

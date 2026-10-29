@@ -119,6 +119,6 @@ class MessageRepositoryTest {
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
-        assertEquals("已被对方屏蔽", exception?.message)
+        assertEquals("已被对方屏蔽", exception.message)
     }
 }

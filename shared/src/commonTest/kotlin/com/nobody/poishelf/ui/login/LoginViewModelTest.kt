@@ -49,7 +49,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun emptyFields_rejectLoginWithoutRequest() = runTest {
+    fun emptyFields_rejectLoginWithoutRequest() = runTest(testDispatcher) {
         val (mock, _, viewModel) = setup()
 
         viewModel.login()
@@ -61,7 +61,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun login_successTrimsAccountAndInvokesCallback() = runTest {
+    fun login_successTrimsAccountAndInvokesCallback() = runTest(testDispatcher) {
         val (mock, _, viewModel) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"utoken":"tok123","user":{"userName":"user"}}}""")
         var successCalled = false
@@ -83,7 +83,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun login_failureShowsMessageAndKeepsForm() = runTest {
+    fun login_failureShowsMessageAndKeepsForm() = runTest(testDispatcher) {
         val (mock, _, viewModel) = setup()
         mock.enqueue(mock.failure(400, "密码错误"))
         var successCalled = false
@@ -102,7 +102,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun editingFields_clearsPreviousError() = runTest {
+    fun editingFields_clearsPreviousError() = runTest(testDispatcher) {
         val (_, _, viewModel) = setup()
         viewModel.login()
         assertEquals("请输入账号和密码", viewModel.uiState.value.errorMessage)
@@ -117,7 +117,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun togglePasswordVisibility_flipsFlag() = runTest {
+    fun togglePasswordVisibility_flipsFlag() = runTest(testDispatcher) {
         val (_, _, viewModel) = setup()
         assertFalse(viewModel.uiState.value.passwordVisible)
 

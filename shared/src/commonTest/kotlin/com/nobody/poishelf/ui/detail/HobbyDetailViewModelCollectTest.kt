@@ -41,7 +41,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun loadDetail_whenCollected_isFavoriteTrue() = runTest {
+    fun loadDetail_whenCollected_isFavoriteTrue() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{"collect":{"id":100,"state":"care"}}"""))
@@ -55,7 +55,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun loadDetail_whenNotCollected_isFavoriteFalse() = runTest {
+    fun loadDetail_whenNotCollected_isFavoriteFalse() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
@@ -68,7 +68,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun collectUpdates_broadcastSync_updatesFavoriteAndCountDelta() = runTest {
+    fun collectUpdates_broadcastSync_updatesFavoriteAndCountDelta() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
@@ -102,7 +102,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun loadDetail_whenCollectStateReturnsNull_explicitlyResetsFavoriteToFalse() = runTest {
+    fun loadDetail_whenCollectStateReturnsNull_explicitlyResetsFavoriteToFalse() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{"collect":{"id":100,"state":"care"}}"""))
@@ -124,7 +124,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun loadDetail_whenCollectFails_keepsInitialState() = runTest {
+    fun loadDetail_whenCollectFails_keepsInitialState() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.failure(500, "网络异常"))

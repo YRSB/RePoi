@@ -80,7 +80,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun initialLoad_populatesBlockList() = runTest {
+    fun initialLoad_populatesBlockList() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(listJson(listOf(1, 2))))
 
@@ -96,7 +96,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun initialLoad_failureSetsError() = runTest {
+    fun initialLoad_failureSetsError() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(mock.failure(500, "网络异常")))
 
@@ -108,7 +108,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun loadMore_appendsAndDeduplicates() = runTest {
+    fun loadMore_appendsAndDeduplicates() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(
             listOf(
@@ -135,7 +135,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun loadMore_whenNoMore_skipsRequest() = runTest {
+    fun loadMore_whenNoMore_skipsRequest() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(listJson(listOf(1))))
 
@@ -148,7 +148,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun executeUnblock_removesTargetAndShowsMessage() = runTest {
+    fun executeUnblock_removesTargetAndShowsMessage() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(listJson(listOf(1, 2))))
         mock.route("api/message/unblock", """{"success":true,"code":200,"msg":"ok","data":{}}""")
@@ -171,7 +171,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun executeUnblock_failureKeepsListAndSetsError() = runTest {
+    fun executeUnblock_failureKeepsListAndSetsError() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(listJson(listOf(1))))
         mock.route("api/message/unblock", mock.failure(500, "解除失败"))
@@ -189,7 +189,7 @@ class MessageBlockViewModelTest {
     }
 
     @Test
-    fun dialogsAndMessages_canBeDismissed() = runTest {
+    fun dialogsAndMessages_canBeDismissed() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubBlockList(listOf(listJson(emptyList())))
         mock.route("api/message/unblock", """{"success":true,"code":200,"msg":"ok","data":{}}""")

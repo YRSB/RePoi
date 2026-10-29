@@ -62,7 +62,7 @@ class MessageChatViewModelTest {
     }
 
     @Test
-    fun loadInitial_successPopulatesMessages() = runTest {
+    fun loadInitial_successPopulatesMessages() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageChatNavParam(targetUserId = 2002L, targetUserName = "测试手办党")
         mock.stubChatHistory(
@@ -83,7 +83,7 @@ class MessageChatViewModelTest {
     }
 
     @Test
-    fun sendTextMessage_successSendsAndClearsInput() = runTest {
+    fun sendTextMessage_successSendsAndClearsInput() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageChatNavParam(targetUserId = 2002L, targetUserName = "测试手办党")
         mock.stubChatHistory(
@@ -118,7 +118,7 @@ class MessageChatViewModelTest {
     }
 
     @Test
-    fun withdrawMessage_successRemovesMessageFromUiState() = runTest {
+    fun withdrawMessage_successRemovesMessageFromUiState() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageChatNavParam(targetUserId = 2002L, targetUserName = "测试手办党")
         mock.stubChatHistory(
@@ -143,7 +143,7 @@ class MessageChatViewModelTest {
     }
 
     @Test
-    fun loadMoreHistory_successAppendsAndPreservesExistingMessages() = runTest {
+    fun loadMoreHistory_successAppendsAndPreservesExistingMessages() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageChatNavParam(targetUserId = 2002L, targetUserName = "测试手办党")
         val initialMessages = (0 until 20).joinToString(",") {

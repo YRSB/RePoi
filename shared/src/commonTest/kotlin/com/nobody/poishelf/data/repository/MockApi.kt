@@ -31,7 +31,7 @@ class MockApi {
     private val requests = ArrayDeque<HttpRequestData>()
     private val routes = mutableListOf<Pair<String, Queued>>()
     private val predicateRoutes = mutableListOf<
-        Triple<(path: String, form: Map<String, String>) -> Boolean, (path: String, form: Map<String, String>) -> String, HttpStatusCode>
+        Triple<(path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean, (path: String, form: Map<String, String>, query: Map<String, String>) -> String, HttpStatusCode>
         >()
 
     val json: Json = Json {
@@ -59,13 +59,32 @@ class MockApi {
     /**
      * 按请求谓词路由（等价“按请求体内容分发”的 Dispatcher 用法）：
      * 命中时返回对应响应；未命中回落 path 路由/FIFO。
+     *
+     * M7 fix-2：新增 `query` 第三谓词/响应入参（GET 查询串；`request.url.parameters`
+     * 单值映射）。既有 2 入参调用点经默认值保持编译兼容；GET 路由改用 `query[...]`
+     * 匹配（`encodedPath` 不含查询串，`formOf` 对 GET 恒为空）。
      */
+    fun routeWhen(
+        predicate: (path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean,
+        body: (path: String, form: Map<String, String>, query: Map<String, String>) -> String,
+        status: HttpStatusCode = HttpStatusCode.OK,
+    ) {
+        predicateRoutes.add(Triple(predicate, body, status))
+    }
+
+    /** 2 入参兼容重载：POST 表单谓词（GET 查询恒为空，调用方无需改动）。 */
     fun routeWhen(
         predicate: (path: String, form: Map<String, String>) -> Boolean,
         body: (path: String, form: Map<String, String>) -> String,
         status: HttpStatusCode = HttpStatusCode.OK,
     ) {
-        predicateRoutes.add(Triple(predicate, body, status))
+        predicateRoutes.add(
+            Triple(
+                { path, form, _ -> predicate(path, form) },
+                { path, form, _ -> body(path, form) },
+                status
+            )
+        )
     }
 
     fun ok(data: String): String =
@@ -79,9 +98,10 @@ class MockApi {
             requests.add(request)
             val path = request.url.encodedPath
             val form = formOf(request)
-            val predicated = predicateRoutes.firstOrNull { (predicate, _, _) -> predicate(path, form) }
+            val query = request.url.parameters.entries().associate { (key, values) -> key to (values.firstOrNull().orEmpty()) }
+            val predicated = predicateRoutes.firstOrNull { (predicate, _, _) -> predicate(path, form, query) }
             val next = if (predicated != null) {
-                Queued(predicated.third, predicated.second(path, form))
+                Queued(predicated.third, predicated.second(path, form, query))
             } else {
                 val routed = routes.firstOrNull { (fragment, _) -> path.contains(fragment) }?.second
                 routed

@@ -56,7 +56,7 @@ class MessageNoticeViewModelTest {
         """{"success":true,"code":200,"msg":"ok","data":{"pushMessage":[$items]}}"""
 
     @Test
-    fun loadInitial_successPopulatesMessages() = runTest {
+    fun loadInitial_successPopulatesMessages() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知")
         mock.stubPushMessages(pushJson("""{"id":11,"type":2,"state":0,"content":"有人回复了你"}"""))
@@ -73,7 +73,7 @@ class MessageNoticeViewModelTest {
     }
 
     @Test
-    fun markAllRead_successUpdatesAllMessagesToRead() = runTest {
+    fun markAllRead_successUpdatesAllMessagesToRead() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知")
         mock.stubPushMessages(pushJson("""{"id":11,"type":2,"state":0,"content":"有人回复了你"}"""))
@@ -92,7 +92,7 @@ class MessageNoticeViewModelTest {
     }
 
     @Test
-    fun batchDeleteSelected_successRemovesSelectedItems() = runTest {
+    fun batchDeleteSelected_successRemovesSelectedItems() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知")
         mock.stubPushMessages(pushJson("""{"id":101,"type":2,"state":1},{"id":102,"type":2,"state":1}"""))
@@ -116,7 +116,7 @@ class MessageNoticeViewModelTest {
     }
 
     @Test
-    fun invertSelection_successInvertsSelectedItems() = runTest {
+    fun invertSelection_successInvertsSelectedItems() = runTest(testDispatcher) {
         val mock = MockApi()
         val param = MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知")
         mock.stubPushMessages(pushJson("""{"id":101,"type":2,"state":1},{"id":102,"type":2,"state":1}"""))

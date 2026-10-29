@@ -50,7 +50,7 @@ class HobbyDetailViewModelRelatedTest {
     }
 
     @Test
-    fun loadDetail_whenRelatedHobbiesSuccess_updatesUiState() = runTest {
+    fun loadDetail_whenRelatedHobbiesSuccess_updatesUiState() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.detailMock.route(
@@ -75,7 +75,7 @@ class HobbyDetailViewModelRelatedTest {
     }
 
     @Test
-    fun loadDetail_whenRelatedHobbiesFails_silentlyDegradesToEmpty() = runTest {
+    fun loadDetail_whenRelatedHobbiesFails_silentlyDegradesToEmpty() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubDetailBasics()
         env.detailMock.route("api/hobby/group", env.detailMock.failure(500, "Network error"))
