@@ -61,6 +61,19 @@ object DateTimeFormats {
     }
 
     /**
+     * Epoch 毫秒 → "HH:mm"（系统时区）。
+     *
+     * 替换 `SimpleDateFormat("HH:mm").format(Date(millis))` 调用点（消息时间戳等）；
+     * 秒级时间戳（< 1e11）按秒换算，与 `ymdFromMillis` 语义一致。
+     * 注意：与 `nowHm` 的差异在于本函数格式化给定时刻而非当前时刻。
+     */
+    fun hmFromMillis(millis: Long, timeZone: TimeZone = TimeZone.currentSystemDefault()): String {
+        val ms = if (millis < 100_000_000_000L) millis * 1000L else millis
+        val dt: LocalDateTime = Instant.fromEpochMilliseconds(ms).toLocalDateTime(timeZone)
+        return hms(dt.hour, dt.minute, null)
+    }
+
+    /**
      * Multi-pattern parse for server date strings ("yyyy-MM-dd HH:mm:ss",
      * "yyyy-MM-dd HH:mm", "yyyy-MM-dd", "yyyy/MM/dd HH:mm:ss").
      * Returns epoch millis, or null when nothing matches (same fallback as before).

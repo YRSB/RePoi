@@ -33,8 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nobody.poishelf.ui.home.FeedCategory
-// KMP M3：FilterChipSection/FilterSheetActions 的 M5 定义（SearchFilterSheet.kt）尚未移植；
-// 暂用本包 FilterSheetComponents.kt 本地占位实现（TODO(M5) 删除本行、改回 ui.search.components）。
+import com.nobody.poishelf.ui.search.components.FilterChipSection
+import com.nobody.poishelf.ui.search.components.FilterSheetActions
 import com.nobody.poishelf.ui.theme.ExpressiveTokens
 
 @OptIn(ExperimentalLayoutApi::class)

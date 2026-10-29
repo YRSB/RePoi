@@ -8,7 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import com.nobody.poishelf.ui.comment.CommentDetailNavParam
-import com.nobody.poishelf.ui.common.comment.CommentDetailScreen
+import com.nobody.poishelf.ui.comment.CommentDetailScreen
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
