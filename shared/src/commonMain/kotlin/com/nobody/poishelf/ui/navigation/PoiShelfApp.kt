@@ -30,6 +30,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,7 +42,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_MEDIUM_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.poishelf.data.local.ThemeManager
@@ -117,7 +119,10 @@ private fun PoiShelfNavHost(
     val rootScope = rememberCoroutineScope()
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
-    val backStack = rememberNavBackStack(HomeNavKey)
+    // nav3 1.1.2 的 rememberNavBackStack 强制要求 SavedStateConfiguration
+    // （androidx.savedstate:serialization 未在版本对照表内）；改用直接构造：
+    // 台式端无进程恢复需求，Android 旋转由条目级 saveableStateHolder 兜底。
+    val backStack = remember { NavBackStack(mutableStateListOf<NavKey>(HomeNavKey)) }
 
     // 根 Snackbar 消费链路：各屏 messages.show() 在此落地为可见提示。
     LaunchedEffect(appMessages) {
