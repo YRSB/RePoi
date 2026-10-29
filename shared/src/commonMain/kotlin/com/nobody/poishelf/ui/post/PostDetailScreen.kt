@@ -425,7 +425,7 @@ fun PostDetailScreen(
                                             HpoiLinkDispatcher.dispatch(
                                                 url = url,
                                                 uriHandler = uriHandler,
-                                                context = context,
+                                                onMessage = { messages.show(it) },
                                                 onNavigateToHobbyDetail = onNavigateToDetail,
                                                 onNavigateToAlbum = { id -> onNavigateToAlbum?.invoke(AlbumNavParam(albumId = id)) },
                                                 onNavigateToCharacter = onNavigateToCharacter,

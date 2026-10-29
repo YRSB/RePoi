@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.platform.LocalUriHandler
+import com.nobody.poishelf.platform.LocalAppMessages
 import com.nobody.poishelf.ui.common.AdaptiveChunkedGrid
 import com.nobody.poishelf.ui.common.ExpressiveFloatingToolbar
 import com.nobody.poishelf.ui.common.ExpressiveToolbarButton
@@ -1063,6 +1064,7 @@ internal fun SeriesInfoBottomSheet(
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
     val uriHandler = LocalUriHandler.current
+    val messages = LocalAppMessages.current
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
