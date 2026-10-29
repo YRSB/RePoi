@@ -93,9 +93,31 @@ jobs:
         shell: bash
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace
 
+      # M6: Windows MSI 显式打包（R4 可安装产物）。packageMsi 与
+      # packageDistributionForCurrentOS 同为 jpackage 系任务，共享输出目录。
+      - name: Package Windows MSI installer
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: ./gradlew :desktopApp:packageMsi --stacktrace
+
       - name: Upload desktop distribution
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: desktopApp/build/compose/binaries/main/
           if-no-files-found: error
+
+      # M6: Windows 安装器/启动器存在性断言（*.msi + *.exe 非空）。
+      - name: Assert Windows installer artifacts
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          shopt -s nullglob
+          msi=(desktopApp/build/compose/binaries/main/msi/*.msi)
+          exe=(desktopApp/build/compose/binaries/main/app/com.example.repoi/*.exe)
+          if [ ${#msi[@]} -eq 0 ]; then echo "missing *.msi under binaries/main/msi"; exit 1; fi
+          if [ ${#exe[@]} -eq 0 ]; then echo "missing *.exe under binaries/main/app"; exit 1; fi
+          for f in "${msi[@]}" "${exe[@]}"; do
+            if [ ! -s "$f" ]; then echo "empty artifact: $f"; exit 1; fi
+            echo "ok: $f"
+          done
