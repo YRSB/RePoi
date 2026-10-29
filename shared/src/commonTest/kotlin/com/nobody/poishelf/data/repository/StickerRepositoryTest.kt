@@ -50,10 +50,15 @@ class StickerRepositoryTest {
         mock.enqueue(packsJson("\"2024-05-05\"", pack("A", 1)))
         val repository = StickerRepository(mock.api())
 
-        assertTrue(repository.getCommentPacks().isSuccess)
-        assertTrue(repository.getCommentPacks().isSuccess)
+        val first = repository.getCommentPacks()
+        assertTrue(first.isSuccess, "call-1 failed: ${first.exceptionOrNull()}")
+        assertEquals(listOf("A"), first.getOrThrow().map { it.name })
+        assertEquals(2, mock.requestCount, "call-1 should cost buyTime+packs")
 
-        // 首轮 buyTime + packs 各 1 次；命中缓存后仅多 1 次 buyTime。
+        val second = repository.getCommentPacks()
+        assertTrue(second.isSuccess, "call-2 failed: ${second.exceptionOrNull()}")
+
+        // 命中缓存后仅多 1 次 buyTime。
         assertEquals(3, mock.requestCount)
     }
 }
