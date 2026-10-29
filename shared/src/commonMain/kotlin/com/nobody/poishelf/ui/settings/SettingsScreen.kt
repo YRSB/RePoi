@@ -74,7 +74,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
 import androidx.compose.material3.RadioButton
 import androidx.compose.material.icons.filled.Close
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.nobody.poishelf.data.local.ThemeMode
 import com.nobody.poishelf.ui.profile.ProfileViewModel
 import com.nobody.poishelf.ui.theme.ExpressiveTokens
@@ -405,6 +404,14 @@ private fun SettingsMenuItem(
     onClick: (() -> Unit)? = null
 ) {
     ListItem(
+        headlineContent = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
         supportingContent = {
             Text(
                 text = subtitle,
@@ -433,14 +440,7 @@ private fun SettingsMenuItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    )
 }
 
 @Composable
@@ -452,6 +452,14 @@ private fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
+        headlineContent = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
         supportingContent = {
             Text(
                 text = subtitle,
@@ -483,14 +491,7 @@ private fun SettingsSwitchItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    )
 }
 
 @FormFactorPreviews

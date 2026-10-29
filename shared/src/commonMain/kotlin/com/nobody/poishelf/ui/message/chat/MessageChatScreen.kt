@@ -1,8 +1,5 @@
 package com.nobody.poishelf.ui.message.chat
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,11 +77,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.poishelf.data.remote.model.ChatMessageItem
 import com.nobody.poishelf.platform.DateTimeFormats
-import com.nobody.poishelf.platform.plainTextClipEntry
+import com.nobody.poishelf.ui.common.plainTextClipEntry
 import com.nobody.poishelf.ui.common.LocalImageViewer
 import com.nobody.poishelf.ui.navigation.MessageChatNavParam
 import com.nobody.poishelf.ui.theme.ExpressiveTokens
 import com.nobody.poishelf.util.CdnUrlUtils
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
@@ -112,8 +111,10 @@ fun MessageChatScreen(
 
     // 图片选择器（FileKit 跨平台；读取字节后经 VM 字节上传 API 发送）
     val imagePickerLauncher = rememberFilePickerLauncher(
-        type = FileKitType.Image
-    ) { file ->
+        type = FileKitType.Image,
+        // mode=Single pins overload 1 of 4 (0.16.0)
+        mode = FileKitMode.Single
+    ) { file: PlatformFile? ->
         file?.let { picked ->
             coroutineScope.launch {
                 runCatching {
