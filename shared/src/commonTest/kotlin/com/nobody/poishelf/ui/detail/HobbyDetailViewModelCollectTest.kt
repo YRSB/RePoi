@@ -113,7 +113,7 @@ class HobbyDetailViewModelCollectTest {
         assertTrue(viewModel.uiState.value.isFavorite)
 
         // 加载新条目，该条目接口返回未收藏 (null)
-        env.stubBasics(detailNodeId = 200L, itemId = 60000L)
+        env.stubBasics(nodeId = 200L, itemId = 60000L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
 
         viewModel.loadDetail(DetailNavParam(itemId = 60000L))

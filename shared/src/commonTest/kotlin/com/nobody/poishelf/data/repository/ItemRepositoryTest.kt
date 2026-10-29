@@ -9,6 +9,7 @@ import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 /**
  * 条目首页仓储测试（KMP commonTest 移植）。
@@ -110,7 +111,7 @@ class ItemRepositoryTest {
     @Test
     fun dateHelpers_matchCalendarContract() {
         val (_, repository) = setup()
-        val today = todayIn(TimeZone.currentSystemDefault())
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
         assertEquals((today + kotlinx.datetime.DatePeriod(months = 2)).toString(), repository.calculatePreOrderStartDate())
         val shipRange = repository.calculateShipDateRange()
@@ -118,5 +119,5 @@ class ItemRepositoryTest {
         assertEquals(today.toString(), shipRange.second)
     }
 
-    private fun today(): String = todayIn(TimeZone.currentSystemDefault()).toString()
+    private fun today(): String = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 }

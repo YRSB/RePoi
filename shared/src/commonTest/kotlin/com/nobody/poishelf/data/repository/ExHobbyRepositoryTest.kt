@@ -32,7 +32,7 @@ class ExHobbyRepositoryTest {
         isLenient = true
     }
 
-    private class Engine {
+    private inner class Engine {
         var calls = 0
         var next: () -> String = { "[]" }
         var failure: Throwable? = null

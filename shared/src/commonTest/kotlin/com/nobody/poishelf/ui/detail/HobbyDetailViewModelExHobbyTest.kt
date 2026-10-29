@@ -77,7 +77,7 @@ class HobbyDetailViewModelExHobbyTest {
         })
     }
 
-    private class Env(val exhobby: ExHobbyConfig, enabled: Boolean) {
+    private class Env(val exhobby: ExHobbyConfig, private val enabled: Boolean) {
         val detailMock = MockApi()
         val collectMock = MockApi()
         val commentMock = MockApi()

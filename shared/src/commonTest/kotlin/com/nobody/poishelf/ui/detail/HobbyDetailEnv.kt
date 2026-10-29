@@ -63,9 +63,9 @@ class HobbyDetailEnv(
     )
 
     /** loadDetail 基础 7 件套（详情/信息/官图/相册/时间轴/关联/评论×2）。 */
-    fun stubBasics(detailNodeId: Long = 100L, itemId: Long = 59570L) {
+    fun stubBasics(nodeId: Long = 100L, itemId: Long = 59570L) {
         detailMock.enqueue(
-            detailMock.ok("""{"itemData":{"id":$detailNodeId,"nodeId":$detailNodeId,"itemId":$itemId,"nameCN":"测试手办","collect":100}}""")
+            detailMock.ok("""{"itemData":{"id":$nodeId,"nodeId":$nodeId,"itemId":$itemId,"nameCN":"测试手办","collect":100}}""")
         )
         detailMock.enqueue(detailMock.ok("""{"list":[]}""")) // infoList
         detailMock.enqueue(detailMock.ok("""{"list":[]}""")) // officialPics
