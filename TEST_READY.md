@@ -36,6 +36,14 @@ adb -s 127.0.0.1:16416 shell getprop sys.boot_completed
 
 ## 5. Version-freeze hold
 
+## 6. MSIX trial (M7-D, win-only, UNSIGNED)
+
+- `desktopApp/icons/RePoi.svg` = TRIAL placeholder (replace post-M7).
+- CI win-only: `:desktopApp:createMsix` → `desktopApp/build/com.example.repoi.msix`
+  (asserted non-empty; glob verified empirically on first green run).
+- Self-sign/store signing DEFERRED — trial msix is unsigned by design.
+- Never touch: `upgradeUuid`, `packageName`, `version`.
+
 AGP 9.4.1 / datastore 1.2.1 / kotlin 2.4.20 / compose 1.12.1 / KSP 2.3.12.
 Never touch: `upgradeUuid`, `packageName`, `version`, M1-M6 folders,
 `PoiShelf/` + `PodAura-ref/` (read-only refs), `.agents/` (never committed).

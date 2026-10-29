@@ -108,6 +108,13 @@ jobs:
         shell: bash
         run: ./gradlew :desktopApp:packageMsi --stacktrace
 
+      # M7: Windows MSIX 试跑（R5 候选格式）。createMsix 走 main-release app-image；
+      # 产物为 UNSIGNED（store 签名延后，见 TEST_READY §6）。独立于 MSI 链。
+      - name: Trial Windows MSIX packaging
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: ./gradlew :desktopApp:createMsix --stacktrace
+
       - name: Upload desktop distribution
         uses: actions/upload-artifact@v4
         with:
@@ -129,4 +136,17 @@ jobs:
           for f in "${msi[@]}" "${exe[@]}"; do
             if [ ! -s "$f" ]; then echo "empty artifact: $f"; exit 1; fi
             echo "ok: $f"
+          done
+
+      # M7: Windows MSIX 试跑断言（UNSIGNED 试产物非空；store 签名延后）。
+      - name: Assert Windows MSIX trial artifact
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          shopt -s nullglob
+          msix=(desktopApp/build/com.example.repoi.msix)
+          if [ ${#msix[@]} -eq 0 ]; then echo "missing *.msix under desktopApp/build"; exit 1; fi
+          for f in "${msix[@]}"; do
+            if [ ! -s "$f" ]; then echo "empty artifact: $f"; exit 1; fi
+            echo "ok (unsigned trial): $f"
           done
