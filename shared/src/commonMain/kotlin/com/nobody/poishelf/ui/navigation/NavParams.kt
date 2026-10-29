@@ -56,6 +56,20 @@ data class UserInfoNavParam(
 )
 
 /**
+ * M4 batch-A 人物/作品/系列/厂商详情路由参数（M6 NavKey 包装目标）。
+ *
+ * 单一事实来源为各 VM 文件内的 `@Serializable data class`
+ * （各 `ui/person|works|series|vendor` 目录 ViewModel 文件，M2 已移植）；
+ * 此处仅作类型别名，便于 M6 root nav 按 `navigation.*NavParam` 统一 import
+ *（与 `CharacterNavParam` 等已在 `navigation` 包的形态对齐）。
+ * TODO(M6): root nav 落地 `*NavKey` 时复用这些别名。
+ */
+typealias PersonDetailNavParam = com.nobody.poishelf.ui.person.PersonNavParam
+typealias WorksDetailNavParam = com.nobody.poishelf.ui.works.WorksNavParam
+typealias SeriesDetailNavParam = com.nobody.poishelf.ui.series.SeriesNavParam
+typealias VendorDetailNavParam = com.nobody.poishelf.ui.vendor.VendorNavParam
+
+/**
  * 厂商动态全量列表路由导航参数。
  */
 @Serializable
