@@ -23,8 +23,9 @@ data class CategoryItem(
  */
 class CategoryManager(
     private val api: HpoiApi,
+    scope: CoroutineScope? = null,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = scope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val defaultPrimaryCategories = listOf(
         CategoryItem(id = 10000, name = "全部"),

@@ -96,7 +96,7 @@ class CategoryManagerTest {
             )
         )
         val api = apiWithCategories(json.encodeToString(CommonResponse.serializer(CategoryTreeData.serializer()), response))
-        val manager = CategoryManager(api)
+        val manager = CategoryManager(api, backgroundScope)
 
         withTimeout(5_000) {
             while (manager.getParentId(88888) != 99999) {
