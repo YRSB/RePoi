@@ -99,7 +99,8 @@ open class TokenManager(
         }
     }
 
-    suspend fun clearToken() {
+    // M7: open 化以便 commonTest 替身统计 4001 过期清 token 调用（行为无变化）。
+    open suspend fun clearToken() {
         currentToken = ""
         currentUserId = 0L
         currentUserName = ""
