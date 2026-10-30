@@ -39,7 +39,7 @@ adb -s 127.0.0.1:16416 shell getprop sys.boot_completed
 ## 6. MSIX trial (M7-D, win-only, UNSIGNED)
 
 - `desktopApp/icons/RePoi.svg` = TRIAL placeholder (replace post-M7).
-- 发版 workflow（`release.yml`，tag `v*` / 手动触发）win-only: `:desktopApp:createMsix` → `desktopApp/build/com.example.repoi.msix`
+- 发版 workflow（`release.yml`，tag `v*` / 手动触发）win-only: `:desktopApp:createMsix` → `desktopApp/build/com.nobody.repoi.msix`
   (asserted non-empty; glob verified empirically on first green run).
 - Self-sign/store signing DEFERRED — trial msix is unsigned by design.
 - Never touch: `upgradeUuid`, `packageName`, `version`.

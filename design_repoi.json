@@ -1,0 +1,496 @@
+{
+  "title": "RePoi",
+  "brief": "二次元手办周边社区 PoiShelf 跨平台客户端 Material 3 Expressive 设计规范重构原型",
+  "frame": "phone",
+  "platform": "android",
+  "paletteKey": "coral",
+  "theme": {
+    "dark": false,
+    "bothModes": true,
+    "contrast": "standard",
+    "shape": "rounded",
+    "font": "system",
+    "motion": "expressive"
+  },
+  "frames": [
+    {
+      "id": "home",
+      "name": "手办动态 (Feed)",
+      "x": 0,
+      "y": 0,
+      "length": 1050,
+      "note": "展示手办出荷、预订情报、二手出转与社区晒图瀑布流"
+    },
+    {
+      "id": "detail",
+      "name": "条目详情 (Detail)",
+      "x": 492,
+      "y": 0,
+      "length": 1200,
+      "note": "手办规格资料、Hero图展示、预订/想买分段操作与二手行情走势"
+    },
+    {
+      "id": "profile",
+      "name": "我的手办柜 (Shelf)",
+      "x": 984,
+      "y": 0,
+      "length": 950,
+      "note": "个人手办资产估值、已入柜/在途预订分类与心愿单管理"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g_home_top",
+      "x": 0,
+      "y": 0,
+      "axis": "x",
+      "items": [
+        {
+          "id": "top_home",
+          "kind": "topAppBar",
+          "label": "RePoi 手办社",
+          "icon": "menu",
+          "icon2": "search",
+          "variant": "filled"
+        }
+      ]
+    },
+    {
+      "id": "g_home_chips",
+      "x": 16,
+      "y": 100,
+      "axis": "x",
+      "items": [
+        {
+          "id": "chip_all",
+          "kind": "chip",
+          "label": "全部动态",
+          "icon": null,
+          "checked": true,
+          "variant": "filled"
+        },
+        {
+          "id": "chip_pre",
+          "kind": "chip",
+          "label": "新开预订",
+          "icon": "shopping_bag",
+          "variant": "filled"
+        },
+        {
+          "id": "chip_shipped",
+          "kind": "chip",
+          "label": "出荷情报",
+          "icon": "local_shipping",
+          "variant": "filled"
+        },
+        {
+          "id": "chip_trade",
+          "kind": "chip",
+          "label": "二手市集",
+          "icon": "sell",
+          "variant": "filled"
+        }
+      ]
+    },
+    {
+      "id": "g_home_card1",
+      "x": 16,
+      "y": 156,
+      "axis": "x",
+      "items": [
+        {
+          "id": "card_miku",
+          "kind": "card",
+          "label": "初音未来 16th Anniversary Ver.",
+          "supporting": "GoodSmile Company · 1/7比例 · 预订开始\n官方指导价：¥1,299 · 出荷预定：2025年6月",
+          "icon": "favorite",
+          "variant": "filled",
+          "size": 380,
+          "size2": 230,
+          "action": {
+            "to": "detail",
+            "transition": "slide"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g_home_card2",
+      "x": 16,
+      "y": 402,
+      "axis": "x",
+      "items": [
+        {
+          "id": "card_azur",
+          "kind": "card",
+          "label": "碧蓝航线 大凤 誓约・潮风的微醺",
+          "supporting": "Alter · 1/7手办 · 官方再贩确定\n全款¥1,680 · 评分 9.4分 (182条玩家晒图)",
+          "icon": "star",
+          "variant": "tonal",
+          "size": 380,
+          "size2": 210,
+          "action": {
+            "to": "detail",
+            "transition": "slide"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g_home_card3",
+      "x": 16,
+      "y": 628,
+      "axis": "x",
+      "items": [
+        {
+          "id": "card_eva",
+          "kind": "card",
+          "label": "新世纪福音战士 绫波丽 [VOV-01]",
+          "supporting": "Max Factory · 现货到荷 · 圈内转单热议\n市集参考均价：¥980 · 较上月 -5.2%",
+          "icon": "trending_down",
+          "variant": "outlined",
+          "size": 380,
+          "size2": 180
+        }
+      ]
+    },
+    {
+      "id": "g_home_fab",
+      "x": 340,
+      "y": 700,
+      "axis": "x",
+      "items": [
+        {
+          "id": "fab_post",
+          "kind": "fab",
+          "label": "",
+          "icon": "edit",
+          "variant": "filled",
+          "note": "快速发布手办开箱晒图或闲置出转"
+        }
+      ]
+    },
+    {
+      "id": "g_home_nav",
+      "x": 0,
+      "y": 788,
+      "axis": "x",
+      "items": [
+        {
+          "id": "nav_home",
+          "kind": "bottomNav",
+          "label": "",
+          "icon": null,
+          "variant": "filled",
+          "tabs": [
+            {
+              "icon": "home",
+              "label": "动态"
+            },
+            {
+              "icon": "category",
+              "label": "条目"
+            },
+            {
+              "icon": "photo_library",
+              "label": "相册"
+            },
+            {
+              "icon": "person",
+              "label": "我的"
+            }
+          ],
+          "selected": 0,
+          "actions": {
+            "tab:3": {
+              "to": "profile",
+              "transition": "fade"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "g_detail_top",
+      "x": 492,
+      "y": 0,
+      "axis": "x",
+      "items": [
+        {
+          "id": "top_detail",
+          "kind": "topAppBar",
+          "label": "手办条目详情",
+          "icon": "arrow_back",
+          "icon2": "share",
+          "variant": "filled",
+          "actions": {
+            "icon": {
+              "to": "back"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "g_detail_hero",
+      "x": 508,
+      "y": 100,
+      "axis": "x",
+      "items": [
+        {
+          "id": "hero_img",
+          "kind": "card",
+          "label": "初音未来 16th Anniversary Ver.",
+          "supporting": "GoodSmile Company · 原型师: 秋雨 · 1/7完成品",
+          "icon": "verified",
+          "variant": "filled",
+          "size": 380,
+          "size2": 230
+        }
+      ]
+    },
+    {
+      "id": "g_detail_cta",
+      "x": 508,
+      "y": 346,
+      "axis": "x",
+      "items": [
+        {
+          "id": "btn_want",
+          "kind": "button",
+          "label": "加入想买 (4.8k)",
+          "icon": "favorite_border",
+          "variant": "tonal",
+          "size": 182
+        },
+        {
+          "id": "btn_preorder",
+          "kind": "button",
+          "label": "已付定金 (1.2k)",
+          "icon": "bookmark_added",
+          "variant": "filled",
+          "size": 182
+        }
+      ]
+    },
+    {
+      "id": "g_detail_tabs",
+      "x": 492,
+      "y": 418,
+      "axis": "x",
+      "items": [
+        {
+          "id": "tabs_detail",
+          "kind": "tabs",
+          "label": "",
+          "icon": null,
+          "variant": "filled",
+          "tabs": [
+            {
+              "label": "基本参数"
+            },
+            {
+              "label": "玩家相册(142)"
+            },
+            {
+              "label": "二手走势"
+            },
+            {
+              "label": "论坛点评"
+            }
+          ],
+          "selected": 0
+        }
+      ]
+    },
+    {
+      "id": "g_detail_specs",
+      "x": 508,
+      "y": 482,
+      "axis": "y",
+      "items": [
+        {
+          "id": "spec_price",
+          "kind": "listItem",
+          "label": "官方定价：24,800 JPY (含税)",
+          "supporting": "国内预订参考指导价：约 ¥1,299 RMB",
+          "icon": "payments",
+          "variant": "filled"
+        },
+        {
+          "id": "spec_date",
+          "kind": "listItem",
+          "label": "出荷发售：2025年06月预定",
+          "supporting": "截单时间：2024年11月15日 · 补款通知已开启",
+          "icon": "event",
+          "variant": "filled"
+        },
+        {
+          "id": "spec_resale",
+          "kind": "listItem",
+          "label": "二手行情参考区间：¥1,180 ~ ¥1,350",
+          "supporting": "近30日二手成交记录 24 件 · 价格平稳",
+          "icon": "query_stats",
+          "variant": "filled"
+        }
+      ]
+    },
+    {
+      "id": "g_detail_fab",
+      "x": 832,
+      "y": 716,
+      "axis": "x",
+      "items": [
+        {
+          "id": "fab_add_shelf",
+          "kind": "extendedFab",
+          "label": "录入手办柜",
+          "icon": "add_home",
+          "variant": "filled",
+          "collapseOnScroll": true,
+          "note": "一键将该条目收录至个人手办柜，记录补款与入柜进度"
+        }
+      ]
+    },
+    {
+      "id": "g_profile_top",
+      "x": 984,
+      "y": 0,
+      "axis": "x",
+      "items": [
+        {
+          "id": "top_profile",
+          "kind": "topAppBar",
+          "label": "我的手办空间",
+          "icon": "menu",
+          "icon2": "settings",
+          "variant": "filled"
+        }
+      ]
+    },
+    {
+      "id": "g_profile_user",
+      "x": 1000,
+      "y": 100,
+      "axis": "x",
+      "items": [
+        {
+          "id": "card_user_stat",
+          "kind": "card",
+          "label": "胶佬Poi (Lv.8 资深手办收藏家)",
+          "supporting": "已入柜手办 48 件 · 在途预订 12 件 · 心愿单 35 件\n手办资产预估总值：¥58,400",
+          "icon": "account_circle",
+          "variant": "filled",
+          "size": 380,
+          "size2": 150
+        }
+      ]
+    },
+    {
+      "id": "g_profile_chips",
+      "x": 1000,
+      "y": 266,
+      "axis": "x",
+      "items": [
+        {
+          "id": "chip_p1",
+          "kind": "chip",
+          "label": "全部藏品 (60)",
+          "icon": null,
+          "checked": true,
+          "variant": "filled"
+        },
+        {
+          "id": "chip_p2",
+          "kind": "chip",
+          "label": "已入柜 (48)",
+          "icon": "check_circle",
+          "variant": "filled"
+        },
+        {
+          "id": "chip_p3",
+          "kind": "chip",
+          "label": "在途预订 (12)",
+          "icon": "schedule",
+          "variant": "filled"
+        }
+      ]
+    },
+    {
+      "id": "g_profile_shelf_items",
+      "x": 1000,
+      "y": 314,
+      "axis": "y",
+      "items": [
+        {
+          "id": "item_shelf_1",
+          "kind": "listItem",
+          "label": "初音未来 韶华Ver. 1/7手办",
+          "supporting": "Myethos · 入柜时间: 2023-08 · 评分: ★★★★★",
+          "icon": "star",
+          "variant": "filled",
+          "action": {
+            "to": "detail",
+            "transition": "slide"
+          }
+        },
+        {
+          "id": "item_shelf_2",
+          "kind": "listItem",
+          "label": "EVA 绫波丽 Radio EVA Part.2",
+          "supporting": "HobbyMax · 入柜时间: 2024-01 · 状态良好",
+          "icon": "verified",
+          "variant": "filled"
+        },
+        {
+          "id": "item_shelf_3",
+          "kind": "listItem",
+          "label": "莱莎的炼金工房 莱莎 1/7完成品",
+          "supporting": "Wonderful Works · 预订补款在途 · 预计本月到货",
+          "icon": "local_shipping",
+          "variant": "tonal"
+        }
+      ]
+    },
+    {
+      "id": "g_profile_nav",
+      "x": 984,
+      "y": 788,
+      "axis": "x",
+      "items": [
+        {
+          "id": "nav_profile",
+          "kind": "bottomNav",
+          "label": "",
+          "icon": null,
+          "variant": "filled",
+          "tabs": [
+            {
+              "icon": "home",
+              "label": "动态"
+            },
+            {
+              "icon": "category",
+              "label": "条目"
+            },
+            {
+              "icon": "photo_library",
+              "label": "相册"
+            },
+            {
+              "icon": "person",
+              "label": "我的"
+            }
+          ],
+          "selected": 3,
+          "actions": {
+            "tab:0": {
+              "to": "home",
+              "transition": "fade"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

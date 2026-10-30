@@ -32,7 +32,7 @@ Write-Host "ok: device booted"
 Invoke-Adb @("install", "-r", $ApkPath)
 Write-Host "ok: installed $ApkPath"
 
-$pkg = "com.example.repoi"
+$pkg = "com.nobody.repoi"
 Invoke-Adb @("shell", "monkey", "-p", $pkg, "-c", "android.intent.category.LAUNCHER", "1")
 Start-Sleep -Seconds 5
 
