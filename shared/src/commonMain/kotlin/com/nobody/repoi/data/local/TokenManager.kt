@@ -71,7 +71,7 @@ open class TokenManager(
     }
 
     suspend fun saveToken(token: String, userName: String? = null) {
-        val version = writeVersion.incrementAndGet()
+        val version = writeVersion.addAndFetch(1L)
         currentToken = token
         currentUserId = 0L
         if (userName != null) {
@@ -88,7 +88,7 @@ open class TokenManager(
     }
 
     suspend fun saveCurrentUser(userId: Long, userName: String? = null) {
-        val version = writeVersion.incrementAndGet()
+        val version = writeVersion.addAndFetch(1L)
         currentUserId = userId
         if (userName != null) {
             currentUserName = userName
@@ -104,7 +104,7 @@ open class TokenManager(
 
     // M7: open 化以便 commonTest 替身统计 4001 过期清 token 调用（行为无变化）。
     open suspend fun clearToken() {
-        val version = writeVersion.incrementAndGet()
+        val version = writeVersion.addAndFetch(1L)
         currentToken = ""
         currentUserId = 0L
         currentUserName = ""
