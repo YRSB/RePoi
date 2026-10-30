@@ -71,7 +71,7 @@ class RePoiSerializersModuleTest {
             UserInfoNavKey(param = UserInfoNavParam(userId = 6001L), id = "fixed-id-user-info"),
             CommentDetailNavKey(param = CommentDetailNavParam(commentId = 8001L, relateNodeId = 7001L), id = "fixed-id-comment-detail"),
             HobbyCommentsNavKey(param = HobbyCommentsNavParam(nodeId = 7001L), id = "fixed-id-hobby-comments"),
-            SearchNavKey(param = SearchNavParam(keyword = "初音未来"), id = "fixed-id-search"),
+            SearchNavKey(param = SearchNavParam(initialKeyword = "初音未来"), id = "fixed-id-search"),
 
             // 7. 相册与厂商关联路由 (4)
             AlbumDetailNavKey(param = AlbumNavParam(albumId = 9001L), id = "fixed-id-album-detail"),
