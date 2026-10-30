@@ -314,19 +314,14 @@ fun ForumHomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(
-                    space = ButtonGroupDefaults.ConnectedSpaceBetween,
-                    alignment = Alignment.CenterHorizontally
-                )
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
             ) {
                 val orders = ForumOrders.all
                 orders.forEachIndexed { index, (order, label) ->
                     ToggleButton(
                         checked = uiState.selectedOrder == order,
                         onCheckedChange = { if (it) viewModel.selectOrder(order) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .semantics { role = Role.RadioButton },
+                        modifier = Modifier.semantics { role = Role.RadioButton },
                         shapes = when (index) {
                             0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                             orders.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
