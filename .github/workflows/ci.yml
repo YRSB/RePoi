@@ -123,7 +123,7 @@ jobs:
         run: |
           shopt -s nullglob
           msi=(desktopApp/build/compose/binaries/main/msi/*.msi)
-          exe=(desktopApp/build/compose/binaries/main/app/com.example.repoi/*.exe)
+          exe=(desktopApp/build/compose/binaries/main/app/com.nobody.repoi/*.exe)
           if [ ${#msi[@]} -eq 0 ]; then echo "missing *.msi under binaries/main/msi"; exit 1; fi
           if [ ${#exe[@]} -eq 0 ]; then echo "missing *.exe under binaries/main/app"; exit 1; fi
           for f in "${msi[@]}" "${exe[@]}"; do

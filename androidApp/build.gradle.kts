@@ -23,11 +23,11 @@ dependencies {
 }
 
 android {
-    namespace = "com.example.repoi"
+    namespace = "com.nobody.repoi"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.repoi"
+        applicationId = "com.nobody.repoi"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

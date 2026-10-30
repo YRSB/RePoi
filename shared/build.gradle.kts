@@ -14,7 +14,7 @@ kotlin {
     jvm()
     
     android {
-       namespace = "com.example.repoi.shared"
+       namespace = "com.nobody.repoi.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
     

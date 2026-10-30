@@ -29,11 +29,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.example.repoi.MainKt"
+        mainClass = "com.nobody.repoi.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.example.repoi"
+            packageName = "com.nobody.repoi"
             packageVersion = "1.0.0"
 
             windows {
@@ -77,7 +77,7 @@ msix {
         version = "1.0.0.0"
         processorArchitecture = "x64"
         // jpackage 以 packageName 作 launcher 名；packageName 更名时同步改此处。
-        appExecutable = "com.example.repoi.exe"
+        appExecutable = "com.nobody.repoi.exe"
         targetDeviceFamilyMinVersion = "10.0.17763.0"
     }
 }
@@ -86,7 +86,7 @@ msix {
 // jpackage app-image 目录名同样取 packageName；createMsix 系 M7 试跑项
 // （自签 publisher 待定），此处先按派生规则写准路径。
 val msixApplicationDirectory =
-    layout.buildDirectory.dir("compose/binaries/main-release/app/com.example.repoi")
+    layout.buildDirectory.dir("compose/binaries/main-release/app/com.nobody.repoi")
 
 tasks.named<CreateMsixIconsTask>("createMsixIcons").configure {
     outputDir = msixApplicationDirectory.map { it.dir("resources") }
@@ -97,7 +97,7 @@ tasks.named<CreateAppxManifestTask>("createAppxManifest") {
 }
 tasks.named<CreateMsixTask>("createMsix") {
     appDirectory = msixApplicationDirectory
-    msixOutputFile = layout.buildDirectory.file("com.example.repoi.msix")
+    msixOutputFile = layout.buildDirectory.file("com.nobody.repoi.msix")
 }
 
 tasks.withType<AbstractJPackageTask>().configureEach {
