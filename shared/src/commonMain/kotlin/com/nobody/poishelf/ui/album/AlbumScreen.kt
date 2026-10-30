@@ -194,7 +194,7 @@ fun AlbumScreen(
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
                     isRefreshing = isAnyRefreshing,
                     modifier = Modifier

@@ -18,8 +18,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inbox
@@ -27,6 +25,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -49,6 +49,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -70,7 +73,7 @@ import com.nobody.poishelf.ui.theme.ExpressiveTokens
  *
  * 对齐原版 `UserCollectHobbyFragment` + `UserCollectHobbySubPagerFragment`：
  * - 6 档收藏状态胶囊（全部/关注/想买/预定/已入/有过）
- * - 5 档基础排序 + 「按入手时间」（仅已入档），点尾部箭头翻转升降序
+ * - 5 档基础排序 + 「按入手时间」（仅已入档），升/降连体二选直接指定升降序
  * - 网格 3 列（宽度 ≥ 600dp 时 4 列）/ 列表恒定 1 列
  * - 列表卡 4 个微标签与网格卡徽章按 (collectState, isSelf) 自适应
  * - 长按进入多选，批量取消收藏需二次确认（仅本人可见）
@@ -398,7 +401,7 @@ internal fun HobbyCollectSubPage(
 // ── 排序控件 ──────────────────────────────────────────────
 
 /**
- * 排序下拉 + 升降序箭头。
+ * 排序下拉 + 升降序连体二选。
  *
  * 排序值域取自 [HobbyOrderOption]：5 档基础值域
  * `actionDate/release/rating/myRating/updateDate`（原版 `b0.java:124-143`），
@@ -406,7 +409,7 @@ internal fun HobbyCollectSubPage(
  * （原版 `UserCollectHobbySubPagerFragment.java:261-267`）。
  *
  * 文案两套：看自己时 `myRating` 显示「我的评分」，看他人时显示「TA的评分」。
- * 点胶囊打开下拉，点尾部箭头直接翻转升降序（`sortType` 1 升 / 2 降）。
+ * 点胶囊打开下拉，点升/降连体按钮直接指定升降序（`sortType` 1 升 / 2 降）。
  */
 @Composable
 private fun HobbySortControl(
@@ -420,11 +423,9 @@ private fun HobbySortControl(
     var expanded by remember { mutableStateOf(false) }
 
     val options = remember(collectState, isSelf) { buildHobbyOrderOptions(collectState, isSelf) }
-    val isAsc = currentSortType == UserCollectUiState.SORT_ASC
-    val nextSortType = if (isAsc) UserCollectUiState.SORT_DESC else UserCollectUiState.SORT_ASC
 
-    // 胶囊（选排序维度）与方向按钮（翻转升降序）是两个平级可点区域：
-    // 方向按钮不能塞进 FilterChip 的 trailingIcon，否则父子两个 clickable 会同时响应。
+    // 胶囊（选排序维度）与升降序连体二选是两个平级可点区域：
+    // 连体按钮不能塞进 FilterChip 的 trailingIcon，否则父子两个 clickable 会同时响应。
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
             FilterChip(
@@ -472,16 +473,31 @@ private fun HobbySortControl(
             }
         }
 
-        IconButton(
-            onClick = { onSwitchSortDirection(nextSortType) },
-            modifier = Modifier.size(32.dp)
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (isAsc) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                contentDescription = if (isAsc) "当前升序，点击切换为降序" else "当前降序，点击切换为升序",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
+            val directions = listOf(UserCollectUiState.SORT_ASC, UserCollectUiState.SORT_DESC)
+            directions.forEachIndexed { index, sortType ->
+                ToggleButton(
+                    checked = currentSortType == sortType,
+                    onCheckedChange = { if (it) onSwitchSortDirection(sortType) },
+                    modifier = Modifier.semantics { role = Role.RadioButton },
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (sortType == UserCollectUiState.SORT_ASC) "升" else "降",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }

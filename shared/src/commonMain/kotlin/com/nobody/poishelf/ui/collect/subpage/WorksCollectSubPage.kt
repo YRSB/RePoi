@@ -13,9 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,7 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +31,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nobody.poishelf.data.remote.model.UserCollectCommonItem
 import com.nobody.poishelf.ui.collect.SubPageData
@@ -67,7 +69,7 @@ internal val WorksCollectStateTabs: List<Pair<String, String>> = listOf(
  *
  * 与通用 4 页的三点根本差异（见差异报告 §3.8）：
  * 1. 顶部 Tab 是**收藏状态**（想看/在看/看过）而非排序维度；
- * 2. 排序控件是「收藏时间」按钮 + `isAsc` 升降序箭头，**没有第二档排序**；
+ * 2. 排序控件是升/降连体二选（单收藏时间维度），**没有第二档排序**；
  * 3. **有**标签筛选（仅本人可见），且**没有**网格/列表切换（固定线性列表）。
  *
  * 标签池来自 `api/user/glean/textTag/get`，与周边页的 `api/collect/tag` **不是同一个池**。
@@ -112,7 +114,7 @@ internal fun WorksCollectSubPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部：3 档状态 Tab + 「收藏时间」升降序按钮 + 标签筛选按钮（仅本人可见）
+        // 顶部：3 档状态 Tab + 升/降连体二选 + 标签筛选按钮（仅本人可见）
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -124,17 +126,29 @@ internal fun WorksCollectSubPage(
                 modifier = Modifier.weight(1f)
             )
 
-            TextButton(onClick = { onSwitchOrderAsc(!worksOrderAsc) }) {
-                Text(
-                    text = "收藏时间",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = if (worksOrderAsc) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                    contentDescription = if (worksOrderAsc) "当前升序，点击改为降序" else "当前降序，点击改为升序",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val directions = listOf(true, false)
+                directions.forEachIndexed { index, asc ->
+                    ToggleButton(
+                        checked = worksOrderAsc == asc,
+                        onCheckedChange = { if (it) onSwitchOrderAsc(asc) },
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (asc) "升" else "降",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
 
             // 原版 `UserCollectWorksSubFragment.java:246-255`：非本人隐藏筛选入口

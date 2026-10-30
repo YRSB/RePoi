@@ -706,7 +706,7 @@ fun ZoneDetailScreen(
                 state = pullRefreshState,
                 modifier = Modifier.fillMaxSize(),
                 indicator = {
-                    PullToRefreshDefaults.Indicator(
+                    PullToRefreshDefaults.LoadingIndicator(
                         state = pullRefreshState,
                         isRefreshing = uiState.isAnyRefreshing,
                         modifier = Modifier

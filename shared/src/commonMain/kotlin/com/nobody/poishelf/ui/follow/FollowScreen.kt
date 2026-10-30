@@ -260,7 +260,7 @@ fun FollowScreen(
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
                     isRefreshing = uiState.isRefreshing,
                     modifier = Modifier

@@ -221,7 +221,7 @@ fun ResaleDetailScreen(
             onRefresh = { viewModel.refresh() },
             state = pullRefreshState,
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
                     isRefreshing = uiState.isRefreshing,
                     modifier = Modifier

@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inbox
@@ -23,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -123,8 +123,7 @@ internal fun LazyGridScope.renderPagingFooter(
  *    （服务端 `width`/`height` 返回 0，首屏无从得知），骨架与实内容的差异反而更大；
  *    再加上 8 个 Tab 共用一套列数策略，一旦策略调整，骨架与实内容会同时失配。
  *
- * 采用 M3 Expressive 的「带容器加载指示器」形态：指示器承载在 `surfaceContainerHigh`
- * 圆形底上，比裸色转圈更稳定、不随背景跳色。
+ * 采用 M3 Expressive 原生 `LoadingIndicator`：自带容器形态，比裸色转圈更稳定、不随背景跳色。
  *
  * **刻意不加文字提示**：加载态出现在「内容区整块为空」的位置，用户已经知道在加载；
  * 再叠一行文案只会拉高视觉重心、且在慢网下变成一行被反复盯着看的静态噪声。
@@ -135,19 +134,7 @@ internal fun LoadingCollectView(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(28.dp),
-                    strokeWidth = 3.dp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
+        LoadingIndicator()
     }
 }
 
