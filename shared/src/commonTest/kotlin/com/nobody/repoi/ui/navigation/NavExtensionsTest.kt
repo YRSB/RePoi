@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.person.PersonNavParam
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -52,7 +53,7 @@ class NavExtensionsTest {
         val stack = NavBackStack<NavKey>(
             HomeNavKey,
             HobbyDetailNavKey(123L),
-            PersonDetailNavKey(456L)
+            PersonDetailNavKey(PersonNavParam(personId = 456L))
         )
         stack.popToTopLevel()
 
