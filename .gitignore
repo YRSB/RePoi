@@ -22,3 +22,7 @@ node_modules/
 /PoiShelf/
 # 架构参考源（PodAura KMP 源码，只读参考，不进版本库，不编译）
 /PodAura-ref/
+
+# E2E 本地验证产物（APK/screencap/层级 dump，不进版本库）
+/e2e_out/
+.agents/
