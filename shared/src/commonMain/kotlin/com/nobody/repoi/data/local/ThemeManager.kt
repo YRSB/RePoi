@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.concurrent.atomics.AtomicBoolean
@@ -61,14 +62,21 @@ class ThemeManager(
     }
 
     init {
-        scope.launch {
-            dataStore.data.collect { prefs ->
-                themeMode = when (prefs[THEME_MODE_KEY]) {
-                    ThemeMode.LIGHT.name -> ThemeMode.LIGHT
-                    ThemeMode.DARK.name -> ThemeMode.DARK
-                    else -> ThemeMode.SYSTEM
+        runCatching {
+            scope.launch {
+                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
+                // 不使用持续 collect，避免与本地写入产生异步时序竞态。
+                val prefs = dataStore.data.first()
+                prefs[THEME_MODE_KEY]?.let {
+                    themeMode = when (it) {
+                        ThemeMode.LIGHT.name -> ThemeMode.LIGHT
+                        ThemeMode.DARK.name -> ThemeMode.DARK
+                        else -> ThemeMode.SYSTEM
+                    }
                 }
-                dynamicColor = prefs[DYNAMIC_COLOR_KEY] ?: supportsDynamicColor
+                prefs[DYNAMIC_COLOR_KEY]?.let {
+                    dynamicColor = it
+                }
             }
         }
     }

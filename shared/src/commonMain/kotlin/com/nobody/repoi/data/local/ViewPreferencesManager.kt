@@ -95,14 +95,17 @@ class ViewPreferencesManager(
     }
 
     init {
-        scope.launch {
-            dataStore.data.collect { prefs ->
-                isHobbyListGridMode = prefs[KEY_HOBBY_LIST_GRID_MODE] ?: true
-                isCollectListGridMode = prefs[KEY_COLLECT_LIST_GRID_MODE] ?: true
-                feedCategoryId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
-                feedSubType = prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
-                feedZoneTabKey = prefs[KEY_FEED_ZONE_TAB_KEY] ?: "all"
-                isExHobbyEnabled = prefs[KEY_EXHOBBY_ENABLED] ?: true
+        runCatching {
+            scope.launch {
+                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
+                // 不使用持续 collect，避免与本地写入产生异步时序竞态。
+                val prefs = dataStore.data.first()
+                prefs[KEY_HOBBY_LIST_GRID_MODE]?.let { isHobbyListGridMode = it }
+                prefs[KEY_COLLECT_LIST_GRID_MODE]?.let { isCollectListGridMode = it }
+                prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
+                prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = it }
+                prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
+                prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
             }
         }
     }
