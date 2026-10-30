@@ -30,7 +30,6 @@ open class TokenManager(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val writeVersion = AtomicLong(0L)
     private val tokenRef = AtomicReference("")
     private val userIdRef = AtomicLong(0L)
     private val userNameRef = AtomicReference("")
@@ -58,27 +57,23 @@ open class TokenManager(
     init {
         runCatching {
             scope.launch {
-                dataStore.data.collect { latest ->
-                    val incoming = latest[VERSION_KEY] ?: 0L
-                    if (incoming >= writeVersion.load()) {
-                        currentToken = latest[TOKEN_KEY] ?: ""
-                        currentUserId = latest[USER_ID_KEY] ?: 0L
-                        currentUserName = latest[USER_NAME_KEY] ?: ""
-                    }
-                }
+                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
+                // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
+                val prefs = dataStore.data.first()
+                prefs[TOKEN_KEY]?.let { currentToken = it }
+                prefs[USER_ID_KEY]?.let { currentUserId = it }
+                prefs[USER_NAME_KEY]?.let { currentUserName = it }
             }
         }
     }
 
     suspend fun saveToken(token: String, userName: String? = null) {
-        val version = writeVersion.addAndFetch(1L)
         currentToken = token
         currentUserId = 0L
         if (userName != null) {
             currentUserName = userName
         }
         dataStore.edit { prefs ->
-            prefs[VERSION_KEY] = version
             prefs[TOKEN_KEY] = token
             prefs.remove(USER_ID_KEY)
             if (userName != null) {
@@ -88,13 +83,11 @@ open class TokenManager(
     }
 
     suspend fun saveCurrentUser(userId: Long, userName: String? = null) {
-        val version = writeVersion.addAndFetch(1L)
         currentUserId = userId
         if (userName != null) {
             currentUserName = userName
         }
         dataStore.edit { prefs ->
-            prefs[VERSION_KEY] = version
             prefs[USER_ID_KEY] = userId
             if (userName != null) {
                 prefs[USER_NAME_KEY] = userName
@@ -104,12 +97,10 @@ open class TokenManager(
 
     // M7: open 化以便 commonTest 替身统计 4001 过期清 token 调用（行为无变化）。
     open suspend fun clearToken() {
-        val version = writeVersion.addAndFetch(1L)
         currentToken = ""
         currentUserId = 0L
         currentUserName = ""
         dataStore.edit { prefs ->
-            prefs[VERSION_KEY] = version
             prefs.remove(TOKEN_KEY)
             prefs.remove(USER_ID_KEY)
             prefs.remove(USER_NAME_KEY)
@@ -120,6 +111,5 @@ open class TokenManager(
         private val TOKEN_KEY = stringPreferencesKey("utoken")
         private val USER_ID_KEY = longPreferencesKey("user_id")
         private val USER_NAME_KEY = stringPreferencesKey("user_name")
-        private val VERSION_KEY = longPreferencesKey("write_version")
     }
 }
