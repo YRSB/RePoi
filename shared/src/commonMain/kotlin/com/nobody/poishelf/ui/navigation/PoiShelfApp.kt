@@ -46,6 +46,8 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_MEDIUM_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.poishelf.data.local.ThemeManager
 import com.nobody.poishelf.data.local.ThemeMode
 import com.nobody.poishelf.platform.LocalAppMessages
@@ -78,6 +80,8 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun PoiShelfApp() {
+    val imageLoader: ImageLoader = koinInject()
+    setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
     val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
     val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = true)
@@ -95,7 +99,7 @@ fun PoiShelfApp() {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
 
-    PoiShelfTheme(darkTheme = darkTheme) {
+    PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
         PoiShelfNavHost(
             themeMode = themeMode,
             dynamicColor = dynamicColor,

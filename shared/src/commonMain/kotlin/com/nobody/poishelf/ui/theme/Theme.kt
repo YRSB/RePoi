@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.nobody.poishelf.platform.dynamicPoiShelfColorScheme
 
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
@@ -75,22 +76,14 @@ private val LightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
-/**
- * PoiShelf 跨平台主题（KMP commonMain）。
- *
- * 与原生版差异（`ui/theme/Theme.kt`）：
- * - 删除动态取色（`dynamicDarkColorScheme/dynamicLightColorScheme`，`Build.VERSION.SDK` 分支）；
- *   是否启用动态取色由 M6 root 经 [com.nobody.poishelf.platform.supportsDynamicColor]
- *   （ThemeCaps expect）决定，主题本体只保留静态双色。
- * - 删除 Android 专属窗口行为（`LocalView`/`SideEffect`/`WindowCompat` 状态栏字色控制）；
- *   各 shell 按平台惯例自行处理（M6）。
- */
 @Composable
 fun PoiShelfTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val dynamicScheme = if (dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null
+    val colorScheme = dynamicScheme ?: if (darkTheme) DarkColorScheme else LightColorScheme
 
     CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
         MaterialTheme(

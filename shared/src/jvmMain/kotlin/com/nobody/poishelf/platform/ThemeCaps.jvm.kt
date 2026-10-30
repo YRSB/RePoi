@@ -1,4 +1,9 @@
 package com.nobody.poishelf.platform
 
-/** 动态取色能力开关（S10）：桌面恒为 false。 */
+import androidx.compose.material3.ColorScheme
+import androidx.compose.runtime.Composable
+
 actual val supportsDynamicColor: Boolean = false
+
+@Composable
+actual fun dynamicPoiShelfColorScheme(darkTheme: Boolean): ColorScheme? = null
