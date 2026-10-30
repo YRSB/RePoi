@@ -20,11 +20,11 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 
 ## 交付完成门禁 (Completion Criteria)
 
-完成代码变更并在提交前，必须满足以下硬性判据：
-1. **静态编译与单元测试全绿**：
-   ```bash
-   ./gradlew :androidApp:assembleDebug :shared:jvmTest :shared:testAndroidHostTest
-   ```
+完成代码变更并在交付时，必须满足以下硬性判据：
+1. **CI 裁决权威（全量走 CI，严禁本地编译）**：
+   - 验证统一交由 GitHub Actions CI 远端流水线执行，**本地严禁执行任何 Gradle 编译或测试任务**；
+   - 代码变更直接提交并推送到对应分支或 PR，通过 `gh pr checks` 或 `gh run list` 查看远端流水线状态；
+   - 判定通过标准：远端 CI 双端工作流（Android 编译、JVM 目标单测、Android-host 宿主单测、Desktop 产物验证）全绿。
 2. **规范提交信息**：遵循 Conventional Commits 1.0.0，提交信息全中文、无末尾句号：
    `<type>(<scope>): <subject>`（例如 `feat(detail): 增加手办发售信息卡片`；scope 统一为小写特性名，如 `home`, `detail`, `search`, `network`, `nav` 等）。
 3. **渲染与性能规范**：所有 Lazy 列表项强制显式配置稳定的 `key` 与 `contentType`。

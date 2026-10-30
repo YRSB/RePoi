@@ -92,42 +92,17 @@ RePoi/
 
 ## 📱 运行与构建
 
-### 开发环境要求
-- **IDE**: Android Studio Meerkat (2024.3+) 或 IntelliJ IDEA 2024.3+
-- **JDK**: Java 17 或 Java 21
-- **Android SDK**: `minSdk 24`, `targetSdk 37`, `compileSdk 37`
+> [!IMPORTANT]
+> **CI 裁决权威（统一走 CI，严禁本地编译）**  
+> 本项目的静态编译、单元测试与双端分发产物验证**全量交由 GitHub Actions CI 权威执行**。日常开发与智能体交付严禁在本地执行任何 Gradle 编译或单测任务；提交并推送至 PR 分支后，统一通过 `gh pr checks` 或 `gh run list` 查验远端流水线状态。
 
-### 命令行运行
+### CI 流水线核心任务说明
 
-```bash
-# 1. 运行 Android 应用 (需已连接设备或启动模拟器)
-./gradlew :androidApp:installDebug
-
-# 2. 运行 Desktop 桌面应用 (标准运行)
-./gradlew :desktopApp:run
-
-# 3. 运行 Desktop 桌面应用 (Compose 热重载模式)
-./gradlew :desktopApp:hotRun --auto
-```
-
-### 运行单元测试
-```bash
-# 运行 JVM 目标单元测试
-./gradlew :shared:jvmTest
-
-# 运行 Android Host 单元测试
-./gradlew :shared:testAndroidHostTest
-```
-
-### 打包分发
-```bash
-# 构建 Android Debug APK
-./gradlew :androidApp:assembleDebug
-
-# 构建 Windows 可安装产物 (MSI / EXE)
-./gradlew :desktopApp:packageMsi
-./gradlew :desktopApp:packageDistributionForCurrentOS
-```
+- **Android 构建**：`:androidApp:assembleDebug`（生成 Debug APK 产物）
+- **桌面构建与打包**：`:desktopApp:packageDistributionForCurrentOS` + `:desktopApp:packageMsi`（生成 Windows/Linux 可分发包与 MSI）
+- **跨平台单元测试**：
+  - `:shared:jvmTest`（JVM 目标逻辑单测）
+  - `:shared:testAndroidHostTest`（Android-Host 宿主逻辑单测）
 
 ---
 

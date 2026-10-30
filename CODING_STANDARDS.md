@@ -21,6 +21,11 @@
 - 分页加载统一采用 `com.nobody.repoi.util.paging.PagedListLoader`，封装触底拉取、防重触发、游标递增与状态机切换。
 - ViewModel 暴露 `StateFlow<PagedListUiState<T>>`，禁止在 ViewModel 中手工维护孤立的 `isFetching` 标志位。
 
+### 4. 验证原则：CI 裁决权威 (CI Authority)
+- **严禁本地编译**：为消除开发环境差异并提升开发敏捷度，本项目**严禁在本地执行任何 Gradle 编译、打包或单元测试任务**。
+- **全量走 CI 验证**：代码变更通过 Git 提交并推送至分支/PR，全量交由 GitHub Actions CI 流水线权威执行与裁决。
+- **状态追踪**：统一使用 `gh pr checks` 或 `gh run list` 监控远端 CI 矩阵（Android APK、JVM 单测、Android-host 单测及桌面端打包）执行状态。
+
 ---
 
 ## 路由契约与拓扑速查 (Navigation 3)
