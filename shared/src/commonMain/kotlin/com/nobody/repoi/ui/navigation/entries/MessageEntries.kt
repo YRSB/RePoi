@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.album.AlbumNavParam
+import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.message.block.MessageBlockScreen
 import com.nobody.repoi.ui.message.center.MessageCenterScreen
 import com.nobody.repoi.ui.message.chat.MessageChatScreen
