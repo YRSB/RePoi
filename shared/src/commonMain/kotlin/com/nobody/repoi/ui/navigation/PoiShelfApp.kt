@@ -149,35 +149,12 @@ private fun PoiShelfNavHost(
     }
 
     val onTabSelect: (AppDestinations) -> Unit = { destination ->
-        val targetKey: AppNavKey = when (destination) {
-            AppDestinations.HOME -> HomeNavKey
-            AppDestinations.ITEMS -> ItemsNavKey
-            AppDestinations.ALBUM -> AlbumNavKey
-            AppDestinations.FOLLOW -> FollowNavKey
-            AppDestinations.PROFILE -> ProfileNavKey
-        }
         if (currentDestination == destination) {
             // 点击当前已选中的 Tab：若当前正在二级页面，则退栈回到该 Tab 根视图
-            while (backStack.size > 1 && !isTopLevelNavKey(backStack.last())) {
-                backStack.removeLastOrNull()
-            }
+            backStack.popToTopLevel()
         } else {
-            // 切换到目标 Tab：
-            // 1. 先退栈清理当前 Tab 遗留的临时二级页面，避免跨 Tab 堆叠二级详情占用过多资源
-            while (backStack.size > 1 && !isTopLevelNavKey(backStack.last())) {
-                backStack.removeLastOrNull()
-            }
-            // 2. 规范化顶层 Tab 栈模型：以 HomeNavKey 为绝对根基底，避免多 Tab 堆叠导致返回键死锁
-            if (destination == AppDestinations.HOME) {
-                // 切换回首页动态：清空所有非首页顶层 Tab，栈仅保留唯一的 HomeNavKey
-                backStack.clear()
-                backStack.add(HomeNavKey)
-            } else {
-                // 切换到其他非首页 Tab：基底保持 HomeNavKey，栈顶设为目标 Tab
-                backStack.clear()
-                backStack.add(HomeNavKey)
-                backStack.add(targetKey)
-            }
+            // 切换到目标 Tab：清理二级页并规范化顶层栈模型（以 Home 为绝对基底）
+            backStack.switchTopLevelTab(destination)
             currentDestination = destination
         }
     }

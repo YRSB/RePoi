@@ -39,6 +39,27 @@ fun AppNavDisplay(
             onBack = onBack,
             modifier = modifier,
             entryDecorators = entryDecorators,
+            transitionSpec = {
+                val fromKey = initialState.key as? NavKey
+                val toKey = targetState.key as? NavKey
+                if (fromKey != null && toKey != null && isTopLevelNavKey(fromKey) && isTopLevelNavKey(toKey)) {
+                    MaterialSharedAxis.Fade.TransitionSpec
+                } else {
+                    MaterialSharedAxis.Z.TransitionSpec
+                }
+            },
+            popTransitionSpec = {
+                val fromKey = initialState.key as? NavKey
+                val toKey = targetState.key as? NavKey
+                if (fromKey != null && toKey != null && isTopLevelNavKey(fromKey) && isTopLevelNavKey(toKey)) {
+                    MaterialSharedAxis.Fade.TransitionSpec
+                } else {
+                    MaterialSharedAxis.Z.PopTransitionSpec
+                }
+            },
+            predictivePopTransitionSpec = { _ ->
+                MaterialSharedAxis.Z.PopTransitionSpec
+            },
             entryProvider = entryProvider {
                 topLevelEntries(backStack)
                 detailEntries(backStack, onBack)

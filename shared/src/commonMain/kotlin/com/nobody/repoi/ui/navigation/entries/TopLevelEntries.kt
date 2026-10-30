@@ -1,15 +1,11 @@
 package com.nobody.repoi.ui.navigation
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.togetherWith
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
 import com.nobody.repoi.ui.album.AlbumNavParam
-import com.nobody.repoi.ui.album.AlbumRankListNavParam
 import com.nobody.repoi.ui.album.AlbumScreen
 import com.nobody.repoi.ui.follow.FollowScreen
 import com.nobody.repoi.ui.home.HomeFeedScreen
@@ -20,13 +16,10 @@ import com.nobody.repoi.ui.search.SearchNavParam
 
 internal val TopLevelTransitionMetadata: Map<String, Any> = metadata {
     put(NavDisplay.TransitionKey) {
-        EnterTransition.None togetherWith ExitTransition.None
+        MaterialSharedAxis.Fade.TransitionSpec
     }
     put(NavDisplay.PopTransitionKey) {
-        EnterTransition.None togetherWith ExitTransition.None
-    }
-    put(NavDisplay.PredictivePopTransitionKey) {
-        EnterTransition.None togetherWith ExitTransition.None
+        MaterialSharedAxis.Fade.TransitionSpec
     }
 }
 
@@ -36,80 +29,78 @@ internal val TopLevelTransitionMetadata: Map<String, Any> = metadata {
 fun EntryProviderScope<NavKey>.topLevelEntries(backStack: NavBackStack<NavKey>) {
     entry<HomeNavKey>(metadata = TopLevelTransitionMetadata) {
         HomeFeedScreen(
-            onNavigateToDetail = { param -> backStack.add(HobbyDetailNavKey(param)) },
-            onNavigateToAlbum = { param -> backStack.add(AlbumDetailNavKey(param)) },
-            onNavigateToPerson = { param -> backStack.add(PersonDetailNavKey(param)) },
-            onNavigateToWorks = { param -> backStack.add(WorksDetailNavKey(param)) },
-            onNavigateToVendor = { param -> backStack.add(VendorDetailNavKey(param)) },
-            onNavigateToCharacter = { param -> backStack.add(CharacterNavKey(param)) },
-            onNavigateToSeries = { param -> backStack.add(SeriesDetailNavKey(param)) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
-            onNavigateToSearch = { param -> backStack.add(SearchNavKey(param = param)) },
-            onNavigateToZoneBrowse = { backStack.add(ZoneBrowseNavKey) },
-            onNavigateToForumHome = { backStack.add(ForumHomeNavKey) }
+            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
+            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
+            onNavigateToPerson = { param -> backStack.navigateToPerson(param) },
+            onNavigateToWorks = { param -> backStack.navigateToWorks(param) },
+            onNavigateToVendor = { param -> backStack.navigateToVendor(param) },
+            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
+            onNavigateToSeries = { param -> backStack.navigateToSeries(param) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToSearch = { param -> backStack.navigateToSearch(param) },
+            onNavigateToZoneBrowse = { backStack.navigateToZoneBrowse() },
+            onNavigateToForumHome = { backStack.navigateToForumHome() }
         )
     }
 
     entry<ItemsNavKey>(metadata = TopLevelTransitionMetadata) {
         ItemHomeScreen(
-            onNavigateToDetail = { param -> backStack.add(HobbyDetailNavKey(param)) },
-            onNavigateToHobbyList = { param -> backStack.add(HobbyListNavKey(param)) },
+            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
+            onNavigateToHobbyList = { param -> backStack.navigateToHobbyList(param) },
             onNavigateToSearch = { categoryId ->
-                backStack.add(SearchNavKey(param = SearchNavParam(initialCategory = categoryId)))
+                backStack.navigateToSearch(SearchNavParam(initialCategory = categoryId))
             }
         )
     }
 
     entry<AlbumNavKey>(metadata = TopLevelTransitionMetadata) {
         AlbumScreen(
-            onNavigateToAlbum = { param -> backStack.add(AlbumDetailNavKey(param)) },
-            onNavigateToLogin = { backStack.add(LoginNavKey) },
-            onNavigateToRankList = { param -> backStack.add(AlbumRankListNavKey(param)) }
+            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
+            onNavigateToLogin = { backStack.navigateToLogin() },
+            onNavigateToRankList = { param -> backStack.navigateToRankList(param) }
         )
     }
 
     entry<FollowNavKey>(metadata = TopLevelTransitionMetadata) {
         FollowScreen(
-            onNavigateToDetail = { param -> backStack.add(HobbyDetailNavKey(param)) },
-            onNavigateToAlbum = { param -> backStack.add(AlbumDetailNavKey(param)) },
-            onNavigateToPerson = { param -> backStack.add(PersonDetailNavKey(param)) },
-            onNavigateToWorks = { param -> backStack.add(WorksDetailNavKey(param)) },
-            onNavigateToVendor = { param -> backStack.add(VendorDetailNavKey(param)) },
-            onNavigateToCharacter = { param -> backStack.add(CharacterNavKey(param)) },
-            onNavigateToSeries = { param -> backStack.add(SeriesDetailNavKey(param)) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
-            onNavigateToLogin = { backStack.add(LoginNavKey) }
+            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
+            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
+            onNavigateToPerson = { param -> backStack.navigateToPerson(param) },
+            onNavigateToWorks = { param -> backStack.navigateToWorks(param) },
+            onNavigateToVendor = { param -> backStack.navigateToVendor(param) },
+            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
+            onNavigateToSeries = { param -> backStack.navigateToSeries(param) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToLogin = { backStack.navigateToLogin() }
         )
     }
 
     entry<ProfileNavKey>(metadata = TopLevelTransitionMetadata) {
         ProfileScreen(
-            onNavigateToSettings = { backStack.add(SettingsNavKey) },
-            onNavigateToLogin = { backStack.add(LoginNavKey) },
+            onNavigateToSettings = { backStack.navigateToSettings() },
+            onNavigateToLogin = { backStack.navigateToLogin() },
             onNavigateToHobby = { param ->
                 if (param.itemType == "person") {
-                    backStack.add(
-                        PersonDetailNavKey(
-                            PersonNavParam(
-                                personId = param.itemId,
-                                initialName = param.initialName,
-                                initialCover = param.initialCover
-                            )
+                    backStack.navigateToPerson(
+                        PersonNavParam(
+                            personId = param.itemId,
+                            initialName = param.initialName,
+                            initialCover = param.initialCover
                         )
                     )
                 } else {
-                    backStack.add(HobbyDetailNavKey(param))
+                    backStack.navigateToDetail(param)
                 }
             },
-            onNavigateToCollect = { param -> backStack.add(UserCollectNavKey(param)) },
-            onNavigateToCreation = { creationParam -> backStack.add(UserCreationNavKey(creationParam)) },
-            onNavigateToHistory = { backStack.add(UserHistoryNavKey()) },
-            onNavigateToAlbum = { albumId -> backStack.add(AlbumDetailNavKey(AlbumNavParam(albumId = albumId))) },
+            onNavigateToCollect = { param -> backStack.navigateToUserCollect(param) },
+            onNavigateToCreation = { creationParam -> backStack.navigateToUserCreation(creationParam) },
+            onNavigateToHistory = { backStack.navigateToUserHistory() },
+            onNavigateToAlbum = { albumId -> backStack.navigateToAlbum(AlbumNavParam(albumId = albumId)) },
             onNavigateToFriendList = { userId, initialType ->
-                backStack.add(FriendListNavKey(FriendListNavParam(userId = userId, initialType = initialType)))
+                backStack.navigateToFriendList(FriendListNavParam(userId = userId, initialType = initialType))
             },
-            onNavigateToUserInfo = { userId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = userId))) },
-            onNavigateToMessage = { backStack.add(MessageCenterNavKey()) }
+            onNavigateToUserInfo = { userId -> backStack.navigateToUser(userId) },
+            onNavigateToMessage = { backStack.navigateToMessageCenter() }
         )
     }
 }

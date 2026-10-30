@@ -24,6 +24,44 @@ val LocalNavBackStack = staticCompositionLocalOf<NavBackStack<NavKey>> {
 }
 
 /**
+ * 连续退栈，直到栈顶为顶级 Tab（用于点击当前已激活的 Tab 或切换 Tab 前清理二级详情）。
+ */
+fun NavBackStack<NavKey>.popToTopLevel() {
+    while (size > 1 && !isTopLevelNavKey(last())) {
+        removeLastOrNull()
+    }
+}
+
+/**
+ * 切换顶层 Tab：
+ * 1. 先退栈清理当前 Tab 遗留的临时二级页面；
+ * 2. 规范化顶层 Tab 栈模型：以 HomeNavKey 为绝对根基底，避免多 Tab 堆叠导致返回键死锁；
+ * 3. 若目标为 HOME，则清空栈仅保留 HomeNavKey；若为其他 Tab，则栈底为 HomeNavKey，栈顶为目标 Tab。
+ */
+fun NavBackStack<NavKey>.switchTopLevelTab(destination: AppDestinations) {
+    val targetKey: AppNavKey = when (destination) {
+        AppDestinations.HOME -> HomeNavKey
+        AppDestinations.ITEMS -> ItemsNavKey
+        AppDestinations.ALBUM -> AlbumNavKey
+        AppDestinations.FOLLOW -> FollowNavKey
+        AppDestinations.PROFILE -> ProfileNavKey
+    }
+
+    // 1. 先清理当前 Tab 遗留的临时二级页面
+    popToTopLevel()
+
+    // 2. 规范化顶层 Tab 栈模型
+    if (destination == AppDestinations.HOME) {
+        clear()
+        add(HomeNavKey)
+    } else {
+        clear()
+        add(HomeNavKey)
+        add(targetKey)
+    }
+}
+
+/**
  * 强类型导航入栈语义扩展函数集：收敛全局页面跳转逻辑，消除重复样板代码。
  */
 fun NavBackStack<NavKey>.navigateToDetail(itemId: Long) = add(HobbyDetailNavKey(itemId))
