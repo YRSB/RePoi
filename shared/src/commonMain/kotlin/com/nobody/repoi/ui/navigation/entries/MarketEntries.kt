@@ -1,16 +1,9 @@
-package com.nobody.repoi.ui.navigation.entries
+package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.navigation.HobbyDetailNavKey
-import com.nobody.repoi.ui.navigation.MessageChatNavKey
-import com.nobody.repoi.ui.navigation.MessageChatNavParam
-import com.nobody.repoi.ui.navigation.ResaleDetailNavKey
-import com.nobody.repoi.ui.navigation.ResaleMarketNavKey
-import com.nobody.repoi.ui.navigation.UserInfoNavKey
-import com.nobody.repoi.ui.navigation.UserInfoNavParam
 import com.nobody.repoi.ui.resale.ResaleDetailScreen
 import com.nobody.repoi.ui.resale.ResaleMarketScreen
 

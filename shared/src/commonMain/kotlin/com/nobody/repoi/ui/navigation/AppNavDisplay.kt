@@ -10,14 +10,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.nobody.repoi.data.local.ThemeMode
-import com.nobody.repoi.ui.navigation.entries.communityEntries
-import com.nobody.repoi.ui.navigation.entries.detailEntries
-import com.nobody.repoi.ui.navigation.entries.interactionEntries
-import com.nobody.repoi.ui.navigation.entries.marketEntries
-import com.nobody.repoi.ui.navigation.entries.messageEntries
-import com.nobody.repoi.ui.navigation.entries.systemEntries
-import com.nobody.repoi.ui.navigation.entries.topLevelEntries
-import com.nobody.repoi.ui.navigation.entries.userEntries
 
 /**
  * 全局导航分发器：封装 Navigation 3 强类型路由拓扑与页面映射。

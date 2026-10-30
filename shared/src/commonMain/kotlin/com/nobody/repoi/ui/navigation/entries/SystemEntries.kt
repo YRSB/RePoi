@@ -1,12 +1,10 @@
-package com.nobody.repoi.ui.navigation.entries
+package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.ui.login.LoginScreen
-import com.nobody.repoi.ui.navigation.LoginNavKey
-import com.nobody.repoi.ui.navigation.SettingsNavKey
 import com.nobody.repoi.ui.settings.SettingsScreen
 
 /**

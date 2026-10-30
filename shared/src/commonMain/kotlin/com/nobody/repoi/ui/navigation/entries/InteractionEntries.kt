@@ -1,4 +1,4 @@
-package com.nobody.repoi.ui.navigation.entries
+package com.nobody.repoi.ui.navigation
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,23 +11,10 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
-import com.nobody.repoi.ui.album.AlbumDetailNavKey
 import com.nobody.repoi.ui.comment.CommentDetailScreen
 import com.nobody.repoi.ui.comment.HobbyCommentsScreen
 import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
-import com.nobody.repoi.ui.item.list.HobbyListNavKey
 import com.nobody.repoi.ui.item.list.HobbyListScreen
-import com.nobody.repoi.ui.navigation.CharacterNavKey
-import com.nobody.repoi.ui.navigation.CommentDetailNavKey
-import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
-import com.nobody.repoi.ui.navigation.HobbyCommentsNavKey
-import com.nobody.repoi.ui.navigation.HobbyDetailNavKey
-import com.nobody.repoi.ui.navigation.PersonDetailNavKey
-import com.nobody.repoi.ui.navigation.PictureListNavKey
-import com.nobody.repoi.ui.navigation.SearchNavKey
-import com.nobody.repoi.ui.navigation.SeriesDetailNavKey
-import com.nobody.repoi.ui.navigation.VendorDetailNavKey
-import com.nobody.repoi.ui.navigation.WorksDetailNavKey
 import com.nobody.repoi.ui.picture.PictureListScreen
 import com.nobody.repoi.ui.search.SearchScreen
 
