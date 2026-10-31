@@ -27,3 +27,7 @@ node_modules/
 /e2e_out/
 .agents/
 _ci_apk/
+
+# 签名凭证配置（本地/CI 私钥与属性不进版本库，debug.keystore 除外）
+signing.properties
+*.jks
