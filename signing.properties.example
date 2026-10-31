@@ -1,0 +1,7 @@
+# Android Release 签名配置模板（复制并重命名为 signing.properties，切勿提交至 Git）
+#
+# KEYSTORE_FILE 为相对于项目根目录的 keystore 路径（例如 release.keystore 或 secrets/key.jks）
+KEYSTORE_FILE=release.keystore
+KEYSTORE_PASSWORD=your_keystore_password
+KEY_ALIAS=your_key_alias
+KEY_PASSWORD=your_key_password

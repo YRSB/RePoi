@@ -8,7 +8,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nobody.repoi.di.initKoin
-import com.nobody.repoi.ui.navigation.PoiShelfApp
+import com.nobody.repoi.ui.navigation.RePoiApp
 
 fun main() = application {
     initKoin()
@@ -21,6 +21,6 @@ fun main() = application {
         state = mainWindowState,
         title = "RePoi",
     ) {
-        PoiShelfApp()
+        RePoiApp()
     }
 }

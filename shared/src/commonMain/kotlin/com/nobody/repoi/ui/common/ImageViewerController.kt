@@ -62,7 +62,7 @@ val LocalImageViewer = staticCompositionLocalOf<ImageViewerController> {
 
 /**
  * 大图宿主内部状态持有者，实现 [ImageViewerController] 接口，
- * 供顶层脚手架（如 `PoiShelfApp`）与大图弹窗宿主交互。
+ * 供顶层脚手架（如 `RePoiApp`）与大图弹窗宿主交互。
  */
 @Stable
 class ImageViewerStateHolder internal constructor(

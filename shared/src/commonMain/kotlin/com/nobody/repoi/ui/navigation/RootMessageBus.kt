@@ -8,7 +8,7 @@ import kotlinx.coroutines.channels.Channel
  *
  * 30+ 屏经 `LocalAppMessages.current.show()` 上报一次性提示
  * （原 `Toast.makeText` 语义）；此前 commonMain 无任何提供方，
- * 首屏组合即崩溃。`PoiShelfApp` 提供本实现并经根 `SnackbarHost`
+ * 首屏组合即崩溃。`RePoiApp` 提供本实现并经根 `SnackbarHost`
  * 消费 `take()`，形成完整链路。
  */
 internal class RootMessageBus : AppMessageBus {

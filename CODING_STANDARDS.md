@@ -9,7 +9,7 @@
 ### 1. KMP 模块分层职责
 - **`:shared:commonMain`**：核心代码集，承载领域模型、Ktor API、仓储、ViewModel、Compose UI 页面及组件。
 - **`:shared:androidMain` / `:shared:jvmMain`**：平台能力垫片（`com.nobody.repoi.platform` 下的 `expect/actual` 实现，如 `AppDirs`, `BackPress`, `LogShare`, `Sharing`, `ThemeCaps`）与平台专属 Koin 扩展。
-- **`:androidApp` 与 `:desktopApp`**：极薄宿主外壳，仅负责平台生命周期初始化与挂载跨平台根组件 `PoiShelfApp()`。
+- **`:androidApp` 与 `:desktopApp`**：极薄宿主外壳，仅负责平台生命周期初始化与挂载跨平台根组件 `RePoiApp()`。
 
 ### 2. Koin 依赖注入与单向数据流 (UDF)
 - **仓储注入**：仓储统一为具体类，在 `RepositoryModule` 中通过 `singleOf(::XxxRepository)` 单例声明。
@@ -30,16 +30,17 @@
 
 ## 路由契约与拓扑速查 (Navigation 3)
 
-### 1. 路由规则与实例隔离
+### 1. 路由规则与拓扑
 - **路由基类**：所有路由统一继承 `AppNavKey : NavKey`（声明于 `ui/navigation/NavRoutes.kt`），由 `ui/navigation/AppNavDisplay.kt` 承载映射。
+- **全局单根栈**：应用只有一条根栈 `[MainNavKey, 二级页...]`（`RePoiNavigator.rootBackStack`）。`MainNavKey` 承载主界面（`ui/navigation/MainScreen.kt`：自适应导航套件 + 5 个 Tab 首屏），二级页平铺压栈并整屏覆盖主界面；返回完全交由 Nav3 原生出栈，栈底 `MainNavKey` 永不出栈，主界面按返回直接退出 Activity。
+- **Tab 切换**：仅变更 `RePoiNavigationState.currentDestination`，不触碰根栈，也不修改任何 Tab 栈内容。
 - **实例隔离**：
   - 顶层 Tab 使用无参 `data object`。
   - 详情与搜索等可重复入栈路由必须包含唯一实例键 `val id: String`，确保返回栈实例身份独立与 `contentKey` 稳定隔离。
-- **装饰器作用域**：全局导航分发器通过 `rememberViewModelStoreNavEntryDecorator` 与 `rememberSaveableStateHolderNavEntryDecorator` 装饰每一个 `NavEntry`，条目退栈离开组合时自动回收内存。
+- **装饰器作用域**：Tab 首屏的 `rememberSaveableStateHolderNavEntryDecorator` 与 `rememberViewModelStoreNavEntryDecorator` 由 `RePoiNavigationState.toDecoratedEntries` 在 `RePoiNavHost` 根层恒常驻组合，二级页覆盖期间 Tab 的滚动位置与 ViewModel 不丢失；根栈二级页装饰器由 `RePoiNavDisplay` 默认挂载。
 - **转场动画**：
-  - 顶层 Tab 切换：`EnterTransition.None togetherWith ExitTransition.None` 瞬时切换。
-  - 二级与详情页：水平平移与淡入淡出（`NAV_TRANSITION_DURATION_MS = 350`）。
-  - 预测性返回：由 `predictivePopTransitionSpec` 接管并指定 `targetContentZIndex = -1f`。
+  - Tab 首屏切换：共享轴淡入淡出（`MaterialSharedAxis.Fade`）。
+  - 根栈二级页入栈/出栈：共享轴 Z 轴推入推出（`MaterialSharedAxis.Z`）。
 
 ### 2. 领域组件与路由拓扑速查
 

@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.navigation
 
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.platform.newNavId
 import com.nobody.repoi.ui.album.AlbumNavParam
@@ -19,6 +18,10 @@ import kotlinx.serialization.Serializable
 
 sealed interface AppNavKey : NavKey
 
+// 全局根栈基底：主界面（底栏 + 5 个 Tab 首屏）作为唯一常驻条目
+@Serializable
+data object MainNavKey : AppNavKey
+
 // 一级底栏 Tab 路由
 @Serializable
 data object HomeNavKey : AppNavKey
@@ -33,30 +36,6 @@ data object FollowNavKey : AppNavKey
 
 @Serializable
 data object ProfileNavKey : AppNavKey
-
-/**
- * 判断指定路由是否为一级底栏 Tab 目的地。
- */
-fun isTopLevelNavKey(key: Any?): Boolean =
-    key is HomeNavKey ||
-        key is ItemsNavKey ||
-        key is AlbumNavKey ||
-        key is FollowNavKey ||
-        key is ProfileNavKey
-
-/**
- * 安全出栈防护扩展函数：
- * 1. 确保返回栈深度至少为 2，严禁弹出栈底唯一的根条目，彻底杜绝 NavDisplay backstack empty 崩溃；
- * 2. 确保当前待弹出的栈顶条目不是顶层 Tab（动态/条目/相册/关注/我的）；
- * 3. 返回是否成功弹出了二级条目。
- */
-fun NavBackStack<NavKey>.safePop(): Boolean {
-    if (size <= 1) return false
-    val currentTop = lastOrNull() ?: return false
-    if (isTopLevelNavKey(currentTop)) return false
-    removeLastOrNull()
-    return true
-}
 
 // 专区相关路由契约
 @Serializable

@@ -9,7 +9,7 @@
 ## 决策结论
 1. **工程结构**：
    - 采用单 `:shared` 业务模块（内含 `commonMain`、`androidMain`、`jvmMain`、`commonTest`）；
-   - `:androidApp` 与 `:desktopApp` 仅保留极薄入口外壳，统一调用 `shared` 中的根组件 `PoiShelfApp()`。
+   - `:androidApp` 与 `:desktopApp` 仅保留极薄入口外壳，统一调用 `shared` 中的根组件 `RePoiApp()`。
 2. **跨平台技术栈选型**：
    - **依赖注入**：Dagger Hilt → Koin 4.2+（跨平台原生支持，模块化声明）。
    - **网络客户端**：Retrofit 2 + OkHttp 4 → Ktor 3.6+（`HttpClient` + `ContentNegotiation`）。
