@@ -3,7 +3,6 @@ package com.nobody.repoi.ui.navigation
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import com.nobody.repoi.ui.album.AlbumDetailNavKey
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import kotlin.test.Test
@@ -323,9 +322,9 @@ class NavExtensionsTest {
         val stacks = mapOf(
             AppDestinations.HOME to homeStack,
             AppDestinations.ITEMS to itemsStack,
-            AppDestinations.ALBUM to NavBackStack(AlbumNavKey),
-            AppDestinations.FOLLOW to NavBackStack(FollowNavKey),
-            AppDestinations.PROFILE to NavBackStack(ProfileNavKey),
+            AppDestinations.ALBUM to NavBackStack<NavKey>(AlbumNavKey),
+            AppDestinations.FOLLOW to NavBackStack<NavKey>(FollowNavKey),
+            AppDestinations.PROFILE to NavBackStack<NavKey>(ProfileNavKey),
         )
         val state = RePoiNavigationState(
             startDestination = AppDestinations.HOME,
