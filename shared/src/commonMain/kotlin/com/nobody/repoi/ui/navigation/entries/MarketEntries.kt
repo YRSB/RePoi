@@ -3,7 +3,6 @@ package com.nobody.repoi.ui.navigation
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.resale.ResaleDetailScreen
 import com.nobody.repoi.ui.resale.ResaleMarketScreen
 
@@ -18,8 +17,8 @@ fun EntryProviderScope<NavKey>.marketEntries(
         ResaleDetailScreen(
             resaleId = key.resaleId,
             onBack = onBack,
-            onNavigateToHobby = { hobbyId -> backStack.add(HobbyDetailNavKey(DetailNavParam(itemId = hobbyId))) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) }
+            onNavigateToHobby = { hobbyId -> backStack.navigateToDetail(hobbyId) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) }
         )
     }
 
@@ -28,18 +27,11 @@ fun EntryProviderScope<NavKey>.marketEntries(
             hobbyId = key.hobbyId,
             title = key.title,
             onBack = onBack,
-            onNavigateToResaleDetail = { resaleId -> backStack.add(ResaleDetailNavKey(resaleId = resaleId)) },
-            onNavigateToHobby = { hobbyId -> backStack.add(HobbyDetailNavKey(DetailNavParam(itemId = hobbyId))) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
+            onNavigateToResaleDetail = { resaleId -> backStack.navigateToResaleDetail(resaleId) },
+            onNavigateToHobby = { hobbyId -> backStack.navigateToDetail(hobbyId) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
             onNavigateToChat = { targetUserId, nickname ->
-                backStack.add(
-                    MessageChatNavKey(
-                        param = MessageChatNavParam(
-                            targetUserId = targetUserId,
-                            targetUserName = nickname
-                        )
-                    )
-                )
+                backStack.navigateToMessageChat(targetUserId = targetUserId, targetUserName = nickname)
             }
         )
     }

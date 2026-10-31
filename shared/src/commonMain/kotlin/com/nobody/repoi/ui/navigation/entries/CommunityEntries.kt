@@ -21,16 +21,14 @@ fun EntryProviderScope<NavKey>.communityEntries(
         ZoneBrowseScreen(
             onNavigateBack = onBack,
             onNavigateToZoneDetail = { nodeId, name, icon, cover ->
-                backStack.add(
-                    ZoneDetailNavKey(
-                        nodeId = nodeId,
-                        initialName = name,
-                        initialIcon = icon,
-                        initialCover = cover
-                    )
+                backStack.navigateToZoneDetail(
+                    nodeId = nodeId,
+                    initialName = name,
+                    initialIcon = icon,
+                    initialCover = cover
                 )
             },
-            onNavigateToSettings = { backStack.add(ZoneSettingsNavKey) }
+            onNavigateToSettings = { backStack.navigateToZoneSettings() }
         )
     }
 
@@ -41,19 +39,19 @@ fun EntryProviderScope<NavKey>.communityEntries(
             initialIcon = key.initialIcon,
             initialCover = key.initialCover,
             onNavigateBack = onBack,
-            onNavigateToDetail = { param -> backStack.add(HobbyDetailNavKey(param)) },
-            onNavigateToAlbum = { param -> backStack.add(AlbumDetailNavKey(param)) },
-            onNavigateToPerson = { param -> backStack.add(PersonDetailNavKey(param)) },
-            onNavigateToWorks = { param -> backStack.add(WorksDetailNavKey(param)) },
-            onNavigateToVendor = { param -> backStack.add(VendorDetailNavKey(param)) },
-            onNavigateToCharacter = { param -> backStack.add(CharacterNavKey(param)) },
-            onNavigateToSeries = { param -> backStack.add(SeriesDetailNavKey(param)) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
+            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
+            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
+            onNavigateToPerson = { param -> backStack.navigateToPerson(param) },
+            onNavigateToWorks = { param -> backStack.navigateToWorks(param) },
+            onNavigateToVendor = { param -> backStack.navigateToVendor(param) },
+            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
+            onNavigateToSeries = { param -> backStack.navigateToSeries(param) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
             onNavigateToPost = { postId, nodeId, title ->
-                backStack.add(PostDetailNavKey(postId = postId, nodeId = nodeId, initialTitle = title))
+                backStack.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
-            onNavigateToResaleDetail = { resaleId -> backStack.add(ResaleDetailNavKey(resaleId = resaleId)) },
-            onNavigateToResaleMarket = { hobbyId, title -> backStack.add(ResaleMarketNavKey(hobbyId = hobbyId, title = title)) }
+            onNavigateToResaleDetail = { resaleId -> backStack.navigateToResaleDetail(resaleId) },
+            onNavigateToResaleMarket = { hobbyId, title -> backStack.navigateToResaleMarket(hobbyId = hobbyId, title = title) }
         )
     }
 
@@ -67,19 +65,19 @@ fun EntryProviderScope<NavKey>.communityEntries(
         ForumHomeScreen(
             onNavigateBack = onBack,
             onNavigateToPost = { postId, nodeId, title ->
-                backStack.add(PostDetailNavKey(postId = postId, nodeId = nodeId, initialTitle = title))
+                backStack.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
-            onNavigateToSelf = { backStack.add(UserInfoNavKey(UserInfoNavParam(userId = 0L))) },
-            onNavigateToMessage = { backStack.add(MessageCenterNavKey()) },
-            onNavigateToPlates = { backStack.add(PlateSubscribeNavKey) }
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToSelf = { backStack.navigateToUser(0L) },
+            onNavigateToMessage = { backStack.navigateToMessageCenter() },
+            onNavigateToPlates = { backStack.navigateToPlateSubscribe() }
         )
     }
 
     entry<PlateSubscribeNavKey> {
         PlateSubscribeScreen(
             onNavigateBack = onBack,
-            onNavigateToLogin = { backStack.add(LoginNavKey) }
+            onNavigateToLogin = { backStack.navigateToLogin() }
         )
     }
 
@@ -89,13 +87,13 @@ fun EntryProviderScope<NavKey>.communityEntries(
             initialTitle = key.initialTitle,
             nodeId = key.nodeId,
             onNavigateBack = onBack,
-            onNavigateToDetail = { param -> backStack.add(HobbyDetailNavKey(param)) },
-            onNavigateToZone = { nodeId -> backStack.add(ZoneDetailNavKey(nodeId = nodeId)) },
-            onNavigateToUser = { targetUserId -> backStack.add(UserInfoNavKey(UserInfoNavParam(userId = targetUserId))) },
-            onNavigateToAlbum = { param -> backStack.add(AlbumDetailNavKey(param)) },
-            onNavigateToCharacter = { param -> backStack.add(CharacterNavKey(param)) },
-            onNavigateToPost = { targetPostId -> backStack.add(PostDetailNavKey(postId = targetPostId)) },
-            onNavigateToCommentDetail = { param -> backStack.add(CommentDetailNavKey(param.copy(isDiscuss = true))) }
+            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
+            onNavigateToZone = { nodeId -> backStack.navigateToZoneDetail(nodeId = nodeId) },
+            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
+            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
+            onNavigateToPost = { targetPostId -> backStack.navigateToPostDetail(postId = targetPostId) },
+            onNavigateToCommentDetail = { param -> backStack.navigateToCommentDetail(param.copy(isDiscuss = true)) }
         )
     }
 }

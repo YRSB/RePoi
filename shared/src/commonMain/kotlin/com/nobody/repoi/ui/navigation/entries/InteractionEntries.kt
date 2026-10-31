@@ -29,7 +29,7 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         HobbyListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToDetail = { hobbyParam -> backStack.add(HobbyDetailNavKey(hobbyParam)) }
+            onNavigateToDetail = { hobbyParam -> backStack.navigateToDetail(hobbyParam) }
         )
     }
 
@@ -49,13 +49,13 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         SearchScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToDetail = { hobbyParam -> backStack.add(HobbyDetailNavKey(hobbyParam)) },
-            onNavigateToAlbum = { albumParam -> backStack.add(AlbumDetailNavKey(albumParam)) },
-            onNavigateToVendor = { vendorParam -> backStack.add(VendorDetailNavKey(vendorParam)) },
-            onNavigateToSeries = { seriesParam -> backStack.add(SeriesDetailNavKey(seriesParam)) },
-            onNavigateToPerson = { personParam -> backStack.add(PersonDetailNavKey(personParam)) },
-            onNavigateToWorks = { worksParam -> backStack.add(WorksDetailNavKey(worksParam)) },
-            onNavigateToCharacter = { characterParam -> backStack.add(CharacterNavKey(characterParam)) }
+            onNavigateToDetail = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
+            onNavigateToVendor = { vendorParam -> backStack.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
+            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
+            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
+            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) }
         )
     }
 
@@ -112,7 +112,7 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         HobbyCommentsScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToCommentDetail = { commentParam -> backStack.add(CommentDetailNavKey(commentParam)) }
+            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) }
         )
     }
 

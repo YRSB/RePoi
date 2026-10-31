@@ -106,5 +106,38 @@ class NavExtensionsTest {
         assertEquals(3, stack.size)
         val userKey = assertIs<UserInfoNavKey>(stack.last())
         assertEquals(888L, userKey.param.userId)
+
+        stack.navigateToSearch(keyword = "初音", category = 10000, companyNodeId = 1101L, companyName = "GoodSmile")
+        assertEquals(4, stack.size)
+        val searchKey = assertIs<SearchNavKey>(stack.last())
+        assertEquals("初音", searchKey.param.initialKeyword)
+        assertEquals(10000, searchKey.param.initialCategory)
+        assertEquals(1101L, searchKey.param.initialCompanyNodeId)
+        assertEquals("GoodSmile", searchKey.param.initialCompanyName)
+
+        stack.navigateToVendorActions(companyNodeId = 2202L, companyName = "Max Factory")
+        assertEquals(5, stack.size)
+        val vendorActionsKey = assertIs<VendorActionsNavKey>(stack.last())
+        assertEquals(2202L, vendorActionsKey.param.companyNodeId)
+        assertEquals("Max Factory", vendorActionsKey.param.companyName)
+
+        stack.navigateToFriendList(userId = 3303L, initialType = 1)
+        assertEquals(6, stack.size)
+        val friendListKey = assertIs<FriendListNavKey>(stack.last())
+        assertEquals(3303L, friendListKey.param.userId)
+        assertEquals(1, friendListKey.param.initialType)
+
+        stack.navigateToMessageChat(targetUserId = 4404L, targetUserName = "Alice")
+        assertEquals(7, stack.size)
+        val chatKey = assertIs<MessageChatNavKey>(stack.last())
+        assertEquals(4404L, chatKey.param.targetUserId)
+        assertEquals("Alice", chatKey.param.targetUserName)
+
+        stack.navigateToCommentDetail(commentId = 5505L, relateNodeId = 6606L, isDiscuss = true)
+        assertEquals(8, stack.size)
+        val commentKey = assertIs<CommentDetailNavKey>(stack.last())
+        assertEquals(5505L, commentKey.param.commentId)
+        assertEquals(6606L, commentKey.param.relateNodeId)
+        assertEquals(true, commentKey.param.isDiscuss)
     }
 }

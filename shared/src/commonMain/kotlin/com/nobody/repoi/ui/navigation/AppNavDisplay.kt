@@ -3,18 +3,15 @@ package com.nobody.repoi.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import com.nobody.repoi.data.local.ThemeMode
 
 /**
  * 全局导航分发器：封装 Navigation 3 强类型路由拓扑与页面映射。
  *
- * 通过组合 8 大 DDD 领域 Entries 模块，实现路由映射逻辑自治与解耦。
+ * 底层基于通用 [RePoiNavDisplay] 容器构建，组合 8 大 DDD 领域 Entries 模块。
  */
 @Composable
 fun AppNavDisplay(
@@ -28,17 +25,11 @@ fun AppNavDisplay(
     onOpenDebugScreen: () -> Unit,
     onLoginSuccess: () -> Unit,
 ) {
-    val entryDecorators = listOf(
-        rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
-        rememberViewModelStoreNavEntryDecorator<NavKey>()
-    )
-
     CompositionLocalProvider(LocalNavBackStack provides backStack) {
-        NavDisplay(
+        RePoiNavDisplay(
             backStack = backStack,
             onBack = onBack,
             modifier = modifier,
-            entryDecorators = entryDecorators,
             transitionSpec = {
                 val fromKey = initialState.key as? NavKey
                 val toKey = targetState.key as? NavKey
