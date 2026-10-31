@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.collect.CollectEditScreen
 import com.nobody.repoi.ui.collect.UserCollectScreen
@@ -100,12 +99,3 @@ fun EntryProviderScope<NavKey>.userEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.userEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    userEntries(RePoiNavigator(backStack), onBack)
-}

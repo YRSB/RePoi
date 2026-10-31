@@ -22,7 +22,7 @@ import kotlin.test.assertIs
 /**
  * 验证 [RePoiSerializersModule] 多态序列化完整性。
  *
- * 覆盖全部 44 个 [AppNavKey] 实现，确保 Navigation 3 在 SavedStateConfiguration
+ * 覆盖全部 45 个 [AppNavKey] 实现，确保 Navigation 3 在 SavedStateConfiguration
  * 状态持久化、Android 进程恢复及桌面端跨会话存储时多态反序列化安全无遗漏。
  */
 class RePoiSerializersModuleTest {
@@ -37,7 +37,10 @@ class RePoiSerializersModuleTest {
     @Test
     fun testAllAppNavKeysPolymorphicSerialization() {
         val testRoutes: List<NavKey> = listOf(
-            // 1. 一级底栏 Tab 路由 (5)
+            // 1. 全局根栈基底 (1)
+            MainNavKey,
+
+            // 2. 一级底栏 Tab 路由 (5)
             HomeNavKey,
             ItemsNavKey,
             AlbumNavKey,
@@ -104,7 +107,7 @@ class RePoiSerializersModuleTest {
             MessageBlockNavKey(id = "fixed-id-message-block")
         )
 
-        assertEquals(44, testRoutes.size, "测试必须全量覆盖全部 44 个 AppNavKey")
+        assertEquals(45, testRoutes.size, "测试必须全量覆盖全部 45 个 AppNavKey")
 
         for (originalKey in testRoutes) {
             val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)

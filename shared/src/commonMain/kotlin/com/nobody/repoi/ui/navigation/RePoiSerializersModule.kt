@@ -13,7 +13,10 @@ import kotlinx.serialization.modules.subclass
  */
 val RePoiSerializersModule = SerializersModule {
     polymorphic(baseClass = NavKey::class) {
-        // 1. 一级底栏 Tab 路由 (5)
+        // 1. 全局根栈基底 (1)
+        subclass(MainNavKey::class, MainNavKey.serializer())
+
+        // 2. 一级底栏 Tab 路由 (5)
         subclass(HomeNavKey::class, HomeNavKey.serializer())
         subclass(ItemsNavKey::class, ItemsNavKey.serializer())
         subclass(AlbumNavKey::class, AlbumNavKey.serializer())

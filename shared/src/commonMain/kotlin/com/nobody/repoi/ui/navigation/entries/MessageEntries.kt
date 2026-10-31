@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.message.block.MessageBlockScreen
@@ -72,12 +71,3 @@ fun EntryProviderScope<NavKey>.messageEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.messageEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    messageEntries(RePoiNavigator(backStack), onBack)
-}

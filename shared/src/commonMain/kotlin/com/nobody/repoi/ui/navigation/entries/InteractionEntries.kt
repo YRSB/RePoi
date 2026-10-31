@@ -7,7 +7,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
@@ -131,12 +130,3 @@ fun EntryProviderScope<NavKey>.interactionEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.interactionEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    interactionEntries(RePoiNavigator(backStack), onBack)
-}

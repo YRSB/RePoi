@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
@@ -105,9 +104,3 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.topLevelEntries(backStack: NavBackStack<NavKey>) {
-    topLevelEntries(RePoiNavigator(backStack))
-}

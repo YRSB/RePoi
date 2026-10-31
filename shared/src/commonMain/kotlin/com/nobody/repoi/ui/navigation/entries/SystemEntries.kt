@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.ui.login.LoginScreen

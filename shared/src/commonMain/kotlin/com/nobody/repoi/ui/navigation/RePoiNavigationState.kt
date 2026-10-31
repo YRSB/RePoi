@@ -17,26 +17,20 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.savedstate.serialization.SavedStateConfiguration
 
 /**
- * RePoi 多栈导航状态持有者（Multiple Back Stacks，对齐 Navigation 3 官方规范与 PodAura 范式）：
+ * RePoi 主界面 Tab 状态持有者（全局单根栈拓扑）：
  *
- * 为 5 个顶层目的地分别维系独立的 [NavBackStack]，并经独立的 [rememberSaveableStateHolderNavEntryDecorator]
- * 与 [rememberViewModelStoreNavEntryDecorator] 进行生命周期与状态修饰。
+ * 5 个顶层目的地各自持有一条仅含根条目的 [NavBackStack]，经独立的
+ * [rememberSaveableStateHolderNavEntryDecorator] 与 [rememberViewModelStoreNavEntryDecorator] 修饰，
+ * 保证 Tab 切换时页面 ViewModel、Lazy 列表滚动位置与表单状态全量保留。
  *
- * 核心保证：
- * 1. 在 5 个主导航栏目的地之间切换时，各页面内部的 ViewModel、Lazy 列表滚动位置、表单状态分毫不丢；
- * 2. 遵循 "Exit through Home" 模式，栈底始终保留主页基底；
- * 3. 支持各 Tab 内部独立的二级页面深度浏览与回退。
+ * 二级页面不再压入 Tab 栈，而是压入 [RePoiNavigator.rootBackStack] 并整屏覆盖主界面。
  */
 class RePoiNavigationState(
     val startDestination: AppDestinations = AppDestinations.HOME,
     private val currentDestinationState: MutableState<AppDestinations>,
-    val backStacks: Map<AppDestinations, NavBackStack<NavKey>>,
-    val isSingleStackMode: Boolean = false
+    val backStacks: Map<AppDestinations, NavBackStack<NavKey>>
 ) {
     var currentDestination: AppDestinations by currentDestinationState
-
-    val currentBackStack: NavBackStack<NavKey>
-        get() = backStacks[currentDestination] ?: error("未找到 $currentDestination 对应的回退栈")
 
     /**
      * 将每个 Tab 栈分别用独立的作用域装饰器进行装饰，并返回当前活跃呈现的 Entry 序列。
@@ -45,7 +39,6 @@ class RePoiNavigationState(
     fun toDecoratedEntries(
         entryProvider: (NavKey) -> NavEntry<NavKey>
     ): List<NavEntry<NavKey>> {
-        // 为每一个 Tab 栈挂载独立的 SaveableStateHolder 与 ViewModelStore 装饰器
         val decoratedEntries = backStacks.mapValues { (_, stack) ->
             val decorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
@@ -58,27 +51,7 @@ class RePoiNavigationState(
             )
         }
 
-        // 当前呈现在屏幕上的，严格为当前激活 Tab 的 entry 序列（保证各 Tab 栈的纯粹与相互隔离）
         return decoratedEntries[currentDestination] ?: emptyList()
-    }
-
-    companion object {
-        /**
-         * 供单测或轻量单栈场景构建简单的 [RePoiNavigationState]
-         */
-        fun forSingleStack(
-            backStack: NavBackStack<NavKey>,
-            startDestination: AppDestinations = AppDestinations.HOME
-        ): RePoiNavigationState {
-            val state = mutableStateOf(startDestination)
-            val stacks = AppDestinations.entries.associateWith { _ -> backStack }
-            return RePoiNavigationState(
-                startDestination = startDestination,
-                currentDestinationState = state,
-                backStacks = stacks,
-                isSingleStackMode = true
-            )
-        }
     }
 }
 
@@ -114,8 +87,7 @@ fun rememberRePoiNavigationState(
         RePoiNavigationState(
             startDestination = startDestination,
             currentDestinationState = currentDestinationState,
-            backStacks = backStacks,
-            isSingleStackMode = false
+            backStacks = backStacks
         )
     }
 }

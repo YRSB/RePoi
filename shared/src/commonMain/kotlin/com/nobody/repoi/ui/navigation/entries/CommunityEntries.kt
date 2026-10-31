@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.forum.ForumHomeScreen
 import com.nobody.repoi.ui.forum.PlateSubscribeScreen
@@ -98,12 +97,3 @@ fun EntryProviderScope<NavKey>.communityEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.communityEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    communityEntries(RePoiNavigator(backStack), onBack)
-}

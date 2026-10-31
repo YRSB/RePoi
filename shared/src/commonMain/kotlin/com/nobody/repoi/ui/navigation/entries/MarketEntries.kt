@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.resale.ResaleDetailScreen
 import com.nobody.repoi.ui.resale.ResaleMarketScreen
@@ -37,12 +36,3 @@ fun EntryProviderScope<NavKey>.marketEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.marketEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    marketEntries(RePoiNavigator(backStack), onBack)
-}

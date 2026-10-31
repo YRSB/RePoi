@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.album.AlbumDetailScreen
 import com.nobody.repoi.ui.album.AlbumRankListScreen
@@ -217,12 +216,3 @@ fun EntryProviderScope<NavKey>.detailEntries(
     }
 }
 
-/**
- * 单栈兼容重载。
- */
-fun EntryProviderScope<NavKey>.detailEntries(
-    backStack: NavBackStack<NavKey>,
-    onBack: () -> Unit
-) {
-    detailEntries(RePoiNavigator(backStack), onBack)
-}
