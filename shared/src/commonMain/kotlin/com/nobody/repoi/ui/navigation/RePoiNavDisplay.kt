@@ -64,7 +64,7 @@ fun <T : Any> RePoiNavDisplay(
 )
 
 /**
- * 支持已修饰 Entry 列表的 [RePoiNavDisplay] 重载（用于多栈 Multiple Back Stacks 模式）：
+ * 支持已修饰 Entry 列表的 [RePoiNavDisplay] 重载（用于主界面 Tab 首屏）：
  *
  * 接收由独立栈装饰器 [rememberDecoratedNavEntries] 产出的活跃 Entry 序列，无需在此重复挂载装饰器。
  */

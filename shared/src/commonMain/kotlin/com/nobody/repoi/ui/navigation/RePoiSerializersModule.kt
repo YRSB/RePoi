@@ -23,21 +23,21 @@ val RePoiSerializersModule = SerializersModule {
         subclass(FollowNavKey::class, FollowNavKey.serializer())
         subclass(ProfileNavKey::class, ProfileNavKey.serializer())
 
-        // 2. 专区相关路由 (3)
+        // 3. 专区相关路由 (3)
         subclass(ZoneBrowseNavKey::class, ZoneBrowseNavKey.serializer())
         subclass(ZoneDetailNavKey::class, ZoneDetailNavKey.serializer())
         subclass(ZoneSettingsNavKey::class, ZoneSettingsNavKey.serializer())
 
-        // 3. 讨论板与帖子路由 (3)
+        // 4. 讨论板与帖子路由 (3)
         subclass(ForumHomeNavKey::class, ForumHomeNavKey.serializer())
         subclass(PlateSubscribeNavKey::class, PlateSubscribeNavKey.serializer())
         subclass(PostDetailNavKey::class, PostDetailNavKey.serializer())
 
-        // 4. 二手交易与市场路由 (2)
+        // 5. 二手交易与市场路由 (2)
         subclass(ResaleDetailNavKey::class, ResaleDetailNavKey.serializer())
         subclass(ResaleMarketNavKey::class, ResaleMarketNavKey.serializer())
 
-        // 5. 核心消费与用户资产路由 (7)
+        // 6. 核心消费与用户资产路由 (7)
         subclass(HobbyListNavKey::class, HobbyListNavKey.serializer())
         subclass(CollectEditNavKey::class, CollectEditNavKey.serializer())
         subclass(UserCollectNavKey::class, UserCollectNavKey.serializer())
@@ -46,19 +46,19 @@ val RePoiSerializersModule = SerializersModule {
         subclass(HobbyDetailNavKey::class, HobbyDetailNavKey.serializer())
         subclass(FriendListNavKey::class, FriendListNavKey.serializer())
 
-        // 6. 用户与评论互动路由 (4)
+        // 7. 用户与评论互动路由 (4)
         subclass(UserInfoNavKey::class, UserInfoNavKey.serializer())
         subclass(CommentDetailNavKey::class, CommentDetailNavKey.serializer())
         subclass(HobbyCommentsNavKey::class, HobbyCommentsNavKey.serializer())
         subclass(SearchNavKey::class, SearchNavKey.serializer())
 
-        // 7. 相册与厂商关联路由 (4)
+        // 8. 相册与厂商关联路由 (4)
         subclass(AlbumDetailNavKey::class, AlbumDetailNavKey.serializer())
         subclass(AlbumRankListNavKey::class, AlbumRankListNavKey.serializer())
         subclass(VendorDetailNavKey::class, VendorDetailNavKey.serializer())
         subclass(VendorActionsNavKey::class, VendorActionsNavKey.serializer())
 
-        // 8. 人物、角色与作品关联路由 (7)
+        // 9. 人物、角色与作品关联路由 (7)
         subclass(PersonDetailNavKey::class, PersonDetailNavKey.serializer())
         subclass(CharacterNavKey::class, CharacterNavKey.serializer())
         subclass(CharacterAlbumListNavKey::class, CharacterAlbumListNavKey.serializer())
@@ -67,16 +67,16 @@ val RePoiSerializersModule = SerializersModule {
         subclass(WorksCollectEditNavKey::class, WorksCollectEditNavKey.serializer())
         subclass(SeriesDetailNavKey::class, SeriesDetailNavKey.serializer())
 
-        // 9. 作品、图片与扩展图库路由 (3)
+        // 10. 作品、图片与扩展图库路由 (3)
         subclass(WorksDetailNavKey::class, WorksDetailNavKey.serializer())
         subclass(PictureListNavKey::class, PictureListNavKey.serializer())
         subclass(ExHobbyListNavKey::class, ExHobbyListNavKey.serializer())
 
-        // 10. 设置与鉴权路由 (2)
+        // 11. 设置与鉴权路由 (2)
         subclass(LoginNavKey::class, LoginNavKey.serializer())
         subclass(SettingsNavKey::class, SettingsNavKey.serializer())
 
-        // 11. 消息中心与通知路由 (4)
+        // 12. 消息中心与通知路由 (4)
         subclass(MessageCenterNavKey::class, MessageCenterNavKey.serializer())
         subclass(MessageNoticeNavKey::class, MessageNoticeNavKey.serializer())
         subclass(MessageChatNavKey::class, MessageChatNavKey.serializer())

@@ -22,6 +22,7 @@ fun AppNavDisplay(
     navigator: RePoiNavigator,
     tabEntries: State<List<NavEntry<NavKey>>>,
     snackbarHostState: SnackbarHostState,
+    showSnackbarHost: Boolean,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -37,7 +38,8 @@ fun AppNavDisplay(
             MainScreen(
                 navigator = navigator,
                 tabEntries = tabEntries,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                showSnackbarHost = showSnackbarHost
             )
         }
         detailEntries(navigator, onBack)

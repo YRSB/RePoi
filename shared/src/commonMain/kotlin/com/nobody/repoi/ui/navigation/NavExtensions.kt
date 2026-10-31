@@ -104,7 +104,7 @@ fun NavBackStack<NavKey>.navigateToMessageBlock() = add(MessageBlockNavKey())
 
 /**
  * 为 [RePoiNavigator] 提供与 [NavBackStack] 完全对齐的强类型语义跳转扩展，
- * 保证各页面触发跳转时，新页面永远精准推入当前活跃的 Tab 栈顶。
+ * 保证各页面触发跳转时，新页面永远压入全局根栈 [RePoiNavigator.rootBackStack] 栈顶。
  */
 fun RePoiNavigator.navigateToDetail(itemId: Long) = currentBackStack.navigateToDetail(itemId)
 fun RePoiNavigator.navigateToDetail(param: DetailNavParam) = currentBackStack.navigateToDetail(param)

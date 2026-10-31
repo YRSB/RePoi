@@ -99,8 +99,8 @@ private fun RePoiNavHost(
     val tabEntryProvider: (NavKey) -> NavEntry<NavKey> = remember(navigator) {
         entryProvider<NavKey> { topLevelEntries(navigator) }
     }
-    // NavDisplay 对根栈条目做 remember(backStack.toList()) 记忆，Tab 切换不改根栈，
-    // 故经 State 传递当前 Tab 的 decorated entries，保证主界面内容随之更新。
+    // Tab 装饰器必须常驻根层（覆盖期间不丢滚动位置与 ViewModel），且 NavDisplay 以
+    // remember(backStack.toList()) 记忆条目、Tab 切换不改根栈，故经 State 下传当前 Tab 的 entries。
     val tabEntries = rememberUpdatedState(tabState.toDecoratedEntries(tabEntryProvider))
 
     LaunchedEffect(appMessages) {
@@ -115,11 +115,13 @@ private fun RePoiNavHost(
         LocalAppMessages provides appMessages
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            val atMainRoot = rootBackStack.size <= 1
             AppNavDisplay(
                 rootBackStack = rootBackStack,
                 navigator = navigator,
                 tabEntries = tabEntries,
                 snackbarHostState = rootSnackbarHostState,
+                showSnackbarHost = atMainRoot,
                 themeMode = themeMode,
                 dynamicColor = dynamicColor,
                 onThemeModeChange = onThemeModeChange,
@@ -133,7 +135,7 @@ private fun RePoiNavHost(
                 }
             )
 
-            if (rootBackStack.lastOrNull() != MainNavKey) {
+            if (!atMainRoot) {
                 SnackbarHost(
                     hostState = rootSnackbarHostState,
                     modifier = Modifier

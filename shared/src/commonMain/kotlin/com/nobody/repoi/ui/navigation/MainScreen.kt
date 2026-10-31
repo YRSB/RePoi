@@ -46,6 +46,7 @@ fun MainScreen(
     navigator: RePoiNavigator,
     tabEntries: State<List<NavEntry<NavKey>>>,
     snackbarHostState: SnackbarHostState,
+    showSnackbarHost: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val navigationState = navigator.tabState
@@ -82,7 +83,9 @@ fun MainScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            snackbarHost = {
+                if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
+            },
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             modifier = Modifier.fillMaxSize()
         ) { _ ->
