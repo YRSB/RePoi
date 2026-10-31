@@ -147,3 +147,74 @@ fun NavBackStack<NavKey>.navigateToMessageChat(targetUserId: Long, targetUserNam
         )
     )
 fun NavBackStack<NavKey>.navigateToMessageBlock() = add(MessageBlockNavKey())
+
+/**
+ * 为 [RePoiNavigator] 提供与 [NavBackStack] 完全对齐的强类型语义跳转扩展，
+ * 保证各页面触发跳转时，新页面永远精准推入当前活跃的 Tab 栈顶。
+ */
+fun RePoiNavigator.navigateToDetail(itemId: Long) = currentBackStack.navigateToDetail(itemId)
+fun RePoiNavigator.navigateToDetail(param: DetailNavParam) = currentBackStack.navigateToDetail(param)
+fun RePoiNavigator.navigateToAlbum(param: AlbumNavParam) = currentBackStack.navigateToAlbum(param)
+fun RePoiNavigator.navigateToAlbum(albumId: Long) = currentBackStack.navigateToAlbum(albumId)
+fun RePoiNavigator.navigateToRankList(param: AlbumRankListNavParam) = currentBackStack.navigateToRankList(param)
+fun RePoiNavigator.navigateToPerson(param: PersonNavParam) = currentBackStack.navigateToPerson(param)
+fun RePoiNavigator.navigateToPerson(personId: Long) = currentBackStack.navigateToPerson(personId)
+fun RePoiNavigator.navigateToWorks(param: WorksNavParam) = currentBackStack.navigateToWorks(param)
+fun RePoiNavigator.navigateToWorks(worksId: Long) = currentBackStack.navigateToWorks(worksId)
+fun RePoiNavigator.navigateToVendor(param: VendorNavParam) = currentBackStack.navigateToVendor(param)
+fun RePoiNavigator.navigateToVendor(vendorId: Long) = currentBackStack.navigateToVendor(vendorId)
+fun RePoiNavigator.navigateToVendorActions(param: VendorActionsNavParam) = currentBackStack.navigateToVendorActions(param)
+fun RePoiNavigator.navigateToVendorActions(companyNodeId: Long, companyName: String? = null) =
+    currentBackStack.navigateToVendorActions(companyNodeId, companyName)
+fun RePoiNavigator.navigateToCharacter(param: CharacterNavParam) = currentBackStack.navigateToCharacter(param)
+fun RePoiNavigator.navigateToCharacter(characterId: Long) = currentBackStack.navigateToCharacter(characterId)
+fun RePoiNavigator.navigateToCharacterAlbumList(param: CharacterAlbumListNavParam) = currentBackStack.navigateToCharacterAlbumList(param)
+fun RePoiNavigator.navigateToHobbyAlbumList(param: HobbyAlbumListNavParam) = currentBackStack.navigateToHobbyAlbumList(param)
+fun RePoiNavigator.navigateToCharacterWorksList(param: CharacterWorksListNavParam) = currentBackStack.navigateToCharacterWorksList(param)
+fun RePoiNavigator.navigateToWorksCollectEdit(param: WorksCollectEditNavParam) = currentBackStack.navigateToWorksCollectEdit(param)
+fun RePoiNavigator.navigateToSeries(param: SeriesNavParam) = currentBackStack.navigateToSeries(param)
+fun RePoiNavigator.navigateToUser(userId: Long) = currentBackStack.navigateToUser(userId)
+fun RePoiNavigator.navigateToUser(param: UserInfoNavParam) = currentBackStack.navigateToUser(param)
+fun RePoiNavigator.navigateToSearch(param: SearchNavParam = SearchNavParam()) = currentBackStack.navigateToSearch(param)
+fun RePoiNavigator.navigateToSearch(
+    keyword: String = "",
+    category: Int = 10000,
+    companyNodeId: Long? = null,
+    companyName: String? = null
+) = currentBackStack.navigateToSearch(keyword, category, companyNodeId, companyName)
+fun RePoiNavigator.navigateToHobbyList(param: HobbyListNavParam) = currentBackStack.navigateToHobbyList(param)
+fun RePoiNavigator.navigateToCollectEdit(param: CollectEditNavParam) = currentBackStack.navigateToCollectEdit(param)
+fun RePoiNavigator.navigateToUserCollect(param: UserCollectNavParam) = currentBackStack.navigateToUserCollect(param)
+fun RePoiNavigator.navigateToUserCreation(param: UserCreationNavParam) = currentBackStack.navigateToUserCreation(param)
+fun RePoiNavigator.navigateToUserHistory() = currentBackStack.navigateToUserHistory()
+fun RePoiNavigator.navigateToFriendList(param: FriendListNavParam) = currentBackStack.navigateToFriendList(param)
+fun RePoiNavigator.navigateToFriendList(userId: Long, initialType: Int = 0) = currentBackStack.navigateToFriendList(userId, initialType)
+fun RePoiNavigator.navigateToCommentDetail(param: CommentDetailNavParam) = currentBackStack.navigateToCommentDetail(param)
+fun RePoiNavigator.navigateToCommentDetail(commentId: Long, relateNodeId: Long = 0L, isDiscuss: Boolean = false) =
+    currentBackStack.navigateToCommentDetail(commentId, relateNodeId, isDiscuss)
+fun RePoiNavigator.navigateToHobbyComments(param: HobbyCommentsNavParam) = currentBackStack.navigateToHobbyComments(param)
+fun RePoiNavigator.navigateToZoneBrowse() = currentBackStack.navigateToZoneBrowse()
+fun RePoiNavigator.navigateToZoneDetail(nodeId: Long, initialName: String? = null, initialIcon: String? = null, initialCover: String? = null) =
+    currentBackStack.navigateToZoneDetail(nodeId, initialName, initialIcon, initialCover)
+fun RePoiNavigator.navigateToZoneSettings() = currentBackStack.navigateToZoneSettings()
+fun RePoiNavigator.navigateToForumHome() = currentBackStack.navigateToForumHome()
+fun RePoiNavigator.navigateToPlateSubscribe() = currentBackStack.navigateToPlateSubscribe()
+fun RePoiNavigator.navigateToPostDetail(postId: Long, initialTitle: String? = null, nodeId: Long? = null) =
+    currentBackStack.navigateToPostDetail(postId, initialTitle, nodeId)
+fun RePoiNavigator.navigateToResaleDetail(resaleId: Long) = currentBackStack.navigateToResaleDetail(resaleId)
+fun RePoiNavigator.navigateToResaleMarket(hobbyId: Long = 0L, title: String? = null) =
+    currentBackStack.navigateToResaleMarket(hobbyId, title)
+fun RePoiNavigator.navigateToPictureList(param: PictureListNavParam) = currentBackStack.navigateToPictureList(param)
+fun RePoiNavigator.navigateToExHobbyList(itemId: Long, title: String = "ExHobby") =
+    currentBackStack.navigateToExHobbyList(itemId, title)
+fun RePoiNavigator.navigateToLogin() = currentBackStack.navigateToLogin()
+fun RePoiNavigator.navigateToSettings() = currentBackStack.navigateToSettings()
+fun RePoiNavigator.navigateToMessageCenter() = currentBackStack.navigateToMessageCenter()
+fun RePoiNavigator.navigateToMessageNotice(param: MessageNoticeNavParam) = currentBackStack.navigateToMessageNotice(param)
+fun RePoiNavigator.navigateToMessageNotice(type: String, typeNumber: Int = 0, title: String = "") =
+    currentBackStack.navigateToMessageNotice(type, typeNumber, title)
+fun RePoiNavigator.navigateToMessageChat(param: MessageChatNavParam) = currentBackStack.navigateToMessageChat(param)
+fun RePoiNavigator.navigateToMessageChat(targetUserId: Long, targetUserName: String = "", targetUserHeader: String? = null) =
+    currentBackStack.navigateToMessageChat(targetUserId, targetUserName, targetUserHeader)
+fun RePoiNavigator.navigateToMessageBlock() = currentBackStack.navigateToMessageBlock()
+

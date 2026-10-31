@@ -13,23 +13,23 @@ import com.nobody.repoi.ui.message.notice.MessageNoticeScreen
  * 注册消息主中心、分类通知、1v1 私信聊天及黑名单管理路由。
  */
 fun EntryProviderScope<NavKey>.messageEntries(
-    backStack: NavBackStack<NavKey>,
+    navigator: RePoiNavigator,
     onBack: () -> Unit
 ) {
     entry<MessageCenterNavKey> {
         MessageCenterScreen(
             onNavigateBack = onBack,
             onNavigateToNotice = { type, typeNumber, title ->
-                backStack.navigateToMessageNotice(type = type, typeNumber = typeNumber, title = title)
+                navigator.navigateToMessageNotice(type = type, typeNumber = typeNumber, title = title)
             },
             onNavigateToChat = { targetUserId, targetUserName, targetUserHeader ->
-                backStack.navigateToMessageChat(
+                navigator.navigateToMessageChat(
                     targetUserId = targetUserId,
                     targetUserName = targetUserName,
                     targetUserHeader = targetUserHeader
                 )
             },
-            onNavigateToBlock = { backStack.navigateToMessageBlock() }
+            onNavigateToBlock = { navigator.navigateToMessageBlock() }
         )
     }
 
@@ -37,15 +37,15 @@ fun EntryProviderScope<NavKey>.messageEntries(
         MessageNoticeScreen(
             param = key.param,
             onNavigateBack = onBack,
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
-            onNavigateToHobby = { itemId -> backStack.navigateToDetail(itemId) },
-            onNavigateToAlbum = { albumId -> backStack.navigateToAlbum(albumId) },
-            onNavigateToVendor = { vendorId -> backStack.navigateToVendor(vendorId) },
-            onNavigateToPerson = { personId -> backStack.navigateToPerson(personId) },
-            onNavigateToWorks = { worksId -> backStack.navigateToWorks(worksId) },
-            onNavigateToCharacter = { characterId -> backStack.navigateToCharacter(characterId) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onNavigateToHobby = { itemId -> navigator.navigateToDetail(itemId) },
+            onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(albumId) },
+            onNavigateToVendor = { vendorId -> navigator.navigateToVendor(vendorId) },
+            onNavigateToPerson = { personId -> navigator.navigateToPerson(personId) },
+            onNavigateToWorks = { worksId -> navigator.navigateToWorks(worksId) },
+            onNavigateToCharacter = { characterId -> navigator.navigateToCharacter(characterId) },
             onNavigateToCommentDetail = { commentId, relateItemId ->
-                backStack.navigateToCommentDetail(
+                navigator.navigateToCommentDetail(
                     CommentDetailNavParam(
                         commentId = commentId,
                         relateNodeId = relateItemId
@@ -59,15 +59,25 @@ fun EntryProviderScope<NavKey>.messageEntries(
         MessageChatScreen(
             param = key.param,
             onNavigateBack = onBack,
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
-            onNavigateToHobby = { itemId -> backStack.navigateToDetail(itemId) }
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onNavigateToHobby = { itemId -> navigator.navigateToDetail(itemId) }
         )
     }
 
     entry<MessageBlockNavKey> {
         MessageBlockScreen(
             onNavigateBack = onBack,
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) }
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) }
         )
     }
+}
+
+/**
+ * 单栈兼容重载。
+ */
+fun EntryProviderScope<NavKey>.messageEntries(
+    backStack: NavBackStack<NavKey>,
+    onBack: () -> Unit
+) {
+    messageEntries(RePoiNavigator(backStack), onBack)
 }

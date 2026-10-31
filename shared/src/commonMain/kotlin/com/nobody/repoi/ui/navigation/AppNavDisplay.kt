@@ -34,13 +34,13 @@ fun AppNavDisplay(
     }
 
     val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
-        topLevelEntries(currentBackStack)
-        detailEntries(currentBackStack, onBack)
-        communityEntries(currentBackStack, onBack)
-        marketEntries(currentBackStack, onBack)
-        userEntries(currentBackStack, onBack)
-        messageEntries(currentBackStack, onBack)
-        interactionEntries(currentBackStack, onBack)
+        topLevelEntries(navigator)
+        detailEntries(navigator, onBack)
+        communityEntries(navigator, onBack)
+        marketEntries(navigator, onBack)
+        userEntries(navigator, onBack)
+        messageEntries(navigator, onBack)
+        interactionEntries(navigator, onBack)
         systemEntries(
             onBack = onBack,
             themeMode = themeMode,

@@ -22,14 +22,14 @@ import com.nobody.repoi.ui.search.SearchScreen
  * 注册搜索中心、手办筛选列表、评论列表/楼中楼、图片查看及 ExHobby 扩展等通用交互路由。
  */
 fun EntryProviderScope<NavKey>.interactionEntries(
-    backStack: NavBackStack<NavKey>,
+    navigator: RePoiNavigator,
     onBack: () -> Unit
 ) {
     entry<HobbyListNavKey> { key ->
         HobbyListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToDetail = { hobbyParam -> backStack.navigateToDetail(hobbyParam) }
+            onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) }
         )
     }
 
@@ -49,13 +49,13 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         SearchScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToDetail = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToVendor = { vendorParam -> backStack.navigateToVendor(vendorParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) }
+            onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) }
         )
     }
 
@@ -112,7 +112,7 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         HobbyCommentsScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) }
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) }
         )
     }
 
@@ -129,4 +129,14 @@ fun EntryProviderScope<NavKey>.interactionEntries(
             onBack = onBack
         )
     }
+}
+
+/**
+ * 单栈兼容重载。
+ */
+fun EntryProviderScope<NavKey>.interactionEntries(
+    backStack: NavBackStack<NavKey>,
+    onBack: () -> Unit
+) {
+    interactionEntries(RePoiNavigator(backStack), onBack)
 }

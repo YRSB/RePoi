@@ -58,16 +58,8 @@ class RePoiNavigationState(
             )
         }
 
-        // 规范化活跃 Entry 列表：
-        // 若当前处于非 HOME Tab，栈底挂载 startDestination 的根视图（满足 Exit through Home 与平滑转场）；
-        // 栈顶展示当前 Tab 的所有 entries。
-        val activeTabs = if (currentDestination == startDestination) {
-            listOf(startDestination)
-        } else {
-            listOf(startDestination, currentDestination)
-        }
-
-        return activeTabs.flatMap { decoratedEntries[it] ?: emptyList() }
+        // 当前呈现在屏幕上的，严格为当前激活 Tab 的 entry 序列（保证各 Tab 栈的纯粹与相互隔离）
+        return decoratedEntries[currentDestination] ?: emptyList()
     }
 
     companion object {

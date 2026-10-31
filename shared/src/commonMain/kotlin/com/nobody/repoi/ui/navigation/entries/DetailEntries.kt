@@ -21,27 +21,27 @@ import com.nobody.repoi.ui.works.WorksDetailScreen
  * 注册手办、相册、角色、厂商、人物、系列与作品等详情链路由。
  */
 fun EntryProviderScope<NavKey>.detailEntries(
-    backStack: NavBackStack<NavKey>,
+    navigator: RePoiNavigator,
     onBack: () -> Unit
 ) {
     entry<HobbyDetailNavKey> { key ->
         HobbyDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { detailParam -> backStack.navigateToDetail(detailParam) },
-            onNavigateToAlbum = { albumId -> backStack.navigateToAlbum(albumId) },
-            onNavigateToAlbumList = { albumListParam -> backStack.navigateToHobbyAlbumList(albumListParam) },
-            onNavigateToVendor = { vendorParam -> backStack.navigateToVendor(vendorParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
-            onNavigateToHobbyList = { listParam -> backStack.navigateToHobbyList(listParam) },
-            onNavigateToCollect = { collectParam -> backStack.navigateToCollectEdit(collectParam) },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToHobbyComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) },
-            onNavigateToPictureList = { pictureParam -> backStack.navigateToPictureList(pictureParam) },
-            onNavigateToExHobbyList = { exHobbyKey -> backStack.add(exHobbyKey) }
+            onNavigateToHobby = { detailParam -> navigator.navigateToDetail(detailParam) },
+            onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(albumId) },
+            onNavigateToAlbumList = { albumListParam -> navigator.navigateToHobbyAlbumList(albumListParam) },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
+            onNavigateToCollect = { collectParam -> navigator.navigateToCollectEdit(collectParam) },
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToHobbyComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) },
+            onNavigateToPictureList = { pictureParam -> navigator.navigateToPictureList(pictureParam) },
+            onNavigateToExHobbyList = { exHobbyKey -> navigator.navigate(exHobbyKey) }
         )
     }
 
@@ -52,7 +52,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToHobbyDetail = { hobbyParam ->
                 when (hobbyParam.itemType) {
                     "person" -> {
-                        backStack.navigateToPerson(
+                        navigator.navigateToPerson(
                             PersonNavParam(
                                 personId = hobbyParam.itemId,
                                 initialName = hobbyParam.initialName,
@@ -61,7 +61,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
                         )
                     }
                     "charactar", "character" -> {
-                        backStack.navigateToCharacter(
+                        navigator.navigateToCharacter(
                             CharacterNavParam(
                                 characterId = hobbyParam.itemId,
                                 initialName = hobbyParam.initialName,
@@ -70,14 +70,14 @@ fun EntryProviderScope<NavKey>.detailEntries(
                         )
                     }
                     else -> {
-                        backStack.navigateToDetail(hobbyParam)
+                        navigator.navigateToDetail(hobbyParam)
                     }
                 }
             },
-            onNavigateToAlbum = { albumId -> backStack.navigateToAlbum(albumId) },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) },
-            onNavigateToExHobbyList = { exHobbyKey -> backStack.add(exHobbyKey) }
+            onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(albumId) },
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) },
+            onNavigateToExHobbyList = { exHobbyKey -> navigator.navigate(exHobbyKey) }
         )
     }
 
@@ -85,7 +85,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
         AlbumRankListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) }
+            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) }
         )
     }
 
@@ -93,21 +93,21 @@ fun EntryProviderScope<NavKey>.detailEntries(
         VendorDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
             onNavigateToVendorActions = { companyNodeId, companyName ->
-                backStack.navigateToVendorActions(companyNodeId, companyName)
+                navigator.navigateToVendorActions(companyNodeId, companyName)
             },
-            onNavigateToLogin = { backStack.navigateToLogin() },
+            onNavigateToLogin = { navigator.navigateToLogin() },
             onNavigateToSearch = { companyNodeId ->
-                backStack.navigateToSearch(
+                navigator.navigateToSearch(
                     category = 10000,
                     companyNodeId = companyNodeId,
                     companyName = key.param.initialName
                 )
             },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) }
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )
     }
 
@@ -115,14 +115,14 @@ fun EntryProviderScope<NavKey>.detailEntries(
         VendorActionsScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToVendor = { vendorParam -> backStack.navigateToVendor(vendorParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) }
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) }
         )
     }
 
@@ -130,16 +130,16 @@ fun EntryProviderScope<NavKey>.detailEntries(
         SeriesDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
-            onNavigateToHobbyList = { listParam -> backStack.navigateToHobbyList(listParam) },
-            onNavigateToAlbumList = { albumListParam -> backStack.navigateToHobbyAlbumList(albumListParam) },
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
+            onNavigateToAlbumList = { albumListParam -> navigator.navigateToHobbyAlbumList(albumListParam) },
             onNavigateToSearch = { keyword ->
-                backStack.navigateToSearch(keyword = keyword, category = 10000)
+                navigator.navigateToSearch(keyword = keyword, category = 10000)
             },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) }
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )
     }
 
@@ -147,13 +147,13 @@ fun EntryProviderScope<NavKey>.detailEntries(
         PersonDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToHobbyList = { listParam -> backStack.navigateToHobbyList(listParam) },
-            onNavigateToSearch = { keyword -> backStack.navigateToSearch(keyword = keyword) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) }
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
+            onNavigateToSearch = { keyword -> navigator.navigateToSearch(keyword = keyword) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )
     }
 
@@ -161,15 +161,15 @@ fun EntryProviderScope<NavKey>.detailEntries(
         WorksDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToHobbyList = { listParam -> backStack.navigateToHobbyList(listParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToSearch = { keyword ->
-                backStack.navigateToSearch(keyword = keyword, category = 10000)
+                navigator.navigateToSearch(keyword = keyword, category = 10000)
             },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) }
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )
     }
 
@@ -177,17 +177,17 @@ fun EntryProviderScope<NavKey>.detailEntries(
         CharacterDetailScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToHobbyList = { listParam -> backStack.navigateToHobbyList(listParam) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToWorksList = { worksListParam -> backStack.navigateToCharacterWorksList(worksListParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToAlbumList = { albumListParam -> backStack.navigateToCharacterAlbumList(albumListParam) },
-            onNavigateToSearch = { keyword -> backStack.navigateToSearch(keyword = keyword) },
-            onNavigateToCommentDetail = { commentParam -> backStack.navigateToCommentDetail(commentParam) },
-            onNavigateToComments = { commentsParam -> backStack.navigateToHobbyComments(commentsParam) }
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToWorksList = { worksListParam -> navigator.navigateToCharacterWorksList(worksListParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToAlbumList = { albumListParam -> navigator.navigateToCharacterAlbumList(albumListParam) },
+            onNavigateToSearch = { keyword -> navigator.navigateToSearch(keyword = keyword) },
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )
     }
 
@@ -195,7 +195,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
         CharacterAlbumListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) }
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) }
         )
     }
 
@@ -203,7 +203,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
         HobbyAlbumListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) }
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) }
         )
     }
 
@@ -211,8 +211,18 @@ fun EntryProviderScope<NavKey>.detailEntries(
         CharacterWorksListScreen(
             param = key.param,
             onBack = onBack,
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) }
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) }
         )
     }
+}
+
+/**
+ * 单栈兼容重载。
+ */
+fun EntryProviderScope<NavKey>.detailEntries(
+    backStack: NavBackStack<NavKey>,
+    onBack: () -> Unit
+) {
+    detailEntries(RePoiNavigator(backStack), onBack)
 }

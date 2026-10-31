@@ -14,21 +14,21 @@ import com.nobody.repoi.ui.zone.ZoneSettingsScreen
  * 注册专区、讨论板与帖子详情等社区领域路由。
  */
 fun EntryProviderScope<NavKey>.communityEntries(
-    backStack: NavBackStack<NavKey>,
+    navigator: RePoiNavigator,
     onBack: () -> Unit
 ) {
     entry<ZoneBrowseNavKey> {
         ZoneBrowseScreen(
             onNavigateBack = onBack,
             onNavigateToZoneDetail = { nodeId, name, icon, cover ->
-                backStack.navigateToZoneDetail(
+                navigator.navigateToZoneDetail(
                     nodeId = nodeId,
                     initialName = name,
                     initialIcon = icon,
                     initialCover = cover
                 )
             },
-            onNavigateToSettings = { backStack.navigateToZoneSettings() }
+            onNavigateToSettings = { navigator.navigateToZoneSettings() }
         )
     }
 
@@ -39,19 +39,19 @@ fun EntryProviderScope<NavKey>.communityEntries(
             initialIcon = key.initialIcon,
             initialCover = key.initialCover,
             onNavigateBack = onBack,
-            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
-            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
-            onNavigateToPerson = { param -> backStack.navigateToPerson(param) },
-            onNavigateToWorks = { param -> backStack.navigateToWorks(param) },
-            onNavigateToVendor = { param -> backStack.navigateToVendor(param) },
-            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
-            onNavigateToSeries = { param -> backStack.navigateToSeries(param) },
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
+            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
+            onNavigateToPerson = { param -> navigator.navigateToPerson(param) },
+            onNavigateToWorks = { param -> navigator.navigateToWorks(param) },
+            onNavigateToVendor = { param -> navigator.navigateToVendor(param) },
+            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
+            onNavigateToSeries = { param -> navigator.navigateToSeries(param) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
             onNavigateToPost = { postId, nodeId, title ->
-                backStack.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
+                navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
-            onNavigateToResaleDetail = { resaleId -> backStack.navigateToResaleDetail(resaleId) },
-            onNavigateToResaleMarket = { hobbyId, title -> backStack.navigateToResaleMarket(hobbyId = hobbyId, title = title) }
+            onNavigateToResaleDetail = { resaleId -> navigator.navigateToResaleDetail(resaleId) },
+            onNavigateToResaleMarket = { hobbyId, title -> navigator.navigateToResaleMarket(hobbyId = hobbyId, title = title) }
         )
     }
 
@@ -65,19 +65,19 @@ fun EntryProviderScope<NavKey>.communityEntries(
         ForumHomeScreen(
             onNavigateBack = onBack,
             onNavigateToPost = { postId, nodeId, title ->
-                backStack.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
+                navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
-            onNavigateToSelf = { backStack.navigateToUser(0L) },
-            onNavigateToMessage = { backStack.navigateToMessageCenter() },
-            onNavigateToPlates = { backStack.navigateToPlateSubscribe() }
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onNavigateToSelf = { navigator.navigateToUser(0L) },
+            onNavigateToMessage = { navigator.navigateToMessageCenter() },
+            onNavigateToPlates = { navigator.navigateToPlateSubscribe() }
         )
     }
 
     entry<PlateSubscribeNavKey> {
         PlateSubscribeScreen(
             onNavigateBack = onBack,
-            onNavigateToLogin = { backStack.navigateToLogin() }
+            onNavigateToLogin = { navigator.navigateToLogin() }
         )
     }
 
@@ -87,13 +87,23 @@ fun EntryProviderScope<NavKey>.communityEntries(
             initialTitle = key.initialTitle,
             nodeId = key.nodeId,
             onNavigateBack = onBack,
-            onNavigateToDetail = { param -> backStack.navigateToDetail(param) },
-            onNavigateToZone = { nodeId -> backStack.navigateToZoneDetail(nodeId = nodeId) },
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
-            onNavigateToAlbum = { param -> backStack.navigateToAlbum(param) },
-            onNavigateToCharacter = { param -> backStack.navigateToCharacter(param) },
-            onNavigateToPost = { targetPostId -> backStack.navigateToPostDetail(postId = targetPostId) },
-            onNavigateToCommentDetail = { param -> backStack.navigateToCommentDetail(param.copy(isDiscuss = true)) }
+            onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
+            onNavigateToZone = { nodeId -> navigator.navigateToZoneDetail(nodeId = nodeId) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
+            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
+            onNavigateToPost = { targetPostId -> navigator.navigateToPostDetail(postId = targetPostId) },
+            onNavigateToCommentDetail = { param -> navigator.navigateToCommentDetail(param.copy(isDiscuss = true)) }
         )
     }
+}
+
+/**
+ * 单栈兼容重载。
+ */
+fun EntryProviderScope<NavKey>.communityEntries(
+    backStack: NavBackStack<NavKey>,
+    onBack: () -> Unit
+) {
+    communityEntries(RePoiNavigator(backStack), onBack)
 }

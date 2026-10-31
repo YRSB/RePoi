@@ -15,7 +15,7 @@ import com.nobody.repoi.ui.user.history.UserHistoryScreen
  * 注册社交好友、用户信息、收藏管理、用户创作与足迹历史等用户资产路由。
  */
 fun EntryProviderScope<NavKey>.userEntries(
-    backStack: NavBackStack<NavKey>,
+    navigator: RePoiNavigator,
     onBack: () -> Unit
 ) {
     entry<FriendListNavKey> { key ->
@@ -23,12 +23,12 @@ fun EntryProviderScope<NavKey>.userEntries(
             userId = key.param.userId,
             initialType = key.param.initialType,
             onNavigateBack = onBack,
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
             onNavigateToItem = { itemId, itemType ->
                 if (itemType == "album") {
-                    backStack.navigateToAlbum(itemId)
+                    navigator.navigateToAlbum(itemId)
                 } else {
-                    backStack.navigateToDetail(itemId)
+                    navigator.navigateToDetail(itemId)
                 }
             }
         )
@@ -39,14 +39,14 @@ fun EntryProviderScope<NavKey>.userEntries(
             userId = key.param.userId,
             onNavigateBack = onBack,
             onNavigateToFriendList = { targetUserId, initialType ->
-                backStack.navigateToFriendList(userId = targetUserId, initialType = initialType)
+                navigator.navigateToFriendList(userId = targetUserId, initialType = initialType)
             },
-            onNavigateToCollect = { collectParam -> backStack.navigateToUserCollect(collectParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) },
-            onNavigateToHobby = { itemId -> backStack.navigateToDetail(itemId) },
-            onNavigateToUser = { targetUserId -> backStack.navigateToUser(targetUserId) },
+            onNavigateToCollect = { collectParam -> navigator.navigateToUserCollect(collectParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToHobby = { itemId -> navigator.navigateToDetail(itemId) },
+            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
             onNavigateToChat = { targetUserId, targetUserName, targetUserHeader ->
-                backStack.navigateToMessageChat(
+                navigator.navigateToMessageChat(
                     targetUserId = targetUserId,
                     targetUserName = targetUserName,
                     targetUserHeader = targetUserHeader
@@ -59,13 +59,13 @@ fun EntryProviderScope<NavKey>.userEntries(
         UserCollectScreen(
             param = key.param,
             onNavigateBack = onBack,
-            onNavigateToHobby = { hobbyParam -> backStack.navigateToDetail(hobbyParam) },
-            onNavigateToVendor = { vendorParam -> backStack.navigateToVendor(vendorParam) },
-            onNavigateToSeries = { seriesParam -> backStack.navigateToSeries(seriesParam) },
-            onNavigateToWorks = { worksParam -> backStack.navigateToWorks(worksParam) },
-            onNavigateToPerson = { personParam -> backStack.navigateToPerson(personParam) },
-            onNavigateToCharacter = { characterParam -> backStack.navigateToCharacter(characterParam) },
-            onNavigateToAlbum = { albumParam -> backStack.navigateToAlbum(albumParam) }
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) }
         )
     }
 
@@ -73,15 +73,15 @@ fun EntryProviderScope<NavKey>.userEntries(
         UserCreationScreen(
             param = key.param,
             onNavigateBack = onBack,
-            onNavigateToAlbum = { albumId -> backStack.navigateToAlbum(albumId) }
+            onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(albumId) }
         )
     }
 
     entry<UserHistoryNavKey> {
         UserHistoryScreen(
             onBackClick = onBack,
-            onNavigateToHobbyDetail = { itemId -> backStack.navigateToDetail(itemId) },
-            onNavigateToAlbumDetail = { albumId -> backStack.navigateToAlbum(albumId) }
+            onNavigateToHobbyDetail = { itemId -> navigator.navigateToDetail(itemId) },
+            onNavigateToAlbumDetail = { albumId -> navigator.navigateToAlbum(albumId) }
         )
     }
 
@@ -98,4 +98,14 @@ fun EntryProviderScope<NavKey>.userEntries(
             onBack = onBack
         )
     }
+}
+
+/**
+ * 单栈兼容重载。
+ */
+fun EntryProviderScope<NavKey>.userEntries(
+    backStack: NavBackStack<NavKey>,
+    onBack: () -> Unit
+) {
+    userEntries(RePoiNavigator(backStack), onBack)
 }
