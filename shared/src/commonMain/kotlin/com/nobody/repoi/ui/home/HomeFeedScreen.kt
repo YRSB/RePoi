@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.geometry.Offset
@@ -44,18 +46,23 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.TopAppBar
@@ -63,8 +70,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
 import androidx.compose.runtime.LaunchedEffect
@@ -72,16 +77,17 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.nobody.repoi.platform.isLandscapeOrientation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CardDefaults
@@ -91,7 +97,7 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.common.FakeSearchField
 import com.nobody.repoi.ui.common.LocalImageViewer
-import com.nobody.repoi.ui.common.ModalSideSheet
+import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
@@ -102,7 +108,6 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
-import com.nobody.repoi.ui.home.components.HomeFilterSheetContent
 import com.nobody.repoi.ui.search.SearchNavParam
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.FeedActionDispatcher
@@ -123,6 +128,8 @@ fun HomeFeedScreen(
     onNavigateToUser: ((Long) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToForumHome: (() -> Unit)? = null,
+    onNavigateToMessage: (() -> Unit)? = null,
+    onNavigateToProfile: (() -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -145,16 +152,22 @@ fun HomeFeedScreen(
     }
 
     var restored by remember { mutableStateOf(false) }
-    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    // 顶栏内容边距使用固定估高，实测高度仅用于折叠上限与位移
     val topBarHeight = statusBarTopPadding + 64.dp
     val density = LocalDensity.current
-    val topBarHeightPx = with(density) { topBarHeight.toPx() }
+    var tabRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
+    var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
-        initialHeightOffsetLimit = -topBarHeightPx,
+        initialHeightOffsetLimit = -tabRowHeightPx,
         canScroll = { uiState.items.isNotEmpty() }
     )
+    LaunchedEffect(tabRowHeightPx) {
+        scrollBehavior.state.heightOffsetLimit = -tabRowHeightPx
+        scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffset.coerceIn(-tabRowHeightPx, 0f)
+    }
+    val tabRowHeightDp = with(density) { tabRowHeightPx.toDp() }
+    val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
+    val totalHeaderHeight = topBarHeight + tabRowHeightDp + filterRowHeightDp
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -162,8 +175,6 @@ fun HomeFeedScreen(
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
     val feedColumns = rememberFeedStaggeredGridColumns()
-    // 筛选激活态为纯派生计算，无需派生状态订阅，直接普通值比较即可
-    val isFilterActive = uiState.selectedCategory.tabKey != "all" || uiState.selectedSubType != "recommend"
 
     LaunchedEffect(staggeredGridState) {
         snapshotFlow {
@@ -223,7 +234,7 @@ fun HomeFeedScreen(
                     isRefreshing = uiState.isRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = topBarHeight)
+                        .padding(top = totalHeaderHeight)
                 )
             }
         ) {
@@ -239,7 +250,7 @@ fun HomeFeedScreen(
                     LazyVerticalStaggeredGrid(
                         columns = feedColumns,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = topBarHeight + 8.dp, bottom = bottomContentPadding),
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = totalHeaderHeight + 8.dp, bottom = bottomContentPadding),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalItemSpacing = 8.dp
                     ) {
@@ -263,7 +274,7 @@ fun HomeFeedScreen(
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .padding(top = topBarHeight)
+                            .padding(top = totalHeaderHeight)
                             .padding(24.dp)
                     ) {
                         Column(
@@ -292,7 +303,7 @@ fun HomeFeedScreen(
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .padding(top = topBarHeight)
+                            .padding(top = totalHeaderHeight)
                             .padding(24.dp)
                     ) {
                         Column(
@@ -350,7 +361,7 @@ fun HomeFeedScreen(
                         columns = feedColumns,
                         state = staggeredGridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = topBarHeight + 6.dp, bottom = bottomContentPadding),
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = totalHeaderHeight + 6.dp, bottom = bottomContentPadding),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalItemSpacing = 8.dp
                     ) {
@@ -424,6 +435,85 @@ fun HomeFeedScreen(
         }
     }
 
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(top = topBarHeight)
+                .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                .onSizeChanged { size -> if (size.height > 0) tabRowHeightPx = size.height.toFloat() }
+                .clipToBounds()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            val selectedTabIndex = uiState.categories
+                .indexOfFirst { it.tabKey == uiState.selectedCategory.tabKey }
+                .coerceAtLeast(0)
+            PrimaryScrollableTabRow(
+                selectedTabIndex = selectedTabIndex,
+                edgePadding = 16.dp,
+                containerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                uiState.categories.forEachIndexed { index, category ->
+                    val isSelected = index == selectedTabIndex
+                    Tab(
+                        selected = isSelected,
+                        onClick = { viewModel.selectCategory(category) },
+                        text = {
+                            Text(
+                                text = category.name,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+                Tab(
+                    selected = false,
+                    onClick = { onNavigateToForumHome?.invoke() },
+                    text = { Text("讨论板") }
+                )
+                Tab(
+                    selected = false,
+                    onClick = { onNavigateToZoneBrowse?.invoke() },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "专区广场",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(top = topBarHeight + tabRowHeightDp)
+                .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                .onSizeChanged { size -> if (size.height > 0) filterRowHeightPx = size.height.toFloat() }
+                .clipToBounds()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                viewModel.subTypes.forEach { (key, label) ->
+                    FilterChip(
+                        selected = uiState.selectedSubType == key,
+                        onClick = { viewModel.selectSubType(key) },
+                        label = { Text(label) },
+                        shape = ExpressiveTokens.ChipShape
+                    )
+                }
+            }
+        }
+
         TopAppBar(
             title = {
                 FakeSearchField(
@@ -433,31 +523,35 @@ fun HomeFeedScreen(
                             SearchNavParam(initialCategory = if (categoryId == 0) 10000 else categoryId)
                         )
                     },
+                    placeholder = "搜索",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(end = 12.dp),
-                    trailingContent = {
-                        IconButton(
-                            onClick = { showFilterSheet = true },
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Tune,
-                                contentDescription = "筛选",
-                                modifier = Modifier.size(22.dp),
-                                tint = if (isFilterActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                        .padding(end = 12.dp)
                 )
+            },
+            actions = {
+                IconButton(onClick = { onNavigateToMessage?.invoke() }) {
+                    BadgedBox(
+                        badge = {
+                            if (uiState.unreadMessageCount > 0) {
+                                Badge(containerColor = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Outlined.Email, contentDescription = "消息中心")
+                    }
+                }
+                IconButton(onClick = { onNavigateToProfile?.invoke() }) {
+                    UserAvatar(
+                        avatarUrl = uiState.userAvatar,
+                        size = 34.dp,
+                        contentDescription = "我的"
+                    )
+                }
             },
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
-                .onSizeChanged { size ->
-                    scrollBehavior.state.heightOffsetLimit = -size.height.toFloat()
-                }
-                .clipToBounds(),
+                .fillMaxWidth(),
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface,
                 scrolledContainerColor = MaterialTheme.colorScheme.surface
@@ -483,39 +577,6 @@ fun HomeFeedScreen(
                 imageVector = Icons.Filled.Refresh,
                 contentDescription = "回到顶部并刷新"
             )
-        }
-        if (showFilterSheet) {
-            val sheetContent: @Composable () -> Unit = {
-                HomeFilterSheetContent(
-                    categories = uiState.categories,
-                    selectedCategory = uiState.selectedCategory,
-                    onCategorySelect = { viewModel.selectCategory(it) },
-                    subTypes = viewModel.subTypes,
-                    selectedSubType = uiState.selectedSubType,
-                    onSubTypeSelect = { viewModel.selectSubType(it) },
-                    onReset = { viewModel.resetFilters() },
-                    onDismiss = { showFilterSheet = false },
-                    onNavigateToZoneBrowse = onNavigateToZoneBrowse,
-                    onNavigateToForumHome = onNavigateToForumHome
-                )
-            }
-            if (isWideScreen) {
-                ModalSideSheet(onDismissRequest = { showFilterSheet = false }) {
-                    sheetContent()
-                }
-            } else {
-                val filterSheetState = rememberBottomSheetState(
-                    initialValue = SheetValue.Hidden,
-                    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
-                )
-                ModalBottomSheet(
-                    onDismissRequest = { showFilterSheet = false },
-                    sheetState = filterSheetState,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                ) {
-                    sheetContent()
-                }
-            }
         }
     }
 }

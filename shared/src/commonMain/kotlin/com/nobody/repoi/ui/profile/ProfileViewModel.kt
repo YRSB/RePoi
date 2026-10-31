@@ -140,9 +140,10 @@ class ProfileViewModel(
     }
 
     fun loadProfile(isRefresh: Boolean = false) {
-        if (!userRepository.isLoggedIn) return
-
         viewModelScope.launch {
+            userRepository.awaitTokenReady()
+            if (!userRepository.isLoggedIn) return@launch
+
             _uiState.update {
                 it.copy(
                     isLoading = !isRefresh,

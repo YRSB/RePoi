@@ -2,6 +2,8 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.TokenManager
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * commonTest TokenManager 替身：替代 Mockito `mock(TokenManager)`。
@@ -11,7 +13,13 @@ import com.nobody.repoi.data.local.TokenManager
  * 并统计 `clearToken()` 调用次数（替代 `verify(tokenManager).clearToken()`）。
  */
 class FakeTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) {
-    override var currentToken: String = token
+    private val tokenState = MutableStateFlow(token)
+
+    override val tokenFlow: Flow<String> = tokenState
+
+    override var currentToken: String
+        get() = tokenState.value
+        set(value) { tokenState.value = value }
 
     var clearTokenCalls: Int = 0
         private set
@@ -20,4 +28,6 @@ class FakeTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) 
         clearTokenCalls++
         currentToken = ""
     }
+
+    override suspend fun awaitReady() = Unit
 }

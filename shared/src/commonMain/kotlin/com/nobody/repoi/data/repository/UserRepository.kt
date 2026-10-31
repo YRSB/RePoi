@@ -111,6 +111,8 @@ class UserRepository(
     val isLoggedIn: Boolean get() = tokenManager.currentToken.isNotBlank()
     val currentUserId: Long get() = tokenManager.currentUserId
 
+    suspend fun awaitTokenReady() = tokenManager.awaitReady()
+
     private val _currentUserProfile = MutableStateFlow<UserProfile?>(null)
     val currentUserProfile: StateFlow<UserProfile?> = _currentUserProfile.asStateFlow()
 
