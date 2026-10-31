@@ -64,7 +64,7 @@ import org.koin.compose.koinInject
 import coil3.ImageLoader
 
 /**
- * 全局大图画廊弹窗宿主，统一挂载在根部脚手架 (PoiShelfApp) 中。
+ * 全局大图画廊弹窗宿主，统一挂载在根部脚手架 (RePoiApp) 中。
  *
  * KMP 移植版（原生 `ui/common/ImageViewerDialog.kt`）：
  * - Coil2（`coil.compose.AsyncImage`/`coil.imageLoader`/`coil.request.*`/`LocalContext`）

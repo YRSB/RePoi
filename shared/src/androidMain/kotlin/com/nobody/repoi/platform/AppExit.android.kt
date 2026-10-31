@@ -4,7 +4,7 @@ import android.app.Activity
 import java.lang.ref.WeakReference
 
 /**
- * 退到后台（S9）：`moveTaskToBack(true) || finish()`（原 `PoiShelfApp:160-162` 语义）。
+ * 退到后台（S9）：`moveTaskToBack(true) || finish()`（`RePoiApp` 退出/退后台语义）。
  *
  * Activity 经 [initPoiShelfActivity] 注册（androidApp `MainActivity.onCreate`，thin init）；
  * 未注册时返回 false（M2 无调用方；M6 根组合经此退后台）。

@@ -9,7 +9,7 @@
 ### 1. KMP 模块分层职责
 - **`:shared:commonMain`**：核心代码集，承载领域模型、Ktor API、仓储、ViewModel、Compose UI 页面及组件。
 - **`:shared:androidMain` / `:shared:jvmMain`**：平台能力垫片（`com.nobody.repoi.platform` 下的 `expect/actual` 实现，如 `AppDirs`, `BackPress`, `LogShare`, `Sharing`, `ThemeCaps`）与平台专属 Koin 扩展。
-- **`:androidApp` 与 `:desktopApp`**：极薄宿主外壳，仅负责平台生命周期初始化与挂载跨平台根组件 `PoiShelfApp()`。
+- **`:androidApp` 与 `:desktopApp`**：极薄宿主外壳，仅负责平台生命周期初始化与挂载跨平台根组件 `RePoiApp()`。
 
 ### 2. Koin 依赖注入与单向数据流 (UDF)
 - **仓储注入**：仓储统一为具体类，在 `RepositoryModule` 中通过 `singleOf(::XxxRepository)` 单例声明。

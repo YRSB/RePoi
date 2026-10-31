@@ -96,13 +96,6 @@ fun RePoiApp() {
     }
 }
 
-/**
- * 向后兼容别名，便于平滑过渡。
- */
-@Deprecated("请使用 RePoiApp 替代", ReplaceWith("RePoiApp()"))
-@Composable
-fun PoiShelfApp() = RePoiApp()
-
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 private fun RePoiNavHost(
