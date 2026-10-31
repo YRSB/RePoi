@@ -258,21 +258,24 @@ class NavExtensionsTest {
         // 1. 切换到条目页，并在条目页中进入手办详情
         navigator.selectTab(AppDestinations.ITEMS)
         assertEquals(AppDestinations.ITEMS, state.currentDestination)
-        navigator.navigate(HobbyDetailNavKey(111L))
+        val hobbyKey = HobbyDetailNavKey(111L)
+        navigator.navigate(hobbyKey)
         assertEquals(2, itemsStack.size)
-        assertEquals(HobbyDetailNavKey(111L), itemsStack.last())
+        assertEquals(hobbyKey, itemsStack.last())
 
         // 2. 切换到相册页，并在相册页进入某个相册详情
         navigator.selectTab(AppDestinations.ALBUM)
         assertEquals(AppDestinations.ALBUM, state.currentDestination)
-        navigator.navigate(AlbumDetailNavKey(AlbumNavParam(albumId = 222L)))
+        val albumKey = AlbumDetailNavKey(AlbumNavParam(albumId = 222L))
+        navigator.navigate(albumKey)
         assertEquals(2, albumStack.size)
+        assertEquals(albumKey, albumStack.last())
 
         // 3. 再次切回条目页：验证条目页的详情依然保留，状态未被清除！
         navigator.selectTab(AppDestinations.ITEMS)
         assertEquals(AppDestinations.ITEMS, state.currentDestination)
         assertEquals(2, itemsStack.size)
-        assertEquals(HobbyDetailNavKey(111L), itemsStack.last())
+        assertEquals(hobbyKey, itemsStack.last())
 
         // 4. 在条目页详情执行返回：弹出详情，回到条目根页面
         assertTrue(navigator.goBack())
@@ -283,6 +286,7 @@ class NavExtensionsTest {
         navigator.selectTab(AppDestinations.ALBUM)
         assertEquals(AppDestinations.ALBUM, state.currentDestination)
         assertEquals(2, albumStack.size)
+        assertEquals(albumKey, albumStack.last())
 
         // 6. 切换到关注页和我的页
         navigator.selectTab(AppDestinations.FOLLOW)
