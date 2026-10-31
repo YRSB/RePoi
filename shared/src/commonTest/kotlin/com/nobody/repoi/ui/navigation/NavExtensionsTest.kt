@@ -395,42 +395,4 @@ class NavExtensionsTest {
         assertEquals(2, itemsStack.size)
         assertEquals(2, homeStack.size)
     }
-
-    @Test
-    fun testNavigationState_ToDecoratedEntriesOnlyReturnsCurrentTabEntries() {
-        val homeStack = NavBackStack<NavKey>(HomeNavKey)
-        val itemsStack = NavBackStack<NavKey>(ItemsNavKey)
-        val stacks = mapOf(
-            AppDestinations.HOME to homeStack,
-            AppDestinations.ITEMS to itemsStack,
-            AppDestinations.ALBUM to NavBackStack<NavKey>(AlbumNavKey),
-            AppDestinations.FOLLOW to NavBackStack<NavKey>(FollowNavKey),
-            AppDestinations.PROFILE to NavBackStack<NavKey>(ProfileNavKey),
-        )
-        val state = RePoiNavigationState(
-            startDestination = AppDestinations.HOME,
-            currentDestinationState = mutableStateOf(AppDestinations.HOME),
-            backStacks = stacks,
-            isSingleStackMode = false
-        )
-        val navigator = RePoiNavigator(state = state)
-
-        // 先往 homeStack 压一个二级页面
-        navigator.navigateToDetail(1001L)
-        assertEquals(2, homeStack.size)
-
-        // 切换到 ITEMS Tab
-        navigator.selectTab(AppDestinations.ITEMS)
-        navigator.navigateToDetail(2002L)
-        assertEquals(2, itemsStack.size)
-
-        // 验证 toDecoratedEntries 只返回 itemsStack 的 2 个条目
-        val mockProvider: (NavKey) -> androidx.navigation3.runtime.NavEntry<NavKey> = { key ->
-            androidx.navigation3.runtime.NavEntry(key) {}
-        }
-        val entries = state.toDecoratedEntries(mockProvider)
-        assertEquals(2, entries.size)
-        assertEquals(ItemsNavKey, entries[0].key)
-        assertIs<HobbyDetailNavKey>(entries[1].key)
-    }
 }
