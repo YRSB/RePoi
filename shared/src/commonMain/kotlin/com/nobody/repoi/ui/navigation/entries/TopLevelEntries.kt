@@ -38,7 +38,9 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
             onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
             onNavigateToSearch = { param -> navigator.navigateToSearch(param) },
             onNavigateToZoneBrowse = { navigator.navigateToZoneBrowse() },
-            onNavigateToForumHome = { navigator.navigateToForumHome() }
+            onNavigateToForumHome = { navigator.navigateToForumHome() },
+            onNavigateToMessage = { navigator.navigateToMessageCenter() },
+            onNavigateToProfile = { navigator.selectTab(AppDestinations.PROFILE) }
         )
     }
 

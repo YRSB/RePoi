@@ -3,8 +3,11 @@ package com.nobody.repoi.ui.home
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.HomeRepository
+import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,10 +56,13 @@ class HomeFeedViewModelTest {
     private class Env(
         val feedMock: MockApi,
         val zoneMock: MockApi,
+        val accountMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
     ) {
         val feedRequests: Int get() = feedMock.requestCount
+        val userRepository = UserRepository(accountMock.api(), FakeTokenManager("utoken-test"))
+        val messageRepository = MessageRepository(accountMock.api(), FakeTokenManager("utoken-test"))
     }
 
     private suspend fun env(
@@ -76,11 +82,17 @@ class HomeFeedViewModelTest {
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
         val zoneRepository = ZoneRepository(zoneMock.api(), preferences)
-        return Env(feedMock, zoneMock, preferences, zoneRepository)
+        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository)
     }
 
-    private fun Env.viewModel(): HomeFeedViewModel =
-        HomeFeedViewModel(HomeRepository(feedMock.api()), zoneRepository, preferences)
+    private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
+        HomeFeedViewModel(
+            HomeRepository(feedMock.api()),
+            zoneRepository,
+            preferences,
+            if (accounts) userRepository else null,
+            if (accounts) messageRepository else null
+        )
 
     private fun item(id: Long, date: String? = null): ActionItem {
         return ActionItem(id = id, actionDate = date, actionComment = "动态$id")
@@ -497,5 +509,55 @@ class HomeFeedViewModelTest {
         viewModel.resetScrollPosition()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+    }
+
+    @Test
+    fun accountHeader_updatesAvatarOnInit() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.accountMock.route(
+            "api/user/self",
+            """{"success":true,"code":200,"msg":"ok","data":{"user":{"id":88888,"nickname":"手办达人","header":"avatar/abc.jpg"}}}"""
+        )
+        val viewModel = env.viewModel(accounts = true)
+        advanceUntilIdle()
+
+        assertEquals("avatar/abc.jpg", viewModel.uiState.value.userAvatar)
+    }
+
+    @Test
+    fun unreadCount_updatesOnInitAndRefresh() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100")))
+        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
+        env.accountMock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":2,"reply":3,"praise":5,"recommend":0,"follownews":4,"commodity":1,"posts_reply":0}}}}""",
+            """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{}}}}"""
+        )
+        val viewModel = env.viewModel(accounts = true)
+        advanceUntilIdle()
+        assertEquals(15, viewModel.uiState.value.unreadMessageCount)
+
+        viewModel.refreshFeed()
+        advanceUntilIdle()
+        assertEquals(0, viewModel.uiState.value.unreadMessageCount)
+    }
+
+    @Test
+    fun loggedOutAccount_leavesAvatarAndUnreadEmpty() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
+        val viewModel = HomeFeedViewModel(
+            HomeRepository(env.feedMock.api()),
+            env.zoneRepository,
+            env.preferences,
+            UserRepository(env.accountMock.api(), FakeTokenManager("")),
+            MessageRepository(env.accountMock.api(), FakeTokenManager(""))
+        )
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.userAvatar)
+        assertEquals(0, viewModel.uiState.value.unreadMessageCount)
     }
 }

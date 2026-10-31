@@ -7,6 +7,8 @@ import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.repository.MessageRepository
+import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
 import kotlinx.coroutines.Job
@@ -36,13 +38,17 @@ data class HomeFeedUiState(
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val errorMessage: String? = null,
-    val loadMoreError: String? = null
+    val loadMoreError: String? = null,
+    val userAvatar: String? = null,
+    val unreadMessageCount: Int = 0
 )
 
 class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
     private val zoneRepository: ZoneRepository,
-    private val viewPreferencesManager: ViewPreferencesManager
+    private val viewPreferencesManager: ViewPreferencesManager,
+    private val userRepository: UserRepository? = null,
+    private val messageRepository: MessageRepository? = null
 ) : ViewModel() {
 
     val subTypes = listOf(
@@ -125,6 +131,8 @@ class HomeFeedViewModel(
         viewModelScope.launch {
             zoneRepository.getZoneHomeTabs()
         }
+
+        setupAccountState()
 
         loadInitialFeed()
     }
@@ -250,6 +258,7 @@ class HomeFeedViewModel(
         if (_uiState.value.isRefreshing) return
         resetScrollPosition()
         _uiState.update { it.copy(isRefreshing = true, errorMessage = null, loadMoreError = null) }
+        fetchUnreadMessages()
 
         viewModelScope.launch {
             val currentState = _uiState.value
@@ -398,6 +407,29 @@ class HomeFeedViewModel(
                         loadMoreError = error.message ?: "加载更多失败"
                     )
                 }
+            }
+        }
+    }
+
+    private fun setupAccountState() {
+        val userRepo = userRepository ?: return
+        viewModelScope.launch {
+            userRepo.currentUserProfile.collect { profile ->
+                _uiState.update { it.copy(userAvatar = profile?.header) }
+            }
+        }
+        if (userRepo.isLoggedIn && userRepo.currentUserProfile.value == null) {
+            viewModelScope.launch { userRepo.getUserProfile() }
+        }
+        fetchUnreadMessages()
+    }
+
+    private fun fetchUnreadMessages() {
+        val messageRepo = messageRepository ?: return
+        if (userRepository?.isLoggedIn != true) return
+        viewModelScope.launch {
+            messageRepo.getUnreadPushCount().onSuccess { count ->
+                _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
             }
         }
     }
