@@ -89,8 +89,8 @@ fun NavBackStack<NavKey>.navigateToUser(userId: Long) = add(UserInfoNavKey(UserI
 fun NavBackStack<NavKey>.navigateToUser(param: UserInfoNavParam) = add(UserInfoNavKey(param))
 fun NavBackStack<NavKey>.navigateToSearch(param: SearchNavParam = SearchNavParam()) = add(SearchNavKey(param = param))
 fun NavBackStack<NavKey>.navigateToSearch(
-    keyword: String? = null,
-    category: Int? = null,
+    keyword: String = "",
+    category: Int = 10000,
     companyNodeId: Long? = null,
     companyName: String? = null
 ) = add(
@@ -112,7 +112,7 @@ fun NavBackStack<NavKey>.navigateToFriendList(param: FriendListNavParam) = add(F
 fun NavBackStack<NavKey>.navigateToFriendList(userId: Long, initialType: Int = 0) =
     add(FriendListNavKey(FriendListNavParam(userId = userId, initialType = initialType)))
 fun NavBackStack<NavKey>.navigateToCommentDetail(param: CommentDetailNavParam) = add(CommentDetailNavKey(param))
-fun NavBackStack<NavKey>.navigateToCommentDetail(commentId: Long, relateNodeId: Long? = null, isDiscuss: Boolean = false) =
+fun NavBackStack<NavKey>.navigateToCommentDetail(commentId: Long, relateNodeId: Long = 0L, isDiscuss: Boolean = false) =
     add(CommentDetailNavKey(CommentDetailNavParam(commentId = commentId, relateNodeId = relateNodeId, isDiscuss = isDiscuss)))
 fun NavBackStack<NavKey>.navigateToHobbyComments(param: HobbyCommentsNavParam) = add(HobbyCommentsNavKey(param))
 fun NavBackStack<NavKey>.navigateToZoneBrowse() = add(ZoneBrowseNavKey)
@@ -136,7 +136,7 @@ fun NavBackStack<NavKey>.navigateToMessageNotice(param: MessageNoticeNavParam) =
 fun NavBackStack<NavKey>.navigateToMessageNotice(type: String, typeNumber: Int = 0, title: String = "") =
     add(MessageNoticeNavKey(MessageNoticeNavParam(type = type, typeNumber = typeNumber, title = title)))
 fun NavBackStack<NavKey>.navigateToMessageChat(param: MessageChatNavParam) = add(MessageChatNavKey(param))
-fun NavBackStack<NavKey>.navigateToMessageChat(targetUserId: Long, targetUserName: String? = null, targetUserHeader: String? = null) =
+fun NavBackStack<NavKey>.navigateToMessageChat(targetUserId: Long, targetUserName: String = "", targetUserHeader: String? = null) =
     add(
         MessageChatNavKey(
             MessageChatNavParam(
