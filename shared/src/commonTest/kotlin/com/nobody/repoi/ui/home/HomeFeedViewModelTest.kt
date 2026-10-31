@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.local.TestDataStore
+import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.repository.FakeTokenManager
@@ -16,6 +17,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -559,5 +562,40 @@ class HomeFeedViewModelTest {
 
         assertNull(viewModel.uiState.value.userAvatar)
         assertEquals(0, viewModel.uiState.value.unreadMessageCount)
+    }
+
+    @Test
+    fun coldStartBeforeTokenPrewarm_stillLoadsUnreadCount() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
+        env.accountMock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":1,"reply":2,"praise":3,"recommend":0,"follownews":4,"commodity":5,"posts_reply":0}}}}"""
+        )
+        val coldToken = ColdStartTokenManager("utoken-test")
+        val viewModel = HomeFeedViewModel(
+            HomeRepository(env.feedMock.api()),
+            env.zoneRepository,
+            env.preferences,
+            UserRepository(env.accountMock.api(), coldToken),
+            MessageRepository(env.accountMock.api(), coldToken)
+        )
+        advanceUntilIdle()
+
+        assertEquals(15, viewModel.uiState.value.unreadMessageCount)
+    }
+
+    private class ColdStartTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) {
+        private val tokenState = MutableStateFlow(token)
+        override val tokenFlow: Flow<String> = tokenState
+        override var currentToken: String = ""
+        override suspend fun clearToken() {
+            currentToken = ""
+            tokenState.value = ""
+        }
+
+        override suspend fun awaitReady() {
+            currentToken = tokenState.value
+        }
     }
 }

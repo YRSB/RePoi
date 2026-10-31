@@ -8,11 +8,13 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -33,6 +35,7 @@ open class TokenManager(
     private val tokenRef = AtomicReference("")
     private val userIdRef = AtomicLong(0L)
     private val userNameRef = AtomicReference("")
+    private val localWriteRef = AtomicBoolean(false)
 
     open var currentToken: String
         get() = tokenRef.load()
@@ -46,7 +49,7 @@ open class TokenManager(
         get() = userNameRef.load()
         private set(value) { userNameRef.store(value) }
 
-    val tokenFlow: Flow<String> = dataStore.data.map { prefs ->
+    open val tokenFlow: Flow<String> = dataStore.data.map { prefs ->
         prefs[TOKEN_KEY] ?: ""
     }
 
@@ -54,20 +57,24 @@ open class TokenManager(
         prefs[USER_ID_KEY] ?: 0L
     }
 
-    init {
+    private val prewarmJob: Job = scope.launch {
         runCatching {
-            scope.launch {
-                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
-                // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
-                val prefs = dataStore.data.first()
-                prefs[TOKEN_KEY]?.let { currentToken = it }
-                prefs[USER_ID_KEY]?.let { currentUserId = it }
-                prefs[USER_NAME_KEY]?.let { currentUserName = it }
-            }
+            // 冷启动预热：从 DataStore 一次性恢复内存镜像。
+            // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
+            val prefs = dataStore.data.first()
+            if (localWriteRef.load()) return@runCatching
+            if (tokenRef.load().isEmpty()) prefs[TOKEN_KEY]?.let { tokenRef.store(it) }
+            if (userIdRef.load() == 0L) prefs[USER_ID_KEY]?.let { userIdRef.store(it) }
+            if (userNameRef.load().isEmpty()) prefs[USER_NAME_KEY]?.let { userNameRef.store(it) }
         }
     }
 
+    open suspend fun awaitReady() {
+        prewarmJob.join()
+    }
+
     suspend fun saveToken(token: String, userName: String? = null) {
+        localWriteRef.store(true)
         currentToken = token
         currentUserId = 0L
         if (userName != null) {
@@ -83,6 +90,7 @@ open class TokenManager(
     }
 
     suspend fun saveCurrentUser(userId: Long, userName: String? = null) {
+        localWriteRef.store(true)
         currentUserId = userId
         if (userName != null) {
             currentUserName = userName
@@ -97,6 +105,7 @@ open class TokenManager(
 
     // M7: open 化以便 commonTest 替身统计 4001 过期清 token 调用（行为无变化）。
     open suspend fun clearToken() {
+        localWriteRef.store(true)
         currentToken = ""
         currentUserId = 0L
         currentUserName = ""

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -418,16 +419,27 @@ class HomeFeedViewModel(
                 _uiState.update { it.copy(userAvatar = profile?.header) }
             }
         }
-        if (userRepo.isLoggedIn && userRepo.currentUserProfile.value == null) {
-            viewModelScope.launch { userRepo.getUserProfile() }
+        viewModelScope.launch {
+            userRepo.tokenFlow.collect { token ->
+                if (token.isBlank()) {
+                    _uiState.update { it.copy(unreadMessageCount = 0) }
+                    return@collect
+                }
+                userRepo.awaitTokenReady()
+                if (userRepo.currentUserProfile.value == null) {
+                    userRepo.getUserProfile()
+                }
+                fetchUnreadMessages()
+            }
         }
-        fetchUnreadMessages()
     }
 
     private fun fetchUnreadMessages() {
+        val userRepo = userRepository ?: return
         val messageRepo = messageRepository ?: return
-        if (userRepository?.isLoggedIn != true) return
         viewModelScope.launch {
+            userRepo.awaitTokenReady()
+            if (userRepo.tokenFlow.first().isBlank()) return@launch
             messageRepo.getUnreadPushCount().onSuccess { count ->
                 _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
             }
