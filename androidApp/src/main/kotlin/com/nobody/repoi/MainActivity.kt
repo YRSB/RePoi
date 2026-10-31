@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.nobody.repoi.platform.initPoiShelfActivity
-import com.nobody.repoi.ui.navigation.PoiShelfApp
+import com.nobody.repoi.ui.navigation.RePoiApp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         initPoiShelfActivity(this)
 
         setContent {
-            PoiShelfApp()
+            RePoiApp()
         }
     }
 }
@@ -24,5 +24,5 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    PoiShelfApp()
+    RePoiApp()
 }

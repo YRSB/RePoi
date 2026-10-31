@@ -10,7 +10,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * 验证 [NavExtensions] 核心栈管理原语与导航扩展。
+ * 验证 [NavExtensions] 核心栈管理原语、导航扩展及 [RePoiNavigator] 控制器。
  */
 class NavExtensionsTest {
 
@@ -139,5 +139,87 @@ class NavExtensionsTest {
         assertEquals(5505L, commentKey.param.commentId)
         assertEquals(6606L, commentKey.param.relateNodeId)
         assertEquals(true, commentKey.param.isDiscuss)
+    }
+
+    @Test
+    fun testNavigator_TabSwitchAndBackStepByStep() {
+        val stack = NavBackStack<NavKey>(HomeNavKey)
+        var exitCalled = false
+        var exitMessage: String? = null
+        val navigator = RePoiNavigator(
+            backStack = stack,
+            onExitApp = { exitCalled = true },
+            onShowExitMessage = { exitMessage = it }
+        )
+
+        // 1. 连续在多个主目的地之间切换：Home -> Items -> Album -> Profile
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(ItemsNavKey, stack.last())
+
+        navigator.selectTab(AppDestinations.ALBUM)
+        assertEquals(AlbumNavKey, stack.last())
+
+        navigator.selectTab(AppDestinations.PROFILE)
+        assertEquals(ProfileNavKey, stack.last())
+
+        // 2. 连续按下返回键：应当沿着访问历史逐级倒退回上一个 Tab
+        // Profile -> Album
+        assertTrue(navigator.goBack())
+        assertEquals(AlbumNavKey, stack.last())
+
+        // Album -> Items
+        assertTrue(navigator.goBack())
+        assertEquals(ItemsNavKey, stack.last())
+
+        // Items -> Home
+        assertTrue(navigator.goBack())
+        assertEquals(HomeNavKey, stack.last())
+
+        // 3. 在首页根视图按下返回键：触发提示“再按一次退出应用”
+        assertTrue(navigator.goBack())
+        assertEquals("再按一次退出应用", exitMessage)
+        assertFalse(exitCalled)
+    }
+
+    @Test
+    fun testNavigator_DetailPopBeforeTabBack() {
+        val stack = NavBackStack<NavKey>(HomeNavKey)
+        val navigator = RePoiNavigator(backStack = stack)
+
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(ItemsNavKey, stack.last())
+
+        // 在条目页深入二级页面：手办详情 -> 用户详情
+        stack.navigateToDetail(12345L)
+        stack.navigateToUser(67890L)
+        assertEquals(4, stack.size)
+        assertIs<UserInfoNavKey>(stack.last())
+
+        // 第 1 次返回：弹出用户详情，回到手办详情
+        assertTrue(navigator.goBack())
+        assertIs<HobbyDetailNavKey>(stack.last())
+
+        // 第 2 次返回：弹出手办详情，回到条目页根视图
+        assertTrue(navigator.goBack())
+        assertEquals(ItemsNavKey, stack.last())
+
+        // 第 3 次返回：从条目页根视图退回首页
+        assertTrue(navigator.goBack())
+        assertEquals(HomeNavKey, stack.last())
+    }
+
+    @Test
+    fun testNavigator_ReselectCurrentTabPopsSecondary() {
+        val stack = NavBackStack<NavKey>(HomeNavKey)
+        val navigator = RePoiNavigator(backStack = stack)
+
+        navigator.selectTab(AppDestinations.ITEMS)
+        stack.navigateToDetail(12345L)
+        assertEquals(3, stack.size)
+
+        // 再次点击当前已选中的 Items Tab：应当清空二级页面退回条目根视图
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(2, stack.size)
+        assertEquals(ItemsNavKey, stack.last())
     }
 }

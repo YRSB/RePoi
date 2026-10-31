@@ -29,20 +29,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.savedstate.serialization.SavedStateConfiguration
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_MEDIUM_LOWER_BOUND
@@ -54,33 +48,25 @@ import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.PoiShelfBackHandler
 import com.nobody.repoi.platform.moveAppToBackground
-import com.nobody.repoi.platform.nowMillis
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberImageViewerState
-import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * 共用根组合（M6）：双端唯一入口。
+ * RePoi 根应用组件：双端统一入口（Android 与 Windows Desktop）。
  *
- * 原生 `ui/PoiShelfApp.kt`（257L）移植：
- * - `SystemClock.uptimeMillis()` → [nowMillis]（M2 datetime 垫片）；
- * - `LocalContext as Activity` + `Toast` + `moveTaskToBack/finish`
- *   → [moveAppToBackground] + 根 Snackbar 提示；
- * - 3× `BackHandler` → [PoiShelfBackHandler]（Android 真拦截，
- *   桌面端为记录在案的 no-op 降级：二级页经 UI 返回键照常退栈）；
- * - `showDebugScreen` + `DebugApiScreen` 调试覆盖层已删
- *   （PROJECT.md：调试页 EXCLUDED；设置页调试行经 Snackbar 说明）。
- * Tab 栈模型（Home 为绝对根基底、重选回根、切换清二级）与
- * 300ms 防抖退栈逐字保留。
+ * 对齐 PodAura 范式与 Navigation 3 规范：
+ * 1. 采用 [RePoiNavigator] 统筹顶层 Tab 导航、历史回退与详情退栈；
+ * 2. 消除深浅层返回手势死锁，实现流畅的 Tab 间历史回退与二级页面安全出栈；
+ * 3. 响应式自适应脚手架与 Material 3 Expressive 规范。
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun PoiShelfApp() {
+fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
@@ -101,7 +87,7 @@ fun PoiShelfApp() {
     }
 
     PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
-        PoiShelfNavHost(
+        RePoiNavHost(
             themeMode = themeMode,
             dynamicColor = dynamicColor,
             onThemeModeChange = onThemeModeChange,
@@ -110,9 +96,16 @@ fun PoiShelfApp() {
     }
 }
 
+/**
+ * 向后兼容别名，便于平滑过渡。
+ */
+@Deprecated("请使用 RePoiApp 替代", ReplaceWith("RePoiApp()"))
+@Composable
+fun PoiShelfApp() = RePoiApp()
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun PoiShelfNavHost(
+private fun RePoiNavHost(
     themeMode: ThemeMode,
     dynamicColor: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -122,7 +115,6 @@ private fun PoiShelfNavHost(
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
     val rootScope = rememberCoroutineScope()
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     val backStack = rememberNavBackStack(
         configuration = SavedStateConfiguration {
@@ -130,6 +122,17 @@ private fun PoiShelfNavHost(
         },
         HomeNavKey
     )
+
+    // 统一导航控制器（对齐 PodAura 范式）
+    val navigator = remember(backStack) {
+        RePoiNavigator(
+            backStack = backStack,
+            onExitApp = { moveAppToBackground() },
+            onShowExitMessage = { message ->
+                rootScope.launch { appMessages.show(message) }
+            }
+        )
+    }
 
     // 根 Snackbar 消费链路：各屏 messages.show() 在此落地为可见提示。
     LaunchedEffect(appMessages) {
@@ -139,73 +142,20 @@ private fun PoiShelfNavHost(
         }
     }
 
-    var lastPopTimeMs by remember { mutableLongStateOf(0L) }
-    val safePopBackStack: () -> Unit = {
-        val now = nowMillis()
-        if (now - lastPopTimeMs >= 300L) {
-            lastPopTimeMs = now
-            backStack.safePop()
-        }
+    // 处理系统返回手势：统一交由 RePoiNavigator 调度，彻底解决死锁
+    PoiShelfBackHandler(enabled = true) {
+        navigator.goBack()
     }
-
-    val onTabSelect: (AppDestinations) -> Unit = { destination ->
-        if (currentDestination == destination) {
-            // 点击当前已选中的 Tab：若当前正在二级页面，则退栈回到该 Tab 根视图
-            backStack.popToTopLevel()
-        } else {
-            // 切换到目标 Tab：清理二级页并规范化顶层栈模型（以 Home 为绝对基底）
-            backStack.switchTopLevelTab(destination)
-            currentDestination = destination
-        }
-    }
-
-    val isDark = LocalIsDarkTheme.current
 
     val currentTopKey = backStack.lastOrNull()
+    val currentDestination = RePoiNavigator.destinationOf(currentTopKey)
     val isTopLevelDestination = isTopLevelNavKey(currentTopKey)
-
-    // 同步导航导轨/底栏的选中态与当前活跃顶层路由
-    LaunchedEffect(backStack.lastOrNull { isTopLevelNavKey(it) }) {
-        when (backStack.lastOrNull { isTopLevelNavKey(it) }) {
-            is HomeNavKey -> currentDestination = AppDestinations.HOME
-            is ItemsNavKey -> currentDestination = AppDestinations.ITEMS
-            is AlbumNavKey -> currentDestination = AppDestinations.ALBUM
-            is FollowNavKey -> currentDestination = AppDestinations.FOLLOW
-            is ProfileNavKey -> currentDestination = AppDestinations.PROFILE
-            else -> {}
-        }
-    }
-
-    var lastBackPressTimeMs by remember { mutableLongStateOf(0L) }
-
-    // 处理系统返回手势：二级/详情栈返回 -> Tab 返回首页 -> 退出到桌面
-    // （调试覆盖层分支已随 DebugApiScreen 删除；桌面端 PoiShelfBackHandler 为 no-op 降级。）
-    // 1. 当前处于二级/详情页面时：安全防抖退栈返回上一级页面
-    PoiShelfBackHandler(enabled = !isTopLevelDestination) {
-        safePopBackStack()
-    }
-    // 2. 当前处于非首页的一级 Tab 根页面时：按返回键返回首页（遵循 Android "Exit through Home" 规范）
-    PoiShelfBackHandler(enabled = isTopLevelDestination && currentDestination != AppDestinations.HOME) {
-        onTabSelect(AppDestinations.HOME)
-    }
-    // 3. 当前处于首页动态根页面时：双击返回键退出应用回到系统桌面（防误触，2 秒内再次点击退出）
-    PoiShelfBackHandler(enabled = isTopLevelDestination && currentDestination == AppDestinations.HOME) {
-        val now = nowMillis()
-        if (now - lastBackPressTimeMs < 2000L) {
-            moveAppToBackground()
-        } else {
-            lastBackPressTimeMs = now
-            rootScope.launch { appMessages.show("再按一次退出应用") }
-        }
-    }
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val defaultLayoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     val isTabletOrFoldableExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND) &&
         adaptiveInfo.windowSizeClass.isHeightAtLeastBreakpoint(HEIGHT_DP_MEDIUM_LOWER_BOUND)
 
-    // 底栏显隐经 NavigationSuiteScaffoldState 维护，避免 layoutType 与退栈动画抢跑
-    // 去程立即隐藏，返程延迟到内容退场结束后再显示，二级全屏无底栏行为不变
     val shouldShowNavSuite = isTabletOrFoldableExpanded || isTopLevelDestination
     val navSuiteState = rememberNavigationSuiteScaffoldState()
     LaunchedEffect(shouldShowNavSuite) {
@@ -232,7 +182,7 @@ private fun PoiShelfNavHost(
                         val isSelected = destination == currentDestination
                         item(
                             selected = isSelected,
-                            onClick = { onTabSelect(destination) },
+                            onClick = { navigator.selectTab(destination) },
                             icon = {
                                 Icon(
                                     imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
@@ -254,7 +204,7 @@ private fun PoiShelfNavHost(
             ) {
                 AppNavDisplay(
                     backStack = backStack,
-                    onBack = safePopBackStack,
+                    onBack = { navigator.goBack() },
                     themeMode = themeMode,
                     dynamicColor = dynamicColor,
                     onThemeModeChange = onThemeModeChange,
@@ -264,7 +214,7 @@ private fun PoiShelfNavHost(
                     },
                     onLoginSuccess = {
                         backStack.removeAll { it is LoginNavKey }
-                        onTabSelect(AppDestinations.PROFILE)
+                        navigator.selectTab(AppDestinations.PROFILE)
                     }
                 )
             }
