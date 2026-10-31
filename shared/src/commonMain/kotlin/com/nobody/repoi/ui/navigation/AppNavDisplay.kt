@@ -28,7 +28,10 @@ fun AppNavDisplay(
     onLoginSuccess: () -> Unit,
 ) {
     val currentBackStack = navigationState.currentBackStack
-    val onBack = { navigator.goBack() }
+    val onBack: () -> Unit = {
+        navigator.goBack()
+        Unit
+    }
 
     val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
         topLevelEntries(currentBackStack)
@@ -52,7 +55,7 @@ fun AppNavDisplay(
     CompositionLocalProvider(LocalNavBackStack provides currentBackStack) {
         RePoiNavDisplay(
             entries = navigationState.toDecoratedEntries(entryProvider),
-            onBack = { onBack() },
+            onBack = onBack,
             modifier = modifier,
             transitionSpec = {
                 val fromKey = initialState.key as? NavKey

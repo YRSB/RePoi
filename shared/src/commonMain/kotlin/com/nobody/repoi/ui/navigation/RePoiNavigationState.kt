@@ -79,9 +79,7 @@ class RePoiNavigationState(
             startDestination: AppDestinations = AppDestinations.HOME
         ): RePoiNavigationState {
             val state = mutableStateOf(startDestination)
-            val stacks = AppDestinations.entries.associateWith { dest ->
-                if (dest == startDestination) backStack else backStack
-            }
+            val stacks = AppDestinations.entries.associateWith { _ -> backStack }
             return RePoiNavigationState(
                 startDestination = startDestination,
                 currentDestinationState = state,
@@ -98,7 +96,9 @@ class RePoiNavigationState(
 @Composable
 fun rememberRePoiNavigationState(
     startDestination: AppDestinations = AppDestinations.HOME,
-    configuration: SavedStateConfiguration? = null
+    configuration: SavedStateConfiguration = SavedStateConfiguration {
+        serializersModule = RePoiSerializersModule
+    }
 ): RePoiNavigationState {
     val currentDestinationState = rememberSaveable { mutableStateOf(startDestination) }
 

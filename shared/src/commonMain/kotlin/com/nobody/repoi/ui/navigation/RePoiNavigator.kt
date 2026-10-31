@@ -152,4 +152,15 @@ class RePoiNavigator(
     fun navigate(key: NavKey) {
         state.currentBackStack.add(key)
     }
+
+    companion object {
+        fun destinationOf(key: NavKey?): AppDestinations = when (key) {
+            is HomeNavKey -> AppDestinations.HOME
+            is ItemsNavKey -> AppDestinations.ITEMS
+            is AlbumNavKey -> AppDestinations.ALBUM
+            is FollowNavKey -> AppDestinations.FOLLOW
+            is ProfileNavKey -> AppDestinations.PROFILE
+            else -> AppDestinations.HOME
+        }
+    }
 }
