@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.navigation
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -31,13 +33,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.savedstate.serialization.SavedStateConfiguration
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_MEDIUM_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
@@ -60,9 +60,10 @@ import org.koin.compose.koinInject
  * RePoi 根应用组件：双端统一入口（Android 与 Windows Desktop）。
  *
  * 对齐 PodAura 范式与 Navigation 3 规范：
- * 1. 采用 [RePoiNavigator] 统筹顶层 Tab 导航、历史回退与详情退栈；
- * 2. 消除深浅层返回手势死锁，实现流畅的 Tab 间历史回退与二级页面安全出栈；
- * 3. 响应式自适应脚手架与 Material 3 Expressive 规范。
+ * 1. 采用多栈模型 [RePoiNavigationState]，独立维护 5 个主目的地回退栈，保证切换时 ViewModel 与 UI 状态全量持久保留；
+ * 2. 采用 [RePoiNavigator] 统筹顶层 Tab 导航、历史回退与详情退栈，消除死锁；
+ * 3. 规范嵌套 Scaffold 布局，消除小屏下 Snackbar 悬浮与间距错误；
+ * 4. 响应式自适应脚手架与 Material 3 Expressive 规范。
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -109,17 +110,18 @@ private fun RePoiNavHost(
     val rootSnackbarHostState = remember { SnackbarHostState() }
     val rootScope = rememberCoroutineScope()
 
-    val backStack = rememberNavBackStack(
+    // 多栈导航状态持有者（5 个主 Tab 拥有独立状态与 ViewModel 作用域）
+    val navigationState = rememberRePoiNavigationState(
+        startDestination = AppDestinations.HOME,
         configuration = SavedStateConfiguration {
             serializersModule = RePoiSerializersModule
-        },
-        HomeNavKey
+        }
     )
 
-    // 统一导航控制器（对齐 PodAura 范式）
-    val navigator = remember(backStack) {
+    // 统一导航控制器（对齐 PodAura 范式与 Nav3 规范）
+    val navigator = remember(navigationState) {
         RePoiNavigator(
-            backStack = backStack,
+            state = navigationState,
             onExitApp = { moveAppToBackground() },
             onShowExitMessage = { message ->
                 rootScope.launch { appMessages.show(message) }
@@ -140,8 +142,8 @@ private fun RePoiNavHost(
         navigator.goBack()
     }
 
-    val currentTopKey = backStack.lastOrNull()
-    val currentDestination = RePoiNavigator.destinationOf(currentTopKey)
+    val currentTopKey = navigationState.currentBackStack.lastOrNull()
+    val currentDestination = navigationState.currentDestination
     val isTopLevelDestination = isTopLevelNavKey(currentTopKey)
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -195,27 +197,31 @@ private fun RePoiNavHost(
                 },
                 modifier = Modifier.fillMaxSize()
             ) {
-                AppNavDisplay(
-                    backStack = backStack,
-                    onBack = { navigator.goBack() },
-                    themeMode = themeMode,
-                    dynamicColor = dynamicColor,
-                    onThemeModeChange = onThemeModeChange,
-                    onDynamicColorChange = onDynamicColorChange,
-                    onOpenDebugScreen = {
-                        rootScope.launch { appMessages.show("API 调试控制台在此版本中不可用") }
+                // 内部嵌套标准 Scaffold：将 Snackbar 槽位锚定在自适应内容区底端（导航栏正上方）
+                Scaffold(
+                    snackbarHost = {
+                        SnackbarHost(hostState = rootSnackbarHostState)
                     },
-                    onLoginSuccess = {
-                        backStack.removeAll { it is LoginNavKey }
-                        navigator.selectTab(AppDestinations.PROFILE)
-                    }
-                )
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    modifier = Modifier.fillMaxSize()
+                ) { _ ->
+                    AppNavDisplay(
+                        navigationState = navigationState,
+                        navigator = navigator,
+                        themeMode = themeMode,
+                        dynamicColor = dynamicColor,
+                        onThemeModeChange = onThemeModeChange,
+                        onDynamicColorChange = onDynamicColorChange,
+                        onOpenDebugScreen = {
+                            rootScope.launch { appMessages.show("API 调试控制台在此版本中不可用") }
+                        },
+                        onLoginSuccess = {
+                            navigationState.backStacks[AppDestinations.PROFILE]?.removeAll { it is LoginNavKey }
+                            navigator.selectTab(AppDestinations.PROFILE)
+                        }
+                    )
+                }
             }
-
-            SnackbarHost(
-                hostState = rootSnackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
 
             // 全局全屏大图查看器宿主
             ImageViewerHost(imageViewerState)
@@ -227,10 +233,11 @@ enum class AppDestinations(
     val label: String,
     val unselectedIcon: ImageVector,
     val selectedIcon: ImageVector,
+    val route: AppNavKey,
 ) {
-    HOME("动态", Icons.Outlined.Home, Icons.Filled.Home),
-    ITEMS("条目", Icons.Outlined.Category, Icons.Filled.Category),
-    ALBUM("相册", Icons.Outlined.PhotoLibrary, Icons.Filled.PhotoLibrary),
-    FOLLOW("关注", Icons.Outlined.People, Icons.Filled.People),
-    PROFILE("我的", Icons.Outlined.Person, Icons.Filled.Person),
+    HOME("动态", Icons.Outlined.Home, Icons.Filled.Home, HomeNavKey),
+    ITEMS("条目", Icons.Outlined.Category, Icons.Filled.Category, ItemsNavKey),
+    ALBUM("相册", Icons.Outlined.PhotoLibrary, Icons.Filled.PhotoLibrary, AlbumNavKey),
+    FOLLOW("关注", Icons.Outlined.People, Icons.Filled.People, FollowNavKey),
+    PROFILE("我的", Icons.Outlined.Person, Icons.Filled.Person, ProfileNavKey),
 }

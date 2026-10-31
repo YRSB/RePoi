@@ -62,8 +62,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import com.nobody.repoi.platform.LocalAppMessages
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -144,20 +143,20 @@ fun ProfileScreen(
 
     var showFinanceDialog by rememberSaveable { mutableStateOf(false) }
     var financeDialogInitialTab by rememberSaveable { mutableStateOf(0) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.errorMessage) {
         val error = uiState.errorMessage
         if (error != null && uiState.profile != null) {
-            snackbarHostState.showSnackbar(message = error)
+            appMessages.show(error)
         }
     }
 
     LaunchedEffect(uiState.infoMessage) {
         val info = uiState.infoMessage
         if (info != null) {
-            snackbarHostState.showSnackbar(message = info)
+            appMessages.show(info)
             viewModel.clearInfoMessage()
         }
     }
@@ -244,7 +243,7 @@ fun ProfileScreen(
                                     onNavigateToCreation = onNavigateToCreation,
                                     onNavigateToHistory = onNavigateToHistory,
                                     onShowMessage = { msg ->
-                                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                                        appMessages.show(msg)
                                     }
                                 )
 
@@ -304,14 +303,14 @@ fun ProfileScreen(
                                     },
                                     onAlbumClick = onNavigateToAlbum,
                                     onPublishClick = {
-                                        scope.launch { snackbarHostState.showSnackbar("相册投稿功能即将上线") }
+                                        appMessages.show("相册投稿功能即将上线")
                                     }
                                 )
 
                                 // 我的二手交易展位
                                 ProfileResaleCard(
                                     onPublishClick = {
-                                        scope.launch { snackbarHostState.showSnackbar("二手发布与交易即将推出") }
+                                        appMessages.show("二手发布与交易即将推出")
                                     }
                                 )
                             }
@@ -337,7 +336,7 @@ fun ProfileScreen(
                                         onNavigateToCreation = onNavigateToCreation,
                                         onNavigateToHistory = onNavigateToHistory,
                                         onShowMessage = { msg ->
-                                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                                            appMessages.show(msg)
                                         }
                                     )
 
@@ -354,13 +353,13 @@ fun ProfileScreen(
                                         },
                                         onAlbumClick = onNavigateToAlbum,
                                         onPublishClick = {
-                                            scope.launch { snackbarHostState.showSnackbar("相册投稿功能即将上线") }
+                                            appMessages.show("相册投稿功能即将上线")
                                         }
                                     )
 
                                     ProfileResaleCard(
                                         onPublishClick = {
-                                            scope.launch { snackbarHostState.showSnackbar("二手发布与交易即将推出") }
+                                            appMessages.show("二手发布与交易即将推出")
                                         }
                                     )
                                 }
@@ -417,12 +416,6 @@ fun ProfileScreen(
             }
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = bottomPadding)
-        )
     }
 
     if (showFinanceDialog && uiState.finance != null) {

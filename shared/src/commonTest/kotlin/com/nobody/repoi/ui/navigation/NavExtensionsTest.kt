@@ -1,7 +1,10 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.album.AlbumDetailNavKey
+import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -221,5 +224,124 @@ class NavExtensionsTest {
         navigator.selectTab(AppDestinations.ITEMS)
         assertEquals(2, stack.size)
         assertEquals(ItemsNavKey, stack.last())
+    }
+
+    @Test
+    fun testMultipleBackStacks_RetainsStateAcrossAllDestinations() {
+        val homeStack = NavBackStack<NavKey>(HomeNavKey)
+        val itemsStack = NavBackStack<NavKey>(ItemsNavKey)
+        val albumStack = NavBackStack<NavKey>(AlbumNavKey)
+        val followStack = NavBackStack<NavKey>(FollowNavKey)
+        val profileStack = NavBackStack<NavKey>(ProfileNavKey)
+
+        val stacks = mapOf(
+            AppDestinations.HOME to homeStack,
+            AppDestinations.ITEMS to itemsStack,
+            AppDestinations.ALBUM to albumStack,
+            AppDestinations.FOLLOW to followStack,
+            AppDestinations.PROFILE to profileStack,
+        )
+
+        var exitCalled = false
+        var exitMessage: String? = null
+        val state = RePoiNavigationState(
+            startDestination = AppDestinations.HOME,
+            currentDestinationState = mutableStateOf(AppDestinations.HOME),
+            backStacks = stacks,
+            isSingleStackMode = false
+        )
+        val navigator = RePoiNavigator(
+            state = state,
+            onExitApp = { exitCalled = true },
+            onShowExitMessage = { exitMessage = it }
+        )
+
+        // 1. 切换到条目页，并在条目页中进入手办详情
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(AppDestinations.ITEMS, state.currentDestination)
+        navigator.navigate(HobbyDetailNavKey(111L))
+        assertEquals(2, itemsStack.size)
+        assertEquals(HobbyDetailNavKey(111L), itemsStack.last())
+
+        // 2. 切换到相册页，并在相册页进入某个相册详情
+        navigator.selectTab(AppDestinations.ALBUM)
+        assertEquals(AppDestinations.ALBUM, state.currentDestination)
+        navigator.navigate(AlbumDetailNavKey(AlbumNavParam(albumId = 222L)))
+        assertEquals(2, albumStack.size)
+
+        // 3. 再次切回条目页：验证条目页的详情依然保留，状态未被清除！
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(AppDestinations.ITEMS, state.currentDestination)
+        assertEquals(2, itemsStack.size)
+        assertEquals(HobbyDetailNavKey(111L), itemsStack.last())
+
+        // 4. 在条目页详情执行返回：弹出详情，回到条目根页面
+        assertTrue(navigator.goBack())
+        assertEquals(1, itemsStack.size)
+        assertEquals(ItemsNavKey, itemsStack.last())
+
+        // 5. 再次切回相册页：验证相册页的详情依然完好保留！
+        navigator.selectTab(AppDestinations.ALBUM)
+        assertEquals(AppDestinations.ALBUM, state.currentDestination)
+        assertEquals(2, albumStack.size)
+
+        // 6. 切换到关注页和我的页
+        navigator.selectTab(AppDestinations.FOLLOW)
+        assertEquals(AppDestinations.FOLLOW, state.currentDestination)
+        navigator.selectTab(AppDestinations.PROFILE)
+        assertEquals(AppDestinations.PROFILE, state.currentDestination)
+
+        // 7. 从我的页连续返回：按照历史逐级回退（Profile -> Follow -> Album -> Items -> Home）
+        assertTrue(navigator.goBack())
+        assertEquals(AppDestinations.FOLLOW, state.currentDestination)
+
+        assertTrue(navigator.goBack())
+        assertEquals(AppDestinations.ALBUM, state.currentDestination)
+        // 回到相册页时，二级详情依然在
+        assertEquals(2, albumStack.size)
+        // 弹出相册二级详情
+        assertTrue(navigator.goBack())
+        assertEquals(1, albumStack.size)
+        assertEquals(AlbumNavKey, albumStack.last())
+
+        assertTrue(navigator.goBack())
+        assertEquals(AppDestinations.ITEMS, state.currentDestination)
+
+        assertTrue(navigator.goBack())
+        assertEquals(AppDestinations.HOME, state.currentDestination)
+
+        // 8. 在首页按返回：触发退出提示
+        assertTrue(navigator.goBack())
+        assertEquals("再按一次退出应用", exitMessage)
+        assertFalse(exitCalled)
+    }
+
+    @Test
+    fun testMultipleBackStacks_ReselectCurrentTabPopsSecondary() {
+        val homeStack = NavBackStack<NavKey>(HomeNavKey)
+        val itemsStack = NavBackStack<NavKey>(ItemsNavKey)
+        val stacks = mapOf(
+            AppDestinations.HOME to homeStack,
+            AppDestinations.ITEMS to itemsStack,
+            AppDestinations.ALBUM to NavBackStack(AlbumNavKey),
+            AppDestinations.FOLLOW to NavBackStack(FollowNavKey),
+            AppDestinations.PROFILE to NavBackStack(ProfileNavKey),
+        )
+        val state = RePoiNavigationState(
+            startDestination = AppDestinations.HOME,
+            currentDestinationState = mutableStateOf(AppDestinations.HOME),
+            backStacks = stacks,
+            isSingleStackMode = false
+        )
+        val navigator = RePoiNavigator(state = state)
+
+        navigator.selectTab(AppDestinations.ITEMS)
+        navigator.navigate(HobbyDetailNavKey(12345L))
+        assertEquals(2, itemsStack.size)
+
+        // 再次点击当前已激活的 Items Tab：应当清空其二级页面退回条目根视图
+        navigator.selectTab(AppDestinations.ITEMS)
+        assertEquals(1, itemsStack.size)
+        assertEquals(ItemsNavKey, itemsStack.last())
     }
 }

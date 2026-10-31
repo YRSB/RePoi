@@ -62,3 +62,35 @@ fun <T : Any> RePoiNavDisplay(
     predictivePopTransitionSpec = predictivePopTransitionSpec,
     entryProvider = entryProvider,
 )
+
+/**
+ * 支持已修饰 Entry 列表的 [RePoiNavDisplay] 重载（用于多栈 Multiple Back Stacks 模式）：
+ *
+ * 接收由独立栈装饰器 [rememberDecoratedNavEntries] 产出的活跃 Entry 序列，无需在此重复挂载装饰器。
+ */
+@Composable
+fun <T : Any> RePoiNavDisplay(
+    entries: List<NavEntry<T>>,
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    sceneStrategies: List<SceneStrategy<T>> = listOf(SinglePaneSceneStrategy()),
+    transitionSpec: AnimatedContentTransitionScope<Scene<T>>.() -> ContentTransform = {
+        MaterialSharedAxis.Z.TransitionSpec
+    },
+    popTransitionSpec: AnimatedContentTransitionScope<Scene<T>>.() -> ContentTransform = {
+        MaterialSharedAxis.Z.PopTransitionSpec
+    },
+    predictivePopTransitionSpec: AnimatedContentTransitionScope<Scene<T>>.(
+        @NavigationEvent.SwipeEdge Int
+    ) -> ContentTransform = {
+        MaterialSharedAxis.Z.PopTransitionSpec
+    },
+) = NavDisplay(
+    entries = entries,
+    modifier = modifier.background(MaterialTheme.colorScheme.background),
+    onBack = onBack,
+    sceneStrategies = sceneStrategies,
+    transitionSpec = transitionSpec,
+    popTransitionSpec = popTransitionSpec,
+    predictivePopTransitionSpec = predictivePopTransitionSpec,
+)
