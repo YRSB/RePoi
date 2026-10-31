@@ -523,6 +523,7 @@ fun HomeFeedScreen(
                             SearchNavParam(initialCategory = if (categoryId == 0) 10000 else categoryId)
                         )
                     },
+                    placeholder = "搜索",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(end = 12.dp)
@@ -543,7 +544,7 @@ fun HomeFeedScreen(
                 IconButton(onClick = { onNavigateToProfile?.invoke() }) {
                     UserAvatar(
                         avatarUrl = uiState.userAvatar,
-                        size = 30.dp,
+                        size = 34.dp,
                         contentDescription = "我的"
                     )
                 }
