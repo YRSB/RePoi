@@ -100,11 +100,10 @@ enum class AppDestinations(
     val label: String,
     val unselectedIcon: ImageVector,
     val selectedIcon: ImageVector,
-    val route: AppNavKey,
 ) {
-    HOME("动态", Icons.Outlined.Home, Icons.Filled.Home, HomeNavKey),
-    ITEMS("条目", Icons.Outlined.Category, Icons.Filled.Category, ItemsNavKey),
-    ALBUM("相册", Icons.Outlined.PhotoLibrary, Icons.Filled.PhotoLibrary, AlbumNavKey),
-    FOLLOW("关注", Icons.Outlined.People, Icons.Filled.People, FollowNavKey),
-    PROFILE("我的", Icons.Outlined.Person, Icons.Filled.Person, ProfileNavKey),
+    HOME("动态", Icons.Outlined.Home, Icons.Filled.Home),
+    ITEMS("条目", Icons.Outlined.Category, Icons.Filled.Category),
+    ALBUM("相册", Icons.Outlined.PhotoLibrary, Icons.Filled.PhotoLibrary),
+    FOLLOW("关注", Icons.Outlined.People, Icons.Filled.People),
+    PROFILE("我的", Icons.Outlined.Person, Icons.Filled.Person),
 }
