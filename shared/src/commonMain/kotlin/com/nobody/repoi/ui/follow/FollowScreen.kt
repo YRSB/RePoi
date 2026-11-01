@@ -82,6 +82,8 @@ import com.nobody.repoi.platform.LocalAppMessages
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.album.AlbumNavParam
+import com.nobody.repoi.ui.common.SyncedBottomBarCollapse
+import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.ActionCard
@@ -154,6 +156,12 @@ fun FollowScreen(
         }
     }
 
+    SyncedBottomBarCollapse(
+        scrollBehavior = scrollBehavior,
+        driverHeightPx = filterRowHeightPx,
+        enabled = isItemsTab
+    )
+
     // 首批数据到达前不记录，避免初始位置覆盖已保存位置
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(gridState) {
@@ -190,7 +198,14 @@ fun FollowScreen(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
+    val bottomContentPadding = 16.dp + navBarBottomPadding
+    val bottomBarState = LocalBottomBarScrollState.current
+    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
+    val fabBottomPadding = when {
+        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
+        isCompact -> 16.dp
+        else -> 24.dp + navBarBottomPadding
+    }
     val pullRefreshState = rememberPullToRefreshState()
     val showRefreshFab by remember {
         derivedStateOf { gridState.firstVisibleItemIndex > 3 && uiState.items.isNotEmpty() }
@@ -460,7 +475,7 @@ fun FollowScreen(
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = if (isCompact) 16.dp else (24.dp + navBarBottomPadding))
+                .padding(end = 16.dp, bottom = fabBottomPadding)
         ) {
             FloatingActionButton(
                 onClick = {

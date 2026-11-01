@@ -80,6 +80,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.SyncedBottomBarCollapse
+import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import kotlin.math.roundToInt
 import com.nobody.repoi.platform.LocalAppMessages
@@ -120,6 +122,8 @@ fun AlbumScreen(
         initialHeightOffsetLimit = -pillsHeightPx,
         canScroll = { if (uiState.showRanking) uiState.sections.isNotEmpty() else uiState.items.isNotEmpty() }
     )
+
+    SyncedBottomBarCollapse(scrollBehavior = scrollBehavior, driverHeightPx = pillsHeightPx)
 
     val reachEnd by remember {
         derivedStateOf {
@@ -162,7 +166,14 @@ fun AlbumScreen(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
+    val bottomContentPadding = 16.dp + navBarBottomPadding
+    val bottomBarState = LocalBottomBarScrollState.current
+    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
+    val fabBottomPadding = when {
+        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
+        isCompact -> 16.dp
+        else -> 24.dp + navBarBottomPadding
+    }
     val pullRefreshState = rememberPullToRefreshState()
     val isAnyRefreshing = uiState.isRefreshing || (uiState.showRanking && uiState.isSectionsLoading && uiState.sections.isEmpty())
 
@@ -323,7 +334,7 @@ fun AlbumScreen(
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = if (isCompact) 16.dp else (24.dp + navBarBottomPadding))
+                .padding(end = 16.dp, bottom = fabBottomPadding)
         ) {
             FloatingActionButton(
                 onClick = {
