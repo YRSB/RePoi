@@ -82,6 +82,7 @@ import com.nobody.repoi.platform.LocalAppMessages
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.album.AlbumNavParam
+import com.nobody.repoi.ui.common.SyncedBottomBarCollapse
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.ActionCard
@@ -153,6 +154,12 @@ fun FollowScreen(
             scrollBehavior.state.heightOffset = 0f
         }
     }
+
+    SyncedBottomBarCollapse(
+        scrollBehavior = scrollBehavior,
+        driverHeightPx = filterRowHeightPx,
+        enabled = isItemsTab
+    )
 
     // 首批数据到达前不记录，避免初始位置覆盖已保存位置
     var restored by remember { mutableStateOf(false) }

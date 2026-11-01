@@ -34,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -76,20 +75,13 @@ fun MainScreen(
         BottomBarCollapseConnection(
             state = bottomBarState,
             distancePx = collapseDistancePx,
-            isEnabled = { navigationState.currentDestination != AppDestinations.HOME }
+            isEnabled = { !bottomBarState.selfDriven }
         )
     }
 
-    val homeCollapseFraction = remember { mutableFloatStateOf(0f) }
-
     LaunchedEffect(navigationState.currentDestination) {
-        if (navigationState.currentDestination == AppDestinations.HOME) {
-            bottomBarState.collapseFraction = homeCollapseFraction.value
-        } else {
-            homeCollapseFraction.value = bottomBarState.collapseFraction
-            collapseConnection.reset()
-            bottomBarState.collapseFraction = 0f
-        }
+        collapseConnection.reset()
+        bottomBarState.collapseFraction = 0f
     }
 
     CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {

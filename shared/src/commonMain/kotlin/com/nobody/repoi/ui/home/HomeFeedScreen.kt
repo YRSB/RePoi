@@ -97,6 +97,7 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.common.FakeSearchField
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.SyncedBottomBarCollapse
 import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
@@ -170,15 +171,7 @@ fun HomeFeedScreen(
     val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
     val totalHeaderHeight = topBarHeight + tabRowHeightDp + filterRowHeightDp
     val bottomBarState = LocalBottomBarScrollState.current
-
-    LaunchedEffect(scrollBehavior.state, bottomBarState, filterRowHeightPx) {
-        if (bottomBarState == null) return@LaunchedEffect
-        val filterHeight = filterRowHeightPx
-        snapshotFlow { scrollBehavior.state.heightOffset }
-            .collect { offset ->
-                bottomBarState.collapseFraction = (-offset / filterHeight).coerceIn(0f, 1f)
-            }
-    }
+    SyncedBottomBarCollapse(scrollBehavior = scrollBehavior, driverHeightPx = filterRowHeightPx)
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)

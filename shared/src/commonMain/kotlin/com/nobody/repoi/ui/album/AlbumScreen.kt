@@ -80,6 +80,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.SyncedBottomBarCollapse
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import kotlin.math.roundToInt
 import com.nobody.repoi.platform.LocalAppMessages
@@ -120,6 +121,8 @@ fun AlbumScreen(
         initialHeightOffsetLimit = -pillsHeightPx,
         canScroll = { if (uiState.showRanking) uiState.sections.isNotEmpty() else uiState.items.isNotEmpty() }
     )
+
+    SyncedBottomBarCollapse(scrollBehavior = scrollBehavior, driverHeightPx = pillsHeightPx)
 
     val reachEnd by remember {
         derivedStateOf {
