@@ -61,4 +61,30 @@ class HtmlRichTextParserTest {
         assertTrue(link is LinkAnnotation.Url)
         assertEquals("https://www.hpoi.net/hobby/123", (link as LinkAnnotation.Url).url)
     }
+
+    @Test
+    fun parse_sourceWhitespace_foldsIntoSingleSpace() {
+        val html = "奶龙终于来了。\n\n说是1/5，实际大小和1/4差不多，摆放需要一定的\n空间。\r\n"
+        assertEquals(
+            "奶龙终于来了。 说是1/5，实际大小和1/4差不多，摆放需要一定的 空间。",
+            HtmlRichTextParser.parse(html).text
+        )
+    }
+
+    @Test
+    fun parse_paragraphs_useSingleNewlineBetweenBlocks() {
+        val html = "<p>第一段</p>\n<p>第二段</p>"
+        assertEquals("第一段\n第二段", HtmlRichTextParser.parse(html).text)
+    }
+
+    @Test
+    fun parse_br_keepsBreakAndDropsFollowingIndent() {
+        val html = "第一行<br>\n    第二行"
+        assertEquals("第一行\n第二行", HtmlRichTextParser.parse(html).text)
+    }
+
+    @Test
+    fun parse_nbsp_keptAsNonBreakingSpace() {
+        assertEquals("甲\u00A0\u00A0乙", HtmlRichTextParser.parse("甲&nbsp;&nbsp;乙").text)
+    }
 }

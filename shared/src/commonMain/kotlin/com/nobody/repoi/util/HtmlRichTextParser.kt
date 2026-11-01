@@ -130,6 +130,8 @@ object HtmlRichTextParser {
 
         var i = 0
         val text = StringBuilder()
+        // 对齐 HtmlCompat：空白节点跟随前一个输出字符折叠，初值视作 '\n'（丢弃开头空白）。
+        var lastChar = '\n'
         fun flush() {
             if (text.isEmpty()) return
             val segText = text.toString()
@@ -149,12 +151,55 @@ object HtmlRichTextParser {
             out.add(Segment(segText, kind))
         }
 
+        fun appendChar(c: Char) {
+            if (c == ' ' || c == '\n' || c == '\r') {
+                if (lastChar != ' ' && lastChar != '\n') {
+                    text.append(' ')
+                    lastChar = ' '
+                }
+            } else {
+                text.append(c)
+                lastChar = c
+            }
+        }
+
+        fun appendText(chars: CharSequence) {
+            for (c in chars) appendChar(c)
+        }
+
+        fun trailingNewlines(): Int {
+            var count = 0
+            for (idx in out.indices.reversed()) {
+                val s = out[idx].text
+                for (j in s.indices.reversed()) {
+                    if (s[j] != '\n') return count
+                    count++
+                }
+            }
+            return count
+        }
+
+        // 对齐 HtmlCompat.appendNewlines：把尾部换行补齐到 minCount，开头不补。
+        fun ensureNewlines(minCount: Int) {
+            flush()
+            if (out.isEmpty()) return
+            val missing = (minCount - trailingNewlines()).coerceAtLeast(0)
+            repeat(missing) { out.add(Segment("\n", SegKind.Plain)) }
+            lastChar = '\n'
+        }
+
+        fun hardNewline() {
+            flush()
+            out.add(Segment("\n", SegKind.Plain))
+            lastChar = '\n'
+        }
+
         while (i < html.length) {
             val c = html[i]
             if (c == '<') {
                 val close = html.indexOf('>', i + 1)
                 if (close == -1) {
-                    text.append(html.substring(i))
+                    appendText(html.substring(i))
                     break
                 }
                 val raw = html.substring(i + 1, close).trim()
@@ -164,10 +209,9 @@ object HtmlRichTextParser {
                 val attrs = if (isEnd) "" else raw
                 flush()
                 when (name) {
-                    "br", "p" -> {
-                        // <br> 换行；<p> 段落结束换行（开头不补）。
-                        if (out.isNotEmpty() || text.isNotEmpty()) out.add(Segment("\n", SegKind.Plain))
-                    }
+                    "br" -> if (!isEnd) hardNewline()
+                    "p", "div", "li", "ul", "blockquote",
+                    "h1", "h2", "h3", "h4", "h5", "h6" -> ensureNewlines(1)
                     "b", "strong" -> if (!isEnd) bold++ else if (bold > 0) bold--
                     "i", "em" -> if (!isEnd) italic++ else if (italic > 0) italic--
                     "u" -> if (!isEnd) underline++ else if (underline > 0) underline--
@@ -194,14 +238,14 @@ object HtmlRichTextParser {
             } else if (c == '&') {
                 val semi = html.indexOf(';', i + 1).takeIf { it in (i + 1)..(i + 8) }
                 if (semi == null) {
-                    text.append(c); i++
+                    appendChar('&'); i++
                 } else {
                     val entity = html.substring(i + 1, semi)
-                    text.append(decodeEntity(entity))
+                    appendText(decodeEntity(entity))
                     i = semi + 1
                 }
             } else {
-                text.append(c); i++
+                appendChar(c); i++
             }
         }
         flush()
@@ -259,7 +303,7 @@ object HtmlRichTextParser {
     )
 
     private fun decodeEntity(entity: String): String = when (entity.lowercase()) {
-        "amp" -> "&"; "lt" -> "<"; "gt" -> ">"; "quot" -> "\""; "apos" -> "'"; "nbsp" -> " "
+        "amp" -> "&"; "lt" -> "<"; "gt" -> ">"; "quot" -> "\""; "apos" -> "'"; "nbsp" -> "\u00A0"
         else -> if (entity.startsWith("#")) {
             runCatching {
                 val code = if (entity.startsWith("#x", ignoreCase = true)) {
