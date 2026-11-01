@@ -166,7 +166,7 @@ fun AlbumScreen(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
+    val bottomContentPadding = 16.dp + navBarBottomPadding
     val bottomBarState = LocalBottomBarScrollState.current
     val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
     val fabBottomPadding = when {

@@ -177,7 +177,7 @@ fun HomeFeedScreen(
     val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isCompact = !isWideScreen
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
+    val bottomContentPadding = 16.dp + navBarBottomPadding
     val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
     val fabBottomPadding = when {
         bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp

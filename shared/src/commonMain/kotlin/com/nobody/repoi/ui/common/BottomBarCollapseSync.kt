@@ -19,11 +19,11 @@ fun SyncedBottomBarCollapse(
 
     DisposableEffect(bottomBarState, enabled) {
         if (enabled) {
-            bottomBarState.selfDriven = true
+            bottomBarState.acquireSelfDriven()
         }
         onDispose {
             if (enabled) {
-                bottomBarState.selfDriven = false
+                bottomBarState.releaseSelfDriven()
             }
         }
     }

@@ -83,8 +83,15 @@ fun MainScreen(
         collapseConnection.seed(bottomBarState.collapseFraction)
     }
 
-    CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
-        if (layoutType == NavigationSuiteType.NavigationBar) {
+    LaunchedEffect(layoutType) {
+        if (layoutType != NavigationSuiteType.NavigationBar) {
+            bottomBarState.collapseFraction = 0f
+            bottomBarState.barHeightPx = 0f
+        }
+    }
+
+    if (layoutType == NavigationSuiteType.NavigationBar) {
+        CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
             Scaffold(
                 snackbarHost = {
                     if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
@@ -138,49 +145,49 @@ fun MainScreen(
                     )
                 }
             }
-        } else {
-            NavigationSuiteScaffold(
-                layoutType = layoutType,
-                state = rememberNavigationSuiteScaffoldState(),
-                navigationSuiteItems = {
-                    AppDestinations.entries.forEach { destination ->
-                        val isSelected = destination == navigationState.currentDestination
-                        item(
-                            selected = isSelected,
-                            onClick = { navigator.selectTab(destination) },
-                            icon = {
-                                Icon(
-                                    imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
-                                    contentDescription = destination.label,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = destination.label,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                            },
-                            colors = itemColors
-                        )
-                    }
-                },
-                modifier = modifier.fillMaxSize()
-            ) {
-                Scaffold(
-                    snackbarHost = {
-                        if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
-                    },
-                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                    modifier = Modifier.fillMaxSize()
-                ) { _ ->
-                    RePoiNavDisplay(
-                        entries = tabEntries.value,
-                        transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                        popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                        predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
+        }
+    } else {
+        NavigationSuiteScaffold(
+            layoutType = layoutType,
+            state = rememberNavigationSuiteScaffoldState(),
+            navigationSuiteItems = {
+                AppDestinations.entries.forEach { destination ->
+                    val isSelected = destination == navigationState.currentDestination
+                    item(
+                        selected = isSelected,
+                        onClick = { navigator.selectTab(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
+                                contentDescription = destination.label,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = destination.label,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = itemColors
                     )
                 }
+            },
+            modifier = modifier.fillMaxSize()
+        ) {
+            Scaffold(
+                snackbarHost = {
+                    if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
+                },
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                modifier = Modifier.fillMaxSize()
+            ) { _ ->
+                RePoiNavDisplay(
+                    entries = tabEntries.value,
+                    transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                    popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                    predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
+                )
             }
         }
     }
