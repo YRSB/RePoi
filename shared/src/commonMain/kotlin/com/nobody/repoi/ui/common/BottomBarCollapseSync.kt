@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,11 +30,15 @@ fun SyncedBottomBarCollapse(
 
     LaunchedEffect(scrollBehavior.state, bottomBarState, driverHeightPx, enabled) {
         if (!enabled || driverHeightPx <= 0f) return@LaunchedEffect
-        withFrameNanos { }
-        bottomBarState.collapseFraction = (-scrollBehavior.state.heightOffset / driverHeightPx).coerceIn(0f, 1f)
+        var lastOffset = scrollBehavior.state.heightOffset
         snapshotFlow { scrollBehavior.state.heightOffset }
             .collect { offset ->
-                bottomBarState.collapseFraction = (-offset / driverHeightPx).coerceIn(0f, 1f)
+                val delta = offset - lastOffset
+                if (delta != 0f) {
+                    lastOffset = offset
+                    bottomBarState.collapseFraction =
+                        (bottomBarState.collapseFraction - delta / driverHeightPx).coerceIn(0f, 1f)
+                }
             }
     }
 }
