@@ -316,6 +316,7 @@ class HomeFeedViewModel(
     fun loadInitialFeed() {
         initialLoadJob?.cancel()
         initialLoadJob = viewModelScope.launch {
+            userRepository?.awaitTokenReady()
             val currentState = _uiState.value
 
             // 关注 Tab 但未关注任何专区：直接展示空状态，不发网络请求避免降级为查全量
