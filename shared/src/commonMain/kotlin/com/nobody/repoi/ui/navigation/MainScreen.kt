@@ -80,8 +80,7 @@ fun MainScreen(
     }
 
     LaunchedEffect(navigationState.currentDestination) {
-        collapseConnection.reset()
-        bottomBarState.collapseFraction = 0f
+        collapseConnection.seed(bottomBarState.collapseFraction)
     }
 
     CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
@@ -195,8 +194,8 @@ private class BottomBarCollapseConnection(
 
     private var travelPx = 0f
 
-    fun reset() {
-        travelPx = 0f
+    fun seed(fraction: Float) {
+        travelPx = fraction.coerceIn(0f, 1f) * distancePx
     }
 
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {

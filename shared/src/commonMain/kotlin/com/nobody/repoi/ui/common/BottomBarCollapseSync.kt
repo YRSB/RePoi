@@ -25,7 +25,6 @@ fun SyncedBottomBarCollapse(
         onDispose {
             if (enabled) {
                 bottomBarState.selfDriven = false
-                bottomBarState.collapseFraction = 0f
             }
         }
     }
