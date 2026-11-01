@@ -51,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
 import androidx.compose.runtime.LaunchedEffect
@@ -120,6 +121,10 @@ fun AlbumScreen(
 
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -pillsHeightPx,
+        state = rememberTopAppBarState(
+            initialHeightOffsetLimit = -pillsHeightPx,
+            initialHeightOffset = -viewModel.savedFilterCollapseFraction * pillsHeightPx
+        ),
         canScroll = { if (uiState.showRanking) uiState.sections.isNotEmpty() else uiState.items.isNotEmpty() }
     )
 
@@ -140,16 +145,32 @@ fun AlbumScreen(
     LaunchedEffect(reachEnd, uiState.items.size) {
         if (reachEnd && uiState.items.isNotEmpty()) viewModel.loadMore()
     }
-    LaunchedEffect(gridState) {
+    LaunchedEffect(gridState, scrollBehavior.state) {
         snapshotFlow {
-            gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
-        }.collect { (currentIndex, currentOffset) ->
+            val driverHeight = pillsHeightPx
+            Triple(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset,
+                if (driverHeight > 0f) {
+                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            )
+        }.collect { (currentIndex, currentOffset, filterCollapseFraction) ->
             if (restored) {
                 viewModel.saveScrollPosition(currentIndex, currentOffset)
+                viewModel.saveFilterCollapseFraction(filterCollapseFraction)
             }
         }
     }
+    var lastFilterSelection by remember {
+        mutableStateOf(Triple(uiState.selectedTab, uiState.order, uiState.showRanking))
+    }
     LaunchedEffect(uiState.selectedTab, uiState.order, uiState.showRanking) {
+        val selection = Triple(uiState.selectedTab, uiState.order, uiState.showRanking)
+        if (selection == lastFilterSelection) return@LaunchedEffect
+        lastFilterSelection = selection
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
         gridState.scrollToItem(0)
@@ -302,6 +323,8 @@ fun AlbumScreen(
                 .onSizeChanged { size ->
                     pillsHeightPx = size.height.toFloat()
                     scrollBehavior.state.heightOffsetLimit = -pillsHeightPx
+                    scrollBehavior.state.heightOffset =
+                        scrollBehavior.state.heightOffset.coerceIn(-pillsHeightPx, 0f)
                 }
                 .background(MaterialTheme.colorScheme.surface)
         ) {

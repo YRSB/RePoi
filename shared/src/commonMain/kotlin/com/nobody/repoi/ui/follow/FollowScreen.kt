@@ -51,6 +51,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Surface
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
 import androidx.compose.runtime.LaunchedEffect
@@ -144,6 +145,10 @@ fun FollowScreen(
     // 无缝同步滚动控制器：仅在条目动态且有数据时允许折叠筛选栏
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -filterRowHeightPx,
+        state = rememberTopAppBarState(
+            initialHeightOffsetLimit = -filterRowHeightPx,
+            initialHeightOffset = -viewModel.savedFilterCollapseFraction * filterRowHeightPx
+        ),
         canScroll = { uiState.items.isNotEmpty() && isItemsTab }
     )
 
@@ -164,14 +169,32 @@ fun FollowScreen(
 
     // 首批数据到达前不记录，避免初始位置覆盖已保存位置
     var restored by remember { mutableStateOf(false) }
-    LaunchedEffect(gridState) {
+    LaunchedEffect(gridState, scrollBehavior.state) {
         snapshotFlow {
-            gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
-        }.collect { (index, offset) ->
-            if (restored) viewModel.saveScrollPosition(index, offset)
+            val driverHeight = filterRowHeightPx
+            Triple(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset,
+                if (driverHeight > 0f) {
+                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            )
+        }.collect { (index, offset, filterCollapseFraction) ->
+            if (restored) {
+                viewModel.saveScrollPosition(index, offset)
+                viewModel.saveFilterCollapseFraction(filterCollapseFraction)
+            }
         }
     }
+    var lastFilterSelection by remember {
+        mutableStateOf(uiState.selectedTab to uiState.selectedFilter)
+    }
     LaunchedEffect(uiState.selectedTab, uiState.selectedFilter) {
+        val selection = uiState.selectedTab to uiState.selectedFilter
+        if (selection == lastFilterSelection) return@LaunchedEffect
+        lastFilterSelection = selection
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
         gridState.scrollToItem(0)

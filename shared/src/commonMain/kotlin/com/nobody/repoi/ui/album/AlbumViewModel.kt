@@ -106,6 +106,8 @@ class AlbumViewModel(
         private set
     var savedScrollOffset: Int = 0
         private set
+    var savedFilterCollapseFraction: Float = 0f
+        private set
 
     private val loader: PagedListLoader<AlbumListItem> = pagedChunkLoader(
         scope = viewModelScope,
@@ -155,9 +157,14 @@ class AlbumViewModel(
         savedScrollOffset = offset
     }
 
+    fun saveFilterCollapseFraction(fraction: Float) {
+        savedFilterCollapseFraction = fraction.coerceIn(0f, 1f)
+    }
+
     fun resetScrollPosition() {
         savedScrollIndex = 0
         savedScrollOffset = 0
+        savedFilterCollapseFraction = 0f
     }
 
     fun loadInitial() {

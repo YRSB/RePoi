@@ -227,10 +227,12 @@ class AlbumViewModelTest {
         viewModel.loadInitial()
         advanceUntilIdle()
         viewModel.saveScrollPosition(12, 34)
+        viewModel.saveFilterCollapseFraction(0.6f)
         viewModel.selectZone(AlbumZoneTab.FOLLOW)
         advanceUntilIdle()
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
+        assertEquals(0f, viewModel.savedFilterCollapseFraction)
     }
 
     private fun item(id: Long): AlbumListItem =
