@@ -64,8 +64,9 @@ class HomeFeedViewModelTest {
         val zoneRepository: ZoneRepository,
     ) {
         val feedRequests: Int get() = feedMock.requestCount
-        val userRepository = UserRepository(accountMock.api(), FakeTokenManager("utoken-test"))
-        val messageRepository = MessageRepository(accountMock.api(), FakeTokenManager("utoken-test"))
+        val tokenManager = FakeTokenManager("utoken-test")
+        val userRepository = UserRepository(accountMock.api(), tokenManager)
+        val messageRepository = MessageRepository(accountMock.api(), tokenManager)
     }
 
     private suspend fun env(
@@ -583,6 +584,24 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(15, viewModel.uiState.value.unreadMessageCount)
+    }
+
+    @Test
+    fun zoneHomeTabsSync_waitsForTokenPrewarm() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        var prewarmedAtZoneRequest = false
+        env.zoneMock.routeWhen(
+            predicate = { path, _, _ -> path.contains("api/zone/home-tabs") },
+            body = { _, _, _ ->
+                prewarmedAtZoneRequest = env.tokenManager.awaitReadyCalls > 0
+                """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
+            }
+        )
+        env.viewModel(accounts = true)
+        advanceUntilIdle()
+
+        assertTrue(prewarmedAtZoneRequest)
     }
 
     private class ColdStartTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) {

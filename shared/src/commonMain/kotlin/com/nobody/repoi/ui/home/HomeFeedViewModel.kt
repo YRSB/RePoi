@@ -130,6 +130,7 @@ class HomeFeedViewModel(
 
         // 启动时在后台静默同步一次服务端最新的专区与设置（若本地缓存为空也能即时拉取）
         viewModelScope.launch {
+            userRepository?.awaitTokenReady()
             zoneRepository.getZoneHomeTabs()
         }
 

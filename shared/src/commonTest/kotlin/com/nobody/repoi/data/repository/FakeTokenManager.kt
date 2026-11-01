@@ -24,10 +24,15 @@ class FakeTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) 
     var clearTokenCalls: Int = 0
         private set
 
+    var awaitReadyCalls: Int = 0
+        private set
+
     override suspend fun clearToken() {
         clearTokenCalls++
         currentToken = ""
     }
 
-    override suspend fun awaitReady() = Unit
+    override suspend fun awaitReady() {
+        awaitReadyCalls++
+    }
 }
