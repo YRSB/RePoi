@@ -67,6 +67,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -161,6 +162,10 @@ fun HomeFeedScreen(
     var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -filterRowHeightPx,
+        state = rememberTopAppBarState(
+            initialHeightOffsetLimit = -filterRowHeightPx,
+            initialHeightOffset = -viewModel.savedFilterCollapseFraction * filterRowHeightPx
+        ),
         canScroll = { uiState.items.isNotEmpty() }
     )
     LaunchedEffect(filterRowHeightPx) {
@@ -186,17 +191,33 @@ fun HomeFeedScreen(
     }
     val feedColumns = rememberFeedStaggeredGridColumns()
 
-    LaunchedEffect(staggeredGridState) {
+    LaunchedEffect(staggeredGridState, scrollBehavior.state) {
         snapshotFlow {
-            staggeredGridState.firstVisibleItemIndex to staggeredGridState.firstVisibleItemScrollOffset
-        }.collect { (currentIndex, currentOffset) ->
+            val driverHeight = filterRowHeightPx
+            Triple(
+                staggeredGridState.firstVisibleItemIndex,
+                staggeredGridState.firstVisibleItemScrollOffset,
+                if (driverHeight > 0f) {
+                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            )
+        }.collect { (currentIndex, currentOffset, filterCollapseFraction) ->
             if (restored) {
                 viewModel.saveScrollPosition(currentIndex, currentOffset)
+                viewModel.saveFilterCollapseFraction(filterCollapseFraction)
             }
         }
     }
 
+    var lastFilterSelection by remember {
+        mutableStateOf(uiState.selectedCategory.tabKey to uiState.selectedSubType)
+    }
     LaunchedEffect(uiState.selectedCategory, uiState.selectedSubType) {
+        val selection = uiState.selectedCategory.tabKey to uiState.selectedSubType
+        if (selection == lastFilterSelection) return@LaunchedEffect
+        lastFilterSelection = selection
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
         staggeredGridState.scrollToItem(0)

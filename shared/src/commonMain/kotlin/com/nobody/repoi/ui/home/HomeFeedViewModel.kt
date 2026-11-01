@@ -89,14 +89,22 @@ class HomeFeedViewModel(
     var savedScrollOffset: Int = 0
         private set
 
+    var savedFilterCollapseFraction: Float = 0f
+        private set
+
     fun saveScrollPosition(index: Int, offset: Int) {
         savedScrollIndex = index
         savedScrollOffset = offset
     }
 
+    fun saveFilterCollapseFraction(fraction: Float) {
+        savedFilterCollapseFraction = fraction.coerceIn(0f, 1f)
+    }
+
     fun resetScrollPosition() {
         savedScrollIndex = 0
         savedScrollOffset = 0
+        savedFilterCollapseFraction = 0f
     }
 
     init {

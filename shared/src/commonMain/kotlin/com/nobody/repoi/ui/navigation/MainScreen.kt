@@ -35,6 +35,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -69,7 +71,7 @@ fun MainScreen(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     val itemColors = NavigationSuiteDefaults.itemColors()
-    val bottomBarState = remember { BottomBarScrollState() }
+    val bottomBarState = rememberSaveable(saver = BottomBarScrollStateSaver) { BottomBarScrollState() }
     val collapseDistancePx = with(LocalDensity.current) { 80.dp.toPx() }
     val collapseConnection = remember(collapseDistancePx, bottomBarState) {
         BottomBarCollapseConnection(
@@ -192,6 +194,16 @@ fun MainScreen(
         }
     }
 }
+
+private val BottomBarScrollStateSaver = listSaver<BottomBarScrollState, Float>(
+    save = { listOf(it.collapseFraction, it.barHeightPx) },
+    restore = { values ->
+        BottomBarScrollState().apply {
+            collapseFraction = values[0]
+            barHeightPx = values[1]
+        }
+    }
+)
 
 private class BottomBarCollapseConnection(
     private val state: BottomBarScrollState,
