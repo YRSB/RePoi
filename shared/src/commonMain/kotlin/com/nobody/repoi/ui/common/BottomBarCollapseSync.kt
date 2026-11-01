@@ -30,10 +30,15 @@ fun SyncedBottomBarCollapse(
 
     LaunchedEffect(scrollBehavior.state, bottomBarState, driverHeightPx, enabled) {
         if (!enabled || driverHeightPx <= 0f) return@LaunchedEffect
+        var lastOffset = scrollBehavior.state.heightOffset
         snapshotFlow { scrollBehavior.state.heightOffset }
             .collect { offset ->
-                bottomBarState.collapseFraction =
-                    (-offset / driverHeightPx).coerceIn(0f, 1f)
+                val delta = offset - lastOffset
+                if (delta != 0f) {
+                    lastOffset = offset
+                    bottomBarState.collapseFraction =
+                        (bottomBarState.collapseFraction - delta / driverHeightPx).coerceIn(0f, 1f)
+                }
             }
     }
 }
