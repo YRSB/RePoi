@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -31,14 +32,18 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -66,10 +71,29 @@ fun MainScreen(
     val layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     val itemColors = NavigationSuiteDefaults.itemColors()
     val bottomBarState = remember { BottomBarScrollState() }
+    val collapseDistancePx = with(LocalDensity.current) { 80.dp.toPx() }
+    val collapseConnection = remember(collapseDistancePx, bottomBarState) {
+        BottomBarCollapseConnection(
+            state = bottomBarState,
+            distancePx = collapseDistancePx,
+            isEnabled = { navigationState.currentDestination != AppDestinations.HOME }
+        )
+    }
+
+    val homeCollapseFraction = remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(navigationState.currentDestination) {
+        if (navigationState.currentDestination == AppDestinations.HOME) {
+            bottomBarState.collapseFraction = homeCollapseFraction.value
+        } else {
+            homeCollapseFraction.value = bottomBarState.collapseFraction
+            collapseConnection.reset()
+            bottomBarState.collapseFraction = 0f
+        }
+    }
 
     CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
         if (layoutType == NavigationSuiteType.NavigationBar) {
-            var barHeightPx by remember { mutableFloatStateOf(0f) }
             Scaffold(
                 snackbarHost = {
                     if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
@@ -77,14 +101,12 @@ fun MainScreen(
                 bottomBar = {
                     NavigationBar(
                         modifier = Modifier
-                            .onSizeChanged { barHeightPx = it.height.toFloat() }
+                            .onSizeChanged { bottomBarState.barHeightPx = it.height.toFloat() }
                             .offset {
-                                val fraction = if (navigationState.currentDestination == AppDestinations.HOME) {
-                                    bottomBarState.collapseFraction
-                                } else {
-                                    0f
-                                }
-                                IntOffset(0, (fraction * barHeightPx).roundToInt())
+                                IntOffset(
+                                    x = 0,
+                                    y = (bottomBarState.collapseFraction * bottomBarState.barHeightPx).roundToInt()
+                                )
                             }
                     ) {
                         AppDestinations.entries.forEach { destination ->
@@ -112,12 +134,18 @@ fun MainScreen(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 modifier = modifier.fillMaxSize()
             ) { _ ->
-                RePoiNavDisplay(
-                    entries = tabEntries.value,
-                    transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                    popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                    predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(collapseConnection)
+                ) {
+                    RePoiNavDisplay(
+                        entries = tabEntries.value,
+                        transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                        popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                        predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
+                    )
+                }
             }
         } else {
             NavigationSuiteScaffold(
@@ -164,6 +192,29 @@ fun MainScreen(
                 }
             }
         }
+    }
+}
+
+private class BottomBarCollapseConnection(
+    private val state: BottomBarScrollState,
+    private val distancePx: Float,
+    private val isEnabled: () -> Boolean,
+) : NestedScrollConnection {
+
+    private var travelPx = 0f
+
+    fun reset() {
+        travelPx = 0f
+    }
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        if (!isEnabled() || distancePx <= 0f) return Offset.Zero
+        val next = (travelPx - available.y).coerceIn(0f, distancePx)
+        if (next != travelPx) {
+            travelPx = next
+            state.collapseFraction = next / distancePx
+        }
+        return Offset.Zero
     }
 }
 

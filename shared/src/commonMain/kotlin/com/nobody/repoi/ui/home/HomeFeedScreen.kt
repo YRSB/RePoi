@@ -185,6 +185,12 @@ fun HomeFeedScreen(
     val isCompact = !isWideScreen
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomContentPadding = if (isCompact) 16.dp else (16.dp + navBarBottomPadding)
+    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
+    val fabBottomPadding = when {
+        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
+        isCompact -> 16.dp
+        else -> 24.dp + navBarBottomPadding
+    }
     val feedColumns = rememberFeedStaggeredGridColumns()
 
     LaunchedEffect(staggeredGridState) {
@@ -581,7 +587,7 @@ fun HomeFeedScreen(
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = if (isCompact) 16.dp else (24.dp + navBarBottomPadding))
+                .padding(end = 16.dp, bottom = fabBottomPadding)
         ) {
             Icon(
                 imageVector = Icons.Filled.Refresh,

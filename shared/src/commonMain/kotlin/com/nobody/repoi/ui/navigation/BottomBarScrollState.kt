@@ -7,6 +7,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 class BottomBarScrollState {
     var collapseFraction by mutableFloatStateOf(0f)
+    var barHeightPx by mutableFloatStateOf(0f)
 }
 
 val LocalBottomBarScrollState = staticCompositionLocalOf<BottomBarScrollState?> { null }
