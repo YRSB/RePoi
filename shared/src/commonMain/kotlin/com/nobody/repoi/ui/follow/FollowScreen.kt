@@ -155,6 +155,8 @@ fun FollowScreen(
     LaunchedEffect(filterRowHeightPx, isItemsTab) {
         if (isItemsTab && filterRowHeightPx > 0f) {
             scrollBehavior.state.heightOffsetLimit = -filterRowHeightPx
+            scrollBehavior.state.heightOffset =
+                scrollBehavior.state.heightOffset.coerceIn(-filterRowHeightPx, 0f)
         } else {
             scrollBehavior.state.heightOffsetLimit = 0f
             scrollBehavior.state.heightOffset = 0f
