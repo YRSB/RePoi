@@ -158,12 +158,12 @@ fun HomeFeedScreen(
     var tabRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
-        initialHeightOffsetLimit = -tabRowHeightPx,
+        initialHeightOffsetLimit = -filterRowHeightPx,
         canScroll = { uiState.items.isNotEmpty() }
     )
-    LaunchedEffect(tabRowHeightPx) {
-        scrollBehavior.state.heightOffsetLimit = -tabRowHeightPx
-        scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffset.coerceIn(-tabRowHeightPx, 0f)
+    LaunchedEffect(filterRowHeightPx) {
+        scrollBehavior.state.heightOffsetLimit = -filterRowHeightPx
+        scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffset.coerceIn(-filterRowHeightPx, 0f)
     }
     val tabRowHeightDp = with(density) { tabRowHeightPx.toDp() }
     val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
@@ -439,8 +439,35 @@ fun HomeFeedScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = topBarHeight)
+                .padding(top = topBarHeight + tabRowHeightDp)
                 .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                .onSizeChanged { size -> if (size.height > 0) filterRowHeightPx = size.height.toFloat() }
+                .clipToBounds()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                viewModel.subTypes.forEach { (key, label) ->
+                    FilterChip(
+                        selected = uiState.selectedSubType == key,
+                        onClick = { viewModel.selectSubType(key) },
+                        label = { Text(label) },
+                        shape = ExpressiveTokens.ChipShape
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(top = topBarHeight)
                 .onSizeChanged { size -> if (size.height > 0) tabRowHeightPx = size.height.toFloat() }
                 .clipToBounds()
                 .background(MaterialTheme.colorScheme.surface)
@@ -483,34 +510,6 @@ fun HomeFeedScreen(
                         )
                     }
                 )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(top = topBarHeight + tabRowHeightDp)
-                .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
-                .onSizeChanged { size -> if (size.height > 0) filterRowHeightPx = size.height.toFloat() }
-                .clipToBounds()
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                viewModel.subTypes.forEach { (key, label) ->
-                    FilterChip(
-                        selected = uiState.selectedSubType == key,
-                        onClick = { viewModel.selectSubType(key) },
-                        label = { Text(label) },
-                        shape = ExpressiveTokens.ChipShape
-                    )
-                }
             }
         }
 
