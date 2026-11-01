@@ -35,4 +35,6 @@ class FakeTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) 
     override suspend fun awaitReady() {
         awaitReadyCalls++
     }
+
+    override suspend fun saveCurrentUser(userId: Long, userName: String? = null) = Unit
 }

@@ -89,7 +89,7 @@ open class TokenManager(
         }
     }
 
-    suspend fun saveCurrentUser(userId: Long, userName: String? = null) {
+    open suspend fun saveCurrentUser(userId: Long, userName: String? = null) {
         localWriteRef.store(true)
         currentUserId = userId
         if (userName != null) {

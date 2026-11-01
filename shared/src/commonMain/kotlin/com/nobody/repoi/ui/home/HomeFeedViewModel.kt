@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -422,9 +423,9 @@ class HomeFeedViewModel(
             }
         }
         viewModelScope.launch {
-            userRepo.tokenFlow.collect { token ->
+            userRepo.tokenFlow.distinctUntilChanged().collect { token ->
                 if (token.isBlank()) {
-                    _uiState.update { it.copy(unreadMessageCount = 0) }
+                    _uiState.update { it.copy(unreadMessageCount = 0, userAvatar = null) }
                     return@collect
                 }
                 userRepo.awaitTokenReady()
@@ -441,10 +442,11 @@ class HomeFeedViewModel(
         val messageRepo = messageRepository ?: return
         viewModelScope.launch {
             userRepo.awaitTokenReady()
-            if (userRepo.tokenFlow.first().isBlank()) return@launch
-            messageRepo.getUnreadPushCount().onSuccess { count ->
-                _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
-            }
+            val token = userRepo.tokenFlow.first()
+            if (token.isBlank()) return@launch
+            val count = messageRepo.getUnreadPushCount().getOrNull() ?: return@launch
+            if (userRepo.tokenFlow.first() != token) return@launch
+            _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
         }
     }
 
