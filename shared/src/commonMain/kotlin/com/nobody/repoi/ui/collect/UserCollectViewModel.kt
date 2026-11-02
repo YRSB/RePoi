@@ -89,6 +89,13 @@ class UserCollectViewModel(
     )
     val uiState: StateFlow<UserCollectUiState> = _uiState.asStateFlow()
 
+    /**
+     * 已消费的**原始**导航参数（入口初始化去重依据）。
+     *
+     * 必须与归一化后的 [currentParam] 分开：归一化结果会随排序记忆等运行时状态漂移，
+     * 不能稳定代表「这个 NavKey 是否已经初始化过」。
+     */
+    private var appliedNavParam: UserCollectNavParam? = null
     private var currentParam: UserCollectNavParam? = null
     private val fetchJobs = mutableMapOf<UserCollectCategory, Job>()
 
@@ -166,10 +173,12 @@ class UserCollectViewModel(
      * 按目标大类归位到对应的排序槽位，并对该大类的白名单做校验。
      */
     fun initParam(param: UserCollectNavParam) {
-        val targetCategory = UserCollectCategory.entries.find { it.key == param.initialCategory } ?: UserCollectCategory.HOBBY
-        if (_uiState.value.selectedCategory != targetCategory) {
-            _uiState.update { it.copy(selectedCategory = targetCategory) }
-        }
+        // 入口初始化必须幂等：Nav3 从二级页返回时会重建 Entry 组合，
+        // UserCollectScreen 的 LaunchedEffect(param) 会再次触发本方法。
+        // 若重复下发 param.initialCategory（通常为 null → 周边页），
+        // 会把用户已切换的大类 Tab 与浏览位置重置回默认页。
+        if (appliedNavParam == param) return
+        appliedNavParam = param
         // 归一化必须排在持久化读回之后，否则首屏会用默认排序白发一次请求
         viewModelScope.launch {
             persistedSortReady.await()
