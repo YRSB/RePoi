@@ -99,9 +99,9 @@ internal fun WorksCollectSubPage(
     onItemClick: (UserCollectCommonItem) -> Unit,
     onRetry: () -> Unit
 ) {
-    // 声明式键绑定（统一入口见 rememberKeyedLazyListState）：
+    // key() 作用域绑定（统一入口见 rememberKeyedLazyListState）：
     // 收藏状态 / 升降序 / 标签筛选任一变化时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
-    // 条件不变时（Nav3 返回）由 rememberSaveable 恢复滚动位置。
+    // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
     val listState = rememberKeyedLazyListState(worksState, worksOrderAsc, worksTag)
 
     // 以 listState 为 remember 键：条件变化会重建 LazyListState，

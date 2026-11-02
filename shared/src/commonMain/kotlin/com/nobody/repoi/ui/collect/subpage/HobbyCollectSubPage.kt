@@ -120,9 +120,9 @@ internal fun HobbyCollectSubPage(
     onDismissBatchError: () -> Unit = {}
 ) {
     val hobbyData = uiState.hobbyData
-    // 声明式键绑定（统一入口见 rememberKeyedLazyGridState）：
+    // key() 作用域绑定（统一入口见 rememberKeyedLazyGridState）：
     // 切换收藏状态、排序或子分类 / 标签筛选时，Compose 以全新的 initialFirstVisibleItemIndex = 0
-    // 重建状态自动回顶；条件不变时（Nav3 返回）由 rememberSaveable 恢复原滚动位置。
+    // 重建状态自动回顶；条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复原滚动位置。
     val gridState = rememberKeyedLazyGridState(
         uiState.collectState,
         uiState.order,
