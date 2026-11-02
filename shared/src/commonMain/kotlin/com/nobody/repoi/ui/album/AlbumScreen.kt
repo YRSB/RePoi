@@ -127,7 +127,6 @@ fun AlbumScreen(
         canScroll = { if (uiState.showRanking) uiState.sections.isNotEmpty() else uiState.items.isNotEmpty() }
     )
 
-
     val reachEnd by remember {
         derivedStateOf {
             val totalCount = gridState.layoutInfo.totalItemsCount
