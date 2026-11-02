@@ -62,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,6 +85,7 @@ import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
 import com.nobody.repoi.ui.theme.ExpressiveTokens
+import kotlinx.coroutines.launch
 
 // ── 手办周边子页 ──────────────────────────────────────────
 
@@ -144,11 +146,15 @@ internal fun HobbyCollectSubPage(
     val density = LocalDensity.current
     var controlBarHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
 
+    // 有数据即可折叠：只捕获一个 Boolean，避免分页把 items 换成新列表实例时
+    // 连带重建 scrollBehavior（重建会替换 nestedScrollConnection，fling 中会丢派发点）。
+    val itemsNonEmpty = hobbyData.items.isNotEmpty()
+
     // 对齐 HomeFeedScreen / FollowScreen 的无缝同步滚动行为：
     // 当非多选且有数据时，1:1 同步驱动控制栏平滑向上收起或即时拉出
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -controlBarHeightPx,
-        canScroll = { !isSelectionMode && hobbyData.items.isNotEmpty() }
+        canScroll = { !isSelectionMode && itemsNonEmpty }
     )
 
     LaunchedEffect(controlBarHeightPx, isSelectionMode) {
@@ -164,8 +170,11 @@ internal fun HobbyCollectSubPage(
 
     val controlBarHeightDp = with(density) { controlBarHeightPx.toDp() }
     val pullRefreshState = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
 
-    val shouldLoadMore by remember {
+    // 以 gridState 为 remember 键：筛选/排序变化时上面的 rememberSaveable 会重建 LazyGridState，
+    // 键缺失的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过筛选后触底分页永久失效。
+    val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
             val total = layoutInfo.totalItemsCount
@@ -174,7 +183,9 @@ internal fun HobbyCollectSubPage(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    // 附带 items.size 键（对齐 HomeFeedScreen:150 / FollowScreen:133）：
+    // 宽屏一屏装下时触底判定恒为 true 不再变化，缺这个键就只会翻一页。
+    LaunchedEffect(shouldLoadMore, hobbyData.items.size) {
         if (shouldLoadMore && hobbyData.hasMore && !hobbyData.isPaging && !hobbyData.isLoading && !hobbyData.isRefreshing) {
             onLoadNextPage()
         }
@@ -190,6 +201,18 @@ internal fun HobbyCollectSubPage(
     ) {
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
+    }
+
+    // 刷新完成回落时同样复位（覆盖非下拉触发的程序化刷新，如批量取消收藏后的重新拉取），
+    // 对齐 HomeFeedScreen:233-241 / FollowScreen:206-214。
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(hobbyData.isRefreshing) {
+        if (wasRefreshing && !hobbyData.isRefreshing && hobbyData.errorMessage == null) {
+            gridState.scrollToItem(0)
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+        }
+        wasRefreshing = hobbyData.isRefreshing
     }
 
     // 列表卡微标签 / 网格卡徽章随 (collectState, isSelf) 重算
@@ -221,12 +244,32 @@ internal fun HobbyCollectSubPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            // ── 页根精确裁剪：本页「折叠控制栏钻进大类 TabRow 下方」的唯一保证 ──────────────
+            // 本页宿主是 UserCollectScreen 的 HorizontalPager，页面上边界正好贴在大类 TabRow 下沿。
+            // Pager 自带的裁剪来自 foundation 的 scrollableArea → clipScrollableContainer(Horizontal)，
+            // 而 HorizontalScrollableClipShape 为了不切掉卡片阴影，在纵向额外外扩
+            // MaxSupportedElevation（30dp，见 foundation ClipScrollableContainer.kt:62-80）：
+            // 也就是说控制栏上移时，只有超出页顶 30dp 以外的部分才会被裁掉，剩下约 30dp 会画在
+            // 宿主 TabRow 之上——这就是"控制栏盖住大类 TabRow"的直接成因。
+            // 动态页/关注页没有这个问题：它们的常驻 TabRow 是同一个 Box 里更晚绘制的兄弟节点，
+            // 靠 Z 序用不透明 Surface 盖住上移的筛选栏。本页没有这层兄弟，故必须由页根裁剪承担
+            // 同等语义——裁到自身精确边界（不外扩），控制栏一越过页顶即消失。
+            .clipToBounds()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // 1. 底层：内容网格与下拉刷新容器（铺满整屏，通过 contentPadding 避让顶层控制栏）
         PullToRefreshBox(
             isRefreshing = hobbyData.isRefreshing,
-            onRefresh = onRefresh,
+            onRefresh = {
+                // 对齐 HomeFeedScreen / FollowScreen：刷新前把列表位置与控制栏折叠态一起复位，
+                // 否则刷新结束后会停在半折叠位，顶栏回不来、首项上还压着一截空白。
+                scope.launch {
+                    gridState.scrollToItem(0)
+                    scrollBehavior.state.heightOffset = 0f
+                    scrollBehavior.state.contentOffset = 0f
+                }
+                onRefresh()
+            },
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
             indicator = {
@@ -239,83 +282,96 @@ internal fun HobbyCollectSubPage(
                 )
             }
         ) {
-            when {
-                hobbyData.isLoading && hobbyData.items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = controlBarHeightDp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingCollectView()
+            // 嵌套滚动连接只包住可滚内容，且必须挂在 PullToRefreshBox 内部
+            //（对齐 HomeFeedScreen:270-274 / FollowScreen:305-309 / AlbumScreen:236-239）：
+            // 1. 连接越靠近 LazyVerticalGrid，协同滚动就越先于下拉刷新节点派发，下拉手势不会被
+            //    刷新容器抢先消费，顶栏才能与列表 1:1 跟手；
+            // 2. 顶层控制栏（含 DropdownMenu 内部的可滚 Column）不再落在连接子树内，
+            //    菜单滚动不会误驱动折叠。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+            ) {
+                when {
+                    hobbyData.isLoading && hobbyData.items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingCollectView()
+                        }
                     }
-                }
 
-                hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = controlBarHeightDp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ErrorCollectView(
-                            errorMessage = hobbyData.errorMessage,
-                            onRetry = onRetry
-                        )
+                    hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorCollectView(
+                                errorMessage = hobbyData.errorMessage,
+                                onRetry = onRetry
+                            )
+                        }
                     }
-                }
 
-                // 服务端回「用户已隐藏内容」语义：渲染专用空态而非通用错误态
-                // 副标题复用全模块统一常量（原版 strings.xml:1372 text_empty_user_hide）
-                hobbyData.isContentHidden && hobbyData.items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = controlBarHeightDp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.VisibilityOff,
-                            title = "用户已隐藏内容",
-                            subtitle = COLLECT_CONTENT_HIDDEN_TEXT
-                        )
+                    // 服务端回「用户已隐藏内容」语义：渲染专用空态而非通用错误态
+                    // 副标题复用全模块统一常量（原版 strings.xml:1372 text_empty_user_hide）
+                    hobbyData.isContentHidden && hobbyData.items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            HobbyEmptyState(
+                                icon = Icons.Filled.VisibilityOff,
+                                title = "用户已隐藏内容",
+                                subtitle = COLLECT_CONTENT_HIDDEN_TEXT
+                            )
+                        }
                     }
-                }
 
-                hobbyData.items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = controlBarHeightDp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.Inbox,
-                            title = "未收藏周边~",
-                            subtitle = "可以在详情页将感兴趣的条目加入收藏"
-                        )
+                    hobbyData.items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            HobbyEmptyState(
+                                icon = Icons.Filled.Inbox,
+                                title = "未收藏周边~",
+                                subtitle = "可以在详情页将感兴趣的条目加入收藏"
+                            )
+                        }
                     }
-                }
 
-                else -> {
-                    LazyVerticalGrid(
-                        columns = gridColumns,
-                        state = gridState,
-                        contentPadding = PaddingValues(
-                            start = 12.dp,
-                            top = controlBarHeightDp + 8.dp,
-                            end = 12.dp,
-                            bottom = 16.dp + navBarBottomPadding +
-                                // 多选悬浮条会盖住末尾几行，额外让出高度
-                                if (isSelectionMode) 76.dp else 0.dp
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
+                    else -> {
+                        LazyVerticalGrid(
+                            columns = gridColumns,
+                            state = gridState,
+                            contentPadding = PaddingValues(
+                                start = 12.dp,
+                                top = controlBarHeightDp + 8.dp,
+                                end = 12.dp,
+                                bottom = 16.dp + navBarBottomPadding +
+                                    // 多选悬浮条会盖住末尾几行，额外让出高度
+                                    if (isSelectionMode) 76.dp else 0.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             items(
                                 items = hobbyData.items,
-                                key = { item -> "hobby_${item.actualItemId}_${item.id}" }
+                                key = { item -> "hobby_${item.actualItemId}_${item.id}" },
+                                // 网格态与列表态卡片结构不同，按态分区避免两者共用复用池
+                                contentType = { if (uiState.isListView) "hobby_list" else "hobby_grid" }
                             ) { item ->
                                 val isSelected = item.id in selectedIds
                                 val onCardClick: () -> Unit = if (isSelectionMode) {
@@ -357,6 +413,7 @@ internal fun HobbyCollectSubPage(
                     }
                 }
             }
+        }
 
         // 2. 顶层：悬浮/吸顶控制栏（对齐 HomeFeed/Follow 架构：置顶贴靠，平滑随手势 tuck 进顶栏下方）
         Column(
@@ -364,15 +421,17 @@ internal fun HobbyCollectSubPage(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+                // 实测基准取「整个控制栏容器」而不是只量 Surface：
+                // 失败横幅（BatchErrorBanner）挂在 Surface 之外，只量 Surface 会漏算横幅高度，
+                // 导致折叠上限偏小、折叠后顶部仍露出半截。
+                .onSizeChanged { size ->
+                    if (size.height > 0) controlBarHeightPx = size.height.toFloat()
+                }
                 .clipToBounds()
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onSizeChanged { size ->
-                        if (size.height > 0) controlBarHeightPx = size.height.toFloat()
-                    },
+                modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Row(
