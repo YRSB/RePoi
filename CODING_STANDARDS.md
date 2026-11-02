@@ -119,7 +119,7 @@
   - 折叠态（紧凑屏）：主信息流占据全屏。
 
 ### 3. 悬浮操作栏与系统栏边距
-- **悬浮组件**：底部悬浮胶囊统一使用 `ExpressiveFloatingToolbar` 与 `ExpressiveToolbarButton`。
+- **悬浮组件**：底部悬浮胶囊统一使用 `ExpressiveFloatingToolbar` 与 `ExpressiveToolbarButton`；前者是官方 `HorizontalFloatingToolbar` 的适配层，后者由官方 `IconButton` / `FilledTonalIconButton` / `TextButton` / `FilledTonalButton` 组成。不得再自绘悬浮容器或药丸按钮，需要改样式时优先传官方参数（如 `FloatingToolbarDefaults.vibrantFloatingToolbarColors()`）。
 - **宽度与边距约束**：悬浮顶栏与底栏必须限制最大宽度为 `fillMaxWidth(if (isWidePane) mainPaneWeight else 1f)`，并显式附加 `statusBarsPadding()` 与 `navigationBarsPadding()`。
 
 ### 4. 网格与卡片
