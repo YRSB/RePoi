@@ -130,6 +130,12 @@ internal fun HobbyCollectSubPage(
         LazyGridState()
     }
 
+    // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
+    val isSelectionEnabled = uiState.isSelf
+    val isSelectionMode = isSelectionEnabled && uiState.hobbySelectionMode
+    val selectedIds = uiState.hobbySelectedIds
+    val selectedCount = selectedIds.size
+
     var controlBarHeightPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
 
@@ -149,12 +155,6 @@ internal fun HobbyCollectSubPage(
             scrollBehavior.state.heightOffsetLimit = -controlBarHeightPx.toFloat()
         }
     }
-
-    // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
-    val isSelectionEnabled = uiState.isSelf
-    val isSelectionMode = isSelectionEnabled && uiState.hobbySelectionMode
-    val selectedIds = uiState.hobbySelectedIds
-    val selectedCount = selectedIds.size
 
     val shouldLoadMore by remember {
         derivedStateOf {
