@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -62,17 +61,6 @@ internal fun SelectionBottomBar(
         contentAlignment = Alignment.Center
     ) {
         ExpressiveFloatingToolbar(modifier = Modifier.widthIn(max = 560.dp)) {
-            // 选中数徽标
-            Badge(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Text(
-                    text = "$selectedCount",
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-
             SelectionActionButton(
                 text = "全选",
                 enabled = canSelectAll,
