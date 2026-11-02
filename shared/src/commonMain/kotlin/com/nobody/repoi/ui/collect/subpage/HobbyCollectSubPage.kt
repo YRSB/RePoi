@@ -18,6 +18,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inbox
@@ -48,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -177,40 +182,15 @@ internal fun HobbyCollectSubPage(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CollectStateOption.ALL_STATES.forEach { stateKey ->
-                            val isSelected = uiState.collectState == stateKey
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { onSwitchCollectState(stateKey) },
-                                label = {
-                                    Text(
-                                        text = collectStateLabel(stateKey),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                shape = ExpressiveTokens.ChipShape,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                border = null
-                            )
-                        }
-                    }
+                    // 状态筛选单选下拉胶囊
+                    HobbyStateDropdown(
+                        currentState = uiState.collectState,
+                        onSwitchCollectState = onSwitchCollectState
+                    )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    // 排序 + 升降序 + 筛选
+                    // 排序维度（带升降序反转箭头 + 展开小三角）+ 高级筛选
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         HobbySortControl(
                             currentOrder = uiState.order,
@@ -398,18 +378,89 @@ internal fun HobbyCollectSubPage(
     }
 }
 
-// ── 排序控件 ──────────────────────────────────────────────
+// ── 筛选与排序控件 ──────────────────────────────────────
 
 /**
- * 排序下拉 + 升降序连体二选。
- *
- * 排序值域取自 [HobbyOrderOption]：5 档基础值域
- * `actionDate/release/rating/myRating/updateDate`（原版 `b0.java:124-143`），
- * 「按入手时间 `orderTime`」仅在已入(buy)档追加
- * （原版 `UserCollectHobbySubPagerFragment.java:261-267`）。
- *
- * 文案两套：看自己时 `myRating` 显示「我的评分」，看他人时显示「TA的评分」。
- * 点胶囊打开下拉，点升/降连体按钮直接指定升降序（`sortType` 1 升 / 2 降）。
+ * 收藏状态单选下拉胶囊。
+ * 替代原先在小屏上极易截断溢出的 6 档平铺横滑 Chips，统一为带小三角展开指示的官方 FilterChip。
+ */
+@Composable
+private fun HobbyStateDropdown(
+    currentState: String,
+    onSwitchCollectState: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "StateArrowRotation"
+    )
+    val isFiltered = currentState != CollectStateOption.DEFAULT
+
+    Box {
+        FilterChip(
+            selected = isFiltered,
+            onClick = { expanded = true },
+            label = {
+                Text(
+                    text = collectStateLabel(currentState),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isFiltered) FontWeight.Bold else FontWeight.Normal
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = if (expanded) "收起状态菜单" else "展开状态菜单",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = arrowRotation }
+                )
+            },
+            shape = ExpressiveTokens.ChipShape,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            border = null
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = ExpressiveTokens.MediumCardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            CollectStateOption.ALL_STATES.forEach { stateKey ->
+                val isSelected = currentState == stateKey
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = collectStateLabel(stateKey),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onSwitchCollectState(stateKey)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 排序控件（做法 B 复合方案）：
+ * - 前置图标：方向箭头（ArrowUpward / ArrowDownward），直观表达升序/降序；
+ * - 尾部图标：倒三角（ArrowDropDown），指示可点击展开切换维度；
+ * - 点击行为：打开下拉菜单选择维度；若在菜单中重复选择当前已选中的排序维度，则自动反转升降序。
  */
 @Composable
 private fun HobbySortControl(
@@ -421,93 +472,96 @@ private fun HobbySortControl(
     onSwitchSortDirection: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "SortArrowRotation"
+    )
 
     val options = remember(collectState, isSelf) { buildHobbyOrderOptions(collectState, isSelf) }
+    val isAsc = currentSortType == UserCollectUiState.SORT_ASC
 
-    // 胶囊（选排序维度）与升降序连体二选是两个平级可点区域：
-    // 连体按钮不能塞进 FilterChip 的 trailingIcon，否则父子两个 clickable 会同时响应。
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box {
-            FilterChip(
-                selected = true,
-                onClick = { expanded = true },
-                label = {
-                    Text(
-                        text = hobbyOrderShortLabel(currentOrder, isSelf),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                },
-                shape = ExpressiveTokens.ChipShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    selectedLabelColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = null
-            )
+    Box {
+        FilterChip(
+            selected = true,
+            onClick = { expanded = true },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = if (isAsc) "升序" else "降序",
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            label = {
+                Text(
+                    text = hobbyOrderShortLabel(currentOrder, isSelf),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = if (expanded) "收起排序菜单" else "展开排序菜单",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = arrowRotation }
+                )
+            },
+            shape = ExpressiveTokens.ChipShape,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                selectedLabelColor = MaterialTheme.colorScheme.onSurface
+            ),
+            border = null
+        )
 
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                options.forEach { (key, label) ->
-                    val isSelected = key == currentOrder
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = label,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = ExpressiveTokens.MediumCardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            options.forEach { (key, label) ->
+                val isSelected = key == currentOrder
+                DropdownMenuItem(
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
                             )
-                        },
-                        onClick = {
-                            expanded = false
+                        }
+                    } else null,
+                    text = {
+                        Text(
+                            text = if (isSelected) "$label (${if (isAsc) "升序" else "降序"})" else label,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        if (isSelected) {
+                            // 重复点击已选项：反转升降序
+                            val nextSortType = if (isAsc) UserCollectUiState.SORT_DESC else UserCollectUiState.SORT_ASC
+                            onSwitchSortDirection(nextSortType)
+                        } else {
+                            // 切换到新维度
                             onSwitchOrder(key)
                         }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val directions = listOf(UserCollectUiState.SORT_ASC, UserCollectUiState.SORT_DESC)
-            directions.forEachIndexed { index, sortType ->
-                ToggleButton(
-                    checked = currentSortType == sortType,
-                    onCheckedChange = { if (it) onSwitchSortDirection(sortType) },
-                    modifier = Modifier.semantics { role = Role.RadioButton },
-                    shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (sortType == UserCollectUiState.SORT_ASC) "升" else "降",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                    }
+                )
             }
         }
     }
 }
 
-/**
- * 排序下拉候选项（key → 中文文案）。
- *
- * 「按入手时间」仅在已入档出现；「我的评分」在看他人时改称「TA的评分」
- * （原版 `b0.d` / `b0.e` 两张文案表之别）。
- */
 private fun buildHobbyOrderOptions(collectState: String, isSelf: Boolean): List<Pair<String, String>> {
     val base = HobbyOrderOption.BASE_ORDERS.map { key ->
         key to when (key) {
