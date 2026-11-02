@@ -1,15 +1,22 @@
 package com.nobody.repoi.ui.collect.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -36,13 +43,14 @@ internal val CollectCommonOrderTabs: List<Pair<String, String>> = listOf(
     "人气" to "collect"
 )
 
-// ── 共享二级排序 Tab ────────────────────────────────────────
+// ── 共享二级排序 ButtonGroup ────────────────────────────────────
 
 /**
- * 收藏二级排序 Tab 行（等价于原版 `UserCollectSubPagerFragment` 的排序切换组件）。
+ * 收藏二级排序操作栏（基于 M3 Expressive ButtonGroup 与 ToggleButton）。
  *
  * 通过 [titles] 参数化档位数量，三档（[CollectAlbumPictureOrderTabs]）与两档（[CollectCommonOrderTabs]）共用本实现；
- * 样式与宿主层「8 大实体大类」TabRow 保持一致。
+ * 采用连结型 ToggleButton 替换传统嵌套 TabRow，避免外层一级分类 TabRow 产生“Tab 套 Tab”认知混淆，
+ * 同时高度更紧凑，节约首屏垂直空间。
  *
  * @param titles 档位列表，元素为 `标签 to 排序 key`
  * @param selected 当前选中的排序 key
@@ -60,26 +68,34 @@ internal fun CollectOrderTabRow(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface
     ) {
-        SecondaryScrollableTabRow(
-            selectedTabIndex = titles.indexOfFirst { it.second == selected }.coerceAtLeast(0),
-            edgePadding = 12.dp,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            titles.forEach { (label, key) ->
+            titles.forEachIndexed { index, (label, key) ->
                 val isSelected = key == selected
-                Tab(
-                    selected = isSelected,
-                    onClick = { onSelect(key) },
-                    text = {
-                        Text(
-                            text = label,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                )
+                ToggleButton(
+                    checked = isSelected,
+                    onCheckedChange = { if (it) onSelect(key) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        titles.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = label,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
         }
     }
