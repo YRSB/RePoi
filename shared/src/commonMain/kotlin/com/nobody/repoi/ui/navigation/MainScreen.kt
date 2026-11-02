@@ -77,7 +77,6 @@ fun MainScreen(
         BottomBarCollapseConnection(
             state = bottomBarState,
             distancePx = collapseDistancePx,
-            isEnabled = { !bottomBarState.selfDriven }
         )
     }
 
@@ -208,7 +207,6 @@ private val BottomBarScrollStateSaver = listSaver<BottomBarScrollState, Float>(
 private class BottomBarCollapseConnection(
     private val state: BottomBarScrollState,
     private val distancePx: Float,
-    private val isEnabled: () -> Boolean,
 ) : NestedScrollConnection {
 
     private var travelPx = 0f
@@ -218,7 +216,7 @@ private class BottomBarCollapseConnection(
     }
 
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-        if (!isEnabled() || distancePx <= 0f) return Offset.Zero
+        if (distancePx <= 0f) return Offset.Zero
         val next = (travelPx - available.y).coerceIn(0f, distancePx)
         if (next != travelPx) {
             travelPx = next
