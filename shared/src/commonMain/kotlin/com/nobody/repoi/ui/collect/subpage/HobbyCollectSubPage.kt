@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.offset
@@ -63,7 +61,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
@@ -123,19 +120,16 @@ internal fun HobbyCollectSubPage(
     onDismissBatchError: () -> Unit = {}
 ) {
     val hobbyData = uiState.hobbyData
-    // 声明式绑定当前筛选与排序作为 State 标识键：
-    // 切换状态、排序或子分类时，Compose 自动以全新的 initialFirstVisibleItemIndex = 0 创建状态，
-    // 彻底消除异步网络加载与空列表重构导致的时序竞态问题。
-    val gridState = rememberSaveable(
+    // 声明式键绑定（统一入口见 rememberKeyedLazyGridState）：
+    // 切换收藏状态、排序或子分类 / 标签筛选时，Compose 以全新的 initialFirstVisibleItemIndex = 0
+    // 重建状态自动回顶；条件不变时（Nav3 返回）由 rememberSaveable 恢复原滚动位置。
+    val gridState = rememberKeyedLazyGridState(
         uiState.collectState,
         uiState.order,
         uiState.sortType,
         uiState.subCategoryId,
-        uiState.selectedTag,
-        saver = LazyGridState.Saver
-    ) {
-        LazyGridState()
-    }
+        uiState.selectedTag
+    )
 
     // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
     val isSelectionEnabled = uiState.isSelf
@@ -172,7 +166,7 @@ internal fun HobbyCollectSubPage(
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
 
-    // 以 gridState 为 remember 键：筛选/排序变化时上面的 rememberSaveable 会重建 LazyGridState，
+    // 以 gridState 为 remember 键：筛选/排序变化时上面的 rememberKeyedLazyGridState 会重建 LazyGridState，
     // 键缺失的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过筛选后触底分页永久失效。
     val shouldLoadMore by remember(gridState) {
         derivedStateOf {

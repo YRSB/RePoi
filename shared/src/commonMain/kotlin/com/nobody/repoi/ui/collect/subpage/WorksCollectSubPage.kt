@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.FilterList
@@ -100,9 +99,14 @@ internal fun WorksCollectSubPage(
     onItemClick: (UserCollectCommonItem) -> Unit,
     onRetry: () -> Unit
 ) {
-    val listState = rememberLazyListState()
+    // 声明式键绑定（统一入口见 rememberKeyedLazyListState）：
+    // 收藏状态 / 升降序 / 标签筛选任一变化时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
+    // 条件不变时（Nav3 返回）由 rememberSaveable 恢复滚动位置。
+    val listState = rememberKeyedLazyListState(worksState, worksOrderAsc, worksTag)
 
-    val shouldLoadMore by remember {
+    // 以 listState 为 remember 键：条件变化会重建 LazyListState，
+    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
+    val shouldLoadMore by remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
             val total = layoutInfo.totalItemsCount

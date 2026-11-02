@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
@@ -28,7 +27,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,13 +83,10 @@ internal fun AlbumCollectSubPage(
     onCancelCollect: () -> Unit,
     onRetry: () -> Unit
 ) {
-    // 声明式绑定当前排序作为 State 标识键（对齐周边页 HobbyCollectSubPage 的做法）：
-    // 切换排序时 Compose 以全新的 initialFirstVisibleItemIndex = 0 重建状态，因此不需要再用
-    // LaunchedEffect(currentOrder) { scrollToItem(0) } 手动回顶——那段命令式回顶会在 Nav3 从二级页
-    // 返回、Entry 组合重建时再次执行，把 rememberSaveable 恢复出来的滚动位置又清零，表现为返回必回顶。
-    val gridState = rememberSaveable(currentOrder, saver = LazyStaggeredGridState.Saver) {
-        LazyStaggeredGridState()
-    }
+    // 声明式键绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
+    // 切换排序时以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
+    // 排序不变时（Nav3 返回）由 rememberSaveable 恢复滚动位置。
+    val gridState = rememberKeyedLazyStaggeredGridState(currentOrder)
     // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
     // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
     val shouldLoadMore by remember(gridState) {
