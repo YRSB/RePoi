@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,6 +54,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -161,6 +163,7 @@ internal fun HobbyCollectSubPage(
     }
 
     val controlBarHeightDp = with(density) { controlBarHeightPx.toDp() }
+    val pullRefreshState = rememberPullToRefreshState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -224,10 +227,11 @@ internal fun HobbyCollectSubPage(
         PullToRefreshBox(
             isRefreshing = hobbyData.isRefreshing,
             onRefresh = onRefresh,
+            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
             indicator = {
                 PullToRefreshDefaults.LoadingIndicator(
-                    state = it,
+                    state = pullRefreshState,
                     isRefreshing = hobbyData.isRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -353,7 +357,6 @@ internal fun HobbyCollectSubPage(
                     }
                 }
             }
-        }
 
         // 2. 顶层：悬浮/吸顶控制栏（对齐 HomeFeed/Follow 架构：置顶贴靠，平滑随手势 tuck 进顶栏下方）
         Column(
