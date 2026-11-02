@@ -157,6 +157,9 @@ internal fun HobbyCollectSubPage(
         }
     }
 
+    var needsScrollToTop by remember { mutableStateOf(false) }
+
+    // 监听筛选/排序条件变动：重置折叠控制栏，并标记待回顶
     LaunchedEffect(
         uiState.collectState,
         uiState.order,
@@ -164,8 +167,20 @@ internal fun HobbyCollectSubPage(
         uiState.subCategoryId,
         uiState.selectedTag
     ) {
-        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
-            gridState.scrollToItem(0)
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
+        needsScrollToTop = true
+    }
+
+    // 当新数据加载完成且列表重新挂载时，执行真正回顶并消费标记
+    val hasItems = hobbyData.items.isNotEmpty()
+    LaunchedEffect(hasItems, needsScrollToTop) {
+        if (hasItems && needsScrollToTop) {
+            if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
+                gridState.scrollToItem(0)
+            }
+            scrollBehavior.state.heightOffset = 0f
+            needsScrollToTop = false
         }
     }
 
