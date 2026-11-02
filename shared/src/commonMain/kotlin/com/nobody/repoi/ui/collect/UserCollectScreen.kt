@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -101,8 +102,10 @@ fun UserCollectScreen(
         }
     }
 
-    // 图片大图画廊的起始下标（null 表示未打开）
-    var galleryIndex by remember { mutableStateOf<Int?>(null) }
+    // 图片大图画廊的起始下标（null 表示未打开）。
+    // 用 rememberSaveable 而非 remember：旋转/窗口尺寸变化，以及从画廊内「关联条目」跳详情后返回，
+    // 都应恢复到原来的画廊链路，而不是把覆盖层丢掉退回图片 Tab。
+    var galleryIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
     // 错误消息浮层
     LaunchedEffect(uiState.errorMessage) {

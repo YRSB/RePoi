@@ -177,6 +177,7 @@ class UserCollectViewModel(
         // UserCollectScreen 的 LaunchedEffect(param) 会再次触发本方法。
         // 若重复下发 param.initialCategory（通常为 null → 周边页），
         // 会把用户已切换的大类 Tab 与浏览位置重置回默认页。
+        // 注意：applyInitParam 内的归一化守卫会被排序记忆漂移误判，故门禁必须用原始 param。
         if (appliedNavParam == param) return
         appliedNavParam = param
         // 归一化必须排在持久化读回之后，否则首屏会用默认排序白发一次请求
