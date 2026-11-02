@@ -1,9 +1,7 @@
 package com.nobody.repoi.ui.navigation
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
@@ -17,9 +15,9 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -32,25 +30,15 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
-import kotlin.math.roundToInt
 
 /**
  * 主界面：自适应导航套件（底栏/导航栏）+ 当前 Tab 首屏内容。
@@ -71,26 +59,7 @@ fun MainScreen(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     val itemColors = NavigationSuiteDefaults.itemColors()
-    val bottomBarState = rememberSaveable(saver = BottomBarScrollStateSaver) { BottomBarScrollState() }
-    val collapseDistancePx = with(LocalDensity.current) { 80.dp.toPx() }
-    val collapseConnection = remember(collapseDistancePx, bottomBarState) {
-        BottomBarCollapseConnection(
-            state = bottomBarState,
-            distancePx = collapseDistancePx,
-            isEnabled = { !bottomBarState.selfDriven }
-        )
-    }
-
-    LaunchedEffect(navigationState.currentDestination) {
-        collapseConnection.seed(bottomBarState.collapseFraction)
-    }
-
-    LaunchedEffect(layoutType) {
-        if (layoutType != NavigationSuiteType.NavigationBar) {
-            bottomBarState.collapseFraction = 0f
-            bottomBarState.barHeightPx = 0f
-        }
-    }
+    val bottomBarState = remember { BottomBarScrollState() }
 
     if (layoutType == NavigationSuiteType.NavigationBar) {
         CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
@@ -99,19 +68,13 @@ fun MainScreen(
                     if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
                 },
                 bottomBar = {
-                    NavigationBar(
+                    ShortNavigationBar(
                         modifier = Modifier
                             .onSizeChanged { bottomBarState.barHeightPx = it.height.toFloat() }
-                            .offset {
-                                IntOffset(
-                                    x = 0,
-                                    y = (bottomBarState.collapseFraction * bottomBarState.barHeightPx).roundToInt()
-                                )
-                            }
                     ) {
                         AppDestinations.entries.forEach { destination ->
                             val isSelected = destination == navigationState.currentDestination
-                            NavigationBarItem(
+                            ShortNavigationBarItem(
                                 selected = isSelected,
                                 onClick = { navigator.selectTab(destination) },
                                 icon = {
@@ -134,18 +97,12 @@ fun MainScreen(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 modifier = modifier.fillMaxSize()
             ) { _ ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(collapseConnection)
-                ) {
-                    RePoiNavDisplay(
-                        entries = tabEntries.value,
-                        transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                        popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
-                        predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
-                    )
-                }
+                RePoiNavDisplay(
+                    entries = tabEntries.value,
+                    transitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                    popTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec },
+                    predictivePopTransitionSpec = { MaterialSharedAxis.Fade.TransitionSpec }
+                )
             }
         }
     } else {
@@ -192,39 +149,6 @@ fun MainScreen(
                 )
             }
         }
-    }
-}
-
-private val BottomBarScrollStateSaver = listSaver<BottomBarScrollState, Float>(
-    save = { listOf(it.collapseFraction, it.barHeightPx) },
-    restore = { values ->
-        BottomBarScrollState().apply {
-            collapseFraction = values[0]
-            barHeightPx = values[1]
-        }
-    }
-)
-
-private class BottomBarCollapseConnection(
-    private val state: BottomBarScrollState,
-    private val distancePx: Float,
-    private val isEnabled: () -> Boolean,
-) : NestedScrollConnection {
-
-    private var travelPx = 0f
-
-    fun seed(fraction: Float) {
-        travelPx = fraction.coerceIn(0f, 1f) * distancePx
-    }
-
-    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-        if (!isEnabled() || distancePx <= 0f) return Offset.Zero
-        val next = (travelPx - available.y).coerceIn(0f, distancePx)
-        if (next != travelPx) {
-            travelPx = next
-            state.collapseFraction = next / distancePx
-        }
-        return Offset.Zero
     }
 }
 
