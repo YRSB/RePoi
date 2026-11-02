@@ -96,11 +96,11 @@ internal fun CommonCollectSubPage(
     onCharacterClick: ((UserCollectCommonItem) -> Unit)? = null,
     onRetry: () -> Unit
 ) {
-    // key() 作用域绑定（统一入口见 rememberKeyedLazyGridState / rememberKeyedLazyStaggeredGridState）：
+    // 保存键绑定（统一入口见 rememberKeyedLazyGridState / rememberKeyedLazyStaggeredGridState）：
     // 切换排序时网格 / 列表两态各自以全新的位置重建自动回顶；
     // 排序不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复各自形态下的滚动位置。
-    val listState = rememberKeyedLazyGridState(commonOrder)
-    val gridState = rememberKeyedLazyStaggeredGridState(commonOrder)
+    val listState = rememberKeyedLazyGridState("common_list", commonOrder)
+    val gridState = rememberKeyedLazyStaggeredGridState("common_grid", commonOrder)
 
     // 触底分页：单个布尔派生收敛滚动位置判断，空列表、已到底时不触发。
     // 以两个状态实例 + 视图形态为 remember 键：排序变化会重建状态，

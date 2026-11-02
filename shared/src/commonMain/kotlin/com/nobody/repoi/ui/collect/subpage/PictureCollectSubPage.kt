@@ -87,10 +87,10 @@ internal fun PictureCollectSubPage(
     onItemClick: (Int) -> Unit,
     onRetry: () -> Unit
 ) {
-    // key() 作用域绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
+    // 保存键绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
     // 切换排序时以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
     // 排序不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
-    val gridState = rememberKeyedLazyStaggeredGridState(currentOrder)
+    val gridState = rememberKeyedLazyStaggeredGridState("picture_staggered", currentOrder)
     // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
     // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
     val shouldLoadMore by remember(gridState) {
