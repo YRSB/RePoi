@@ -22,6 +22,14 @@ object CommonParams {
     const val API_MACHINE = "SM-S9280"
 
     const val BASE_URL = "https://www.hpoi.net.cn/"
+
+    /**
+     * Hpoi 官网 Web 根路径（原版 `prefs/b.java` 的 `web_root`）。
+     *
+     * 注意与 API 域名区分：接口走 `BASE_URL`（`www.hpoi.net.cn`），
+     * 文章等网页内容走 `www.hpoi.net`（跨域 301 未必保留 path），外链兜底必须用本常量。
+     */
+    const val WEB_BASE_URL = "https://www.hpoi.net/"
     const val EXHOBBY_BASE_URL = "https://www.exhobby.net/"
     const val EXHOBBY_COOKIE = "is18=yes"
     const val EXHOBBY_USER_AGENT = "okhttp/4.9.0"

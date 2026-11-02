@@ -9,6 +9,7 @@ import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
+import com.nobody.repoi.util.CollectInvalidationBus
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -34,6 +35,7 @@ class UserCollectViewModel(
     private val collectRepository: CollectRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val tokenManager: TokenManager,
+    private val collectInvalidationBus: CollectInvalidationBus,
     navUserId: Long = 0L,
     navInitialCollectState: String? = null,
     navInitialOrder: String? = null,
@@ -138,6 +140,21 @@ class UserCollectViewModel(
         viewModelScope.launch {
             viewPreferencesManager.isCollectListGridModeFlow.collect { isGrid ->
                 _uiState.update { it.copy(isListView = !isGrid) }
+            }
+        }
+
+        // 画廊已升级为独立 Nav3 路由：在画廊内取消收藏后，收藏页不可见且不会自动刷新。
+        // 通过失效总线就地剔除该图片，避免返回后残留脏项、再次点击时按旧下标打开另一张图。
+        viewModelScope.launch {
+            collectInvalidationBus.uncollected.collect { nodeId ->
+                _uiState.update { state ->
+                    val filtered = state.picData.items.filterNot { it.id == nodeId }
+                    if (filtered.size == state.picData.items.size) {
+                        state
+                    } else {
+                        state.copy(picData = state.picData.copy(items = filtered))
+                    }
+                }
             }
         }
 

@@ -5,11 +5,12 @@ import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.util.CollectInvalidationBus
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * 管理器模块：5 managers（DataStore 由平台 `dataStoreModule` 具名提供）。
+ * 管理器模块：5 managers（DataStore 由平台 `dataStoreModule` 具名提供）+ 跨路由失效事件总线。
  */
 val managerModule = module {
     single { TokenManager(get(named("user_prefs"))) }
@@ -17,4 +18,5 @@ val managerModule = module {
     single { SearchHistoryManager(get(named("search_history_prefs")), get()) }
     single { ViewPreferencesManager(get(named("view_prefs"))) }
     single { CategoryManager(get()) }
+    single { CollectInvalidationBus() }
 }

@@ -102,14 +102,7 @@ import kotlin.math.roundToInt
 // ── 大图画廊 ────────────────────────────────────────────────
 
 /**
- * 画廊内的统一轻提示：经 [LocalAppMessages] 消息总线展示。
- *
- * 画廊可能以全屏页或 Dialog 两种形态宿主；调用点的 Scaffold 宿主由总线兜底，
- * 故不再直调 Toast（KMP common 无 android.widget.Toast）。
- */
-
-/**
- * 图片大图画廊（全屏），替代收藏页原先直接复用的 `ImageViewerDialog`。
+ * 图片大图画廊（全屏展示组件；由独立 Nav 路由 `PictureGalleryNavKey` 宿主）。
  *
  * 对标原版 `PictureGalleryActivity`，具备：
  * - **无限分页**：滑到倒数第 4 张回调 [onLoadMore] 续拉；页码显示 `"3 / 20"`，
@@ -123,18 +116,18 @@ import kotlin.math.roundToInt
  * - **缩放/平移/双击缩放**：与 `ImageViewerDialog` 同源实现（1–4x 捏合、放大态禁用翻页、单击收起）。
  * - **超长图保护**：按屏幕高度夹取解码尺寸，并对极端长图给出提示（不引入 SubsamplingScaleImageView）。
  *
- * @param items 当前已加载的图片列表（宿主侧维护，画廊只读）
+ * @param items 当前已加载的图片列表（由画廊路由自行加载，本组件只读）
  * @param initialIndex 初始定位下标
  * @param hasMore 是否还有下一页（决定页码是否追加 `+`）
  * @param isLoadingMore 续拉请求进行中（避免重复触发）
- * @param onLoadMore 滑到倒数第 4 张时回调，宿主接 `UserCollectViewModel.loadNextPage(PICTURE)`
- * @param onBack 返回
+ * @param onLoadMore 滑到倒数第 4 张时回调，宿主接画廊 ViewModel 的分页加载
+ * @param onBack 返回（路由出栈）
  * @param onOpenPictureList 「列表」入口回调；宿主需跳 `PictureListScreen`。
- *   收藏页的图片不属于任何相册/手办上下文，**PoiShelf 暂无「按图片 id 反查所属列表」接口**，
- *   故默认传 `null` —— 传 null 时该项自动隐藏，接线方式见交付报告。
+ *   收藏页的图片不属于任何相册/手办上下文，**暂无「按图片 id 反查所属列表」接口**，
+ *   故默认传 `null` —— 传 null 时该项自动隐藏。
  * @param onNavigateToAlbum 关联条目为相册时的跳转
  * @param onNavigateToHobby 关联条目为手办时的跳转
- * @param onNavigateToArticle 关联条目为文章时的跳转（当前工程无文章详情页，宿主可不接）
+ * @param onNavigateToArticle 关联条目为文章时的跳转（宿主用官网外链兜底）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -713,7 +706,11 @@ private fun GalleryBottomPanel(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(relateItems, key = { "${it.itemType}_${it.id}" }) { relate ->
+                    items(
+                        items = relateItems,
+                        key = { "${it.itemType}_${it.id}" },
+                        contentType = { "relate_chip" }
+                    ) { relate ->
                         RelateItemChip(
                             relate = relate,
                             onClick = {
@@ -801,16 +798,16 @@ private fun RelateItemChip(
 /**
  * 关联条目路由类型。
  *
- * 判定顺序对齐 `FeedActionDispatcher` 与原版 `PictureGalleryActivity.a0()`：
- * 相册优先看 `isAlbum`（itemType=album 或 categoryId 60000..69999），
- * 手办看 itemType（大小写不敏感），其余按文章处理。
+ * 判定顺序对齐原版 `PictureGalleryActivity.a0()`：优先按 `itemType`（album/hobby，大小写不敏感），
+ * 仅在 `itemType` 缺失/未知时才用原版标签映射的 categoryId 区间（相册 60001..70000）兜底，其余按文章处理。
  */
 private enum class RelateKind { ALBUM, HOBBY, ARTICLE }
 
 private val PictureRelateItem.kind: RelateKind
     get() = when {
-        isAlbum -> RelateKind.ALBUM
+        itemType?.trim().equals("album", ignoreCase = true) -> RelateKind.ALBUM
         itemType?.trim().equals("hobby", ignoreCase = true) -> RelateKind.HOBBY
+        categoryId in 60001..70000 -> RelateKind.ALBUM
         else -> RelateKind.ARTICLE
     }
 

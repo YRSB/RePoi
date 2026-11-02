@@ -8,6 +8,7 @@ import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.platform.saveImageBytesToGallery
 import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.util.CollectInvalidationBus
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -64,6 +65,11 @@ data class PictureGalleryListState(
     val hasMore: Boolean = true,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
+    /**
+     * 目标图片未在收藏列表中找到（典型场景：刚在画廊取消收藏后由收藏页再次点击旧项）。
+     * 路由宿主据此提示并出栈，避免按旧下标打开另一张图。
+     */
+    val targetMissing: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -80,6 +86,7 @@ data class PictureGalleryListState(
 class PictureGalleryViewModel(
     private val collectRepository: CollectRepository,
     private val userRepository: UserRepository,
+    private val collectInvalidationBus: CollectInvalidationBus,
     private val downloadClient: HttpClient,
 ) : ViewModel() {
 
@@ -193,8 +200,11 @@ class PictureGalleryViewModel(
             }
             val distinct = loaded.distinctBy { it.id }
             val located = distinct.indexOfFirst { it.id == targetPicId }
+            // 目标图片已不在收藏列表中：不要拿旧下标伪装成功（否则会打开另一张图）
+            val targetMissing = targetPicId > 0L && located < 0 && distinct.isNotEmpty()
             val initialIndex = when {
                 located >= 0 -> located
+                targetMissing -> 0
                 distinct.isEmpty() -> 0
                 else -> listTargetIndex.coerceIn(0, distinct.lastIndex)
             }
@@ -203,6 +213,7 @@ class PictureGalleryViewModel(
                 initialIndex = initialIndex,
                 hasMore = lastBatchSize >= PAGE_SIZE,
                 isLoading = false,
+                targetMissing = targetMissing,
                 errorMessage = if (distinct.isEmpty()) failure ?: "暂无收藏图片" else null
             )
         }
@@ -323,6 +334,12 @@ class PictureGalleryViewModel(
                 collectRepository.collectItemAdd(item.id)
             } else {
                 collectRepository.collectItemDel(item.id)
+            }
+            result.onSuccess {
+                // 取消收藏成功：广播给仍存活的收藏页就地剔除，避免返回后残留脏项
+                if (!nowCollected) {
+                    collectInvalidationBus.notifyUncollected(item.id)
+                }
             }
             result.onFailure { error ->
                 // 回滚到请求前状态

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.data.remote.interceptor.CommonParams
 import com.nobody.repoi.data.remote.model.PictureRelateItem
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.openUrl
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
@@ -58,6 +59,15 @@ fun PictureGalleryRouteScreen(
     val listState by viewModel.listState.collectAsStateWithLifecycle()
     // 以普通局部变量承接一次快照，避免对 delegated property 做 smart cast
     val state = listState
+    val messages = LocalAppMessages.current
+
+    // 目标图片已不在收藏列表（典型：刚取消收藏后点旧项）：提示并退回收藏页，绝不按旧下标开另一张图
+    LaunchedEffect(state.targetMissing) {
+        if (state.targetMissing) {
+            messages.show("该图片已不在收藏列表中")
+            onBack()
+        }
+    }
 
     when {
         state.isLoading && state.items.isEmpty() -> {
@@ -70,6 +80,10 @@ fun PictureGalleryRouteScreen(
                 onRetry = viewModel::retryList,
                 onBack = onBack
             )
+        }
+
+        state.targetMissing -> {
+            GalleryLoadingState()
         }
 
         state.items.isEmpty() -> {
@@ -86,7 +100,11 @@ fun PictureGalleryRouteScreen(
                 onBack = onBack,
                 onNavigateToAlbum = onNavigateToAlbum,
                 onNavigateToHobby = onNavigateToHobby,
-                onNavigateToArticle = { relate -> openArticleInBrowser(relate) }
+                onNavigateToArticle = { relate ->
+                    if (!openArticleInBrowser(relate)) {
+                        messages.show("无法打开文章链接")
+                    }
+                }
             )
         }
     }
@@ -94,12 +112,14 @@ fun PictureGalleryRouteScreen(
 
 /**
  * 关联条目为「文章」时的兜底跳转：本工程暂无文章详情页，
- * 对齐原版网页路径 `article/{itemId}` 交给系统浏览器打开。
+ * 对齐原版网页路径 `article/{itemId}` 交给系统浏览器打开（使用 Web 根域名而非 API 域名）。
+ *
+ * @return 是否成功调起浏览器
  */
-private fun openArticleInBrowser(relate: PictureRelateItem) {
+private fun openArticleInBrowser(relate: PictureRelateItem): Boolean {
     val articleId = if (relate.itemId > 0L) relate.itemId else relate.id
-    if (articleId <= 0L) return
-    openUrl(CommonParams.BASE_URL + "article/" + articleId)
+    if (articleId <= 0L) return false
+    return openUrl(CommonParams.WEB_BASE_URL + "article/" + articleId)
 }
 
 @Composable
