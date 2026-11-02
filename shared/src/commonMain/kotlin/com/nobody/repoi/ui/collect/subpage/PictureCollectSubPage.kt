@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,8 +89,16 @@ internal fun PictureCollectSubPage(
     onItemClick: (Int) -> Unit,
     onRetry: () -> Unit
 ) {
-    val gridState = rememberLazyStaggeredGridState()
-    val shouldLoadMore by remember {
+    // 声明式绑定当前排序作为 State 标识键（与相册页 AlbumCollectSubPage、周边页 HobbyCollectSubPage 一致）：
+    // 切换排序时 Compose 以全新的 initialFirstVisibleItemIndex = 0 重建状态，因此不再需要
+    // LaunchedEffect(currentOrder) { scrollToItem(0) } 手动回顶——该命令式回顶会在 Nav3 从二级页返回、
+    // Entry 组合重建时重新执行，把 rememberSaveable 恢复出来的滚动位置清零，表现为返回必回顶。
+    val gridState = rememberSaveable(currentOrder, saver = LazyStaggeredGridState.Saver) {
+        LazyStaggeredGridState()
+    }
+    // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
+    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
+    val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
             val total = layoutInfo.totalItemsCount
@@ -101,13 +110,6 @@ internal fun PictureCollectSubPage(
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
-        }
-    }
-
-    // 排序切换后重置到第 1 页（ViewModel 侧已重置数据），并把列表滚回顶部
-    LaunchedEffect(currentOrder) {
-        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
-            gridState.scrollToItem(0)
         }
     }
 
