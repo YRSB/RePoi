@@ -22,7 +22,7 @@ import kotlin.test.assertIs
 /**
  * 验证 [RePoiSerializersModule] 多态序列化完整性。
  *
- * 覆盖全部 45 个 [AppNavKey] 实现，确保 Navigation 3 在 SavedStateConfiguration
+ * 覆盖全部 46 个 [AppNavKey] 实现，确保 Navigation 3 在 SavedStateConfiguration
  * 状态持久化、Android 进程恢复及桌面端跨会话存储时多态反序列化安全无遗漏。
  */
 class RePoiSerializersModuleTest {
@@ -91,9 +91,13 @@ class RePoiSerializersModuleTest {
             WorksCollectEditNavKey(param = WorksCollectEditNavParam(worksId = 1401L), id = "fixed-id-works-collect"),
             SeriesDetailNavKey(param = SeriesNavParam(seriesId = 1501L), id = "fixed-id-series-detail"),
 
-            // 9. 作品、图片与扩展图库路由 (3)
+            // 9. 作品、图片与扩展图库路由 (4)
             WorksDetailNavKey(param = WorksNavParam(worksId = 1401L), id = "fixed-id-works-detail"),
             PictureListNavKey(param = PictureListNavParam(itemId = 7001L), id = "fixed-id-picture-list"),
+            PictureGalleryNavKey(
+                param = PictureGalleryNavParam(userId = 6001L, picId = 7001L, initialIndex = 2),
+                id = "fixed-id-picture-gallery"
+            ),
             ExHobbyListNavKey(itemId = 7001L, title = "ExHobby", id = "fixed-id-exhobby-list"),
 
             // 10. 设置与鉴权路由 (2)
@@ -107,7 +111,7 @@ class RePoiSerializersModuleTest {
             MessageBlockNavKey(id = "fixed-id-message-block")
         )
 
-        assertEquals(45, testRoutes.size, "测试必须全量覆盖全部 45 个 AppNavKey")
+        assertEquals(46, testRoutes.size, "测试必须全量覆盖全部 46 个 AppNavKey")
 
         for (originalKey in testRoutes) {
             val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)

@@ -90,7 +90,6 @@ import coil3.request.crossfade
 import coil3.ImageLoader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.platform.PoiShelfBackHandler
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.PictureRelateItem
@@ -157,10 +156,6 @@ fun PictureGalleryScreen(
         LaunchedEffect(Unit) { onBack() }
         return
     }
-
-    // 拦截系统返回键 / 侧滑返回手势：此处是全屏覆盖层而非独立路由，
-    // 若不拦截，Nav3 会直接弹出宿主（我的收藏）路由，越过画廊落到「我的」页。
-    PoiShelfBackHandler(onBack = onBack)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(
@@ -722,28 +717,30 @@ private fun GalleryBottomPanel(
                         RelateItemChip(
                             relate = relate,
                             onClick = {
-                                when (relate.itemType) {
-                                    // 相册 → 相册详情
-                                    "album" -> onNavigateToAlbum?.invoke(
+                                when (relate.kind) {
+                                    // 相册 → 相册详情：相册 id 取实体 `id`（`itemId` 是关联手办 id；
+                                    // 原版 AlbumDetailActivity 解析 albumData 时同样取 `id`）
+                                    RelateKind.ALBUM -> onNavigateToAlbum?.invoke(
                                         AlbumNavParam(
-                                            albumId = if (relate.itemId > 0L) relate.itemId else relate.id,
+                                            albumId = relate.actualAlbumId,
                                             initialTitle = relate.displayName,
                                             initialCover = relate.cover
                                         )
                                     )
 
-                                    // 手办 → 手办详情
-                                    "hobby" -> onNavigateToHobby?.invoke(
+                                    // 手办 → 手办详情：业务号取 `itemId`
+                                    //（对齐原版 HobbyDetailActivity 解析 itemData 的 itemId）
+                                    RelateKind.HOBBY -> onNavigateToHobby?.invoke(
                                         DetailNavParam(
-                                            itemId = if (relate.itemId > 0L) relate.itemId else relate.id,
+                                            itemId = relate.actualHobbyId,
                                             itemType = "hobby",
                                             initialName = relate.displayName,
                                             initialCover = relate.cover
                                         )
                                     )
 
-                                    // 文章 → 文章详情（当前工程暂无文章页，宿主可不接）
-                                    else -> onNavigateToArticle?.invoke(relate)
+                                    // 文章 → 宿主兜底（本工程无文章详情页，宿主用外链打开）
+                                    RelateKind.ARTICLE -> onNavigateToArticle?.invoke(relate)
                                 }
                             }
                         )
@@ -801,12 +798,28 @@ private fun RelateItemChip(
     }
 }
 
+/**
+ * 关联条目路由类型。
+ *
+ * 判定顺序对齐 `FeedActionDispatcher` 与原版 `PictureGalleryActivity.a0()`：
+ * 相册优先看 `isAlbum`（itemType=album 或 categoryId 60000..69999），
+ * 手办看 itemType（大小写不敏感），其余按文章处理。
+ */
+private enum class RelateKind { ALBUM, HOBBY, ARTICLE }
+
+private val PictureRelateItem.kind: RelateKind
+    get() = when {
+        isAlbum -> RelateKind.ALBUM
+        itemType?.trim().equals("hobby", ignoreCase = true) -> RelateKind.HOBBY
+        else -> RelateKind.ARTICLE
+    }
+
 /** 关联条目类型中文标签 */
 private val PictureRelateItem.itemTypeLabel: String
-    get() = when (itemType) {
-        "album" -> "相册"
-        "hobby" -> "手办"
-        else -> "文章"
+    get() = when (kind) {
+        RelateKind.ALBUM -> "相册"
+        RelateKind.HOBBY -> "手办"
+        RelateKind.ARTICLE -> "文章"
     }
 
 // ── 操作 BottomSheet ────────────────────────────────────────

@@ -239,6 +239,13 @@ data class PictureListNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
+// 收藏-图片 全屏大图画廊路由（可重复入栈，需唯一键防身份碰撞）
+@Serializable
+data class PictureGalleryNavKey(
+    val param: PictureGalleryNavParam,
+    val id: String = newNavId()
+) : AppNavKey
+
 @Serializable
 data class ExHobbyListNavKey(
     val itemId: Long,

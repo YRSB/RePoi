@@ -28,11 +28,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,8 +45,8 @@ import com.nobody.repoi.ui.collect.subpage.HobbyCollectSubPage
 import com.nobody.repoi.ui.collect.subpage.PictureCollectSubPage
 import com.nobody.repoi.ui.collect.subpage.WorksCollectSubPage
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.gallery.PictureGalleryScreen
 import com.nobody.repoi.ui.navigation.CharacterNavParam
+import com.nobody.repoi.ui.navigation.PictureGalleryNavParam
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
@@ -61,7 +58,8 @@ import kotlinx.coroutines.launch
  * 全量用户收藏中枢界面（对标 Hpoi 2.39 原版架构）。
  * 支持 8 大实体大类联动切换、手办双模视图（网格/资产账本卡）、5 档收藏状态胶囊、排序与多维高级筛选抽屉。
  *
- * 本文件仅承载宿主层：大类 Pager 分发、TopAppBar、snackbar、大图查看器与筛选抽屉挂载。
+ * 本文件仅承载宿主层：大类 Pager 分发、TopAppBar、snackbar、大图画廊跳转与筛选抽屉挂载。
+ * 图片全屏大图画廊已升级为独立 Nav3 路由（`PictureGalleryNavKey`），不再以组合内覆盖层形式挂在本页。
  * 各子页实现位于 `ui/collect/subpage/`，共享组件位于 `ui/collect/components/`。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +75,8 @@ fun UserCollectScreen(
     onNavigateToPerson: ((PersonNavParam) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
     onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
+    /** 打开图片全屏大图画廊（独立 Nav3 路由） */
+    onNavigateToPictureGallery: ((PictureGalleryNavParam) -> Unit)? = null,
     viewModel: UserCollectViewModel = koinViewModel()
 ) {
     LaunchedEffect(param) {
@@ -101,11 +101,6 @@ fun UserCollectScreen(
             pagerState.scrollToPage(targetIndex)
         }
     }
-
-    // 图片大图画廊的起始下标（null 表示未打开）。
-    // 用 rememberSaveable 而非 remember：旋转/窗口尺寸变化，以及从画廊内「关联条目」跳详情后返回，
-    // 都应恢复到原来的画廊链路，而不是把覆盖层丢掉退回图片 Tab。
-    var galleryIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
     // 错误消息浮层
     LaunchedEffect(uiState.errorMessage) {
@@ -276,7 +271,23 @@ fun UserCollectScreen(
                             onRefresh = { viewModel.refresh(UserCollectCategory.PICTURE) },
                             onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.PICTURE) },
                             onSwitchOrder = { viewModel.switchPicOrder(it) },
-                            onItemClick = { index -> galleryIndex = index },
+                            // 画廊是独立 Nav3 路由：只传「图片 id + 收藏页当前下标 + 排序档」，
+                            // 由画廊路由自行按同一接口/排序加载列表并定位，返回时由 back stack 出栈。
+                            onItemClick = { index ->
+                                val item = uiState.picData.items.getOrNull(index)
+                                if (item != null) {
+                                    // 兼容极少数未透传 userId 的收藏入口：回落到 ViewModel 解析出的用户 id
+                                    val galleryUserId = param.userId.takeIf { it > 0L } ?: viewModel.userId
+                                    onNavigateToPictureGallery?.invoke(
+                                        PictureGalleryNavParam(
+                                            userId = galleryUserId,
+                                            picId = item.id,
+                                            initialIndex = index,
+                                            order = uiState.picOrder
+                                        )
+                                    )
+                                }
+                            },
                             onRetry = { viewModel.loadFirstPage(UserCollectCategory.PICTURE) }
                         )
                     }
@@ -409,20 +420,6 @@ fun UserCollectScreen(
             },
             onReset = { viewModel.resetFilter() },
             onDismiss = { viewModel.setFilterSheetVisible(false) }
-        )
-    }
-
-    // 全屏大图画廊（含收藏/下载/举报/关联条目操作层与画廊内续拉分页）
-    galleryIndex?.let { idx ->
-        PictureGalleryScreen(
-            items = uiState.picData.items,
-            initialIndex = idx,
-            hasMore = uiState.picData.hasMore,
-            isLoadingMore = uiState.picData.isPaging,
-            onLoadMore = { viewModel.loadNextPage(UserCollectCategory.PICTURE) },
-            onBack = { galleryIndex = null },
-            onNavigateToAlbum = { nav -> onNavigateToAlbum?.invoke(nav) },
-            onNavigateToHobby = { nav -> onNavigateToHobby(nav) }
         )
     }
 }

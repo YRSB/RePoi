@@ -78,7 +78,7 @@ val viewModelModule = module {
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get()) }
-    viewModel { PictureGalleryViewModel(get(), get(named("download"))) }
+    viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
     viewModel { HomeFeedViewModel(get(), get(), get(), get(), get()) }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
