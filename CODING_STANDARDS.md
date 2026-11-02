@@ -26,6 +26,11 @@
 - **全量走 CI 验证**：代码变更通过 Git 提交并推送至分支/PR，全量交由 GitHub Actions CI 流水线权威执行与裁决。
 - **状态追踪**：统一使用 `gh pr checks` 或 `gh run list` 监控远端 CI 矩阵（Android APK、JVM 单测、Android-host 单测及桌面端打包）执行状态。
 
+### 5. 跨平台依赖引入规范 (KMP Library Selection)
+- **权威选型查证**：引入或推荐新的 KMP 跨平台第三方依赖时，必须优先通过 klibs.io MCP (`https://api.klibs.io/mcp`) 或 `kmp-libraries-expert` 技能核实真实元数据，严禁臆测版本号。
+- **平台目标硬性约束**：引入的库必须经过验证，完整支持本项目所需目标平台（Android 及 Windows Desktop / JVM），严禁引入仅限 Android 的单端依赖用于 `:shared:commonMain`。
+- **稳定版优先**：除非显式要求预发布版，否则一律采用官方最新发布的稳定版本（Latest Stable Version），并确认其开源许可证及维护活跃度。
+
 ---
 
 ## 路由契约与拓扑速查 (Navigation 3)
