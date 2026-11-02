@@ -17,6 +17,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import com.nobody.repoi.ui.common.rememberExitUntilCollapsedScrollBehavior
+import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -109,6 +116,26 @@ internal fun HobbyCollectSubPage(
     val hobbyData = uiState.hobbyData
     val gridState = rememberLazyGridState()
 
+    var controlBarHeightPx by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+
+    val isGridAtTop by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+        }
+    }
+
+    val scrollBehavior = rememberExitUntilCollapsedScrollBehavior(
+        canScroll = { !isSelectionMode },
+        isAtTop = { isGridAtTop }
+    )
+
+    LaunchedEffect(controlBarHeightPx) {
+        if (controlBarHeightPx > 0) {
+            scrollBehavior.state.heightOffsetLimit = -controlBarHeightPx.toFloat()
+        }
+    }
+
     // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
     val isSelectionEnabled = uiState.isSelf
     val isSelectionMode = isSelectionEnabled && uiState.hobbySelectionMode
@@ -168,11 +195,21 @@ internal fun HobbyCollectSubPage(
 
     var showCancelConfirm by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 控制栏：6 档状态横滑胶囊 + 排序选择（含升降序）+ 高级筛选
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+        ) {
+            // 控制栏：状态筛选单选下拉胶囊 + 排序选择（含升降序）+ 高级筛选
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onSizeChanged { controlBarHeightPx = it.height },
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Row(
