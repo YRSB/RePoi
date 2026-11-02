@@ -1197,7 +1197,8 @@ private fun AlbumFloatingActionBar(
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = Icons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                isProminent = !isLiked && !isCollected
+                // 评论是导航类操作，无激活态；只让点赞/收藏这类切换控件着色
+                isProminent = false
             )
         }
 

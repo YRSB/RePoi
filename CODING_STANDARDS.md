@@ -120,6 +120,7 @@
 
 ### 3. 悬浮操作栏与系统栏边距
 - **悬浮组件**：底部悬浮胶囊统一使用 `ExpressiveFloatingToolbar` 与 `ExpressiveToolbarButton`；前者是官方 `HorizontalFloatingToolbar` 的适配层，后者由官方 `IconButton` / `FilledTonalIconButton` / `TextButton` / `FilledTonalButton` 组成。不得再自绘悬浮容器或药丸按钮，需要改样式时优先传官方参数（如 `FloatingToolbarDefaults.vibrantFloatingToolbarColors()`）。
+- **着色语义**：悬浮操作栏内只有切换类控件（收藏、关注、点赞）可以按激活态着色（`isProminent = true`，容器取 `primaryContainer` 系）。评论、回帖、分享等导航类操作必须 `isProminent = false`，不得用容器着色表示主操作。危险操作可以用 `error` 前景色，但不得使用 `prominent` 容器。
 - **宽度与边距约束**：悬浮顶栏与底栏必须限制最大宽度为 `fillMaxWidth(if (isWidePane) mainPaneWeight else 1f)`，并显式附加 `statusBarsPadding()` 与 `navigationBarsPadding()`。
 
 ### 4. 网格与卡片
