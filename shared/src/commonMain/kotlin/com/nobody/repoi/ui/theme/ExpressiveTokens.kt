@@ -18,46 +18,60 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Material 3 Expressive 设计规范设计令牌与通用组件
+ * Material 3 Expressive 设计规范设计令牌与通用组件。
+ * 对齐官方 M3 / M3 Expressive Shape Scale 与 Component Specs：
+ * - None: 0dp
+ * - Extra Small: 4dp (微型徽章/骨架屏)
+ * - Small: 8dp (小卡片/图片/Chips)
+ * - Medium: 12dp (官方 Card / ElevatedCard 基准圆角)
+ * - Large: 16dp (M3 Large 容器，Expressive 强调型大卡片)
+ * - Large Increased: 20dp (M3E 扩展圆角，顶栏滚动收起等)
+ * - Extra Large: 28dp (Dialog / Modal Bottom Sheet / Side Sheet)
+ * - Extra Large Increased: 32dp (Floating Toolbar 胶囊高程)
+ * - Full: CircleShape (药丸按钮/搜索条)
  */
 object ExpressiveTokens {
-    /** 核心超大容器圆角 (M3 Extra Large Container, 24dp) */
+    /** 核心超大容器圆角 (24dp，介于 Large 与 Extra Large 之间的业务大卡片/详情面板) */
     val LargeCardShape = RoundedCornerShape(24.dp)
 
-    /** 核心卡片大圆角 (M3 Large Container, 16dp) */
+    /** 核心卡片强调大圆角 (M3 Large Container, 16dp，用于强化 Expressive 亲和感) */
     val CardShape = RoundedCornerShape(16.dp)
 
-    /** 次级卡片或内嵌面板中圆角 (M3 Medium Container, 12dp) */
+    /** 官方通用卡片基准圆角或次级内嵌面板 (M3 Medium Container, 12dp，完全对齐 CardDefaults 基线) */
     val MediumCardShape = RoundedCornerShape(12.dp)
 
     /** 小卡片/图片圆角 (M3 Small Container, 8dp) */
     val SmallCardShape = RoundedCornerShape(8.dp)
 
-    /** 标签与筛选 Chip 圆角 (8dp) */
+    /** 标签与筛选 Chip 圆角 (M3 Small Container, 8dp) */
     val ChipShape = RoundedCornerShape(8.dp)
 
     /** 微型容器/徽章/占位骨架超小圆角 (M3 Extra Small Container, 4dp) */
     val ExtraSmallShape = RoundedCornerShape(4.dp)
 
-    /** 搜索框/全圆药丸圆角 */
+    /** 搜索框/全圆药丸圆角 (Full Shape) */
     val PillShape = CircleShape
 
-    /** 按钮圆角 */
+    /** 按钮圆角 (Full Shape) */
     val ButtonShape = CircleShape
 
-    /** 对话框大圆角 (28dp) */
+    /** 对话框大圆角 (M3 Extra Large Container, 28dp) */
     val DialogShape = RoundedCornerShape(28.dp)
 
-    /** 侧边抽屉大圆角 (M3 Modal Side Sheet, 28dp) */
+    /** 侧边抽屉大圆角 (M3 Modal Side Sheet, 28dp 单侧圆角) */
     val SideSheetShape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp)
 
     /** 底部抽屉大圆角 (M3 Modal Bottom Sheet, 28dp 顶部圆角，底部平直贴合) */
     val BottomSheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
 
-    /** 顶部导航栏滚动收起圆角 (20dp 底部圆角) */
+    /** 顶部导航栏滚动收起圆角 (M3E Large Increased Container, 20dp 底部单侧圆角) */
     val TopBarScrolledShape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
 
-    /** 阴影与标高高度 (Elevations) */
+    /** 悬浮工具栏胶囊高度与圆角 (M3E Floating Toolbar Specs: 64dp 高度, 32dp Extra Large Increased 全胶囊圆角) */
+    val FloatingToolbarHeight = 64.dp
+    val FloatingToolbarShape = RoundedCornerShape(32.dp)
+
+    /** 阴影与标高高度 (Elevations，对齐 M3 Elevation Levels) */
     val ElevationDefault = 1.dp
     val ElevationHovered = 2.dp
     val ElevationPressed = 3.dp
