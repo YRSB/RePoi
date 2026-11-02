@@ -90,6 +90,7 @@ import coil3.request.crossfade
 import coil3.ImageLoader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.platform.LocalAppMessages
+import com.nobody.repoi.platform.PoiShelfBackHandler
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.PictureRelateItem
@@ -156,6 +157,10 @@ fun PictureGalleryScreen(
         LaunchedEffect(Unit) { onBack() }
         return
     }
+
+    // 拦截系统返回键 / 侧滑返回手势：此处是全屏覆盖层而非独立路由，
+    // 若不拦截，Nav3 会直接弹出宿主（我的收藏）路由，越过画廊落到「我的」页。
+    PoiShelfBackHandler(onBack = onBack)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(
