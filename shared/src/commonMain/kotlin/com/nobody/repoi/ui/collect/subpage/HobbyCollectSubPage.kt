@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -57,6 +58,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
@@ -114,7 +116,19 @@ internal fun HobbyCollectSubPage(
     onDismissBatchError: () -> Unit = {}
 ) {
     val hobbyData = uiState.hobbyData
-    val gridState = rememberLazyGridState()
+    // 声明式绑定当前筛选与排序作为 State 标识键：
+    // 切换状态、排序或子分类时，Compose 自动以全新的 initialFirstVisibleItemIndex = 0 创建状态，
+    // 彻底消除异步网络加载与空列表重构导致的时序竞态问题。
+    val gridState = rememberSaveable(
+        uiState.collectState,
+        uiState.order,
+        uiState.sortType,
+        uiState.subCategoryId,
+        uiState.selectedTag,
+        saver = LazyGridState.Saver
+    ) {
+        LazyGridState()
+    }
 
     var controlBarHeightPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
@@ -157,9 +171,7 @@ internal fun HobbyCollectSubPage(
         }
     }
 
-    var needsScrollToTop by remember { mutableStateOf(false) }
-
-    // 监听筛选/排序条件变动：重置折叠控制栏，并标记待回顶
+    // 监听筛选/排序条件变动：将嵌套折叠控制栏平滑复位展开到顶格
     LaunchedEffect(
         uiState.collectState,
         uiState.order,
@@ -169,19 +181,6 @@ internal fun HobbyCollectSubPage(
     ) {
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
-        needsScrollToTop = true
-    }
-
-    // 当新数据加载完成且列表重新挂载时，执行真正回顶并消费标记
-    val hasItems = hobbyData.items.isNotEmpty()
-    LaunchedEffect(hasItems, needsScrollToTop) {
-        if (hasItems && needsScrollToTop) {
-            if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
-                gridState.scrollToItem(0)
-            }
-            scrollBehavior.state.heightOffset = 0f
-            needsScrollToTop = false
-        }
     }
 
     // 列表卡微标签 / 网格卡徽章随 (collectState, isSelf) 重算
