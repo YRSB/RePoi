@@ -1,5 +1,7 @@
 package com.nobody.repoi.ui.collect.subpage
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -70,7 +73,7 @@ internal val WorksCollectStateTabs: List<Pair<String, String>> = listOf(
  *
  * 与通用 4 页的三点根本差异（见差异报告 §3.8）：
  * 1. 顶部 Tab 是**收藏状态**（想看/在看/看过）而非排序维度；
- * 2. 排序控件是升/降连体二选（单收藏时间维度），**没有第二档排序**；
+ * 2. 排序控件是升/降单按钮切换胶囊（单收藏时间维度），**没有第二档排序**；
  * 3. **有**标签筛选（仅本人可见），且**没有**网格/列表切换（固定线性列表）。
  *
  * 标签池来自 `api/user/glean/textTag/get`，与周边页的 `api/collect/tag` **不是同一个池**。
@@ -114,8 +117,13 @@ internal fun WorksCollectSubPage(
         }
     }
 
+    val sortArrowRotation by animateFloatAsState(
+        targetValue = if (worksOrderAsc) 180f else 0f,
+        label = "WorksSortArrowRotation"
+    )
+
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部：3 档状态 Tab + 升/降连体二选 + 标签筛选按钮（仅本人可见）
+        // 顶部：3 档状态 Tab + 升/降单按钮切换胶囊 + 标签筛选按钮（仅本人可见）
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -127,29 +135,31 @@ internal fun WorksCollectSubPage(
                 modifier = Modifier.weight(1f)
             )
 
+            // 单按钮升降序切换胶囊（对齐评论区右上角交互与视觉规范：文本 + 箭头矢量图标）
             Row(
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .padding(end = if (isSelf) 4.dp else 12.dp)
+                    .clip(ExpressiveTokens.PillShape)
+                    .clickable { onSwitchOrderAsc(!worksOrderAsc) }
+                    .semantics { role = Role.Button }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val directions = listOf(true, false)
-                directions.forEachIndexed { index, asc ->
-                    ToggleButton(
-                        checked = worksOrderAsc == asc,
-                        onCheckedChange = { if (it) onSwitchOrderAsc(asc) },
-                        modifier = Modifier.semantics { role = Role.RadioButton },
-                        shapes = when (index) {
-                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                            else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (asc) "升" else "降",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                Text(
+                    text = if (worksOrderAsc) "升序" else "降序",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDownward,
+                    contentDescription = if (worksOrderAsc) "当前升序，点击切换为降序" else "当前降序，点击切换为升序",
+                    modifier = Modifier
+                        .size(16.dp)
+                        .graphicsLayer { rotationZ = sortArrowRotation },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             // 原版 `UserCollectWorksSubFragment.java:246-255`：非本人隐藏筛选入口
