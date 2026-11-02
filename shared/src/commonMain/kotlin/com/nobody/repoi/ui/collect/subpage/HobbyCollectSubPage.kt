@@ -23,7 +23,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
-import com.nobody.repoi.ui.common.rememberExitUntilCollapsedScrollBehavior
+import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
 import androidx.compose.animation.core.animateFloatAsState
@@ -52,15 +52,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -136,25 +139,28 @@ internal fun HobbyCollectSubPage(
     val selectedIds = uiState.hobbySelectedIds
     val selectedCount = selectedIds.size
 
-    var controlBarHeightPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
+    var controlBarHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
 
-    val isGridAtTop by remember {
-        derivedStateOf {
-            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-        }
-    }
-
-    val scrollBehavior = rememberExitUntilCollapsedScrollBehavior(
-        canScroll = { !isSelectionMode },
-        isAtTop = { isGridAtTop }
+    // 对齐 HomeFeedScreen / FollowScreen 的无缝同步滚动行为：
+    // 当非多选且有数据时，1:1 同步驱动控制栏平滑向上收起或即时拉出
+    val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
+        initialHeightOffsetLimit = -controlBarHeightPx,
+        canScroll = { !isSelectionMode && hobbyData.items.isNotEmpty() }
     )
 
-    LaunchedEffect(controlBarHeightPx) {
-        if (controlBarHeightPx > 0) {
-            scrollBehavior.state.heightOffsetLimit = -controlBarHeightPx.toFloat()
+    LaunchedEffect(controlBarHeightPx, isSelectionMode) {
+        if (!isSelectionMode && controlBarHeightPx > 0f) {
+            scrollBehavior.state.heightOffsetLimit = -controlBarHeightPx
+            scrollBehavior.state.heightOffset =
+                scrollBehavior.state.heightOffset.coerceIn(-controlBarHeightPx, 0f)
+        } else {
+            scrollBehavior.state.heightOffsetLimit = 0f
+            scrollBehavior.state.heightOffset = 0f
         }
     }
+
+    val controlBarHeightDp = with(density) { controlBarHeightPx.toDp() }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -214,16 +220,156 @@ internal fun HobbyCollectSubPage(
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
+        // 1. 底层：内容网格与下拉刷新容器（铺满整屏，通过 contentPadding 避让顶层控制栏）
+        PullToRefreshBox(
+            isRefreshing = hobbyData.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = it,
+                    isRefreshing = hobbyData.isRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = controlBarHeightDp + 4.dp)
+                )
+            }
+        ) {
+            when {
+                hobbyData.isLoading && hobbyData.items.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = controlBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LoadingCollectView()
+                    }
+                }
+
+                hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = controlBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ErrorCollectView(
+                            errorMessage = hobbyData.errorMessage,
+                            onRetry = onRetry
+                        )
+                    }
+                }
+
+                // 服务端回「用户已隐藏内容」语义：渲染专用空态而非通用错误态
+                // 副标题复用全模块统一常量（原版 strings.xml:1372 text_empty_user_hide）
+                hobbyData.isContentHidden && hobbyData.items.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = controlBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        HobbyEmptyState(
+                            icon = Icons.Filled.VisibilityOff,
+                            title = "用户已隐藏内容",
+                            subtitle = COLLECT_CONTENT_HIDDEN_TEXT
+                        )
+                    }
+                }
+
+                hobbyData.items.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = controlBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        HobbyEmptyState(
+                            icon = Icons.Filled.Inbox,
+                            title = "未收藏周边~",
+                            subtitle = "可以在详情页将感兴趣的条目加入收藏"
+                        )
+                    }
+                }
+
+                else -> {
+                    LazyVerticalGrid(
+                        columns = gridColumns,
+                        state = gridState,
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            top = controlBarHeightDp + 8.dp,
+                            end = 12.dp,
+                            bottom = 16.dp + navBarBottomPadding +
+                                // 多选悬浮条会盖住末尾几行，额外让出高度
+                                if (isSelectionMode) 76.dp else 0.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                            items(
+                                items = hobbyData.items,
+                                key = { item -> "hobby_${item.actualItemId}_${item.id}" }
+                            ) { item ->
+                                val isSelected = item.id in selectedIds
+                                val onCardClick: () -> Unit = if (isSelectionMode) {
+                                    { onToggleSelect(item.id) }
+                                } else {
+                                    { onItemClick(item) }
+                                }
+
+                                if (uiState.isListView) {
+                                    HobbyCollectListCard(
+                                        item = item,
+                                        fields = listFields,
+                                        isSelectionEnabled = isSelectionEnabled,
+                                        selectionMode = isSelectionMode,
+                                        isSelected = isSelected,
+                                        onClick = onCardClick,
+                                        onLongClick = { onToggleSelect(item.id) }
+                                    )
+                                } else {
+                                    HobbyCollectGridCard(
+                                        item = item,
+                                        badgeField = gridBadgeField,
+                                        isSelectionEnabled = isSelectionEnabled,
+                                        selectionMode = isSelectionMode,
+                                        isSelected = isSelected,
+                                        onClick = onCardClick,
+                                        onLongClick = { onToggleSelect(item.id) }
+                                    )
+                                }
+                            }
+
+                            renderPagingFooter(
+                                isPaging = hobbyData.isPaging,
+                                hasMore = hobbyData.hasMore,
+                                errorMessage = hobbyData.errorMessage,
+                                onRetryPaging = onLoadNextPage
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 顶层：悬浮/吸顶控制栏（对齐 HomeFeed/Follow 架构：置顶贴靠，平滑随手势 tuck 进顶栏下方）
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
                 .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+                .clipToBounds()
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            // 控制栏：状态筛选单选下拉胶囊 + 排序选择（含升降序）+ 高级筛选
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onSizeChanged { controlBarHeightPx = it.height },
+                    .onSizeChanged { size ->
+                        if (size.height > 0) controlBarHeightPx = size.height.toFloat()
+                    },
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Row(
@@ -280,113 +426,16 @@ internal fun HobbyCollectSubPage(
                 }
             }
 
-            // 批量取消收藏失败提示（宿主 snackbar 只消费 errorMessage，本字段就地展示）
+            // 批量取消收藏失败提示
             if (uiState.batchCancelError != null) {
                 BatchErrorBanner(
                     message = uiState.batchCancelError,
                     onDismiss = onDismissBatchError
                 )
             }
-
-            // 下拉刷新与列表内容
-            PullToRefreshBox(
-                isRefreshing = hobbyData.isRefreshing,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                when {
-                    hobbyData.isLoading && hobbyData.items.isEmpty() -> {
-                        LoadingCollectView()
-                    }
-
-                    hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {
-                        ErrorCollectView(
-                            errorMessage = hobbyData.errorMessage,
-                            onRetry = onRetry
-                        )
-                    }
-
-                    // 服务端回「用户已隐藏内容」语义：渲染专用空态而非通用错误态
-                    // 副标题复用全模块统一常量（原版 strings.xml:1372 text_empty_user_hide）
-                    hobbyData.isContentHidden && hobbyData.items.isEmpty() -> {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.VisibilityOff,
-                            title = "用户已隐藏内容",
-                            subtitle = COLLECT_CONTENT_HIDDEN_TEXT
-                        )
-                    }
-
-                    hobbyData.items.isEmpty() -> {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.Inbox,
-                            title = "未收藏周边~",
-                            subtitle = "可以在详情页将感兴趣的条目加入收藏"
-                        )
-                    }
-
-                    else -> {
-                        LazyVerticalGrid(
-                            columns = gridColumns,
-                            state = gridState,
-                            contentPadding = PaddingValues(
-                                start = 12.dp,
-                                top = 8.dp,
-                                end = 12.dp,
-                                bottom = 16.dp + navBarBottomPadding +
-                                    // 多选悬浮条会盖住末尾几行，额外让出高度
-                                    if (isSelectionMode) 76.dp else 0.dp
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(
-                                items = hobbyData.items,
-                                key = { item -> "hobby_${item.actualItemId}_${item.id}" }
-                            ) { item ->
-                                val isSelected = item.id in selectedIds
-                                val onCardClick: () -> Unit = if (isSelectionMode) {
-                                    { onToggleSelect(item.id) }
-                                } else {
-                                    { onItemClick(item) }
-                                }
-
-                                if (uiState.isListView) {
-                                    HobbyCollectListCard(
-                                        item = item,
-                                        fields = listFields,
-                                        isSelectionEnabled = isSelectionEnabled,
-                                        selectionMode = isSelectionMode,
-                                        isSelected = isSelected,
-                                        onClick = onCardClick,
-                                        onLongClick = { onToggleSelect(item.id) }
-                                    )
-                                } else {
-                                    HobbyCollectGridCard(
-                                        item = item,
-                                        badgeField = gridBadgeField,
-                                        isSelectionEnabled = isSelectionEnabled,
-                                        selectionMode = isSelectionMode,
-                                        isSelected = isSelected,
-                                        onClick = onCardClick,
-                                        onLongClick = { onToggleSelect(item.id) }
-                                    )
-                                }
-                            }
-
-                            renderPagingFooter(
-                                isPaging = hobbyData.isPaging,
-                                hasMore = hobbyData.hasMore,
-                                errorMessage = hobbyData.errorMessage,
-                                onRetryPaging = onLoadNextPage
-                            )
-                        }
-                    }
-                }
-            }
         }
 
-        // 多选底部悬浮操作条（仅本人 + 仅多选态）
+        // 3. 多选底部悬浮操作条（仅本人 + 仅多选态）
         if (isSelectionMode) {
             SelectionBottomBar(
                 selectedCount = selectedCount,
