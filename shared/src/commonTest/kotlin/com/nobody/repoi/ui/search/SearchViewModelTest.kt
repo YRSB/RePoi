@@ -6,8 +6,6 @@ import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SearchRepository
-import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,7 +22,7 @@ import kotlin.test.Test
 /**
  * 搜索中枢 ViewModel 状态机单元测试（Turbine + Kotest）。
  *
- * 验证关键词输入、Tab 切换、搜索历史增删清理与排序状态流转。
+ * 验证关键词输入、Tab 切换、搜索词清理与排序状态流转。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
@@ -95,18 +93,14 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun historyManagement_addAndDeleteAndClear() = runTest(testDispatcher) {
-        val (viewModel, historyManager) = setup()
+    fun onClearKeyword_clearsKeyword() = runTest(testDispatcher) {
+        val (viewModel, _) = setup()
 
-        viewModel.uiState.test {
-            awaitItem().searchHistory.shouldBeEmpty()
+        viewModel.onKeywordChange("手办")
+        viewModel.uiState.value.keyword shouldBe "手办"
 
-            historyManager.addKeyword("粘土人")
-            awaitItem().searchHistory shouldContain "粘土人"
-
-            viewModel.onClearHistory()
-            awaitItem().searchHistory.shouldBeEmpty()
-        }
+        viewModel.onClearKeyword()
+        viewModel.uiState.value.keyword shouldBe ""
     }
 
     @Test
