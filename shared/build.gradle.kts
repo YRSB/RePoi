@@ -163,17 +163,19 @@ dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
 
-// M7 re-scope: quarantine ViewModel-behavior tests from CI unit-test gates.
-// Rationale: KMP-ported VM tests assert Main-dispatcher timing + full-stack
-// wiring (real repos/MockEngine/real DataStore) that proved brittle across two
-// fix cycles (52 RED → 37 residual + 8 new — whack-a-mole), mirroring the
-// PodAura precedent (3/126 *ViewModel*Test, CI runs packaging only, no test
-// tasks). Behavioral coverage for VMs moves to the on-device E2E walkthrough
-// (127.0.0.1:16416); repository/model/util tests stay CI-gating (real API
-// contracts). Test files are KEPT on disk; porting of remaining VM tests stops.
-// See TEST_INFRA.md (quarantine list) when the C-docs batch lands.
 tasks.withType<Test>().configureEach {
     filter {
-        excludeTestsMatching("*ViewModel*Test")
+        // M7 遗留测试：依赖 MockApi 网络引擎与 DataStore 磁盘 IO 异步时序竞争，待 Phase 3 逐步重构为 Turbine/Fake 纯状态机测试
+        excludeTestsMatching("*AlbumRankListViewModelTest*")
+        excludeTestsMatching("*AlbumViewModelTest*")
+        excludeTestsMatching("*HobbyDetailViewModel*")
+        excludeTestsMatching("*HomeFeedViewModelTest*")
+        excludeTestsMatching("*LoginViewModelTest*")
+        excludeTestsMatching("*MessageBlockViewModelTest*")
+        excludeTestsMatching("*MessageCenterViewModelTest*")
+        excludeTestsMatching("*MessageChatViewModelTest*")
+        excludeTestsMatching("*MessageNoticeViewModelTest*")
+        excludeTestsMatching("*SettingsViewModelTest*")
     }
 }
+
