@@ -14,7 +14,6 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -49,7 +48,7 @@ class CommentDetailViewModelTest {
         val stickerRepo = StickerRepository(mockApi.api())
         val userRepo = UserRepository(mockApi.api(), tokenManager)
         val viewModel = CommentDetailViewModel(
-            commentRepository = commentRepo,
+            repository = commentRepo,
             stickerRepository = stickerRepo,
             tokenManager = tokenManager,
             userRepository = userRepo,
@@ -58,35 +57,35 @@ class CommentDetailViewModelTest {
     }
 
     @Test
-    fun onInputTextChange_updatesUiStateInputText() = runTest(testDispatcher) {
+    fun onInputTextChanged_updatesUiStateInputText() = runTest(testDispatcher) {
         val (_, viewModel, _) = setup()
 
         viewModel.uiState.test {
             awaitItem().inputText shouldBe ""
 
-            viewModel.onInputTextChange("第一条回复测试")
+            viewModel.onInputTextChanged("第一条回复测试")
             awaitItem().inputText shouldBe "第一条回复测试"
 
-            viewModel.onInputTextChange("")
+            viewModel.onInputTextChanged("")
             awaitItem().inputText shouldBe ""
         }
     }
 
     @Test
-    fun setReplyTargetAndCancelReply_updatesStateCorrectly() = runTest(testDispatcher) {
+    fun replyTarget_settingAndClearing_updatesStateCorrectly() = runTest(testDispatcher) {
         val (_, viewModel, _) = setup()
-        val reply = CommentReplyItem(id = 101L, content = "被回复的内容", toUserId = 888L)
+        val reply = CommentReplyItem(id = 101L, content = "被回复的内容")
 
-        viewModel.setReplyTarget(reply)
+        viewModel.onReplyTargetChanged(reply)
         viewModel.uiState.value.replyTarget.shouldNotBeNull()
         viewModel.uiState.value.replyTarget?.id shouldBe 101L
 
-        viewModel.cancelReply()
+        viewModel.clearReplyTarget()
         viewModel.uiState.value.replyTarget.shouldBeNull()
     }
 
     @Test
-    fun loadThread_withSnapshot_prePopulatesComment() = runTest(testDispatcher) {
+    fun loadDetail_withSnapshot_prePopulatesComment() = runTest(testDispatcher) {
         val (mockApi, viewModel, _) = setup()
         mockApi.route(
             "api/comment/info",
@@ -96,7 +95,7 @@ class CommentDetailViewModelTest {
         val snapshot = CommentItem(id = 1001L, content = "快照测试评论")
         val param = CommentDetailNavParam(commentId = 1001L, relateNodeId = 500L, snapshot = snapshot)
 
-        viewModel.loadThread(param)
+        viewModel.loadDetail(param)
         viewModel.uiState.value.comment?.content shouldBe "快照测试评论"
         viewModel.uiState.value.commentId shouldBe 1001L
         viewModel.uiState.value.relateNodeId shouldBe 500L

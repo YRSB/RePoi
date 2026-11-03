@@ -63,39 +63,39 @@ class UserCollectViewModelTest {
     fun initialSetup_matchesNavParameters() = runTest(testDispatcher) {
         val viewModel = setup(userId = 888L)
 
-        viewModel.uiState.value.userId shouldBe 888L
-        viewModel.uiState.value.category shouldBe UserCollectCategory.HOBBY
-        viewModel.uiState.value.isSelectionMode shouldBe false
-        viewModel.uiState.value.selectedNodeIds.shouldBeEmpty()
+        viewModel.userId shouldBe 888L
+        viewModel.uiState.value.selectedCategory shouldBe UserCollectCategory.HOBBY
+        viewModel.uiState.value.hobbySelectionMode shouldBe false
+        viewModel.uiState.value.hobbySelectedIds.shouldBeEmpty()
     }
 
     @Test
-    fun selectCategory_updatesCategoryState() = runTest(testDispatcher) {
+    fun switchCategory_updatesCategoryState() = runTest(testDispatcher) {
         val viewModel = setup()
 
         viewModel.uiState.test {
-            awaitItem().category shouldBe UserCollectCategory.HOBBY
+            awaitItem().selectedCategory shouldBe UserCollectCategory.HOBBY
 
-            viewModel.selectCategory(UserCollectCategory.ALBUM)
-            awaitItem().category shouldBe UserCollectCategory.ALBUM
+            viewModel.switchCategory(UserCollectCategory.ALBUM)
+            awaitItem().selectedCategory shouldBe UserCollectCategory.ALBUM
 
-            viewModel.selectCategory(UserCollectCategory.WORKS)
-            awaitItem().category shouldBe UserCollectCategory.WORKS
+            viewModel.switchCategory(UserCollectCategory.WORKS)
+            awaitItem().selectedCategory shouldBe UserCollectCategory.WORKS
         }
     }
 
     @Test
-    fun selectCollectState_updatesStateKey() = runTest(testDispatcher) {
+    fun switchCollectState_updatesStateKey() = runTest(testDispatcher) {
         val viewModel = setup()
 
         viewModel.uiState.test {
-            awaitItem().collectState shouldBe "all"
+            awaitItem().collectState shouldBe CollectStateOption.DEFAULT
 
-            viewModel.selectCollectState("care")
-            awaitItem().collectState shouldBe "care"
+            viewModel.switchCollectState(CollectStateOption.CARE)
+            awaitItem().collectState shouldBe CollectStateOption.CARE
 
-            viewModel.selectCollectState("own")
-            awaitItem().collectState shouldBe "own"
+            viewModel.switchCollectState(CollectStateOption.BUY)
+            awaitItem().collectState shouldBe CollectStateOption.BUY
         }
     }
 
@@ -104,13 +104,13 @@ class UserCollectViewModelTest {
         val viewModel = setup()
 
         viewModel.uiState.test {
-            awaitItem().isSelectionMode shouldBe false
+            awaitItem().hobbySelectionMode shouldBe false
 
             viewModel.toggleSelectionMode()
-            awaitItem().isSelectionMode shouldBe true
+            awaitItem().hobbySelectionMode shouldBe true
 
             viewModel.toggleSelectionMode()
-            awaitItem().isSelectionMode shouldBe false
+            awaitItem().hobbySelectionMode shouldBe false
         }
     }
 }

@@ -24,7 +24,7 @@ import kotlin.test.Test
 /**
  * 搜索中枢 ViewModel 状态机单元测试（Turbine + Kotest）。
  *
- * 验证关键词输入、Tab 切换、搜索历史增删清理与提交状态流转。
+ * 验证关键词输入、Tab 切换、搜索历史增删清理与排序状态流转。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
@@ -68,26 +68,26 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun selectTab_updatesSelectedTab() = runTest(testDispatcher) {
+    fun onSelectTab_updatesSelectedTab() = runTest(testDispatcher) {
         val (viewModel, _) = setup()
 
         viewModel.uiState.test {
             awaitItem().selectedTab shouldBe SearchTab.HOBBY
 
-            viewModel.selectTab(SearchTab.USER)
+            viewModel.onSelectTab(SearchTab.USER)
             awaitItem().selectedTab shouldBe SearchTab.USER
 
-            viewModel.selectTab(SearchTab.ALBUM)
+            viewModel.onSelectTab(SearchTab.ALBUM)
             awaitItem().selectedTab shouldBe SearchTab.ALBUM
         }
     }
 
     @Test
-    fun submitSearch_withBlankKeyword_doesNotSetSubmitted() = runTest(testDispatcher) {
+    fun onSearch_withBlankKeyword_doesNotSetSubmitted() = runTest(testDispatcher) {
         val (viewModel, _) = setup()
 
         viewModel.onKeywordChange("   ")
-        viewModel.submitSearch()
+        viewModel.onSearch()
         advanceUntilIdle()
 
         viewModel.uiState.value.isSubmitted shouldBe false
@@ -101,23 +101,23 @@ class SearchViewModelTest {
         historyManager.addKeyword("手办")
         advanceUntilIdle()
 
-        viewModel.deleteHistoryItem("手办")
+        viewModel.onRemoveHistory("手办")
         advanceUntilIdle()
 
-        viewModel.clearHistory()
+        viewModel.onClearHistory()
         advanceUntilIdle()
 
         viewModel.uiState.value.searchHistory.shouldBeEmpty()
     }
 
     @Test
-    fun onOrderChange_updatesOrderState() = runTest(testDispatcher) {
+    fun onSortChange_updatesOrderState() = runTest(testDispatcher) {
         val (viewModel, _) = setup()
 
         viewModel.uiState.test {
             awaitItem().order shouldBe ""
 
-            viewModel.onOrderChange("releaseDate")
+            viewModel.onSortChange("releaseDate")
             awaitItem().order shouldBe "releaseDate"
         }
     }
