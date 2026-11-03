@@ -11,6 +11,7 @@ import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.util.CollectInvalidationBus
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -38,6 +39,7 @@ class UserCollectViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
