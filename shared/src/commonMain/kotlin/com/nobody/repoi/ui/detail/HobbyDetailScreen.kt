@@ -202,9 +202,12 @@ fun HobbyDetailScreen(
         val detail = uiState.detail
         val initialSkeleton = uiState.isInitialLoading && detail == null
         val heroImages = buildList {
-            val cover = detail?.cover ?: navParam.initialCover
-            if (!cover.isNullOrBlank()) {
-                add(CdnUrlUtils.getRawCoverUrl(cover))
+            val rawCoverPath = resolveEffectiveCoverPath(
+                explicitCover = detail?.cover ?: navParam.initialCover,
+                officialPics = uiState.officialPics
+            )
+            if (!rawCoverPath.isNullOrBlank()) {
+                add(CdnUrlUtils.getRawCoverUrl(rawCoverPath))
             }
             uiState.officialPics.take(8).forEach { pic ->
                 val url = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
@@ -559,8 +562,11 @@ private fun HobbyHeaderOfficialSection(
     onMakerClick: (() -> Unit)? = null,
     isPicsLoading: Boolean = false
 ) {
-    val cover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
-    val coverUrl = cover?.let { CdnUrlUtils.getCoverUrl(it) } ?: ""
+    val effectiveCover = resolveEffectiveCoverPath(
+        explicitCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null },
+        officialPics = officialPics
+    )
+    val coverUrl = effectiveCover?.let { CdnUrlUtils.getCoverUrl(it) } ?: ""
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -568,7 +574,10 @@ private fun HobbyHeaderOfficialSection(
         // 1. 底层封面图高斯模糊背景 (Atmospheric Frosted Backdrop)
         if (coverUrl.isNotBlank()) {
             AsyncImage(
-                model = coverUrl,
+                model = ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -632,20 +641,73 @@ private fun HobbyHeaderOfficialSection(
                         )
                         .clickable(onClick = onCoverClick)
                 ) {
-                    if (coverUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = coverUrl,
-                            contentDescription = "手办完整封面",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        ShimmerHost {
-                            Box(
+                    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+                    when {
+                        coverUrl.isNotBlank() && !loadFailed -> {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(coverUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "手办完整封面",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                onError = { loadFailed = true }
+                            )
+                        }
+                        coverUrl.isNotBlank() && loadFailed -> {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .shimmerBackground()
-                            )
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.BrokenImage,
+                                    contentDescription = "封面加载失败",
+                                    tint = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "加载失败",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+                        detail == null -> {
+                            ShimmerHost {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .shimmerBackground()
+                                )
+                            }
+                        }
+                        else -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PhotoLibrary,
+                                    contentDescription = "暂无封面",
+                                    tint = if (isDark) Color.White.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "暂无封面",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.45f)
+                                )
+                            }
                         }
                     }
                 }
@@ -1790,5 +1852,25 @@ private fun DetailErrorState(
                 Text("点击重新加载")
             }
         }
+    }
+}
+
+/**
+ * 解析手办详情页的有效封面路径。
+ *
+ * 优先级策略：
+ * 1. 显式指定的封面（条目自身 cover 或路由透传 initialCover）；
+ * 2. 官图智能回退（首张有效官方定妆照）；
+ * 3. 若均不存在则返回 null（由 UI 层渲染“暂无封面”缺省态）。
+ */
+fun resolveEffectiveCoverPath(
+    explicitCover: String?,
+    officialPics: List<PicItem> = emptyList()
+): String? {
+    val cleanExplicit = explicitCover?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
+    if (cleanExplicit != null) return cleanExplicit
+
+    return officialPics.firstNotNullOfOrNull { pic ->
+        pic.imagePath?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
     }
 }
