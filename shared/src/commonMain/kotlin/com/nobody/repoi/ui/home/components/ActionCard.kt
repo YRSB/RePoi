@@ -571,7 +571,7 @@ private fun UserFeedHeader(
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .then(
                     if (isUserClickable) {
-                        Modifier.clickable { onUserClick?.invoke(targetUserId) }
+                        Modifier.clickable { onUserClick.invoke(targetUserId) }
                     } else Modifier
                 ),
             contentAlignment = Alignment.Center
@@ -624,7 +624,7 @@ private fun UserFeedHeader(
                             .weight(1f, fill = false)
                             .then(
                                 if (isUserClickable) {
-                                    Modifier.clickable { onUserClick?.invoke(targetUserId) }
+                                    Modifier.clickable { onUserClick.invoke(targetUserId) }
                                 } else Modifier
                             )
                     )
@@ -700,7 +700,7 @@ private fun ActionCardBottomStats(
     ) {
         if (hasFigureName) {
             Text(
-                text = figureName!!,
+                text = figureName,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

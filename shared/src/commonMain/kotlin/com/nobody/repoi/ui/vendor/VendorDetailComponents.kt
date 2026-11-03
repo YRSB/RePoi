@@ -221,13 +221,13 @@ internal fun VendorHeaderSection(
                         }
 
                         // 3. 地区胶囊
-                        if (!company?.region.isNullOrBlank()) {
+                        if (!company.region.isNullOrBlank()) {
                             Surface(
                                 shape = ExpressiveTokens.PillShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
-                                    text = company?.region.orEmpty(),
+                                    text = company.region.orEmpty(),
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)

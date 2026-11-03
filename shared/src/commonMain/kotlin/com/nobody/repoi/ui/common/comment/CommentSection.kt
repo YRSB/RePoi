@@ -625,7 +625,7 @@ private fun CommentPraiseButton(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.then(
             if (praiseClickable) {
-                Modifier.clickable { interaction.onPraiseClick?.invoke(comment.id) }
+                Modifier.clickable { interaction.onPraiseClick.invoke(comment.id) }
             } else {
                 Modifier
             }
@@ -670,7 +670,7 @@ fun replyRelationText(
             }
             append(" ")
             withStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold)) {
-                append(toName ?: "")
+                append(toName)
             }
         }
         append("：")
@@ -861,7 +861,7 @@ fun replyDetailContentText(
             }
             append(" ")
             withStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold)) {
-                append(toName ?: "")
+                append(toName)
             }
             append("：")
         }

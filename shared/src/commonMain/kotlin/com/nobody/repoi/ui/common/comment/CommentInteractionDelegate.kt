@@ -416,7 +416,7 @@ class CommentInteractionDelegate(
                 hasMoreComments = ListPaging.hasMoreByFullPage(latestList.size, pageSize),
                 commentsError = if (latestResult.isFailure && latestList.isEmpty()) {
                     val err = latestResult.exceptionOrNull()
-                    if (err is ApiException && (err.code == -9007 || err.message?.contains("找不到该评论") == true)) {
+                    if (err is ApiException && (err.code == -9007 || err.message.contains("找不到该评论"))) {
                         null
                     } else {
                         err?.message ?: "拉取评论失败"
@@ -459,7 +459,7 @@ class CommentInteractionDelegate(
                 }
             },
             onFailure = { err ->
-                if (err is ApiException && (err.code == -9007 || err.message?.contains("找不到该评论") == true)) {
+                if (err is ApiException && (err.code == -9007 || err.message.contains("找不到该评论"))) {
                     stateFlow.update { current ->
                         @Suppress("UNCHECKED_CAST")
                         current.copyWithPaged(

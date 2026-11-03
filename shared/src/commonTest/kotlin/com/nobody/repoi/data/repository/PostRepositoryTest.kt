@@ -97,7 +97,7 @@ class PostRepositoryTest {
         assertTrue(result.isFailure)
         val ex = result.exceptionOrNull()
         assertTrue(ex is ApiException)
-        assertEquals(404, (ex as ApiException).code)
+        assertEquals(404, ex.code)
         assertEquals("帖子不存在或已删除", ex.message)
     }
 
@@ -260,7 +260,7 @@ class PostRepositoryTest {
         assertTrue(result.isFailure)
         val ex = result.exceptionOrNull()
         assertTrue(ex is ApiException)
-        assertEquals(4001, (ex as ApiException).code)
+        assertEquals(4001, ex.code)
     }
 
     @Test

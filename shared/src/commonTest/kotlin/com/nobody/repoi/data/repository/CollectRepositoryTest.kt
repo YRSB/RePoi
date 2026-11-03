@@ -55,7 +55,7 @@ class CollectRepositoryTest {
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
-        assertEquals(500, (exception as ApiException).code)
+        assertEquals(500, exception.code)
     }
 
     @Test
@@ -99,9 +99,9 @@ class CollectRepositoryTest {
         assertEquals(2, data?.state)
         assertEquals("在看", data?.stateText)
         assertTrue(data?.isCollected == true)
-        assertEquals(8, data?.current)
-        assertEquals("追到第八集", data?.actualComment)
-        assertEquals("热血,校园", data?.tagStr)
+        assertEquals(8, data.current)
+        assertEquals("追到第八集", data.actualComment)
+        assertEquals("热血,校园", data.tagStr)
 
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)

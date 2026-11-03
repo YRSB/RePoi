@@ -29,7 +29,7 @@ class FeedActionDispatcherTest {
         )
         val dest1 = FeedActionDispatcher.resolveDestination(companyItem)
         assertTrue(dest1 is FeedTargetDestination.Vendor)
-        val vendor1 = (dest1 as FeedTargetDestination.Vendor).param
+        val vendor1 = dest1.param
         assertEquals(200L, vendor1.companyId)
         assertEquals(100L, vendor1.companyNodeId)
         assertEquals("Good Smile Company", vendor1.initialName)
@@ -47,7 +47,7 @@ class FeedActionDispatcherTest {
         )
         val dest2 = FeedActionDispatcher.resolveDestination(vendorItem)
         assertTrue(dest2 is FeedTargetDestination.Vendor)
-        val vendor2 = (dest2 as FeedTargetDestination.Vendor).param
+        val vendor2 = dest2.param
         assertEquals(201L, vendor2.companyId)
         assertEquals("ALTER", vendor2.initialName)
 
@@ -63,7 +63,7 @@ class FeedActionDispatcherTest {
         )
         val dest3 = FeedActionDispatcher.resolveDestination(categoryVendorItem)
         assertTrue(dest3 is FeedTargetDestination.Vendor)
-        val vendor3 = (dest3 as FeedTargetDestination.Vendor).param
+        val vendor3 = dest3.param
         assertEquals(300L, vendor3.companyId)
         assertEquals(300L, vendor3.companyNodeId)
     }
@@ -83,7 +83,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(elementItem)
         assertTrue(dest is FeedTargetDestination.Character)
-        val charParam = (dest as FeedTargetDestination.Character).param
+        val charParam = dest.param
         assertEquals(89934L, charParam.characterId)
         assertEquals(34754957L, charParam.characterNodeId)
     }
@@ -101,7 +101,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(characterItem)
         assertTrue(dest is FeedTargetDestination.Character)
-        val charParam = (dest as FeedTargetDestination.Character).param
+        val charParam = dest.param
         assertEquals(601L, charParam.characterId)
         assertEquals(501L, charParam.characterNodeId)
         assertEquals("初音未来", charParam.initialName)
@@ -120,7 +120,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(seriesItem)
         assertTrue(dest is FeedTargetDestination.Series)
-        val seriesParam = (dest as FeedTargetDestination.Series).param
+        val seriesParam = dest.param
         assertEquals(801L, seriesParam.seriesId)
         assertEquals(701L, seriesParam.seriesNodeId)
         assertEquals("Figma", seriesParam.initialName)
@@ -139,7 +139,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(personItem)
         assertTrue(dest is FeedTargetDestination.Person)
-        val personParam = (dest as FeedTargetDestination.Person).param
+        val personParam = dest.param
         assertEquals(1001L, personParam.personId)
         assertEquals(901L, personParam.personNodeId)
         assertEquals("花泽香菜", personParam.initialName)
@@ -158,7 +158,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(worksItem)
         assertTrue(dest is FeedTargetDestination.Works)
-        val worksParam = (dest as FeedTargetDestination.Works).param
+        val worksParam = dest.param
         assertEquals(1201L, worksParam.worksId)
         assertEquals("命运石之门", worksParam.initialName)
     }
@@ -176,7 +176,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(albumItem)
         assertTrue(dest is FeedTargetDestination.Album)
-        val albumParam = (dest as FeedTargetDestination.Album).param
+        val albumParam = dest.param
         assertEquals(1301L, albumParam.albumId)
         assertEquals("手办实物摄影相册", albumParam.initialTitle)
     }
@@ -195,7 +195,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(hobbyItem)
         assertTrue(dest is FeedTargetDestination.Hobby)
-        val hobbyParam = (dest as FeedTargetDestination.Hobby).param
+        val hobbyParam = dest.param
         assertEquals(1501L, hobbyParam.itemId)
         assertEquals("初音未来 韶华手办", hobbyParam.initialName)
         assertEquals("/cover/miku.jpg", hobbyParam.initialCover)
@@ -213,7 +213,7 @@ class FeedActionDispatcherTest {
         )
         val dest = FeedActionDispatcher.resolveDestination(userItem)
         assertTrue(dest is FeedTargetDestination.User)
-        assertEquals(888L, (dest as FeedTargetDestination.User).userId)
+        assertEquals(888L, dest.userId)
     }
 
     @Test

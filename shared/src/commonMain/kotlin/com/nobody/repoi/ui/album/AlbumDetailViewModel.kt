@@ -259,7 +259,7 @@ class AlbumDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isExHobbyLoading = true) }
             val result = exHobbyRepository.getPictures(id = albumId, page = 1)
-            val pics = result?.getOrNull() ?: emptyList()
+            val pics = result.getOrNull() ?: emptyList()
             _uiState.update {
                 it.copy(
                     isExHobbyLoading = false,

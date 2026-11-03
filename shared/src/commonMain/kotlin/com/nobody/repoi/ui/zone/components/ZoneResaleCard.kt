@@ -132,7 +132,7 @@ fun ZoneResaleCard(
                                 val ratio = size.width / size.height
                                 if (ratio in 0.2f..5.0f && kotlin.math.abs(ratio - imageRatio) > 0.01f) {
                                     imageRatio = ratio
-                                    coverUrl?.let { ImageAspectRatioCache[it] = ratio }
+                                    ImageAspectRatioCache[coverUrl] = ratio
                                 }
                             }
                         },
@@ -182,7 +182,7 @@ fun ZoneResaleCard(
                                 .weight(1f, fill = false)
                                 .then(
                                     if (isUserClickable) {
-                                        Modifier.clickable { onUserClick?.invoke(targetUserId) }
+                                        Modifier.clickable { onUserClick.invoke(targetUserId) }
                                     } else Modifier
                                 )
                         ) {

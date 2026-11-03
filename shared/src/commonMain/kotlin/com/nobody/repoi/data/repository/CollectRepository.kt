@@ -108,9 +108,7 @@ class CollectRepository(
      */
     suspend fun collectItemAdd(nodeId: Long): Result<Unit> = runCatching {
         val response = api.collectItemAdd(id = nodeId)
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "收藏失败")
         }
     }
@@ -120,9 +118,7 @@ class CollectRepository(
      */
     suspend fun collectItemDel(nodeId: Long): Result<Unit> = runCatching {
         val response = api.collectItemDel(id = nodeId)
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")
         }
     }
@@ -140,9 +136,7 @@ class CollectRepository(
         // 服务端要求 JSON 数组字符串，如 "[1,2,3]"
         val idArr = ids.joinToString(prefix = "[", postfix = "]", separator = ",")
         val response = api.cancelCollectBatch(idArr = idArr)
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "批量取消收藏失败")
         }
     }
@@ -199,9 +193,7 @@ class CollectRepository(
             comment = comment,
             state = state
         )
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "保存作品收藏失败")
         }
     }
@@ -214,9 +206,7 @@ class CollectRepository(
             itemType = CollectConstants.WORKS_ITEM_TYPE,
             itemId = worksId
         )
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消作品收藏失败")
         }
     }
@@ -267,9 +257,7 @@ class CollectRepository(
             userReason = content,
             type = type
         )
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "举报提交失败")
         }
     }

@@ -94,11 +94,9 @@ fun ResaleMoreBottomSheet(
     modifier: Modifier = Modifier
 ) {
     val openExternalLink = rememberExternalLinkOpener()
-    val sheetState = rememberModalBottomSheetState()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
         modifier = modifier
     ) {
         Column(

@@ -281,7 +281,7 @@ fun AlbumScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     AlbumErrorState(
-                        errorMessage = uiState.errorMessage ?: "加载失败",
+                        errorMessage = uiState.errorMessage,
                         onRetry = viewModel::retry
                     )
                 }

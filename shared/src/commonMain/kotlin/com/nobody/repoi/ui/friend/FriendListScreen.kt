@@ -476,7 +476,7 @@ private fun PraiseItemCard(
     val relate = item.relateItem
     val isAlbum = relate?.isAlbum == true
     val targetItemId = if (isAlbum) {
-        relate?.actualAlbumId ?: 0L
+        relate.actualAlbumId
     } else {
         relate?.actualHobbyId ?: 0L
     }
