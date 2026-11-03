@@ -79,7 +79,7 @@ import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.launch
 
 /** 周边页滚动保存键的内容维度，生产与测试共用 */
-internal fun hobbyScrollKeyInputs(uiState: UserCollectUiState): Array<out Any?> = arrayOf(
+internal fun hobbyScrollKeyInputs(uiState: UserCollectUiState): Array<out Any?> = arrayOf<Any?>(
     uiState.collectState,
     uiState.order,
     uiState.sortType,

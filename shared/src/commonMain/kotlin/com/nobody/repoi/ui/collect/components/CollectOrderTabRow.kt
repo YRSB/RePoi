@@ -88,10 +88,10 @@ internal fun CollectOrderTabRow(
                         .weight(1f)
                         .semantics {
                             role = Role.RadioButton
-                            selected = isSelected
+                            this.selected = isSelected
                         },
                     shapes = when {
-                        titles.size == 1 -> ToggleButtonDefaults.shapesFor(ToggleButtonDefaults.size)
+                        titles.size == 1 -> ToggleButtonDefaults.shapesFor(40.dp)
                         index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                         index == titles.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()

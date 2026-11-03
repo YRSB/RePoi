@@ -73,7 +73,7 @@ internal fun worksScrollKeyInputs(
     worksState: Int,
     worksOrderAsc: Boolean,
     worksTag: String?,
-): Array<out Any?> = arrayOf(worksState, worksOrderAsc, worksTag)
+): Array<out Any?> = arrayOf<Any?>(worksState, worksOrderAsc, worksTag)
 
 /**
  * 作品收藏子页（原版 `UserCollectWorksSubFragment` + `UserCollectWorksFragment`）。

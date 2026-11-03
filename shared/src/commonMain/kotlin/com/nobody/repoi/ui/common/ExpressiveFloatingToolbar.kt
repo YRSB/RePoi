@@ -36,7 +36,7 @@ import com.nobody.repoi.ui.theme.ExpressiveTokens
  * 本组件不再自绘容器，直接委托官方 `HorizontalFloatingToolbar`：
  * - 容器形状与展开态阴影使用设计系统令牌，容器色固定为 `surfaceContainerHigh`，
  *   与官方 `standardFloatingToolbarColors()` 的高对比画报语义一致；
- * - 内容内边距收敛为 8dp / 6dp，避免官方默认 16dp 与按钮内边距叠加导致窄屏裁切；
+ * - 内容内边距收敛为 8dp / 6dp，避免多层内边距叠加导致窄屏裁切；
  * - 内容超出可用宽度时可横向滚动，官方容器 `clip = true` 不再直接裁掉末尾操作；
  * - 展开态固定为 `expanded = true`；需要随滚动隐藏时由调用方传入官方 `scrollBehavior`。
  *
