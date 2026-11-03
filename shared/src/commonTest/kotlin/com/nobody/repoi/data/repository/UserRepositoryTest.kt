@@ -305,7 +305,7 @@ class UserRepositoryTest {
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
-        assertEquals(4001, (exception as ApiException).code)
+        assertEquals(4001, exception.code)
         assertEquals(1, tokenManager.clearTokenCalls)
     }
 
@@ -786,7 +786,7 @@ class UserRepositoryTest {
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
-        assertEquals(4001, (exception as ApiException).code)
+        assertEquals(4001, exception.code)
 
         assertEquals(1, tokenManager.clearTokenCalls)
         assertNull(repository.currentUserProfile.value)
@@ -908,8 +908,8 @@ class UserRepositoryTest {
         // 验证缓存流更新
         val currentProfile = repository.currentUserProfile.value
         assertNotNull(currentProfile)
-        assertEquals("新签名", currentProfile?.sign)
-        assertEquals("新昵称", currentProfile?.nickname)
+        assertEquals("新签名", currentProfile.sign)
+        assertEquals("新昵称", currentProfile.nickname)
     }
 
     @Test

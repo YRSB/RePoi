@@ -115,7 +115,7 @@ fun ExpressiveToolbarButton(
                     )
                 }
                 Text(
-                    text = text!!,
+                    text = text,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor

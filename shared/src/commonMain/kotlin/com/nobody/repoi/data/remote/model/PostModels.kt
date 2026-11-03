@@ -213,7 +213,7 @@ data class DiscussItem(
             val resolvedToUser = item.toUser?.let { tu ->
                 if (tu.nickname.isNullOrBlank() && tu.atRef != null) {
                     userMap[tu.atRef] ?: tu
-                } else if (tu.nickname.isNullOrBlank() && tu.id == user?.id && user?.nickname != null) {
+                } else if (tu.nickname.isNullOrBlank() && user != null && tu.id == user.id && user.nickname != null) {
                     user
                 } else {
                     tu

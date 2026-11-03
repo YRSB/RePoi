@@ -88,7 +88,7 @@ class CharacterDetailViewModel(
                 _uiState.update {
                     it.copy(
                         isWorksLoading = false,
-                        works = worksResult?.getOrDefault(emptyList()) ?: emptyList()
+                        works = worksResult.getOrDefault(emptyList())
                     )
                 }
             }
@@ -99,7 +99,7 @@ class CharacterDetailViewModel(
                 _uiState.update {
                     it.copy(
                         isHobbysLoading = false,
-                        hobbys = hobbysResult?.getOrDefault(emptyList()) ?: emptyList()
+                        hobbys = hobbysResult.getOrDefault(emptyList())
                     )
                 }
             }
@@ -110,7 +110,7 @@ class CharacterDetailViewModel(
                 _uiState.update {
                     it.copy(
                         isAlbumsLoading = false,
-                        albums = albumsResult?.getOrDefault(emptyList()) ?: emptyList()
+                        albums = albumsResult.getOrDefault(emptyList())
                     )
                 }
             }
@@ -121,7 +121,7 @@ class CharacterDetailViewModel(
                 _uiState.update {
                     it.copy(
                         isRelevantLoading = false,
-                        relevantCharacters = relevantResult?.getOrDefault(emptyList()) ?: emptyList()
+                        relevantCharacters = relevantResult.getOrDefault(emptyList())
                     )
                 }
             }
@@ -133,7 +133,7 @@ class CharacterDetailViewModel(
                     _uiState.update {
                         it.copy(
                             isZonesLoading = false,
-                            zones = zonesResult?.getOrDefault(emptyList()) ?: emptyList()
+                            zones = zonesResult.getOrDefault(emptyList())
                         )
                     }
                 }

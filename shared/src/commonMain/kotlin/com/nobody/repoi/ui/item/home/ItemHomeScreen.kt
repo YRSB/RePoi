@@ -379,6 +379,7 @@ private fun QuickEntranceSection(
 ) {
     val today = todayLocalDate()
     val curYear = today.year
+    @Suppress("DEPRECATION")
     val curMonth = today.monthNumber
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -663,6 +664,7 @@ private fun todayLocalDate(timeZone: TimeZone = TimeZone.currentSystemDefault())
     Clock.System.todayIn(timeZone)
 
 @OptIn(ExperimentalTime::class)
+@Suppress("DEPRECATION")
 private fun ymd(date: kotlinx.datetime.LocalDate): String =
     "${date.year}-${date.monthNumber.toString().padStart(2, '0')}-${date.dayOfMonth.toString().padStart(2, '0')}"
 

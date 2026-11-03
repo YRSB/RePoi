@@ -59,7 +59,7 @@ class HtmlRichTextParserTest {
         assertEquals(1, linkAnnotations.size)
         val link = linkAnnotations.first().item
         assertTrue(link is LinkAnnotation.Url)
-        assertEquals("https://www.hpoi.net/hobby/123", (link as LinkAnnotation.Url).url)
+        assertEquals("https://www.hpoi.net/hobby/123", link.url)
     }
 
     @Test

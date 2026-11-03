@@ -269,9 +269,7 @@ class UserRepository(
      */
     suspend fun checkIn(): Result<Unit> = runCatching {
         val response = api.checkIn()
-        if (response.isSuccess || response.success) {
-            Unit
-        } else {
+        if (!response.isSuccess && !response.success) {
             throw ApiException(response.code, response.msg ?: "签到失败")
         }
     }
@@ -633,7 +631,6 @@ class UserRepository(
                     state = state
                 )
             )
-            Unit
         } else {
             if (response.isTokenExpired) {
                 tokenManager.clearToken()
@@ -711,7 +708,6 @@ class UserRepository(
             if (autoRefresh) {
                 getUserProfile()
             }
-            Unit
         } else {
             if (response.isTokenExpired) {
                 tokenManager.clearToken()

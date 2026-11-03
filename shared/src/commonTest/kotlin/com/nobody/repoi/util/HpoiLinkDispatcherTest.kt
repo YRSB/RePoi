@@ -28,7 +28,7 @@ class HpoiLinkDispatcherTest {
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
             assertTrue(route is HpoiRoute.Hobby, "Expected Hobby route for $url but was $route")
-            assertEquals(59570L, (route as HpoiRoute.Hobby).hobbyId)
+            assertEquals(59570L, route.hobbyId)
         }
     }
 
@@ -45,7 +45,7 @@ class HpoiLinkDispatcherTest {
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
             assertTrue(route is HpoiRoute.Album, "Expected Album route for $url but was $route")
-            assertEquals(8888L, (route as HpoiRoute.Album).albumId)
+            assertEquals(8888L, route.albumId)
         }
     }
 
@@ -62,7 +62,7 @@ class HpoiLinkDispatcherTest {
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
             assertTrue(route is HpoiRoute.Character, "Expected Character route for $url but was $route")
-            assertEquals(8110L, (route as HpoiRoute.Character).characterId)
+            assertEquals(8110L, route.characterId)
         }
     }
 
@@ -80,7 +80,7 @@ class HpoiLinkDispatcherTest {
         for (url in urls) {
             val route = HpoiLinkDispatcher.parse(url)
             assertTrue(route is HpoiRoute.Post, "Expected Post route for $url but was $route")
-            assertEquals(12345L, (route as HpoiRoute.Post).postId)
+            assertEquals(12345L, route.postId)
         }
     }
 
@@ -89,18 +89,18 @@ class HpoiLinkDispatcherTest {
         val external = "https://www.bilibili.com/video/BV1xx"
         val route = HpoiLinkDispatcher.parse(external)
         assertTrue(route is HpoiRoute.Web)
-        assertEquals(external, (route as HpoiRoute.Web).url)
+        assertEquals(external, route.url)
 
         val otherSiteWithHobbyPath = "https://example.com/hobby/59570"
         val otherRoute = HpoiLinkDispatcher.parse(otherSiteWithHobbyPath)
         assertTrue(otherRoute is HpoiRoute.Web)
-        assertEquals(otherSiteWithHobbyPath, (otherRoute as HpoiRoute.Web).url)
+        assertEquals(otherSiteWithHobbyPath, otherRoute.url)
     }
 
     @Test
     fun parse_blankUrl_returnsEmptyWebRoute() {
         val route = HpoiLinkDispatcher.parse("   ")
         assertTrue(route is HpoiRoute.Web)
-        assertTrue((route as HpoiRoute.Web).url.isEmpty())
+        assertTrue(route.url.isEmpty())
     }
 }

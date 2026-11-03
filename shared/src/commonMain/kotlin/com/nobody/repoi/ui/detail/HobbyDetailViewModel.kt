@@ -270,7 +270,7 @@ class HobbyDetailViewModel(
         if (!_uiState.value.isExHobbyEnabled) return
         _uiState.update { it.copy(isExHobbyLoading = true) }
         val result = exHobbyRepository.getPictures(id = id, page = 1)
-        val pics = result?.getOrNull() ?: emptyList()
+        val pics = result.getOrNull() ?: emptyList()
         _uiState.update {
             it.copy(
                 isExHobbyLoading = false,

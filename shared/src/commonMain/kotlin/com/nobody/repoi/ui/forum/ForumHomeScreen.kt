@@ -596,7 +596,7 @@ private fun ForumPostsPage(
                     contentType = "forum_posts_error"
                 ) {
                     ForumErrorPlaceholder(
-                        message = uiState.postsErrorMessage ?: "加载帖子失败",
+                        message = uiState.postsErrorMessage,
                         onRetry = onRetry
                     )
                 }

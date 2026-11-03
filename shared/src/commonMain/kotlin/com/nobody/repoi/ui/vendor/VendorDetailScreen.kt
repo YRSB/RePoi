@@ -171,7 +171,7 @@ fun VendorDetailScreen(
                     DetailTopNavigation(
                         isScrolled = isScrolledPastHeader,
                         title = company?.displayName ?: navParam.initialName ?: "厂商",
-                        subtitle = company?.name?.takeIf { it.isNotBlank() && it != company?.displayName },
+                        subtitle = company?.name?.takeIf { it.isNotBlank() && it != company.displayName },
                         onBack = onBack,
                         modifier = Modifier.fillMaxWidth()
                     )

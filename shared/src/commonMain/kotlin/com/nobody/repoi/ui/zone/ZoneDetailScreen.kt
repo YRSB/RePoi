@@ -10,7 +10,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -865,7 +864,7 @@ fun ZoneDetailScreen(
                         } else if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
                             item(span = StaggeredGridItemSpan.FullLine) {
                                 ZoneErrorPlaceholder(
-                                    message = hobbyState.errorMessage ?: "加载产品失败",
+                                    message = hobbyState.errorMessage,
                                     onRetry = { viewModel.loadInitialHobby() }
                                 )
                             }
@@ -922,7 +921,7 @@ fun ZoneDetailScreen(
                         } else if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
                             item(span = StaggeredGridItemSpan.FullLine) {
                                 ZoneErrorPlaceholder(
-                                    message = resaleState.errorMessage ?: "加载二手信息失败",
+                                    message = resaleState.errorMessage,
                                     onRetry = { viewModel.loadInitialResale() }
                                 )
                             }
@@ -969,7 +968,7 @@ fun ZoneDetailScreen(
                         } else if (entityState.errorMessage != null && entityState.items.isEmpty()) {
                             item(span = StaggeredGridItemSpan.FullLine) {
                                 ZoneErrorPlaceholder(
-                                    message = entityState.errorMessage ?: "加载内容失败",
+                                    message = entityState.errorMessage,
                                     onRetry = { viewModel.loadInitialEntity(uiState.selectedTab) }
                                 )
                             }

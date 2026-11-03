@@ -171,7 +171,7 @@ fun SeriesDetailScreen(
                                 val next = !uiState.isCollected
                                 messages.show(if (next) "已收藏该系列" else "已取消收藏")
                             },
-                            commentCount = series.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
+                            commentCount = if (series.commentCount > 0) series.commentCount else (uiState.hotComments.size + uiState.latestComments.size),
                             onCommentClick = {
                                 val nodeId = if (uiState.seriesNodeId > 0L) uiState.seriesNodeId else navParam.seriesId
                                 if (nodeId <= 0L) return@SeriesFloatingActionBar
@@ -179,13 +179,13 @@ fun SeriesDetailScreen(
                                     HobbyCommentsNavParam(
                                         nodeId = nodeId,
                                         itemType = "series",
-                                        title = series.displayName ?: navParam.initialName ?: "评论",
-                                        initialCommentCount = series.commentCount ?: 0
+                                        title = series.displayName.ifBlank { navParam.initialName ?: "评论" },
+                                        initialCommentCount = series.commentCount
                                     )
                                 )
                             },
                             onShareClick = {
-                                val title = series.displayName ?: navParam.initialName ?: "系列"
+                                val title = series.displayName.ifBlank { navParam.initialName ?: "系列" }
                                 textSharing.share("【$title】系列周边 - PoiShelf 推荐：https://www.hpoi.net.cn/series/${navParam.seriesId}")
                             },
                             isDark = isDark
@@ -319,7 +319,7 @@ fun SeriesDetailScreen(
                         onGoodsClick = { goods ->
                             if (!goods.link.isNullOrBlank()) {
                                 try {
-                                    uriHandler.openUri(goods.link!!)
+                                    uriHandler.openUri(goods.link)
                                 } catch (_: Exception) {
                                     messages.show("无法打开商品链接")
                                 }

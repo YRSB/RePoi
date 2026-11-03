@@ -146,9 +146,7 @@ class AlbumDetailRepository(
      */
     suspend fun praiseAlbumAdd(albumId: Long): Result<Unit> = runCatching {
         val response = api.praiseAlbumAdd(id = albumId, itemType = "album")
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "相册点赞失败")
         }
     }
@@ -158,9 +156,7 @@ class AlbumDetailRepository(
      */
     suspend fun praiseAlbumDel(albumId: Long): Result<Unit> = runCatching {
         val response = api.praiseAlbumDel(id = albumId, itemType = "album")
-        if (response.isSuccess) {
-            Unit
-        } else {
+        if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消相册点赞失败")
         }
     }

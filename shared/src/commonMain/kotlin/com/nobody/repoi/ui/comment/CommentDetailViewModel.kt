@@ -359,11 +359,11 @@ class CommentDetailViewModel(
                         return@update current.copy(isSubmittingReply = false)
                     }
                     val base = current.comment
-                    val baseReplys = base?.replys ?: emptyList()
+                    val baseReplys = base.replys ?: emptyList()
                     val alreadyInThread = baseReplys.any { it.id == reply.id }
                     val mergedReplys =
                         if (alreadyInThread) baseReplys else baseReplys + reply
-                    val newComment = base?.copy(
+                    val newComment = base.copy(
                         replys = mergedReplys,
                         reply = (base.reply) + if (alreadyInThread) 0 else 1
                     )
@@ -441,9 +441,9 @@ class CommentDetailViewModel(
                 _uiState.update { current ->
                     if (current.comment?.id != comment.id) return@update current
                     val remaining = current.replies.filter { it.id != reply.id }
-                    val baseReplys = (current.comment?.replys ?: emptyList()).filter { it.id != reply.id }
+                    val baseReplys = (current.comment.replys ?: emptyList()).filter { it.id != reply.id }
                     current.copy(
-                        comment = current.comment?.copy(replys = baseReplys, reply = (current.comment?.reply ?: 1).minus(1).coerceAtLeast(0)),
+                        comment = current.comment.copy(replys = baseReplys, reply = current.comment.reply.minus(1).coerceAtLeast(0)),
                         replies = remaining,
                         actionMessage = "回复已删除"
                     )

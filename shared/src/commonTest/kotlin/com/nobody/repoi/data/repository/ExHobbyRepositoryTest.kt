@@ -88,8 +88,8 @@ class ExHobbyRepositoryTest {
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
-        assertEquals(-1, (exception as ApiException).code)
-        assertTrue(exception.message?.contains("Network timeout") == true)
+        assertEquals(-1, exception.code)
+        assertTrue(exception.message.contains("Network timeout"))
     }
 
     @Test

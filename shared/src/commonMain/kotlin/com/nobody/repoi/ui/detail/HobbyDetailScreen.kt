@@ -402,7 +402,7 @@ fun HobbyDetailScreen(
                                         messages.show("已复制 ${entry.displayKey}：${entry.displayValue}")
                                     }
                                 } else if (entry.link?.startsWith("person/") == true) {
-                                    val personId = entry.link?.removePrefix("person/")?.substringBefore("?")?.substringBefore("/")?.toLongOrNull() ?: 0L
+                                    val personId = entry.link.removePrefix("person/").substringBefore("?").substringBefore("/").toLongOrNull() ?: 0L
                                     if (onNavigateToPerson != null && personId > 0L) {
                                         onNavigateToPerson(
                                             PersonNavParam(
@@ -415,7 +415,7 @@ fun HobbyDetailScreen(
                                         messages.show("已复制 ${entry.displayKey}：${entry.displayValue}")
                                     }
                                 } else if (entry.link?.startsWith("works/") == true) {
-                                    val worksId = entry.link?.removePrefix("works/")?.substringBefore("?")?.substringBefore("/")?.toLongOrNull() ?: 0L
+                                    val worksId = entry.link.removePrefix("works/").substringBefore("?").substringBefore("/").toLongOrNull() ?: 0L
                                     if (onNavigateToWorks != null && worksId > 0L) {
                                         onNavigateToWorks(
                                             WorksNavParam(
@@ -729,7 +729,7 @@ private fun HobbyHeaderOfficialSection(
                         )
                         if (!detail?.ratingCountText.isNullOrBlank()) {
                             Text(
-                                text = detail?.ratingCountText ?: "",
+                                text = detail.ratingCountText.orEmpty(),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

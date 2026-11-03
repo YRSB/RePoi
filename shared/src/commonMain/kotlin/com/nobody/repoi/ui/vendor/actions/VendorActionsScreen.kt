@@ -269,7 +269,7 @@ fun VendorActionsScreen(
 
                 pagedState.items.isEmpty() && pagedState.stage != LoadStage.InitialLoading && pagedState.initialError != null -> {
                     VendorActionsErrorState(
-                        errorMessage = pagedState.initialError ?: "加载动态失败",
+                        errorMessage = pagedState.initialError,
                         onRetry = { viewModel.retry() }
                     )
                 }
