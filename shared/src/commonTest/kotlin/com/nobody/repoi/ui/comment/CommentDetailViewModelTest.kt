@@ -88,8 +88,8 @@ class CommentDetailViewModelTest {
     fun loadDetail_withSnapshot_prePopulatesComment() = runTest(testDispatcher) {
         val (mockApi, viewModel, _) = setup()
         mockApi.route(
-            "api/comment/info",
-            mockApi.ok("""{"comment":{"id":1001,"content":"快照测试评论"}}""")
+            "api/comment/getreply",
+            mockApi.ok("""{"comment":{"id":1001,"content":"快照测试评论"},"replies":[]}""")
         )
 
         val snapshot = CommentItem(id = 1001L, content = "快照测试评论")
@@ -99,10 +99,15 @@ class CommentDetailViewModelTest {
             awaitItem().comment shouldBe null
 
             viewModel.loadDetail(param)
-            val state = awaitItem()
-            state.comment?.content shouldBe "快照测试评论"
-            state.commentId shouldBe 1001L
-            state.relateNodeId shouldBe 500L
+            val loadingState = awaitItem()
+            loadingState.comment?.content shouldBe "快照测试评论"
+            loadingState.commentId shouldBe 1001L
+            loadingState.relateNodeId shouldBe 500L
+            loadingState.phase shouldBe CommentDetailPhase.Loading
+
+            val successState = awaitItem()
+            successState.comment?.content shouldBe "快照测试评论"
+            successState.phase shouldBe CommentDetailPhase.Success
         }
     }
 }

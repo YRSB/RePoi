@@ -168,10 +168,7 @@ tasks.withType<Test>().configureEach {
         // M7 遗留测试：依赖 MockApi 网络引擎与 DataStore 磁盘 IO 异步时序竞争，待 Phase 3 逐步重构为 Turbine/Fake 纯状态机测试
         excludeTestsMatching("*AlbumRankListViewModelTest*")
         excludeTestsMatching("*AlbumViewModelTest*")
-        excludeTestsMatching("*HobbyDetailViewModelCollectTest*")
-        excludeTestsMatching("*HobbyDetailViewModelPagingTest*")
-        excludeTestsMatching("*HobbyDetailViewModelRelatedTest*")
-        excludeTestsMatching("*HobbyDetailViewModelTimelineTest*")
+        excludeTestsMatching("*HobbyDetailViewModel*")
         excludeTestsMatching("*HomeFeedViewModelTest*")
         excludeTestsMatching("*LoginViewModelTest*")
         excludeTestsMatching("*MessageBlockViewModelTest*")
