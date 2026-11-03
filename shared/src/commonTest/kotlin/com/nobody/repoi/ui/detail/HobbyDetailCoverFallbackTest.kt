@@ -39,6 +39,16 @@ class HobbyDetailCoverFallbackTest {
     }
 
     @Test
+    fun fallsBackToFirstOfficialPicWhenExplicitCoverIsNoneJpg() {
+        val pics = listOf(
+            PicItem(id = 1L, path = "2026/11/boat_pic.jpg")
+        )
+        // 关键防护：服务端下发 none.jpg 时绝不能截断，必须能回退到首张官图
+        assertEquals("2026/11/boat_pic.jpg", resolveEffectiveCoverPath("none.jpg", pics))
+        assertEquals("2026/11/boat_pic.jpg", resolveEffectiveCoverPath("https://rfx.hpoi.net/gk/cover/n/none.jpg", pics))
+    }
+
+    @Test
     fun skipsBlankOfficialPicAndFindsFirstValid() {
         val pics = listOf(
             PicItem(id = 1L, path = ""),
@@ -55,5 +65,22 @@ class HobbyDetailCoverFallbackTest {
         assertNull(resolveEffectiveCoverPath(null, emptyList()))
         assertNull(resolveEffectiveCoverPath("", emptyList()))
         assertNull(resolveEffectiveCoverPath("null", emptyList()))
+        assertNull(resolveEffectiveCoverPath("none.jpg", emptyList()))
+    }
+
+    @Test
+    fun resolveEffectiveCover_generatesCorrectCdnPrefixes() {
+        val explicit = "2026/08/sample_cover.jpg"
+        val pics = listOf(PicItem(id = 1L, path = "2026/08/official_1.jpg"))
+
+        val coverExplicit = resolveEffectiveCover(explicit, pics)
+        assertEquals(false, coverExplicit?.isOfficialPic)
+        assertEquals("https://rfx.hpoi.net/gk/cover/n/2026/08/sample_cover.jpg", coverExplicit?.displayUrl)
+        assertEquals("https://rfx.hpoi.net/gk/cover/raw/2026/08/sample_cover.jpg", coverExplicit?.rawUrl)
+
+        val coverFallback = resolveEffectiveCover("none.jpg", pics)
+        assertEquals(true, coverFallback?.isOfficialPic)
+        assertEquals("https://rfx.hpoi.net/gk/pic/n/2026/08/official_1.jpg", coverFallback?.displayUrl)
+        assertEquals("https://rfx.hpoi.net/gk/pic/raw/2026/08/official_1.jpg", coverFallback?.rawUrl)
     }
 }

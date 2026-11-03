@@ -1,7 +1,7 @@
 package com.nobody.repoi.ui.album.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +40,7 @@ fun AlbumTextCover(
     maxLines: Int = 4,
     contentAlignment: Alignment = Alignment.Center
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     val containerColor = if (isDark) Color(0xFF16324F) else Color(0xFFD1EFFF)
     val contentColor = if (isDark) Color(0xFFD1EFFF) else Color(0xFF1A354D)
 

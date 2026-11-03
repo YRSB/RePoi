@@ -743,8 +743,13 @@ internal fun WorksAlbumsSection(
                         ) {
                             val isNoCover = CdnUrlUtils.isNoCover(album.cover)
                             val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverUrl(album.cover)
+                            val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+                            val ratioKey = remember(album.cover, coverUrl) { "works_album:$coverUrl" }
+                            var aspectRatio by remember(ratioKey, isNoCover) {
+                                mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
+                            }
                             Box(
-                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                                modifier = Modifier.fillMaxWidth().aspectRatio(aspectRatio)
                                     .clip(ExpressiveTokens.CardShape)
                                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             ) {
@@ -759,6 +764,14 @@ internal fun WorksAlbumsSection(
                                         model = coverUrl,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
+                                        onSuccess = { state ->
+                                            val size = state.painter.intrinsicSize
+                                            if (size.width > 0 && size.height > 0) {
+                                                val ratio = (size.width / size.height).coerceIn(0.6f, 2.0f)
+                                                aspectRatio = ratio
+                                                ImageAspectRatioCache[ratioKey] = ratio
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }

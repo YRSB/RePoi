@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbUp
@@ -58,6 +59,8 @@ fun HobbySearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
     val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
@@ -92,9 +95,9 @@ fun HobbySearchCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -350,9 +353,9 @@ fun GeneralSearchCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(24.dp)
                     )
                 }

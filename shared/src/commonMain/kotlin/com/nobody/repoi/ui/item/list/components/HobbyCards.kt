@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ fun HobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
     val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
     val gridImageRequest = rememberListImageRequest(item.cover, coverUrl, "grid")
     val bottomScrim = remember { Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))) }
@@ -82,9 +84,9 @@ fun HobbyGridCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -146,6 +148,7 @@ fun HobbyListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
     val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbImageRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
@@ -181,9 +184,9 @@ fun HobbyListCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(24.dp)
                     )
                 }
