@@ -36,16 +36,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 /**
  * 拼接显式保存键：`scope` + 各维度值。
  *
- * 每个维度值用「长度前缀」编码，避免用户自定义标签里出现分隔符时把不同条件拼成同一个键。
- * 键只需在一次保存 / 恢复周期内稳定（String / Int / Boolean / null 的字符串形式满足），
- * 不要求可读。
+ * 每个维度值用「长度前缀」编码，避免用户自定义标签里出现分隔符时把不同条件拼成同一个键；
+ * `null` 用独立的 `:n` 标记，避免与字符串 "null" 撞键（标签可由用户自定义）。
+ * 键只需在一次保存 / 恢复周期内稳定，不要求可读。
+ *
+ * 可见性为 internal：commonTest 需要直接断言键的相等 / 不等不变量。
  */
-private fun scrollStateSaveableKey(scope: String, keys: Array<out Any?>): String =
+internal fun scrollStateSaveableKey(scope: String, keys: Array<out Any?>): String =
     buildString {
         append(scope)
         for (key in keys) {
-            val text = key?.toString() ?: "null"
-            append(':').append(text.length).append(':').append(text)
+            if (key == null) {
+                append(":n")
+            } else {
+                val text = key.toString()
+                append(':').append(text.length).append(':').append(text)
+            }
         }
     }
 
