@@ -121,7 +121,9 @@ internal fun CommonCollectSubPage(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
+    // 缺这个键就只会翻一页。
+    LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
         }
