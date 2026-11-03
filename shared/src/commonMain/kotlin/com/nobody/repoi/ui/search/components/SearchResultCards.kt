@@ -60,7 +60,6 @@ fun HobbySearchCard(
     modifier: Modifier = Modifier
 ) {
     val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
     val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
@@ -319,6 +318,7 @@ fun GeneralSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
     val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
