@@ -379,7 +379,8 @@ private fun QuickEntranceSection(
 ) {
     val today = todayLocalDate()
     val curYear = today.year
-    val curMonth = today.month.number
+    @Suppress("DEPRECATION")
+    val curMonth = today.monthNumber
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val cardHeight = if (isCompact) 88.dp else 72.dp
@@ -663,8 +664,9 @@ private fun todayLocalDate(timeZone: TimeZone = TimeZone.currentSystemDefault())
     Clock.System.todayIn(timeZone)
 
 @OptIn(ExperimentalTime::class)
+@Suppress("DEPRECATION")
 private fun ymd(date: kotlinx.datetime.LocalDate): String =
-    "${date.year}-${date.month.number.toString().padStart(2, '0')}-${date.day.toString().padStart(2, '0')}"
+    "${date.year}-${date.monthNumber.toString().padStart(2, '0')}-${date.dayOfMonth.toString().padStart(2, '0')}"
 
 @OptIn(ExperimentalTime::class)
 private fun ymdToday(): String = ymd(todayLocalDate())

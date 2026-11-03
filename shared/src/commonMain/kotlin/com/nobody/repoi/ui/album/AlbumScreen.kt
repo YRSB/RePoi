@@ -281,7 +281,7 @@ fun AlbumScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     AlbumErrorState(
-                        errorMessage = uiState.errorMessage,
+                        errorMessage = uiState.errorMessage ?: "加载失败",
                         onRetry = viewModel::retry
                     )
                 }
@@ -510,7 +510,7 @@ private fun RankingSections(
     if (uiState.sections.isEmpty()) {
         if (uiState.errorMessage != null) {
             AlbumErrorState(
-                errorMessage = uiState.errorMessage ?: "加载失败",
+                errorMessage = uiState.errorMessage,
                 onRetry = onRetry
             )
         } else {
