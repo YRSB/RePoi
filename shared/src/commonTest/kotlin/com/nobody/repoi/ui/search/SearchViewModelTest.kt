@@ -27,23 +27,24 @@ import kotlin.test.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: StandardTestDispatcher
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @BeforeTest
     fun setUpMain() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
     private suspend fun setup(): Pair<SearchViewModel, SearchHistoryManager> {
         val mockApi = MockApi()
         val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
-        historyManager.clearAll()
         val searchRepo = SearchRepository(mockApi.api(), historyManager)
         val categoryManager = CategoryManager(mockApi.api())
         val viewModel = SearchViewModel(searchRepo, categoryManager)
