@@ -10,7 +10,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 进入具体功能开发时，按需查阅对应章节与逆向产物：
 - **Topology**（特性入口、NavKey 路由、主界面与仓储对应表）：查阅 [CODING_STANDARDS.md#路由契约与拓扑速查-navigation-3](CODING_STANDARDS.md#路由契约与拓扑速查-navigation-3)
 - **Architecture**（KMP 单 shared 模块、Koin 依赖注入、单向数据流与分页加载器）：查阅 [CODING_STANDARDS.md#架构与数据流-architecture--di](CODING_STANDARDS.md#架构与数据流-architecture--di)
-- **Libraries**（KMP 依赖选型与 klibs.io MCP 权威校验）：查阅 [CODING_STANDARDS.md#跨平台依赖引入规范-kmp-library-selection](CODING_STANDARDS.md#跨平台依赖引入规范-kmp-library-selection)
+- **Libraries**（KMP 依赖选型与 klibs.io MCP 权威校验）：查阅 [CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection](CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection)
 - **UI**（Material 3 Expressive 规范、自适应双窗格、悬浮栏、网格与 CDN 图片变体）：查阅 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)
 - **Quirks**（Hpoi API 反序列化多态、图片 path 拼接与逆向踩坑）：查阅 [docs/API_QUIRKS.md](docs/API_QUIRKS.md)
 - **Domain**（业务模型、实体命名契约与领域术语）：查阅 [docs/domain.md](docs/domain.md)

@@ -125,7 +125,7 @@ class PictureGalleryViewModel(
      * 因此回到看过的图片时必须能再次展示；旧实现用 `relatedPicIds` 永久去重 + 切页清空，
      * 导致第二次进入同一图片时关联条目永久消失。
      */
-    private val relateCache = mutableMapOf<Long, List<PictureRelateItem>>()
+    private val relateCache = LinkedHashMap<Long, List<PictureRelateItem>>()
 
     /** 当前关联条目请求对应的 picId，用于丢弃切页后的迟到响应 */
     private var currentRelatePicId: Long = 0L
@@ -153,8 +153,8 @@ class PictureGalleryViewModel(
      * 首屏装载收藏-图片列表并定位到目标图片。
      *
      * 画廊从收藏页跳入时只携带「图片 id + 收藏页当前下标 + 排序档」，
-     * 这里按收藏页同一接口/排序逐页加载：目标下标决定需要的页数（[PAGE_SIZE]），
-     * 再按 picId 精确定位，避免分页去重造成下标漂移。
+     * 这里按收藏页同一接口/排序逐页加载：目标下标仅作为加速提示，
+     * 必须持续翻页到命中目标或确认列表末尾，避免下标漂移把仍在收藏中的图片误判为已取消。
      *
      * @param userId 收藏列表归属用户 id
      * @param order 图片收藏列表排序档（null 回落到收藏时间）
@@ -175,12 +175,12 @@ class PictureGalleryViewModel(
         _listState.value = PictureGalleryListState(isLoading = true)
         listJob = viewModelScope.launch {
             val effectiveOrder = order ?: CollectConstants.ORDER_ADD_TIME
-            val targetPage = (listTargetIndex / PAGE_SIZE + 1).coerceIn(1, MAX_LOCATE_PAGE)
             val loaded = mutableListOf<UserCollectPicItem>()
             var page = 1
             var lastBatchSize = 0
             var failure: String? = null
-            while (page <= targetPage) {
+            var reachedEnd = false
+            while (page <= MAX_LOCATE_PAGE) {
                 val result = userRepository.getUserCollectPicList(
                     userId = userId,
                     order = effectiveOrder,
@@ -195,13 +195,22 @@ class PictureGalleryViewModel(
                 lastBatchSize = batch.size
                 loaded += batch
                 loadedPage = page
-                if (loaded.any { it.id == targetPicId } || batch.size < PAGE_SIZE) break
+                if (targetPicId <= 0L) break
+                if (batch.size < PAGE_SIZE) reachedEnd = true
+                if (loaded.any { it.id == targetPicId } || reachedEnd) break
                 page++
             }
             val distinct = loaded.distinctBy { it.id }
             val located = distinct.indexOfFirst { it.id == targetPicId }
-            // 目标图片已不在收藏列表中：不要拿旧下标伪装成功（否则会打开另一张图）
-            val targetMissing = targetPicId > 0L && located < 0 && distinct.isNotEmpty()
+            if (targetPicId > 0L && located < 0 && !reachedEnd) {
+                _listState.value = PictureGalleryListState(
+                    isLoading = false,
+                    errorMessage = failure ?: "图片定位失败，请重试"
+                )
+                return@launch
+            }
+            // 目标图片已确认不在收藏列表中：不要拿旧下标伪装成功（否则会打开另一张图）
+            val targetMissing = targetPicId > 0L && located < 0 && reachedEnd && distinct.isNotEmpty()
             val initialIndex = when {
                 located >= 0 -> located
                 targetMissing -> 0
@@ -336,8 +345,9 @@ class PictureGalleryViewModel(
                 collectRepository.collectItemDel(item.id)
             }
             result.onSuccess {
-                // 取消收藏成功：广播给仍存活的收藏页就地剔除，避免返回后残留脏项
-                if (!nowCollected) {
+                if (nowCollected) {
+                    collectInvalidationBus.notifyCollected(item.id)
+                } else {
                     collectInvalidationBus.notifyUncollected(item.id)
                 }
             }
@@ -400,7 +410,7 @@ class PictureGalleryViewModel(
             _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = true) }
             collectRepository.getPictureRelate(picId)
                 .onSuccess { list ->
-                    relateCache[picId] = list
+                    putRelateCache(picId, list)
                     if (currentRelatePicId == picId) {
                         _uiState.update { it.copy(relateItems = list, isRelateLoading = false) }
                     }
@@ -410,6 +420,14 @@ class PictureGalleryViewModel(
                         _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
                     }
                 }
+        }
+    }
+
+    private fun putRelateCache(picId: Long, list: List<PictureRelateItem>) {
+        relateCache[picId] = list
+        while (relateCache.size > RELATE_CACHE_MAX) {
+            val eldest = relateCache.keys.firstOrNull() ?: break
+            relateCache.remove(eldest)
         }
     }
 
@@ -516,5 +534,8 @@ class PictureGalleryViewModel(
 
         /** 首屏定位目标图片时最多加载的页数上限，避免异常下标导致连环请求 */
         const val MAX_LOCATE_PAGE = 50
+
+        /** 关联条目缓存上限，避免单次画廊会话内随浏览图片数量无界增长 */
+        const val RELATE_CACHE_MAX = 32
     }
 }

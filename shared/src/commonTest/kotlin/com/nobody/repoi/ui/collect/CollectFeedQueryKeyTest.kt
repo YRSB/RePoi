@@ -1,6 +1,8 @@
 package com.nobody.repoi.ui.collect
 
+import com.nobody.repoi.ui.collect.subpage.hobbyScrollKeyInputs
 import com.nobody.repoi.ui.collect.subpage.scrollStateSaveableKey
+import com.nobody.repoi.ui.collect.subpage.worksScrollKeyInputs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -31,14 +33,37 @@ class CollectFeedQueryKeyTest {
 
     @Test
     fun everyContentDimension_changesKey() {
-        val base = key("hobby_grid", "", "actionDate", 2, null, null)
+        val base = key("hobby_grid", *hobbyScrollKeyInputs(UserCollectUiState()))
 
         // 收藏状态 / 排序 / 升降序 / 细分类 / 标签：任一变化都必须换键
-        assertNotEquals(base, key("hobby_grid", "want", "actionDate", 2, null, null))
-        assertNotEquals(base, key("hobby_grid", "", "release", 2, null, null))
-        assertNotEquals(base, key("hobby_grid", "", "actionDate", 1, null, null))
-        assertNotEquals(base, key("hobby_grid", "", "actionDate", 2, 103, null))
-        assertNotEquals(base, key("hobby_grid", "", "actionDate", 2, null, "手办"))
+        val variants = listOf(
+            UserCollectUiState(collectState = CollectStateOption.WANT),
+            UserCollectUiState(order = HobbyOrderOption.RELEASE),
+            UserCollectUiState(sortType = UserCollectUiState.SORT_ASC),
+            UserCollectUiState(subCategoryId = 103),
+            UserCollectUiState(selectedTag = "手办"),
+        )
+        variants.forEach { variant ->
+            assertNotEquals(base, key("hobby_grid", *hobbyScrollKeyInputs(variant)))
+        }
+    }
+
+    @Test
+    fun worksContentDimensions_changeKey() {
+        val base = key("works_list", *worksScrollKeyInputs(WorksStateOption.WANT, false, null))
+
+        assertNotEquals(
+            base,
+            key("works_list", *worksScrollKeyInputs(WorksStateOption.WATCHING, false, null))
+        )
+        assertNotEquals(
+            base,
+            key("works_list", *worksScrollKeyInputs(WorksStateOption.WANT, true, null))
+        )
+        assertNotEquals(
+            base,
+            key("works_list", *worksScrollKeyInputs(WorksStateOption.WANT, false, "手办"))
+        )
     }
 
     @Test

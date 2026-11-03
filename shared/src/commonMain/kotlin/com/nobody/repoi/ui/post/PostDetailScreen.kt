@@ -260,7 +260,7 @@ fun PostDetailScreen(
                     text = "回帖",
                     icon = Icons.AutoMirrored.Filled.Comment,
                     contentDescription = "回帖",
-                    // 回帖是导航类操作，无激活态；悬浮栏内不得用容器着色表示主操作
+                    // 回帖是导航类操作，无激活态
                     isProminent = false
                 )
 

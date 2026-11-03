@@ -95,7 +95,12 @@ class RePoiSerializersModuleTest {
             WorksDetailNavKey(param = WorksNavParam(worksId = 1401L), id = "fixed-id-works-detail"),
             PictureListNavKey(param = PictureListNavParam(itemId = 7001L), id = "fixed-id-picture-list"),
             PictureGalleryNavKey(
-                param = PictureGalleryNavParam(userId = 6001L, picId = 7001L, initialIndex = 2),
+                param = PictureGalleryNavParam(
+                    userId = 6001L,
+                    picId = 7001L,
+                    initialIndex = 2,
+                    order = "praiseCount"
+                ),
                 id = "fixed-id-picture-gallery"
             ),
             ExHobbyListNavKey(itemId = 7001L, title = "ExHobby", id = "fixed-id-exhobby-list"),

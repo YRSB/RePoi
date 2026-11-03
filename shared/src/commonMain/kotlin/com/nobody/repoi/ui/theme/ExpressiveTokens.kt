@@ -67,10 +67,6 @@ object ExpressiveTokens {
     /** 顶部导航栏滚动收起圆角 (M3E Large Increased Container, 20dp 底部单侧圆角) */
     val TopBarScrolledShape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
 
-    /** 悬浮工具栏胶囊高度与圆角 (M3E Floating Toolbar Specs: 64dp 高度, 32dp Extra Large Increased 全胶囊圆角) */
-    val FloatingToolbarHeight = 64.dp
-    val FloatingToolbarShape = RoundedCornerShape(32.dp)
-
     /** 阴影与标高高度 (Elevations，对齐 M3 Elevation Levels) */
     val ElevationDefault = 1.dp
     val ElevationHovered = 2.dp

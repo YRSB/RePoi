@@ -143,16 +143,26 @@ class UserCollectViewModel(
             }
         }
 
-        // 画廊已升级为独立 Nav3 路由：在画廊内取消收藏后，收藏页不可见且不会自动刷新。
-        // 通过失效总线就地剔除该图片，避免返回后残留脏项、再次点击时按旧下标打开另一张图。
+        // 画廊已升级为独立 Nav3 路由：在画廊内取消收藏后就地剔除该图片，避免返回后残留脏项；
+        // 重新收藏时列表排序可能变化，直接刷新图片分类，避免条目永久缺失。
         viewModelScope.launch {
-            collectInvalidationBus.uncollected.collect { nodeId ->
+            collectInvalidationBus.changes.collect { change ->
+                if (change.collected) {
+                    refresh(UserCollectCategory.PICTURE)
+                    return@collect
+                }
                 _uiState.update { state ->
-                    val filtered = state.picData.items.filterNot { it.id == nodeId }
-                    if (filtered.size == state.picData.items.size) {
+                    val current = state.picData
+                    val filtered = current.items.filterNot { it.id == change.nodeId }
+                    if (filtered.size == current.items.size) {
                         state
                     } else {
-                        state.copy(picData = state.picData.copy(items = filtered))
+                        state.copy(
+                            picData = current.copy(
+                                items = filtered,
+                                page = (current.page - 1).coerceAtLeast(0)
+                            )
+                        )
                     }
                 }
             }

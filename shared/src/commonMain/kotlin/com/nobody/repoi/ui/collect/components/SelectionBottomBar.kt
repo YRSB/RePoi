@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,7 +75,7 @@ internal fun SelectionBottomBar(
             SelectionActionButton(
                 text = "取消收藏($selectedCount)",
                 enabled = canCancel,
-                prominent = true,
+                contentColor = MaterialTheme.colorScheme.error,
                 onClick = onCancelCollect
             )
         }
@@ -84,11 +83,11 @@ internal fun SelectionBottomBar(
 }
 
 /**
- * 底部操作条内的动作按钮，基于官方材质按钮实现。
+ * 底部操作条内的动作按钮，基于官方 `TextButton` 实现。
  *
- * - 主操作（`prominent = true`）用官方 `FilledTonalButton`，容器取 `primaryContainer`；
- * - 次要操作用官方 `TextButton`，容器透明；
- * - 禁用态保持透明容器与 38% 前景色，避免官方默认灰底干扰悬浮栏观感；
+ * - 容器透明，避免在悬浮栏内叠加第二个容器色；
+ * - 危险操作用 `error` 前景色，不使用 prominent 容器；
+ * - 禁用态保持 38% 前景色；
  * - 形状沿用设计系统 `ExpressiveTokens.PillShape`。
  */
 @Composable
@@ -97,50 +96,26 @@ private fun SelectionActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    prominent: Boolean = false
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    val containerColor = if (prominent) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val contentColor = if (prominent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     val disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     val contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 
-    val label: @Composable () -> Unit = {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shape = ExpressiveTokens.PillShape,
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = contentColor,
+            disabledContentColor = disabledContentColor
+        ),
+        contentPadding = contentPadding
+    ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold
         )
-    }
-
-    if (prominent) {
-        FilledTonalButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            shape = ExpressiveTokens.PillShape,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = containerColor,
-                contentColor = contentColor,
-                disabledContainerColor = Color.Transparent,
-                disabledContentColor = disabledContentColor
-            ),
-            contentPadding = contentPadding
-        ) {
-            label()
-        }
-    } else {
-        TextButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            shape = ExpressiveTokens.PillShape,
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = contentColor,
-                disabledContentColor = disabledContentColor
-            ),
-            contentPadding = contentPadding
-        ) {
-            label()
-        }
     }
 }

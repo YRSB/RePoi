@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +68,13 @@ internal val WorksCollectStateTabs: List<Pair<String, String>> = listOf(
     "看过" to "3"
 )
 
+/** 作品页滚动保存键的内容维度，生产与测试共用 */
+internal fun worksScrollKeyInputs(
+    worksState: Int,
+    worksOrderAsc: Boolean,
+    worksTag: String?,
+): Array<out Any?> = arrayOf(worksState, worksOrderAsc, worksTag)
+
 /**
  * 作品收藏子页（原版 `UserCollectWorksSubFragment` + `UserCollectWorksFragment`）。
  *
@@ -102,7 +110,10 @@ internal fun WorksCollectSubPage(
     // 保存键绑定（统一入口见 rememberKeyedLazyListState）：
     // 收藏状态 / 升降序 / 标签筛选任一变化时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
     // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
-    val listState = rememberKeyedLazyListState("works_list", worksState, worksOrderAsc, worksTag)
+    val listState = rememberKeyedLazyListState(
+        "works_list",
+        *worksScrollKeyInputs(worksState, worksOrderAsc, worksTag)
+    )
 
     // 以 listState 为 remember 键：条件变化会重建 LazyListState，
     // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
@@ -145,6 +156,7 @@ internal fun WorksCollectSubPage(
             Row(
                 modifier = Modifier
                     .padding(end = if (isSelf) 4.dp else 12.dp)
+                    .minimumInteractiveComponentSize()
                     .clip(ExpressiveTokens.PillShape)
                     .clickable { onSwitchOrderAsc(!worksOrderAsc) }
                     .semantics { role = Role.Button }

@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.collect.subpage
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
@@ -36,7 +34,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,7 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -66,9 +62,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -82,6 +77,15 @@ import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.launch
+
+/** 周边页滚动保存键的内容维度，生产与测试共用 */
+internal fun hobbyScrollKeyInputs(uiState: UserCollectUiState): Array<out Any?> = arrayOf(
+    uiState.collectState,
+    uiState.order,
+    uiState.sortType,
+    uiState.subCategoryId,
+    uiState.selectedTag,
+)
 
 // ── 手办周边子页 ──────────────────────────────────────────
 
@@ -124,11 +128,7 @@ internal fun HobbyCollectSubPage(
     // 重建状态自动回顶；条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复原滚动位置。
     val gridState = rememberKeyedLazyGridState(
         "hobby_grid",
-        uiState.collectState,
-        uiState.order,
-        uiState.sortType,
-        uiState.subCategoryId,
-        uiState.selectedTag
+        *hobbyScrollKeyInputs(uiState)
     )
 
     // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
@@ -565,6 +565,9 @@ private fun HobbyStateDropdown(
         FilterChip(
             selected = isFiltered,
             onClick = { expanded = true },
+            modifier = Modifier.semantics {
+                stateDescription = "当前：${collectStateLabel(currentState)}"
+            },
             label = {
                 Text(
                     text = collectStateLabel(currentState),

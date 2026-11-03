@@ -1,15 +1,18 @@
 package com.nobody.repoi.ui.common
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingToolbarColors
 import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.FloatingToolbarScrollBehavior
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,16 +27,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.theme.ExpressiveElevation
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
  * Material 3 Expressive 悬浮操作栏（Floating Toolbar）适配层。
  *
  * 本组件不再自绘容器，直接委托官方 `HorizontalFloatingToolbar`：
- * - 容器形状、容器色、内容内边距、展开/收起阴影与动效全部取自官方默认值；
- * - 容器配色默认使用官方 `standardFloatingToolbarColors()`（surfaceContainer 色阶），
- *   需要高对比画报背景时可由调用方传入 `vibrantFloatingToolbarColors()`；
- * - 展开态固定为 `expanded = true`，滚动收起行为交给调用方按需传入官方 scrollBehavior。
+ * - 容器形状与展开态阴影使用设计系统令牌，容器色固定为 `surfaceContainerHigh`，
+ *   与官方 `standardFloatingToolbarColors()` 的高对比画报语义一致；
+ * - 内容内边距收敛为 8dp / 6dp，避免官方默认 16dp 与按钮内边距叠加导致窄屏裁切；
+ * - 内容超出可用宽度时可横向滚动，官方容器 `clip = true` 不再直接裁掉末尾操作；
+ * - 展开态固定为 `expanded = true`；需要随滚动隐藏时由调用方传入官方 `scrollBehavior`。
  *
  * 说明：官方 content 槽本身是 `RowScope`，本层额外包一层 8dp 等距 Row，
  * 用于保留改造前悬浮栏内各操作项之间的固定间距。
@@ -41,15 +46,24 @@ import com.nobody.repoi.ui.theme.ExpressiveTokens
 @Composable
 fun ExpressiveFloatingToolbar(
     modifier: Modifier = Modifier,
-    colors: FloatingToolbarColors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+    colors: FloatingToolbarColors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+        toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    ),
+    scrollBehavior: FloatingToolbarScrollBehavior? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     HorizontalFloatingToolbar(
         expanded = true,
         modifier = modifier,
-        colors = colors
+        colors = colors,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+        scrollBehavior = scrollBehavior,
+        shape = ExpressiveTokens.PillShape,
+        expandedShadowElevation = ExpressiveElevation.Level3,
+        collapsedShadowElevation = ExpressiveElevation.Level3
     ) {
         Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             content = content
@@ -117,7 +131,7 @@ fun ExpressiveToolbarButton(
                     containerColor = containerColor,
                     contentColor = contentColor
                 ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 label()
             }
@@ -127,7 +141,7 @@ fun ExpressiveToolbarButton(
                 modifier = modifier,
                 shape = ExpressiveTokens.PillShape,
                 colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 label()
             }
