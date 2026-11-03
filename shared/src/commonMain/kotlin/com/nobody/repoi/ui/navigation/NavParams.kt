@@ -117,6 +117,25 @@ data class CharacterWorksListNavParam(
     val title: String = "登场作品",
 )
 
+/**
+ * 收藏-图片 全屏大图画廊路由导航参数。
+ *
+ * 画廊改为独立 Nav3 路由后由自己加载列表数据（不再依赖收藏页组合内的临时状态），
+ * 因此需要携带列表归属、排序档，以及「点击的是哪一张 / 在收藏列表中的下标」用于初始定位。
+ *
+ * @param userId 收藏列表归属用户 id
+ * @param picId 目标图片 id（列表加载后按 id 精确定位，避免分页去重导致下标漂移）
+ * @param initialIndex 点击项在收藏页图片列表中的下标（用于只加载到目标页，避免无谓翻页）
+ * @param order 图片收藏列表排序档（`addTime` / `actionDate` / `praiseCount`，与收藏页 picOrder 一致）
+ */
+@Serializable
+data class PictureGalleryNavParam(
+    val userId: Long,
+    val picId: Long,
+    val initialIndex: Int = 0,
+    val order: String? = null,
+)
+
 @Serializable
 data class PictureListNavParam(
     val itemId: Long,

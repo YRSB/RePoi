@@ -1,12 +1,14 @@
-﻿package com.nobody.repoi.ui.gallery
+package com.nobody.repoi.ui.gallery
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
+import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.platform.saveImageBytesToGallery
 import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.util.CollectInvalidationBus
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -48,37 +50,222 @@ data class PictureGalleryUiState(
 )
 
 /**
+ * 图片画廊列表状态（收藏-图片 路由自加载）。
+ *
+ * @param items 已加载的图片收藏列表（与收藏页同一排序，供横向画廊无限翻页）
+ * @param initialIndex 打开画廊时的初始下标（优先按 PictureGalleryNavParam.picId 精确定位）
+ * @param hasMore 是否还有下一页
+ * @param isLoading 首屏加载中（含为定位目标图片而连续翻页）
+ * @param isLoadingMore 触底续拉中
+ * @param errorMessage 首屏加载失败信息（非空且 items 为空时展示错误态）
+ */
+data class PictureGalleryListState(
+    val items: List<UserCollectPicItem> = emptyList(),
+    val initialIndex: Int = 0,
+    val hasMore: Boolean = true,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    /**
+     * 目标图片未在收藏列表中找到（典型场景：刚在画廊取消收藏后由收藏页再次点击旧项）。
+     * 路由宿主据此提示并出栈，避免按旧下标打开另一张图。
+     */
+    val targetMissing: Boolean = false,
+    val errorMessage: String? = null
+)
+
+/**
  * 大图画廊 ViewModel。
  *
- * 对标原版 `PictureGalleryActivity`，承载收藏页大图的操作层：
+ * 对标原版 `PictureGalleryActivity`，同时作为收藏-图片 画廊路由的数据与操作宿主：
+ * - 列表自加载：按收藏页同一接口/排序分页拉取（路由化后不再依赖收藏页组合内的临时状态）；
  * - 收藏星标 + 收藏数徽章（`api/collect/item/add` / `api/collect/del` / `api/collect/state`）；
- * - 关联条目（`api/pic/relate`）；
+ * - 关联条目（`api/pic/relate`，按 picId 进程内缓存，避免回看时列表消失）；
  * - 举报（`api/web-report/add`）；
  * - 原图渐进加载（`pic/n/` → `pic/raw/`）与「已是原图」提示。
- *
- * 无限分页由宿主回调 `UserCollectViewModel.loadNextPage(PICTURE)` 驱动，本 VM 不持有列表，
- * 只负责当前页的操作态。
  */
 class PictureGalleryViewModel(
     private val collectRepository: CollectRepository,
+    private val userRepository: UserRepository,
+    private val collectInvalidationBus: CollectInvalidationBus,
     private val downloadClient: HttpClient,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PictureGalleryUiState())
     val uiState: StateFlow<PictureGalleryUiState> = _uiState.asStateFlow()
 
+    private val _listState = MutableStateFlow(PictureGalleryListState())
+    val listState: StateFlow<PictureGalleryListState> = _listState.asStateFlow()
+
     /** 当前页下标 */
     var currentIndex: Int = 0
         private set
 
+    /** 列表装载任务（首屏/续拉共用，重新装载时取消旧任务） */
+    private var listJob: Job? = null
+
+    /** 列表装载上下文（重试复用） */
+    private var listUserId: Long = 0L
+    private var listOrder: String? = null
+    private var listTargetPicId: Long = 0L
+    private var listTargetIndex: Int = 0
+
+    /** 已加载到第几页（续拉从 loadedPage + 1 开始） */
+    private var loadedPage: Int = 0
+
     /** 切页后延迟回填收藏态的定时任务，用于取消上一次未完成的回填 */
     private var collectStateJob: Job? = null
 
-    /** 关联条目加载任务，按 picId 去重 */
+    /** 关联条目加载任务 */
     private var relateJob: Job? = null
 
-    /** 已加载过关联条目的 picId 集合，避免同页重复请求 */
-    private val relatedPicIds = mutableSetOf<Long>()
+    /**
+     * 关联条目缓存（按 picId）。
+     *
+     * 原版每次打开底部弹层都会重新请求（`PictureGalleryActivity.W()`），
+     * 因此回到看过的图片时必须能再次展示；旧实现用 `relatedPicIds` 永久去重 + 切页清空，
+     * 导致第二次进入同一图片时关联条目永久消失。
+     */
+    private val relateCache = LinkedHashMap<Long, List<PictureRelateItem>>()
+
+    /** 当前关联条目请求对应的 picId，用于丢弃切页后的迟到响应 */
+    private var currentRelatePicId: Long = 0L
+
+    // ==================== 列表装载（路由自加载） ====================
+
+    /** 首屏装载请求标识（用于保证 Entry 重组/返回时只装载一次，不打断用户已翻到的页码） */
+    private var initialRequestKey: String? = null
+
+    /**
+     * 幂等首屏装载：同一路由参数只在首次组合时装载。
+     *
+     * Nav3 从关联相册/手办详情返回、横竖屏旋转等场景都会重建 Entry 组合并重跑 `LaunchedEffect`，
+     * 若每次都重新 [loadInitial]，会把用户已经翻到的画廊页码与已加载列表重置回初始图片。
+     */
+    fun ensureInitial(userId: Long, order: String?, targetPicId: Long, targetIndex: Int) {
+        val key = "$userId|$targetPicId|${order.orEmpty()}"
+        val state = _listState.value
+        if (initialRequestKey == key && (state.isLoading || state.items.isNotEmpty())) return
+        initialRequestKey = key
+        loadInitial(userId, order, targetPicId, targetIndex)
+    }
+
+    /**
+     * 首屏装载收藏-图片列表并定位到目标图片。
+     *
+     * 画廊从收藏页跳入时只携带「图片 id + 收藏页当前下标 + 排序档」，
+     * 这里按收藏页同一接口/排序逐页加载：目标下标仅作为加速提示，
+     * 必须持续翻页到命中目标或确认列表末尾，避免下标漂移把仍在收藏中的图片误判为已取消。
+     *
+     * @param userId 收藏列表归属用户 id
+     * @param order 图片收藏列表排序档（null 回落到收藏时间）
+     * @param targetPicId 目标图片 id
+     * @param targetIndex 点击项在收藏页列表中的下标
+     */
+    fun loadInitial(userId: Long, order: String?, targetPicId: Long, targetIndex: Int) {
+        listJob?.cancel()
+        listUserId = userId
+        listOrder = order
+        listTargetPicId = targetPicId
+        listTargetIndex = targetIndex.coerceAtLeast(0)
+        loadedPage = 0
+        if (userId <= 0L) {
+            _listState.value = PictureGalleryListState(errorMessage = "收藏列表加载失败：用户信息缺失")
+            return
+        }
+        _listState.value = PictureGalleryListState(isLoading = true)
+        listJob = viewModelScope.launch {
+            val effectiveOrder = order ?: CollectConstants.ORDER_ADD_TIME
+            val loaded = mutableListOf<UserCollectPicItem>()
+            var page = 1
+            var lastBatchSize = 0
+            var failure: String? = null
+            var reachedEnd = false
+            while (page <= MAX_LOCATE_PAGE) {
+                val result = userRepository.getUserCollectPicList(
+                    userId = userId,
+                    order = effectiveOrder,
+                    page = page,
+                    pageSize = PAGE_SIZE
+                )
+                val batch = result.getOrNull()
+                if (batch == null) {
+                    failure = result.exceptionOrNull()?.message ?: "收藏列表加载失败"
+                    break
+                }
+                lastBatchSize = batch.size
+                loaded += batch
+                loadedPage = page
+                if (targetPicId <= 0L) break
+                if (batch.size < PAGE_SIZE) reachedEnd = true
+                if (loaded.any { it.id == targetPicId } || reachedEnd) break
+                page++
+            }
+            val distinct = loaded.distinctBy { it.id }
+            val located = distinct.indexOfFirst { it.id == targetPicId }
+            if (targetPicId > 0L && located < 0 && !reachedEnd) {
+                _listState.value = PictureGalleryListState(
+                    isLoading = false,
+                    errorMessage = failure ?: "图片定位失败，请重试"
+                )
+                return@launch
+            }
+            // 目标图片已确认不在收藏列表中：不要拿旧下标伪装成功（否则会打开另一张图）
+            val targetMissing = targetPicId > 0L && located < 0 && reachedEnd && distinct.isNotEmpty()
+            val initialIndex = when {
+                located >= 0 -> located
+                targetMissing -> 0
+                distinct.isEmpty() -> 0
+                else -> listTargetIndex.coerceIn(0, distinct.lastIndex)
+            }
+            _listState.value = PictureGalleryListState(
+                items = distinct,
+                initialIndex = initialIndex,
+                hasMore = lastBatchSize >= PAGE_SIZE,
+                isLoading = false,
+                targetMissing = targetMissing,
+                errorMessage = if (distinct.isEmpty()) failure ?: "暂无收藏图片" else null
+            )
+        }
+    }
+
+    /** 首屏加载失败后的重试 */
+    fun retryList() {
+        loadInitial(listUserId, listOrder, listTargetPicId, listTargetIndex)
+    }
+
+    /**
+     * 画廊滑到接近末尾时续拉下一页（对齐原版「倒数第 4 张」触发语义）。
+     */
+    fun loadMore() {
+        val snapshot = _listState.value
+        if (snapshot.isLoading || snapshot.isLoadingMore || !snapshot.hasMore || snapshot.items.isEmpty()) return
+        _listState.update { it.copy(isLoadingMore = true) }
+        listJob = viewModelScope.launch {
+            val nextPage = loadedPage + 1
+            val result = userRepository.getUserCollectPicList(
+                userId = listUserId,
+                order = listOrder ?: CollectConstants.ORDER_ADD_TIME,
+                page = nextPage,
+                pageSize = PAGE_SIZE
+            )
+            result.fold(
+                onSuccess = { batch ->
+                    loadedPage = nextPage
+                    _listState.update { current ->
+                        current.copy(
+                            items = (current.items + batch).distinctBy { it.id },
+                            hasMore = batch.size >= PAGE_SIZE,
+                            isLoadingMore = false
+                        )
+                    }
+                },
+                onFailure = {
+                    // 保留当前列表与 hasMore，用户再次滑到末尾可重试
+                    _listState.update { it.copy(isLoadingMore = false) }
+                }
+            )
+        }
+    }
 
     /**
      * 切页：重置原图开关、重置超长图标记、重新回填收藏态与关联条目。
@@ -157,6 +344,13 @@ class PictureGalleryViewModel(
             } else {
                 collectRepository.collectItemDel(item.id)
             }
+            result.onSuccess {
+                if (nowCollected) {
+                    collectInvalidationBus.notifyCollected(item.id)
+                } else {
+                    collectInvalidationBus.notifyUncollected(item.id)
+                }
+            }
             result.onFailure { error ->
                 // 回滚到请求前状态
                 _uiState.update {
@@ -193,23 +387,47 @@ class PictureGalleryViewModel(
     }
 
     /**
-     * 加载当前大图的关联条目（相册 / 手办 / 文章三类），同页只请求一次。
+     * 加载当前大图的关联条目（相册 / 手办 / 文章三类）。
+     *
+     * 原版每次打开底部弹层都会重新请求（`PictureGalleryActivity.W()`），因此这里按 picId 做进程内缓存：
+     * 回到看过的图片时立即回填缓存，未命中才发起请求；请求失败不写缓存，下次切回可重试。
      */
     fun loadRelate(item: UserCollectPicItem) {
         val picId = item.id
-        if (picId <= 0L || picId in relatedPicIds) return
-        relatedPicIds.add(picId)
+        currentRelatePicId = picId
+        if (picId <= 0L) {
+            // TODO(原版对齐)：原版在图片 id 为 0 时改用 `path` 调 api/pic/relate。
+            // 当前收藏图片列表项均带 id，暂不扩展接口；出现 id=0 时展示空关联而不是发起无效请求。
+            _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
+            return
+        }
+        relateCache[picId]?.let { cached ->
+            _uiState.update { it.copy(relateItems = cached, isRelateLoading = false) }
+            return
+        }
         relateJob?.cancel()
         relateJob = viewModelScope.launch {
-            _uiState.update { it.copy(isRelateLoading = true) }
+            _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = true) }
             collectRepository.getPictureRelate(picId)
                 .onSuccess { list ->
-                    _uiState.update { it.copy(relateItems = list, isRelateLoading = false) }
+                    putRelateCache(picId, list)
+                    if (currentRelatePicId == picId) {
+                        _uiState.update { it.copy(relateItems = list, isRelateLoading = false) }
+                    }
                 }
                 .onFailure {
-                    relatedPicIds.remove(picId)
-                    _uiState.update { it.copy(isRelateLoading = false) }
+                    if (currentRelatePicId == picId) {
+                        _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
+                    }
                 }
+        }
+    }
+
+    private fun putRelateCache(picId: Long, list: List<PictureRelateItem>) {
+        relateCache[picId] = list
+        while (relateCache.size > RELATE_CACHE_MAX) {
+            val eldest = relateCache.keys.firstOrNull() ?: break
+            relateCache.remove(eldest)
         }
     }
 
@@ -310,5 +528,14 @@ class PictureGalleryViewModel(
 
         /** 触发「倒数第 4 张」续拉的阈值，与原版 `i10 > list.length() - 4` 对齐 */
         const val PREFETCH_DISTANCE = 4
+
+        /** 收藏-图片 列表分页大小（与收藏页 `UserCollectViewModel.PAGE_SIZE` 保持一致，保证下标可映射） */
+        const val PAGE_SIZE = 20
+
+        /** 首屏定位目标图片时最多加载的页数上限，避免异常下标导致连环请求 */
+        const val MAX_LOCATE_PAGE = 50
+
+        /** 关联条目缓存上限，避免单次画廊会话内随浏览图片数量无界增长 */
+        const val RELATE_CACHE_MAX = 32
     }
 }

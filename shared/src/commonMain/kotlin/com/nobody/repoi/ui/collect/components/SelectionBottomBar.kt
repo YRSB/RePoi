@@ -1,15 +1,15 @@
 package com.nobody.repoi.ui.collect.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Badge
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,33 +60,22 @@ internal fun SelectionBottomBar(
         contentAlignment = Alignment.Center
     ) {
         ExpressiveFloatingToolbar(modifier = Modifier.widthIn(max = 560.dp)) {
-            // 选中数徽标
-            Badge(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Text(
-                    text = "$selectedCount",
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-
-            SelectionActionPill(
+            SelectionActionButton(
                 text = "全选",
                 enabled = canSelectAll,
                 onClick = onSelectAll
             )
 
-            SelectionActionPill(
+            SelectionActionButton(
                 text = "取消",
                 enabled = canCancel,
                 onClick = onCancelSelection
             )
 
-            SelectionActionPill(
+            SelectionActionButton(
                 text = "取消收藏($selectedCount)",
                 enabled = canCancel,
-                prominent = true,
+                contentColor = MaterialTheme.colorScheme.error,
                 onClick = onCancelCollect
             )
         }
@@ -94,42 +83,39 @@ internal fun SelectionBottomBar(
 }
 
 /**
- * 底部操作条内的胶囊动作按钮，置灰时不可点击且前景色降透明度。
+ * 底部操作条内的动作按钮，基于官方 `TextButton` 实现。
+ *
+ * - 容器透明，避免在悬浮栏内叠加第二个容器色；
+ * - 危险操作用 `error` 前景色，不使用 prominent 容器；
+ * - 禁用态保持 38% 前景色；
+ * - 形状沿用设计系统 `ExpressiveTokens.PillShape`。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SelectionActionPill(
+private fun SelectionActionButton(
     text: String,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    prominent: Boolean = false
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    val pillColor = when {
-        !enabled -> Color.Transparent
-        prominent -> MaterialTheme.colorScheme.primaryContainer
-        else -> Color.Transparent
-    }
-    val pillContentColor = when {
-        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        prominent -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
-    }
+    val disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 
-    Surface(
+    TextButton(
         onClick = onClick,
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 40.dp),
         shape = ExpressiveTokens.PillShape,
-        color = pillColor,
-        contentColor = pillContentColor
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = contentColor,
+            disabledContentColor = disabledContentColor
+        ),
+        contentPadding = contentPadding
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = pillContentColor,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

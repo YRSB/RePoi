@@ -46,6 +46,21 @@ object CollectStateOption {
 }
 
 /**
+ * 周边细分子分类值域（原版 `ui/common/b0.java:231-240`）。
+ *
+ * 「全部」在 API 请求参数里必须下发 [ALL_KEY]（10000），但在 [UserCollectUiState.subCategoryId]
+ * 里统一用 `null` 表示——两者混用会让滚动保存键（键内含 subCategoryId）对同一份内容产生两个键：
+ * 切到「全部」时列表被误判为条件变化而回顶，或两种写法各存一份互不相识的位置。
+ */
+object HobbySubCategoryOption {
+    /** 请求参数里「全部」的取值（服务端约定，不可改为 null） */
+    const val ALL_KEY = 10000
+
+    /** 归一化为 UI 态表示：`null`、[ALL_KEY] 都视为「全部」，其余原样返回 */
+    fun normalize(id: Int?): Int? = if (id == null || id == ALL_KEY) null else id
+}
+
+/**
  * 周边页排序值域（原版 `ui/common/b0.java:124-143`）。
  *
  * [ORDER_TIME]（入手时间）**仅在「已入(buy)」档合法**，其余档位须回落到 [ACTION_DATE]

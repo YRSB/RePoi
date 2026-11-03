@@ -12,12 +12,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.GridView
@@ -98,11 +96,16 @@ internal fun CommonCollectSubPage(
     onCharacterClick: ((UserCollectCommonItem) -> Unit)? = null,
     onRetry: () -> Unit
 ) {
-    val listState = rememberLazyGridState()
-    val gridState = rememberLazyStaggeredGridState()
+    // 保存键绑定（统一入口见 rememberKeyedLazyGridState / rememberKeyedLazyStaggeredGridState）：
+    // 切换排序时网格 / 列表两态各自以全新的位置重建自动回顶；
+    // 排序不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复各自形态下的滚动位置。
+    val listState = rememberKeyedLazyGridState("common_list", commonOrder)
+    val gridState = rememberKeyedLazyStaggeredGridState("common_grid", commonOrder)
 
-    // 触底分页：单个布尔派生收敛滚动位置判断，空列表、已到底时不触发
-    val shouldLoadMore by remember(isListView) {
+    // 触底分页：单个布尔派生收敛滚动位置判断，空列表、已到底时不触发。
+    // 以两个状态实例 + 视图形态为 remember 键：排序变化会重建状态，
+    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
+    val shouldLoadMore by remember(listState, gridState, isListView) {
         derivedStateOf {
             val totalCount = if (isListView) {
                 listState.layoutInfo.totalItemsCount
@@ -118,7 +121,9 @@ internal fun CommonCollectSubPage(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
+    // 缺这个键就只会翻一页。
+    LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
         }

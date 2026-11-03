@@ -48,7 +48,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -257,16 +256,6 @@ fun UserHistoryScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     ExpressiveFloatingToolbar(modifier = Modifier.widthIn(max = 560.dp)) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ) {
-                            Text(
-                                text = "${uiState.selectedIds.size}",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-
                         TextButton(onClick = { viewModel.toggleSelectAll() }) {
                             Text(if (uiState.isAllSelected) "取消全选" else "全选")
                         }

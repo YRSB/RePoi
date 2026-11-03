@@ -26,6 +26,11 @@
 - **全量走 CI 验证**：代码变更通过 Git 提交并推送至分支/PR，全量交由 GitHub Actions CI 流水线权威执行与裁决。
 - **状态追踪**：统一使用 `gh pr checks` 或 `gh run list` 监控远端 CI 矩阵（Android APK、JVM 单测、Android-host 单测及桌面端打包）执行状态。
 
+### 5. 跨平台依赖引入规范 (KMP Library Selection)
+- **权威选型查证**：引入或推荐新的 KMP 跨平台第三方依赖时，必须优先通过 klibs.io MCP (`https://api.klibs.io/mcp`) 或 `kmp-libraries-expert` 技能核实真实元数据，严禁臆测版本号。
+- **平台目标硬性约束**：引入的库必须经过验证，完整支持本项目所需目标平台（Android 及 Windows Desktop / JVM），严禁引入仅限 Android 的单端依赖用于 `:shared:commonMain`。
+- **稳定版优先**：除非显式要求预发布版，否则一律采用官方最新发布的稳定版本（Latest Stable Version），并确认其开源许可证及维护活跃度。
+
 ---
 
 ## 路由契约与拓扑速查 (Navigation 3)
@@ -119,7 +124,9 @@
   - 折叠态（紧凑屏）：主信息流占据全屏。
 
 ### 3. 悬浮操作栏与系统栏边距
-- **悬浮组件**：底部悬浮胶囊统一使用 `ExpressiveFloatingToolbar` 与 `ExpressiveToolbarButton`。
+- **悬浮组件**：底部悬浮胶囊统一使用 `ExpressiveFloatingToolbar` 与 `ExpressiveToolbarButton`；前者是官方 `HorizontalFloatingToolbar` 的适配层，后者由官方 `IconButton` / `FilledTonalIconButton` / `TextButton` / `FilledTonalButton` 组成。不得再自绘悬浮容器或药丸按钮，需要改样式时优先传官方参数（如 `FloatingToolbarDefaults.vibrantFloatingToolbarColors()`）。
+- **着色语义**：悬浮操作栏内只有切换类控件（收藏、关注、点赞）可以按激活态着色（`isProminent = true`，容器取 `primaryContainer` 系）。评论、回帖、分享等导航类操作必须 `isProminent = false`，不得用容器着色表示主操作。危险操作可以用 `error` 前景色，但不得使用 `prominent` 容器。
+- **计数展示**：悬浮操作栏内不得单独放选中数徽标；需要显示数量时写进操作文案（如「取消收藏(3)」「删除(3)」）。
 - **宽度与边距约束**：悬浮顶栏与底栏必须限制最大宽度为 `fillMaxWidth(if (isWidePane) mainPaneWeight else 1f)`，并显式附加 `statusBarsPadding()` 与 `navigationBarsPadding()`。
 
 ### 4. 网格与卡片

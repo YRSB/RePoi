@@ -1047,7 +1047,8 @@ internal fun CharacterFloatingActionBar(
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = Icons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                isProminent = !isCollected
+                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+                isProminent = false
             )
         }
 

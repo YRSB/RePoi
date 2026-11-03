@@ -1705,7 +1705,8 @@ private fun HobbyFloatingActionBar(
                 text = "$displayComment",
                 icon = Icons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                isProminent = !isFavorite
+                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+                isProminent = false
             )
         }
     }

@@ -260,7 +260,8 @@ fun PostDetailScreen(
                     text = "回帖",
                     icon = Icons.AutoMirrored.Filled.Comment,
                     contentDescription = "回帖",
-                    isProminent = true
+                    // 回帖是导航类操作，无激活态
+                    isProminent = false
                 )
 
                 // 2. 评论数按钮（窄屏点击平滑定位到回帖区）

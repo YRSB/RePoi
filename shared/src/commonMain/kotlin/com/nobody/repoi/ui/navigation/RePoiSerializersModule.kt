@@ -67,9 +67,10 @@ val RePoiSerializersModule = SerializersModule {
         subclass(WorksCollectEditNavKey::class, WorksCollectEditNavKey.serializer())
         subclass(SeriesDetailNavKey::class, SeriesDetailNavKey.serializer())
 
-        // 10. 作品、图片与扩展图库路由 (3)
+        // 10. 作品、图片与扩展图库路由 (4)
         subclass(WorksDetailNavKey::class, WorksDetailNavKey.serializer())
         subclass(PictureListNavKey::class, PictureListNavKey.serializer())
+        subclass(PictureGalleryNavKey::class, PictureGalleryNavKey.serializer())
         subclass(ExHobbyListNavKey::class, ExHobbyListNavKey.serializer())
 
         // 11. 设置与鉴权路由 (2)

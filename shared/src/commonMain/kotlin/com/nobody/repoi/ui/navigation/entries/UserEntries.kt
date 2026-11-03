@@ -6,6 +6,7 @@ import com.nobody.repoi.ui.collect.CollectEditScreen
 import com.nobody.repoi.ui.collect.UserCollectScreen
 import com.nobody.repoi.ui.collect.WorksCollectEditScreen
 import com.nobody.repoi.ui.friend.FriendListScreen
+import com.nobody.repoi.ui.gallery.PictureGalleryRouteScreen
 import com.nobody.repoi.ui.user.UserInfoScreen
 import com.nobody.repoi.ui.user.creation.UserCreationScreen
 import com.nobody.repoi.ui.user.history.UserHistoryScreen
@@ -64,7 +65,17 @@ fun EntryProviderScope<NavKey>.userEntries(
             onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
             onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
-            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) }
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToPictureGallery = { galleryParam -> navigator.navigateToPictureGallery(galleryParam) }
+        )
+    }
+
+    entry<PictureGalleryNavKey> { key ->
+        PictureGalleryRouteScreen(
+            param = key.param,
+            onBack = onBack,
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) }
         )
     }
 

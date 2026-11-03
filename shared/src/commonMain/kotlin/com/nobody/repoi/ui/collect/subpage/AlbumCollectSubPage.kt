@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +58,7 @@ internal const val COLLECT_ALBUM_EMPTY_TEXT = "暂无相册~"
  * - 批量取消收藏提交**外层收藏节点 id**（`UserCollectAlbumItem.id`），提交前二次确认。
  *
  * @param currentOrder 当前排序档（`addTime` / `actionDate` / `praiseCount`）
+ * @param albumType 相册查询类型（`fav` = 收藏的相册，其余值 = 我创建的相册）
  * @param isSelectionMode 是否处于多选模式
  * @param selectedIds 已选中的**外层收藏节点 id**集合
  * @param isSelf 是否浏览自己的收藏（批量取消收藏仅本人可用）
@@ -70,6 +70,7 @@ internal fun AlbumCollectSubPage(
     subPageData: SubPageData<UserCollectAlbumItem>,
     navBarBottomPadding: Dp,
     currentOrder: String,
+    albumType: String,
     isSelectionMode: Boolean,
     selectedIds: Set<Long>,
     isSelf: Boolean,
@@ -84,8 +85,17 @@ internal fun AlbumCollectSubPage(
     onCancelCollect: () -> Unit,
     onRetry: () -> Unit
 ) {
-    val gridState = rememberLazyStaggeredGridState()
-    val shouldLoadMore by remember {
+    // 保存键绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
+    // 切换相册类型或排序时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
+    // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
+    //
+    // albumType 必须进键：它是 `api/collect/album-v2` 的 type 参数（fav = 收藏的相册，
+    // 其余 = 我创建的相册），两种语料内容完全不同；漏掉该维度会让两种语料共用一份
+    // 滚动位置并互相串位（切类型后残留旧下标，或本应回顶却沿用旧位置）。
+    val gridState = rememberKeyedLazyStaggeredGridState("album_staggered", albumType, currentOrder)
+    // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
+    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
+    val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
             val total = layoutInfo.totalItemsCount
@@ -94,16 +104,11 @@ internal fun AlbumCollectSubPage(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
+    // 缺这个键就只会翻一页。
+    LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
-        }
-    }
-
-    // 排序切换后重置到第 1 页（ViewModel 侧已重置数据），并把列表滚回顶部
-    LaunchedEffect(currentOrder) {
-        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
-            gridState.scrollToItem(0)
         }
     }
 

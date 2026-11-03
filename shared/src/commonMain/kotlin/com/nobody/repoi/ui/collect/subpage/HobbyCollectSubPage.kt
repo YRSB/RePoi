@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.collect.subpage
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +14,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
+import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inbox
@@ -25,7 +34,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,21 +45,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -59,12 +71,21 @@ import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.collect.HobbyOrderOption
 import com.nobody.repoi.ui.collect.UserCollectUiState
-import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
 import com.nobody.repoi.ui.theme.ExpressiveTokens
+import kotlinx.coroutines.launch
+
+/** 周边页滚动保存键的内容维度，生产与测试共用 */
+internal fun hobbyScrollKeyInputs(uiState: UserCollectUiState): Array<out Any?> = arrayOf<Any?>(
+    uiState.collectState,
+    uiState.order,
+    uiState.sortType,
+    uiState.subCategoryId,
+    uiState.selectedTag,
+)
 
 // ── 手办周边子页 ──────────────────────────────────────────
 
@@ -102,7 +123,13 @@ internal fun HobbyCollectSubPage(
     onDismissBatchError: () -> Unit = {}
 ) {
     val hobbyData = uiState.hobbyData
-    val gridState = rememberLazyGridState()
+    // 保存键绑定（统一入口见 rememberKeyedLazyGridState）：
+    // 切换收藏状态、排序或子分类 / 标签筛选时，Compose 以全新的 initialFirstVisibleItemIndex = 0
+    // 重建状态自动回顶；条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复原滚动位置。
+    val gridState = rememberKeyedLazyGridState(
+        "hobby_grid",
+        *hobbyScrollKeyInputs(uiState)
+    )
 
     // 仅本人拥有写操作入口（对齐原版只在自己视角挂 onCancelCollect）
     val isSelectionEnabled = uiState.isSelf
@@ -110,7 +137,38 @@ internal fun HobbyCollectSubPage(
     val selectedIds = uiState.hobbySelectedIds
     val selectedCount = selectedIds.size
 
-    val shouldLoadMore by remember {
+    val density = LocalDensity.current
+    var controlBarHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
+
+    // 有数据即可折叠：只捕获一个 Boolean，避免分页把 items 换成新列表实例时
+    // 连带重建 scrollBehavior（重建会替换 nestedScrollConnection，fling 中会丢派发点）。
+    val itemsNonEmpty = hobbyData.items.isNotEmpty()
+
+    // 对齐 HomeFeedScreen / FollowScreen 的无缝同步滚动行为：
+    // 当非多选且有数据时，1:1 同步驱动控制栏平滑向上收起或即时拉出
+    val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
+        initialHeightOffsetLimit = -controlBarHeightPx,
+        canScroll = { !isSelectionMode && itemsNonEmpty }
+    )
+
+    LaunchedEffect(controlBarHeightPx, isSelectionMode) {
+        if (!isSelectionMode && controlBarHeightPx > 0f) {
+            scrollBehavior.state.heightOffsetLimit = -controlBarHeightPx
+            scrollBehavior.state.heightOffset =
+                scrollBehavior.state.heightOffset.coerceIn(-controlBarHeightPx, 0f)
+        } else {
+            scrollBehavior.state.heightOffsetLimit = 0f
+            scrollBehavior.state.heightOffset = 0f
+        }
+    }
+
+    val controlBarHeightDp = with(density) { controlBarHeightPx.toDp() }
+    val pullRefreshState = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
+
+    // 以 gridState 为 remember 键：筛选/排序变化时上面的 rememberKeyedLazyGridState 会重建 LazyGridState，
+    // 键缺失的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过筛选后触底分页永久失效。
+    val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
             val total = layoutInfo.totalItemsCount
@@ -119,22 +177,46 @@ internal fun HobbyCollectSubPage(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    // 附带 items.size 键（对齐 HomeFeedScreen:150 / FollowScreen:133）：
+    // 宽屏一屏装下时触底判定恒为 true 不再变化，缺这个键就只会翻一页。
+    LaunchedEffect(shouldLoadMore, hobbyData.items.size) {
         if (shouldLoadMore && hobbyData.hasMore && !hobbyData.isPaging && !hobbyData.isLoading && !hobbyData.isRefreshing) {
             onLoadNextPage()
         }
     }
 
-    LaunchedEffect(
+    // 筛选/排序条件变动时把嵌套折叠控制栏复位展开到顶格。
+    //
+    // 必须带「上次条件」守卫：TopAppBarState 自身可保存（material3 rememberTopAppBarState
+    // 内部就是 rememberSaveable），Nav3 返回时折叠偏移本来能恢复；无守卫的 LaunchedEffect
+    // 每次重进组合都会执行，把刚恢复的偏移抹成 0，表现为「列表位置回来了、顶栏却弹回展开态」。
+    // 守卫用 remember（非 saveable）：Entry 重建后首帧 signature 与当前值相等 → 不复位。
+    val filterSignature = listOf<Any?>(
         uiState.collectState,
         uiState.order,
         uiState.sortType,
         uiState.subCategoryId,
         uiState.selectedTag
-    ) {
-        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
-            gridState.scrollToItem(0)
+    )
+    var lastFilterSignature by remember { mutableStateOf(filterSignature) }
+    LaunchedEffect(filterSignature) {
+        if (filterSignature != lastFilterSignature) {
+            lastFilterSignature = filterSignature
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
         }
+    }
+
+    // 刷新完成回落时同样复位（覆盖非下拉触发的程序化刷新，如批量取消收藏后的重新拉取），
+    // 对齐 HomeFeedScreen:233-241 / FollowScreen:206-214。
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(hobbyData.isRefreshing) {
+        if (wasRefreshing && !hobbyData.isRefreshing && hobbyData.errorMessage == null) {
+            gridState.scrollToItem(0)
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+        }
+        wasRefreshing = hobbyData.isRefreshing
     }
 
     // 列表卡微标签 / 网格卡徽章随 (collectState, isSelf) 重算
@@ -156,141 +238,120 @@ internal fun HobbyCollectSubPage(
         GridCells.Adaptive(minSize = 120.dp)
     }
 
-    // 「全部周边」以 10000 表达而非 null，hasFilter 不能把「全部」误判为已筛选
-    val hasFilter = (uiState.subCategoryId != null &&
-        uiState.subCategoryId != UserCollectViewModel.DEFAULT_HOBBY_KEY) ||
-        uiState.selectedTag != null
+    // subCategoryId / selectedTag 已在 ViewModel 归一化（「全部」与空白标签恒为 null），
+    // 此处只判断「是否有筛选」，不再需要单独排除 10000 那种双表示。
+    val hasFilter = uiState.subCategoryId != null || uiState.selectedTag != null
 
     var showCancelConfirm by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 控制栏：6 档状态横滑胶囊 + 排序选择（含升降序）+ 高级筛选
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CollectStateOption.ALL_STATES.forEach { stateKey ->
-                            val isSelected = uiState.collectState == stateKey
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { onSwitchCollectState(stateKey) },
-                                label = {
-                                    Text(
-                                        text = collectStateLabel(stateKey),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                shape = ExpressiveTokens.ChipShape,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                border = null
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // 排序 + 升降序 + 筛选
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HobbySortControl(
-                            currentOrder = uiState.order,
-                            currentSortType = uiState.sortType,
-                            collectState = uiState.collectState,
-                            isSelf = uiState.isSelf,
-                            onSwitchOrder = onSwitchOrder,
-                            onSwitchSortDirection = onSwitchSortDirection
-                        )
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        BadgedBox(
-                            badge = {
-                                if (hasFilter) {
-                                    Badge(modifier = Modifier.size(6.dp))
-                                }
-                            }
-                        ) {
-                            IconButton(
-                                onClick = onOpenFilter,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterList,
-                                    contentDescription = "多维筛选",
-                                    tint = if (hasFilter) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            }
-                        }
-                    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // ── 页根精确裁剪：本页「折叠控制栏钻进大类 TabRow 下方」的唯一保证 ──────────────
+            // 本页宿主是 UserCollectScreen 的 HorizontalPager，页面上边界正好贴在大类 TabRow 下沿。
+            // Pager 自带的裁剪来自 foundation 的 scrollableArea → clipScrollableContainer(Horizontal)，
+            // 而 HorizontalScrollableClipShape 为了不切掉卡片阴影，在纵向额外外扩
+            // MaxSupportedElevation（30dp，见 foundation ClipScrollableContainer.kt:62-80）：
+            // 也就是说控制栏上移时，只有超出页顶 30dp 以外的部分才会被裁掉，剩下约 30dp 会画在
+            // 宿主 TabRow 之上——这就是"控制栏盖住大类 TabRow"的直接成因。
+            // 动态页/关注页没有这个问题：它们的常驻 TabRow 是同一个 Box 里更晚绘制的兄弟节点，
+            // 靠 Z 序用不透明 Surface 盖住上移的筛选栏。本页没有这层兄弟，故必须由页根裁剪承担
+            // 同等语义——裁到自身精确边界（不外扩），控制栏一越过页顶即消失。
+            .clipToBounds()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // 1. 底层：内容网格与下拉刷新容器（铺满整屏，通过 contentPadding 避让顶层控制栏）
+        PullToRefreshBox(
+            isRefreshing = hobbyData.isRefreshing,
+            onRefresh = {
+                // 对齐 HomeFeedScreen / FollowScreen：刷新前把列表位置与控制栏折叠态一起复位，
+                // 否则刷新结束后会停在半折叠位，顶栏回不来、首项上还压着一截空白。
+                scope.launch {
+                    gridState.scrollToItem(0)
+                    scrollBehavior.state.heightOffset = 0f
+                    scrollBehavior.state.contentOffset = 0f
                 }
-            }
-
-            // 批量取消收藏失败提示（宿主 snackbar 只消费 errorMessage，本字段就地展示）
-            if (uiState.batchCancelError != null) {
-                BatchErrorBanner(
-                    message = uiState.batchCancelError,
-                    onDismiss = onDismissBatchError
+                onRefresh()
+            },
+            state = pullRefreshState,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = pullRefreshState,
+                    isRefreshing = hobbyData.isRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = controlBarHeightDp + 4.dp)
                 )
             }
-
-            // 下拉刷新与列表内容
-            PullToRefreshBox(
-                isRefreshing = hobbyData.isRefreshing,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
+        ) {
+            // 嵌套滚动连接只包住可滚内容，且必须挂在 PullToRefreshBox 内部
+            //（对齐 HomeFeedScreen:270-274 / FollowScreen:305-309 / AlbumScreen:236-239）：
+            // 1. 连接越靠近 LazyVerticalGrid，协同滚动就越先于下拉刷新节点派发，下拉手势不会被
+            //    刷新容器抢先消费，顶栏才能与列表 1:1 跟手；
+            // 2. 顶层控制栏（含 DropdownMenu 内部的可滚 Column）不再落在连接子树内，
+            //    菜单滚动不会误驱动折叠。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
                 when {
                     hobbyData.isLoading && hobbyData.items.isEmpty() -> {
-                        LoadingCollectView()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingCollectView()
+                        }
                     }
 
                     hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {
-                        ErrorCollectView(
-                            errorMessage = hobbyData.errorMessage,
-                            onRetry = onRetry
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorCollectView(
+                                errorMessage = hobbyData.errorMessage,
+                                onRetry = onRetry
+                            )
+                        }
                     }
 
                     // 服务端回「用户已隐藏内容」语义：渲染专用空态而非通用错误态
                     // 副标题复用全模块统一常量（原版 strings.xml:1372 text_empty_user_hide）
                     hobbyData.isContentHidden && hobbyData.items.isEmpty() -> {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.VisibilityOff,
-                            title = "用户已隐藏内容",
-                            subtitle = COLLECT_CONTENT_HIDDEN_TEXT
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            HobbyEmptyState(
+                                icon = Icons.Filled.VisibilityOff,
+                                title = "用户已隐藏内容",
+                                subtitle = COLLECT_CONTENT_HIDDEN_TEXT
+                            )
+                        }
                     }
 
                     hobbyData.items.isEmpty() -> {
-                        HobbyEmptyState(
-                            icon = Icons.Filled.Inbox,
-                            title = "未收藏周边~",
-                            subtitle = "可以在详情页将感兴趣的条目加入收藏"
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = controlBarHeightDp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            HobbyEmptyState(
+                                icon = Icons.Filled.Inbox,
+                                title = "未收藏周边~",
+                                subtitle = "可以在详情页将感兴趣的条目加入收藏"
+                            )
+                        }
                     }
 
                     else -> {
@@ -299,7 +360,7 @@ internal fun HobbyCollectSubPage(
                             state = gridState,
                             contentPadding = PaddingValues(
                                 start = 12.dp,
-                                top = 8.dp,
+                                top = controlBarHeightDp + 8.dp,
                                 end = 12.dp,
                                 bottom = 16.dp + navBarBottomPadding +
                                     // 多选悬浮条会盖住末尾几行，额外让出高度
@@ -311,7 +372,9 @@ internal fun HobbyCollectSubPage(
                         ) {
                             items(
                                 items = hobbyData.items,
-                                key = { item -> "hobby_${item.actualItemId}_${item.id}" }
+                                key = { item -> "hobby_${item.actualItemId}_${item.id}" },
+                                // 网格态与列表态卡片结构不同，按态分区避免两者共用复用池
+                                contentType = { if (uiState.isListView) "hobby_list" else "hobby_grid" }
                             ) { item ->
                                 val isSelected = item.id in selectedIds
                                 val onCardClick: () -> Unit = if (isSelectionMode) {
@@ -355,7 +418,89 @@ internal fun HobbyCollectSubPage(
             }
         }
 
-        // 多选底部悬浮操作条（仅本人 + 仅多选态）
+        // 2. 顶层：悬浮/吸顶控制栏（对齐 HomeFeed/Follow 架构：置顶贴靠，平滑随手势 tuck 进顶栏下方）
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+                // 实测基准取「整个控制栏容器」而不是只量 Surface：
+                // 失败横幅（BatchErrorBanner）挂在 Surface 之外，只量 Surface 会漏算横幅高度，
+                // 导致折叠上限偏小、折叠后顶部仍露出半截。
+                .onSizeChanged { size ->
+                    if (size.height > 0) controlBarHeightPx = size.height.toFloat()
+                }
+                .clipToBounds()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 状态筛选单选下拉胶囊
+                    HobbyStateDropdown(
+                        currentState = uiState.collectState,
+                        onSwitchCollectState = onSwitchCollectState
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 排序维度（带升降序反转箭头 + 展开小三角）+ 高级筛选
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HobbySortControl(
+                            currentOrder = uiState.order,
+                            currentSortType = uiState.sortType,
+                            collectState = uiState.collectState,
+                            isSelf = uiState.isSelf,
+                            onSwitchOrder = onSwitchOrder,
+                            onSwitchSortDirection = onSwitchSortDirection
+                        )
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        BadgedBox(
+                            badge = {
+                                if (hasFilter) {
+                                    Badge(modifier = Modifier.size(6.dp))
+                                }
+                            }
+                        ) {
+                            IconButton(
+                                onClick = onOpenFilter,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "多维筛选",
+                                    tint = if (hasFilter) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 批量取消收藏失败提示
+            if (uiState.batchCancelError != null) {
+                BatchErrorBanner(
+                    message = uiState.batchCancelError,
+                    onDismiss = onDismissBatchError
+                )
+            }
+        }
+
+        // 3. 多选底部悬浮操作条（仅本人 + 仅多选态）
         if (isSelectionMode) {
             SelectionBottomBar(
                 selectedCount = selectedCount,
@@ -398,18 +543,92 @@ internal fun HobbyCollectSubPage(
     }
 }
 
-// ── 排序控件 ──────────────────────────────────────────────
+// ── 筛选与排序控件 ──────────────────────────────────────
 
 /**
- * 排序下拉 + 升降序连体二选。
- *
- * 排序值域取自 [HobbyOrderOption]：5 档基础值域
- * `actionDate/release/rating/myRating/updateDate`（原版 `b0.java:124-143`），
- * 「按入手时间 `orderTime`」仅在已入(buy)档追加
- * （原版 `UserCollectHobbySubPagerFragment.java:261-267`）。
- *
- * 文案两套：看自己时 `myRating` 显示「我的评分」，看他人时显示「TA的评分」。
- * 点胶囊打开下拉，点升/降连体按钮直接指定升降序（`sortType` 1 升 / 2 降）。
+ * 收藏状态单选下拉胶囊。
+ * 替代原先在小屏上极易截断溢出的 6 档平铺横滑 Chips，统一为带小三角展开指示的官方 FilterChip。
+ */
+@Composable
+private fun HobbyStateDropdown(
+    currentState: String,
+    onSwitchCollectState: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "StateArrowRotation"
+    )
+    val isFiltered = currentState != CollectStateOption.DEFAULT
+
+    Box {
+        FilterChip(
+            selected = isFiltered,
+            onClick = { expanded = true },
+            modifier = Modifier.semantics {
+                stateDescription = "当前：${collectStateLabel(currentState)}"
+            },
+            label = {
+                Text(
+                    text = collectStateLabel(currentState),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isFiltered) FontWeight.Bold else FontWeight.Normal
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = if (expanded) "收起状态菜单" else "展开状态菜单",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = arrowRotation }
+                )
+            },
+            shape = ExpressiveTokens.ChipShape,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            border = null
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = ExpressiveTokens.MediumCardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            CollectStateOption.ALL_STATES.forEach { stateKey ->
+                val isSelected = currentState == stateKey
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = collectStateLabel(stateKey),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onSwitchCollectState(stateKey)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 排序控件（做法 B 复合方案）：
+ * - 前置图标：方向箭头（ArrowUpward / ArrowDownward），直观表达升序/降序；
+ * - 尾部图标：倒三角（ArrowDropDown），指示可点击展开切换维度；
+ * - 点击行为：打开下拉菜单选择维度；若在菜单中重复选择当前已选中的排序维度，则自动反转升降序。
  */
 @Composable
 private fun HobbySortControl(
@@ -421,93 +640,96 @@ private fun HobbySortControl(
     onSwitchSortDirection: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "SortArrowRotation"
+    )
 
     val options = remember(collectState, isSelf) { buildHobbyOrderOptions(collectState, isSelf) }
+    val isAsc = currentSortType == UserCollectUiState.SORT_ASC
 
-    // 胶囊（选排序维度）与升降序连体二选是两个平级可点区域：
-    // 连体按钮不能塞进 FilterChip 的 trailingIcon，否则父子两个 clickable 会同时响应。
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box {
-            FilterChip(
-                selected = true,
-                onClick = { expanded = true },
-                label = {
-                    Text(
-                        text = hobbyOrderShortLabel(currentOrder, isSelf),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                },
-                shape = ExpressiveTokens.ChipShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    selectedLabelColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = null
-            )
+    Box {
+        FilterChip(
+            selected = true,
+            onClick = { expanded = true },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = if (isAsc) "升序" else "降序",
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            label = {
+                Text(
+                    text = hobbyOrderShortLabel(currentOrder, isSelf),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = if (expanded) "收起排序菜单" else "展开排序菜单",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = arrowRotation }
+                )
+            },
+            shape = ExpressiveTokens.ChipShape,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                selectedLabelColor = MaterialTheme.colorScheme.onSurface
+            ),
+            border = null
+        )
 
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                options.forEach { (key, label) ->
-                    val isSelected = key == currentOrder
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = label,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = ExpressiveTokens.MediumCardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            options.forEach { (key, label) ->
+                val isSelected = key == currentOrder
+                DropdownMenuItem(
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
                             )
-                        },
-                        onClick = {
-                            expanded = false
+                        }
+                    } else null,
+                    text = {
+                        Text(
+                            text = if (isSelected) "$label (${if (isAsc) "升序" else "降序"})" else label,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        if (isSelected) {
+                            // 重复点击已选项：反转升降序
+                            val nextSortType = if (isAsc) UserCollectUiState.SORT_DESC else UserCollectUiState.SORT_ASC
+                            onSwitchSortDirection(nextSortType)
+                        } else {
+                            // 切换到新维度
                             onSwitchOrder(key)
                         }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val directions = listOf(UserCollectUiState.SORT_ASC, UserCollectUiState.SORT_DESC)
-            directions.forEachIndexed { index, sortType ->
-                ToggleButton(
-                    checked = currentSortType == sortType,
-                    onCheckedChange = { if (it) onSwitchSortDirection(sortType) },
-                    modifier = Modifier.semantics { role = Role.RadioButton },
-                    shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (sortType == UserCollectUiState.SORT_ASC) "升" else "降",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                    }
+                )
             }
         }
     }
 }
 
-/**
- * 排序下拉候选项（key → 中文文案）。
- *
- * 「按入手时间」仅在已入档出现；「我的评分」在看他人时改称「TA的评分」
- * （原版 `b0.d` / `b0.e` 两张文案表之别）。
- */
 private fun buildHobbyOrderOptions(collectState: String, isSelf: Boolean): List<Pair<String, String>> {
     val base = HobbyOrderOption.BASE_ORDERS.map { key ->
         key to when (key) {
