@@ -156,6 +156,9 @@ class CdnUrlUtilsTest {
         kotlin.test.assertTrue(CdnUrlUtils.isNoCover("/none.jpg"))
         kotlin.test.assertTrue(CdnUrlUtils.isNoCover("cover/n/none.jpg"))
         kotlin.test.assertTrue(CdnUrlUtils.isNoCover("/cover/sr/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/n/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/sr/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/raw/none.jpg"))
 
         kotlin.test.assertFalse(CdnUrlUtils.isNoCover("2026/08/sample.jpg"))
         kotlin.test.assertFalse(CdnUrlUtils.isNoCover("cover/n/2026/08/sample.jpg"))

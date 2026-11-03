@@ -95,8 +95,12 @@ object CdnUrlUtils {
      */
     fun isNoCover(path: String?): Boolean {
         if (path.isNullOrBlank()) return true
-        val clean = cleanCoverPath(path).trim().lowercase()
-        return clean.isEmpty() || clean == "none.jpg" || clean == "none" || clean == "null"
+        val trimmed = path.trim().lowercase()
+        if (trimmed == "null" || trimmed == "none" || trimmed == "none.jpg") return true
+        val clean = cleanCoverPath(trimmed).removePrefix("/")
+        if (clean.isEmpty() || clean == "none.jpg" || clean == "none" || clean == "null") return true
+        val filename = clean.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
+        return filename == "none.jpg" || filename == "none" || filename == "null" || filename.isEmpty()
     }
 
     /**
