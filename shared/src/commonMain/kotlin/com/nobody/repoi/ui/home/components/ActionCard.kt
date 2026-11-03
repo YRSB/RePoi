@@ -56,6 +56,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.RelateItem
 import com.nobody.repoi.data.remote.model.UserProfileSummary
 import com.nobody.repoi.ui.common.LevelPill
@@ -116,9 +117,10 @@ fun ActionCard(
         }
     }
 
-    // 采用 Hpoi 官方设计：默认 1:1 方形占位防跳动 (c(1.0f))，优先从 LRU 缓存获取已解码比例
-    var imageRatio by remember(coverUrl) {
-        mutableFloatStateOf(ImageAspectRatioCache[coverUrl] ?: 1.0f)
+    // 采用 Hpoi 官方设计：相册无图默认 17:24 黄金比例，其余默认 1:1 方形占位防跳动，优先从 LRU 缓存获取已解码比例
+    val defaultRatio = if (mediaInfo.isAlbumNoCover) 17f / 24f else 1.0f
+    var imageRatio by remember(coverUrl, mediaInfo.isAlbumNoCover) {
+        mutableFloatStateOf(if (mediaInfo.isAlbumNoCover) defaultRatio else (ImageAspectRatioCache[coverUrl] ?: 1.0f))
     }
     // 官方钳制规则：下限 0.4f (f(0.4f)，高度最大至 2.5 倍宽)，超宽图无上限原比展示 (e() 未设)
     val effectiveRatio = imageRatio.coerceAtLeast(0.4f)
@@ -143,7 +145,7 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：Hpoi 官方同款自适应海报（宽定死 96dp，相册无图时不显示图）──
+            // ── 【左侧栏】：Hpoi 官方同款自适应海报（宽定死 96dp，相册无图时展示浅天蓝纯文本卡片）──
             if (shouldShowLeftCover) {
                 Box(
                     modifier = Modifier
@@ -156,7 +158,14 @@ fun ActionCard(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (coverRequest != null) {
+                    if (mediaInfo.isAlbumNoCover) {
+                        val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
+                        AlbumTextCover(
+                            title = albumTitle,
+                            modifier = Modifier.fillMaxSize(),
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    } else if (coverRequest != null) {
                         AsyncImage(
                             model = coverRequest,
                             contentDescription = "条目海报",
@@ -279,19 +288,6 @@ fun ActionCard(
                             }
                         }
                     } else {
-                        // 官方逻辑：相册无封面（album 且 cover 空）时隐藏左图，纯文字卡片展示相册标题
-                        val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
-                        if (mediaInfo.isAlbumNoCover && mainComment.isNullOrBlank() && albumTitle.isNotBlank()) {
-                            Text(
-                                text = albumTitle,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
                         if (!mainComment.isNullOrBlank() && !isCommentSameAsFigure) {
                             Text(
                                 text = mainComment,

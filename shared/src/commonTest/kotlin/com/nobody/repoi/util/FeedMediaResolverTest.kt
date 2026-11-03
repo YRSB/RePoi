@@ -67,7 +67,7 @@ class FeedMediaResolverTest {
     }
 
     @Test
-    fun resolve_albumNoneJpg_showsOfficialPlaceholder() {
+    fun resolve_albumNoneJpg_marksAlbumNoCoverAndKeepsLeftCover() {
         val action = ActionItem(
             id = 3L,
             actionType = 3,
@@ -78,12 +78,13 @@ class FeedMediaResolverTest {
         )
         val info = action.resolveMediaDisplayInfo()
         assertTrue(info.shouldShowLeftCover)
-        assertEquals("https://rfx.hpoi.net/gk/cover/sr/none.jpg", info.coverUrl)
-        assertFalse(info.isAlbumNoCover)
+        assertEquals("", info.coverUrl)
+        assertTrue(info.isAlbumNoCover)
+        assertTrue(info.allRawUrls.isEmpty())
     }
 
     @Test
-    fun resolve_albumWithoutCover_hidesLeftCover() {
+    fun resolve_albumWithoutCover_marksAlbumNoCoverAndKeepsLeftCover() {
         val actionWithBlank = ActionItem(
             id = 4L,
             actionType = 3,
@@ -93,8 +94,9 @@ class FeedMediaResolverTest {
             )
         )
         val infoBlank = actionWithBlank.resolveMediaDisplayInfo()
-        assertFalse(infoBlank.shouldShowLeftCover)
+        assertTrue(infoBlank.shouldShowLeftCover)
         assertEquals("", infoBlank.coverUrl)
+        assertTrue(infoBlank.isAlbumNoCover)
     }
 
     @Test

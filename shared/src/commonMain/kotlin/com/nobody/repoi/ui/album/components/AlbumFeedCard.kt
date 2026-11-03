@@ -67,39 +67,13 @@ fun AlbumFeedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column {
-            if (item.hasCover) {
-                AlbumCover(
-                    item = item,
-                    rank = rank,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (rank != null) {
-                        RankBadge(
-                            rank = rank,
-                            modifier = Modifier.align(Alignment.TopStart)
-                        )
-                    }
-                    Text(
-                        text = item.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            AlbumCover(
+                item = item,
+                rank = rank,
+                modifier = Modifier.fillMaxWidth()
+            )
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                if (item.hasCover && item.displayName.isNotBlank()) {
+                if (item.displayName.isNotBlank()) {
                     Text(
                         text = item.displayName,
                         style = MaterialTheme.typography.bodyMedium,
@@ -155,11 +129,13 @@ fun AlbumFeedCard(
 
 @Composable
 private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifier = Modifier) {
-    val coverUrl = CdnUrlUtils.getCoverSrUrl(item.cover)
+    val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.cover)
     val ratioKey = listImageKey(item.cover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(item.cover, coverUrl, "sr:waterfall")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    var aspectRatio by remember(ratioKey, isNoCover) {
+        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
     Box(
         modifier = modifier
@@ -167,20 +143,27 @@ private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifie
             .aspectRatio(aspectRatio)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
-        AsyncImage(
-            model = coverRequest,
-            contentDescription = item.displayName.ifBlank { "相册封面" },
-            contentScale = ContentScale.Crop,
-            onSuccess = { state ->
-                val size = state.painter.intrinsicSize
-                if (size.width > 0 && size.height > 0) {
-                    val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                    aspectRatio = ratio
-                    ImageAspectRatioCache[ratioKey] = ratio
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isNoCover) {
+            AlbumTextCover(
+                title = item.displayName,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            AsyncImage(
+                model = coverRequest,
+                contentDescription = item.displayName.ifBlank { "相册封面" },
+                contentScale = ContentScale.Crop,
+                onSuccess = { state ->
+                    val size = state.painter.intrinsicSize
+                    if (size.width > 0 && size.height > 0) {
+                        val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
+                        aspectRatio = ratio
+                        ImageAspectRatioCache[ratioKey] = ratio
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         if (rank != null) {
             RankBadge(
                 rank = rank,

@@ -112,6 +112,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.ThumbUp
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.HobbyDetailData
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.InfoListEntry
@@ -1641,12 +1642,14 @@ private fun HobbyUserAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(album.cover) {
-        album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = remember(album.cover, isNoCover) {
+        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
     }
     val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
 
     Card(
         onClick = onClick,
@@ -1662,7 +1665,12 @@ private fun HobbyUserAlbumCard(
                 .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
-            if (coverUrl.isNotBlank()) {
+            if (isNoCover) {
+                AlbumTextCover(
+                    title = album.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalPlatformContext.current)
                         .data(coverUrl)
@@ -1680,18 +1688,6 @@ private fun HobbyUserAlbumCard(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
             }
 
             // 右上角半透明浮层点赞徽标（与相册列表页及角色详情页完全一致的 ExtraSmallShape 与 padding）

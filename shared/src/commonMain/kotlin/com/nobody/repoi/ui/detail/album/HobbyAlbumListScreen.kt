@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.listImageKey
@@ -302,11 +303,13 @@ private fun HobbyAlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSrUrl(album.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(album.cover)
     val ratioKey = listImageKey(album.cover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(album.cover, coverUrl, "sr:waterfall")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    var aspectRatio by remember(ratioKey, isNoCover) {
+        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
     ExpressiveElevatedCard(
@@ -323,7 +326,12 @@ private fun HobbyAlbumStaggeredCard(
                     .clip(ExpressiveTokens.SmallCardShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
-                if (coverUrl.isNotBlank()) {
+                if (isNoCover) {
+                    AlbumTextCover(
+                        title = album.displayName,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     AsyncImage(
                         model = coverRequest,
                         contentDescription = album.displayName,
@@ -338,18 +346,6 @@ private fun HobbyAlbumStaggeredCard(
                         },
                         modifier = Modifier.fillMaxSize()
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.BrokenImage,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
                 }
             }
 

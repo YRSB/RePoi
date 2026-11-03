@@ -79,6 +79,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.WorksCharacterItem
 import com.nobody.repoi.data.remote.model.WorksData
@@ -740,13 +741,20 @@ internal fun WorksAlbumsSection(
                                 .clickable { onAlbumClick(album) },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(album.cover)
+                            val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+                            val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverUrl(album.cover)
                             Box(
                                 modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                                     .clip(ExpressiveTokens.CardShape)
                                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             ) {
-                                if (coverUrl.isNotBlank()) {
+                                if (isNoCover) {
+                                    AlbumTextCover(
+                                        title = album.displayName.ifBlank { "未知相册" },
+                                        modifier = Modifier.fillMaxSize(),
+                                        shape = ExpressiveTokens.CardShape
+                                    )
+                                } else if (coverUrl.isNotBlank()) {
                                     AsyncImage(
                                         model = coverUrl,
                                         contentDescription = null,
