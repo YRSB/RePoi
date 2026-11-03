@@ -1,65 +1,78 @@
 # CI for the RePoi Kotlin Multiplatform project (Android + Desktop).
 #
-# Runs on pushes to main and on pull requests:
-# - android job (Linux): assembles the Android debug APK, runs shared unit
-#   tests (JVM) and Android host tests
-# - desktop job (Linux + Windows matrix): packages the desktop app for each
-#   OS (.deb on Linux, .msi on Windows)
+# Runs on pushes to main, pull requests, and manual triggers:
+# - test job (Linux): runs shared unit tests (JVM) and Android host tests
+# - android job (Linux, depends on test): assembles the Android debug APK
+# - desktop job (Linux + Windows matrix, depends on test): packages the desktop app
+#   for each OS (.deb on Linux, .msi on Windows)
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
-# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+# Cancel superseded runs on PR refs, preserve full runs on main.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096M -Dorg.gradle.daemon=false"
+
 jobs:
-  android:
+  test:
+    name: Shared Tests (JVM & Android Host)
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build Android app and run tests
-        run: ./gradlew :androidApp:assembleDebug :shared:jvmTest :shared:testAndroidHostTest --stacktrace
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-debug-apk
-          path: androidApp/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+      - name: Run unit tests
+        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-reports
           path: |
             shared/build/reports/tests/
             shared/build/test-results/
 
+  android:
+    name: Build Android APK
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+
+      - name: Build Android app
+        run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
   desktop:
+    name: Package Desktop (${{ matrix.os }})
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -75,41 +88,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
 
-      # Needed to configure the shared module's Android target, even though
-      # only the desktop (JVM) distribution is packaged here.
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Package desktop distribution
+      # Linux: 打包 Linux 桌面发行版 (.deb)
+      - name: Package Linux desktop distribution
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace
 
-      # M6: Windows 可运行镜像（R4 开箱可启动）。createDistributable 产出
-      # binaries/main/app/<packageName>/ 下的镜像（含 Windows launcher exe），
-      # 供下面的存在性断言验证。
-      - name: Build Windows runnable image
+      # Windows: 合并构建可运行镜像与 MSI 安装器，复用 Gradle 单次生命周期
+      - name: Build & Package Windows desktop
         if: matrix.os == 'windows-latest'
         shell: bash
-        run: ./gradlew :desktopApp:createDistributable --stacktrace
-
-      # M6: Windows MSI 显式打包（R4 可安装产物）。packageMsi 与
-      # packageDistributionForCurrentOS 同为 jpackage 系任务，共享输出目录。
-      - name: Package Windows MSI installer
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: ./gradlew :desktopApp:packageMsi --stacktrace
+        run: ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace
 
       - name: Upload desktop distribution
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: desktopApp/build/compose/binaries/main/
