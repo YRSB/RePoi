@@ -185,16 +185,26 @@ internal fun HobbyCollectSubPage(
         }
     }
 
-    // 监听筛选/排序条件变动：将嵌套折叠控制栏平滑复位展开到顶格
-    LaunchedEffect(
+    // 筛选/排序条件变动时把嵌套折叠控制栏复位展开到顶格。
+    //
+    // 必须带「上次条件」守卫：TopAppBarState 自身可保存（material3 rememberTopAppBarState
+    // 内部就是 rememberSaveable），Nav3 返回时折叠偏移本来能恢复；无守卫的 LaunchedEffect
+    // 每次重进组合都会执行，把刚恢复的偏移抹成 0，表现为「列表位置回来了、顶栏却弹回展开态」。
+    // 守卫用 remember（非 saveable）：Entry 重建后首帧 signature 与当前值相等 → 不复位。
+    val filterSignature = listOf<Any?>(
         uiState.collectState,
         uiState.order,
         uiState.sortType,
         uiState.subCategoryId,
         uiState.selectedTag
-    ) {
-        scrollBehavior.state.heightOffset = 0f
-        scrollBehavior.state.contentOffset = 0f
+    )
+    var lastFilterSignature by remember { mutableStateOf(filterSignature) }
+    LaunchedEffect(filterSignature) {
+        if (filterSignature != lastFilterSignature) {
+            lastFilterSignature = filterSignature
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+        }
     }
 
     // 刷新完成回落时同样复位（覆盖非下拉触发的程序化刷新，如批量取消收藏后的重新拉取），
