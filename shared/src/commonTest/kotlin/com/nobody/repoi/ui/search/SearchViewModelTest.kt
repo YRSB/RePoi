@@ -10,6 +10,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -40,11 +41,11 @@ class SearchViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private suspend fun setup(): Pair<SearchViewModel, SearchHistoryManager> {
+    private fun TestScope.setup(): Pair<SearchViewModel, SearchHistoryManager> {
         val mockApi = MockApi()
         val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
         val searchRepo = SearchRepository(mockApi.api(), historyManager)
-        val categoryManager = CategoryManager(mockApi.api())
+        val categoryManager = CategoryManager(mockApi.api(), backgroundScope)
         val viewModel = SearchViewModel(searchRepo, categoryManager)
         return viewModel to historyManager
     }
@@ -62,6 +63,7 @@ class SearchViewModelTest {
             viewModel.onKeywordChange("雪初音")
             awaitItem().keyword shouldBe "雪初音"
         }
+        advanceUntilIdle()
     }
 
     @Test
@@ -77,6 +79,7 @@ class SearchViewModelTest {
             viewModel.onSelectTab(SearchTab.ALBUM)
             awaitItem().selectedTab shouldBe SearchTab.ALBUM
         }
+        advanceUntilIdle()
     }
 
     @Test
@@ -100,6 +103,7 @@ class SearchViewModelTest {
 
         viewModel.onClearKeyword()
         viewModel.uiState.value.keyword shouldBe ""
+        advanceUntilIdle()
     }
 
     @Test
@@ -112,5 +116,6 @@ class SearchViewModelTest {
             viewModel.onSortChange("releaseDate")
             awaitItem().order shouldBe "releaseDate"
         }
+        advanceUntilIdle()
     }
 }
