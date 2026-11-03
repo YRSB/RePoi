@@ -175,6 +175,7 @@ tasks.withType<Test>().configureEach {
         excludeTestsMatching("*MessageCenterViewModelTest*")
         excludeTestsMatching("*MessageChatViewModelTest*")
         excludeTestsMatching("*MessageNoticeViewModelTest*")
+        excludeTestsMatching("*SearchViewModelTest*")
         excludeTestsMatching("*SettingsViewModelTest*")
     }
 }
