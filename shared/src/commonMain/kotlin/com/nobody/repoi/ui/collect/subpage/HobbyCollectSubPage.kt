@@ -76,7 +76,6 @@ import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.collect.HobbyOrderOption
 import com.nobody.repoi.ui.collect.UserCollectUiState
-import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
@@ -229,10 +228,9 @@ internal fun HobbyCollectSubPage(
         GridCells.Adaptive(minSize = 120.dp)
     }
 
-    // 「全部周边」以 10000 表达而非 null，hasFilter 不能把「全部」误判为已筛选
-    val hasFilter = (uiState.subCategoryId != null &&
-        uiState.subCategoryId != UserCollectViewModel.DEFAULT_HOBBY_KEY) ||
-        uiState.selectedTag != null
+    // subCategoryId / selectedTag 已在 ViewModel 归一化（「全部」与空白标签恒为 null），
+    // 此处只判断「是否有筛选」，不再需要单独排除 10000 那种双表示。
+    val hasFilter = uiState.subCategoryId != null || uiState.selectedTag != null
 
     var showCancelConfirm by remember { mutableStateOf(false) }
 

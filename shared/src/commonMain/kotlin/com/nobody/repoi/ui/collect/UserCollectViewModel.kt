@@ -213,8 +213,9 @@ class UserCollectViewModel(
             _uiState.value.worksState
         }
         val targetOrder = resolveOrderFor(targetCategory, param.initialOrder, targetState)
-        val targetSubCategory = param.initialSubCategoryId
-        val targetTag = param.initialTag
+        // 深链 / 进程恢复注入的筛选条件同样要归一化，否则同一份内容会落成两个保存键
+        val targetSubCategory = HobbySubCategoryOption.normalize(param.initialSubCategoryId)
+        val targetTag = param.initialTag?.takeUnless { it.isBlank() }
         val normalizedParam = param.copy(
             initialCollectState = if (targetCategory == UserCollectCategory.WORKS) targetWorksState.toString() else targetState,
             initialOrder = targetOrder,
@@ -419,10 +420,13 @@ class UserCollectViewModel(
      * 选择周边细分子分类。
      */
     fun selectSubCategory(subCategoryId: Int?) {
-        if (_uiState.value.subCategoryId == subCategoryId) return
+        // 筛选抽屉回传「全部」可能是候选首项 10000，统一收敛到 null，
+        // 保证保存键与请求参数一一对应（否则同内容会同时存在 null / 10000 两个键）。
+        val normalized = HobbySubCategoryOption.normalize(subCategoryId)
+        if (_uiState.value.subCategoryId == normalized) return
         _uiState.update {
             it.copy(
-                subCategoryId = subCategoryId,
+                subCategoryId = normalized,
                 hobbyData = SubPageData()
             )
         }
@@ -434,7 +438,9 @@ class UserCollectViewModel(
      * 选择/反选标签过滤。
      */
     fun selectTag(tag: String?) {
-        val newTag = if (_uiState.value.selectedTag == tag) null else tag
+        // 空白标签等价于「未筛选」，避免 null 与 "" 两种表示制造两个保存键
+        val requested = tag?.takeUnless { it.isBlank() }
+        val newTag = if (_uiState.value.selectedTag == requested) null else requested
         _uiState.update {
             it.copy(
                 selectedTag = newTag,
@@ -448,6 +454,7 @@ class UserCollectViewModel(
      * 重置所有筛选条件（子分类与标签）。
      */
     fun resetFilter() {
+        // subCategoryId 已归一化（「全部」恒为 null），此守卫即「本来就没筛选」的精确判断
         if (_uiState.value.subCategoryId == null && _uiState.value.selectedTag == null) return
         _uiState.update {
             it.copy(
@@ -1260,8 +1267,8 @@ class UserCollectViewModel(
     companion object {
         const val PAGE_SIZE = 20
 
-        /** 周边「全部」细分类（原版以 10000 表示，而非 null） */
-        const val DEFAULT_HOBBY_KEY = 10000
+        /** 周边「全部」细分类的请求取值（原版以 10000 表示；UI 态见 [HobbySubCategoryOption]） */
+        const val DEFAULT_HOBBY_KEY = HobbySubCategoryOption.ALL_KEY
 
         /** 标签候选池拉取条数 */
         const val TAG_POOL_SIZE = 50
