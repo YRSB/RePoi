@@ -58,6 +58,7 @@ internal const val COLLECT_ALBUM_EMPTY_TEXT = "暂无相册~"
  * - 批量取消收藏提交**外层收藏节点 id**（`UserCollectAlbumItem.id`），提交前二次确认。
  *
  * @param currentOrder 当前排序档（`addTime` / `actionDate` / `praiseCount`）
+ * @param albumType 相册查询类型（`fav` = 收藏的相册，其余值 = 我创建的相册）
  * @param isSelectionMode 是否处于多选模式
  * @param selectedIds 已选中的**外层收藏节点 id**集合
  * @param isSelf 是否浏览自己的收藏（批量取消收藏仅本人可用）
@@ -69,6 +70,7 @@ internal fun AlbumCollectSubPage(
     subPageData: SubPageData<UserCollectAlbumItem>,
     navBarBottomPadding: Dp,
     currentOrder: String,
+    albumType: String,
     isSelectionMode: Boolean,
     selectedIds: Set<Long>,
     isSelf: Boolean,
@@ -84,9 +86,13 @@ internal fun AlbumCollectSubPage(
     onRetry: () -> Unit
 ) {
     // 保存键绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
-    // 切换排序时以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
-    // 排序不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
-    val gridState = rememberKeyedLazyStaggeredGridState("album_staggered", currentOrder)
+    // 切换相册类型或排序时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
+    // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
+    //
+    // albumType 必须进键：它是 `api/collect/album-v2` 的 type 参数（fav = 收藏的相册，
+    // 其余 = 我创建的相册），两种语料内容完全不同；漏掉该维度会让两种语料共用一份
+    // 滚动位置并互相串位（切类型后残留旧下标，或本应回顶却沿用旧位置）。
+    val gridState = rememberKeyedLazyStaggeredGridState("album_staggered", albumType, currentOrder)
     // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
     // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
     val shouldLoadMore by remember(gridState) {

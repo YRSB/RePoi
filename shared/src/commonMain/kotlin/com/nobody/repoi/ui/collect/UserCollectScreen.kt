@@ -236,6 +236,7 @@ fun UserCollectScreen(
                             subPageData = uiState.albumData,
                             navBarBottomPadding = navBarBottomPadding,
                             currentOrder = uiState.albumOrder,
+                            albumType = uiState.albumType,
                             isSelectionMode = uiState.albumSelectionMode,
                             selectedIds = uiState.albumSelectedIds,
                             isSelf = uiState.isSelf,
