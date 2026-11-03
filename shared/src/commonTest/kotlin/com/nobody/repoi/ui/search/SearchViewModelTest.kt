@@ -27,18 +27,16 @@ import kotlin.test.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
-    private lateinit var testDispatcher: StandardTestDispatcher
+    private val testDispatcher = StandardTestDispatcher()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @BeforeTest
     fun setUpMain() {
-        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 
     @AfterTest
     fun tearDownMain() {
-        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
