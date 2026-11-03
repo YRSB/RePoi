@@ -38,6 +38,7 @@ object FeedMediaResolver {
             hasValidCover -> rawCover
             !rawPath.isNullOrBlank() -> rawPath
             extraImages.isNotEmpty() -> extraImages.firstOrNull()
+            relateItem != null -> CdnUrlUtils.DEFAULT_COVER_PATH
             else -> null
         }
 

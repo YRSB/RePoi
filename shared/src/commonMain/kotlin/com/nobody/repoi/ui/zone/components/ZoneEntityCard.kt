@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,9 +46,10 @@ fun ZoneEntityCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -80,10 +82,10 @@ fun ZoneEntityCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.BrokenImage,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.outline
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
                     )
                 }
             }

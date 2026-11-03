@@ -274,7 +274,7 @@ internal fun HobbyCollectGridCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrl(item.actualCover) }
+    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrlOrDefault(item.actualCover) }
     val gridImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "grid")
     val bottomScrim = remember {
         Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x66000000)))
@@ -408,7 +408,7 @@ internal fun HobbyCollectListCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrl(item.actualCover) }
+    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrlOrDefault(item.actualCover) }
     val thumbImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "thumb")
 
     ExpressiveElevatedCard(

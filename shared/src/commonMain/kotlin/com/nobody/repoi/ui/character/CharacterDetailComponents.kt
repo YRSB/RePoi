@@ -109,7 +109,7 @@ internal fun CharacterHeaderSection(
     val displayName = character?.displayName?.ifBlank { null } ?: initialName ?: "角色详情"
     val subName = character?.subName
     val cover = character?.cover?.ifBlank { null } ?: initialCover
-    val coverUrl = CdnUrlUtils.getCoverUrl(cover)
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(cover)
     val intro = character?.detailPlainText.orEmpty()
 
     ExpressiveElevatedCard(
@@ -338,7 +338,7 @@ internal fun CharacterWorksSection(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     works.take(5).forEach { work ->
-                        val coverUrl = CdnUrlUtils.getCoverUrl(work.wCover)
+                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(work.wCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveTokens.CardShape,
@@ -449,7 +449,7 @@ private fun PerformerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val avatarUrl = CdnUrlUtils.getCoverSmallUrl(performer.pCover)
+    val avatarUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(performer.pCover)
     Surface(
         onClick = onClick,
         shape = ExpressiveTokens.ButtonShape,
@@ -558,7 +558,7 @@ private fun CharacterHobbyCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(hobby.cover)
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(hobby.cover)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = ExpressiveTokens.CardShape,
@@ -883,7 +883,7 @@ private fun CharacterRelevantCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     Surface(
         modifier = modifier.width(108.dp),
         shape = ExpressiveTokens.CardShape,

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,8 +57,9 @@ fun HobbySearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -75,14 +78,25 @@ fun HobbySearchCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PhotoLibrary,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             // 右侧文本详情
@@ -148,7 +162,7 @@ fun AlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSrUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSrUrlOrDefault(item.cover)
     val ratioKey = listImageKey(item.cover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(item.cover, coverUrl, "sr:waterfall")
     var aspectRatio by remember(ratioKey) {
@@ -292,8 +306,9 @@ fun GeneralSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -312,14 +327,25 @@ fun GeneralSearchCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PhotoLibrary,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Column(

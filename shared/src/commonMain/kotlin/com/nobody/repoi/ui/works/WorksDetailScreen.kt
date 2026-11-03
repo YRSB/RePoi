@@ -402,7 +402,7 @@ internal fun WorksHeaderSection(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                val coverUrl = CdnUrlUtils.getCoverUrl(works.cover ?: initialCover)
+                val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(works.cover ?: initialCover)
                 Box(
                     modifier = Modifier.width(96.dp).aspectRatio(9f / 13f).clip(ExpressiveTokens.MediumCardShape)
                         .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
@@ -505,7 +505,7 @@ internal fun WorksSeriesSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val coverUrl = CdnUrlUtils.getCoverUrl(seriesRef.cover)
+            val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(seriesRef.cover)
             Box(
                 modifier = Modifier.size(48.dp).clip(ExpressiveTokens.SmallCardShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -581,7 +581,7 @@ internal fun WorksCharactersSection(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     characters.take(6).forEach { character ->
-                        val coverUrl = CdnUrlUtils.getCoverUrl(character.cCover)
+                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(character.cCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveTokens.CardShape,
@@ -688,7 +688,7 @@ internal fun WorksHobbysSection(
                     mediumColumns = 5,
                     modifier = Modifier.fillMaxWidth()
                 ) { item ->
-                    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+                    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
                     Box(
                         modifier = Modifier.fillMaxWidth().aspectRatio(9f / 13f)
                             .clip(ExpressiveTokens.CardShape)
@@ -740,7 +740,7 @@ internal fun WorksAlbumsSection(
                                 .clickable { onAlbumClick(album) },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            val coverUrl = CdnUrlUtils.getCoverUrl(album.cover)
+                            val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(album.cover)
                             Box(
                                 modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                                     .clip(ExpressiveTokens.CardShape)

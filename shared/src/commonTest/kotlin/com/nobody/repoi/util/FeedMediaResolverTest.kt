@@ -16,6 +16,23 @@ import kotlin.test.assertTrue
 class FeedMediaResolverTest {
 
     @Test
+    fun resolve_hobbyItemWithoutCover_fallsBackToDefaultPlaceholder() {
+        val action = ActionItem(
+            id = 100L,
+            actionType = 1,
+            relateItem = RelateItem(
+                itemType = "hobby",
+                cover = ""
+            )
+        )
+        val info = action.resolveMediaDisplayInfo()
+
+        assertTrue(info.shouldShowLeftCover)
+        assertEquals("https://rfx.hpoi.net/gk/cover/n/none.jpg", info.coverUrl)
+        assertEquals(listOf("https://rfx.hpoi.net/gk/cover/raw/none.jpg"), info.allRawUrls)
+    }
+
+    @Test
     fun resolve_hobbyItemWithCover_returnsCoverNAndRaw() {
         val action = ActionItem(
             id = 1L,
