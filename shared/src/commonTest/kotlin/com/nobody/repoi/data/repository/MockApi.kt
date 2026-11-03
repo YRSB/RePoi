@@ -12,6 +12,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.Json
 
 /**
@@ -28,7 +31,7 @@ class MockApi {
     private data class Queued(val status: HttpStatusCode, val body: String)
 
     private val bodies = ArrayDeque<Queued>()
-    private val requests = ArrayDeque<HttpRequestData>()
+    private val requests = MutableStateFlow<List<HttpRequestData>>(emptyList())
     private val routes = mutableListOf<Pair<String, Queued>>()
     private val predicateRoutes = mutableListOf<
         Triple<(path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean, (path: String, form: Map<String, String>, query: Map<String, String>) -> String, HttpStatusCode>
@@ -95,7 +98,7 @@ class MockApi {
 
     fun api(): HpoiApi {
         val mock = MockEngine { request ->
-            requests.add(request)
+            requests.update { it + request }
             val path = request.url.encodedPath
             val form = formOf(request)
             val query = request.url.parameters.entries().associate { (key, values) -> key to (values.firstOrNull().orEmpty()) }
@@ -124,9 +127,10 @@ class MockApi {
         return content.formData.entries().associate { (key, values) -> key to (values.firstOrNull().orEmpty()) }
     }
 
-    fun takeRequest(): RecordedHttpRequest = RecordedHttpRequest(requests.removeFirst())
+    fun takeRequest(): RecordedHttpRequest =
+        RecordedHttpRequest(requests.getAndUpdate { it.drop(1) }.first())
 
-    val requestCount: Int get() = requests.size
+    val requestCount: Int get() = requests.value.size
 }
 
 class RecordedHttpRequest internal constructor(private val request: HttpRequestData) {
