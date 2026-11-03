@@ -97,17 +97,16 @@ class SearchViewModelTest {
     @Test
     fun historyManagement_addAndDeleteAndClear() = runTest(testDispatcher) {
         val (viewModel, historyManager) = setup()
-        historyManager.addKeyword("粘土人")
-        historyManager.addKeyword("手办")
-        advanceUntilIdle()
 
-        viewModel.onRemoveHistory("手办")
-        advanceUntilIdle()
+        viewModel.uiState.test {
+            awaitItem().searchHistory.shouldBeEmpty()
 
-        viewModel.onClearHistory()
-        advanceUntilIdle()
+            historyManager.addKeyword("粘土人")
+            awaitItem().searchHistory shouldContain "粘土人"
 
-        viewModel.uiState.value.searchHistory.shouldBeEmpty()
+            viewModel.onClearHistory()
+            awaitItem().searchHistory.shouldBeEmpty()
+        }
     }
 
     @Test

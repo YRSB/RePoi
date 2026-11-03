@@ -95,9 +95,14 @@ class CommentDetailViewModelTest {
         val snapshot = CommentItem(id = 1001L, content = "快照测试评论")
         val param = CommentDetailNavParam(commentId = 1001L, relateNodeId = 500L, snapshot = snapshot)
 
-        viewModel.loadDetail(param)
-        viewModel.uiState.value.comment?.content shouldBe "快照测试评论"
-        viewModel.uiState.value.commentId shouldBe 1001L
-        viewModel.uiState.value.relateNodeId shouldBe 500L
+        viewModel.uiState.test {
+            awaitItem().comment shouldBe null
+
+            viewModel.loadDetail(param)
+            val state = awaitItem()
+            state.comment?.content shouldBe "快照测试评论"
+            state.commentId shouldBe 1001L
+            state.relateNodeId shouldBe 500L
+        }
     }
 }
