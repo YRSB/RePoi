@@ -28,6 +28,8 @@ import kotlinx.serialization.json.Json
  *   `encodedPath` / `queryParameter` / `formEntries` / `bodyContains` 断言面，
  *   与原 MockWebServer `RecordedRequest` 用法一一对应。
  * - 响应解码走真实 [HpoiApi.decodeRefAware]（无需 ContentNegotiation 插件）。
+ * - `api(dispatcher)`：引擎默认跑真实线程（`Dispatchers.IO`），`runTest` 的虚拟时间推不动，
+ *   ViewModel 测试必须传入 `testDispatcher`，否则请求零发出且间歇性挂起；纯仓储测试可省略。
  */
 class MockApi {
 
