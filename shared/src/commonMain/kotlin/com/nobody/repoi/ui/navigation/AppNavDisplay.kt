@@ -48,6 +48,7 @@ fun AppNavDisplay(
         messageEntries(navigator, onBack)
         interactionEntries(navigator, onBack)
         systemEntries(
+            navigator = navigator,
             onBack = onBack,
             themeMode = themeMode,
             dynamicColor = dynamicColor,
