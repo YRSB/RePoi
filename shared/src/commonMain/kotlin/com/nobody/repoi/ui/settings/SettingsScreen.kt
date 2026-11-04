@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
@@ -104,12 +107,15 @@ fun SettingsScreen(
     onDynamicColorChange: (Boolean) -> Unit = {},
     onOpenDebug: () -> Unit,
     onBack: () -> Unit,
+    onOpenUserInfo: (Long) -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
+    accountViewModel: SettingsAccountViewModel = koinViewModel(),
     cacheViewModel: SettingsCacheViewModel = koinViewModel()
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
+    val accountState by accountViewModel.uiState.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
@@ -225,13 +231,18 @@ fun SettingsScreen(
                         dynamicColor = dynamicColor,
                         isExHobbyEnabled = isExHobbyEnabled,
                         cacheState = cacheState,
+                        accountState = accountState,
+                        profileId = profileState.profile?.id ?: 0L,
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
                         onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                         onExportLog = onExportLog,
                         onOpenCache = { subPage = "cache" },
                         onOpenAbout = { subPage = "about" },
+                        onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
+                        onOpenSecurity = { subPage = "security" },
                         onClearCache = { cacheViewModel.clearCache() },
+                        onRefreshAccount = { accountViewModel.refresh() },
                         onBackToGroup = { subPage = "" }
                     )
                 }
@@ -246,6 +257,11 @@ fun SettingsScreen(
                 subPage == "about" -> SettingsAboutDetail(
                     modifier = Modifier.padding(innerPadding)
                 )
+                subPage == "security" -> SettingsAccountSecurityDetail(
+                    state = accountState,
+                    onRetry = { accountViewModel.refresh() },
+                    modifier = Modifier.padding(innerPadding)
+                )
                 else -> SettingsGroupList(
                     selectedGroup = null,
                     isLoggedIn = profileState.isLoggedIn,
@@ -257,6 +273,13 @@ fun SettingsScreen(
                     },
                     onOpenGroupDetail = { group ->
                         selectedGroup = group.name
+                        if (group == SettingsGroup.Account) {
+                            val id = profileState.profile?.id ?: 0L
+                            if (id > 0L) {
+                                selectedGroup = SettingsGroup.General.name
+                                onOpenUserInfo(id)
+                            }
+                        }
                     },
                     onRequestLogout = { showLogoutConfirmDialog = true },
                     detailInline = { group ->
@@ -267,13 +290,18 @@ fun SettingsScreen(
                             dynamicColor = dynamicColor,
                             isExHobbyEnabled = isExHobbyEnabled,
                             cacheState = cacheState,
+                            accountState = accountState,
+                            profileId = profileState.profile?.id ?: 0L,
                             onThemeModeChange = onThemeModeChange,
                             onDynamicColorChange = onDynamicColorChange,
                             onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                             onExportLog = onExportLog,
                             onOpenCache = { subPage = "cache" },
                             onOpenAbout = { subPage = "about" },
+                            onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
+                            onOpenSecurity = { subPage = "security" },
                             onClearCache = { cacheViewModel.clearCache() },
+                            onRefreshAccount = { accountViewModel.refresh() },
                             onBackToGroup = {}
                         )
                     },
@@ -383,13 +411,18 @@ private fun SettingsDetailPane(
     dynamicColor: Boolean,
     isExHobbyEnabled: Boolean,
     cacheState: SettingsCacheUiState,
+    accountState: SettingsAccountSecurityUiState,
+    profileId: Long,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
     onExportLog: () -> Unit,
     onOpenCache: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenSecurity: () -> Unit,
     onClearCache: () -> Unit,
+    onRefreshAccount: () -> Unit,
     onBackToGroup: () -> Unit
 ) {
     when {
@@ -415,6 +448,16 @@ private fun SettingsDetailPane(
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
             onExHobbyEnabledChange = onExHobbyEnabledChange,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.Account && subPage == "security" -> SettingsAccountSecurityDetail(
+            state = accountState,
+            onRetry = onRefreshAccount,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.Account -> SettingsAccountContent(
+            onOpenProfile = onOpenProfile,
+            onOpenSecurity = onOpenSecurity,
             modifier = Modifier.fillMaxSize()
         )
         else -> SettingsPlaceholderContent(
@@ -690,15 +733,134 @@ private fun SettingsRepoiContent(
 }
 
 @Composable
-private fun SettingsPlaceholderContent(title: String, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text = "${title}分组后续票据接入",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun SettingsAccountContent(
+    onOpenProfile: () -> Unit,
+    onOpenSecurity: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "profile", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Person,
+                title = "个人信息",
+                subtitle = "头像昵称与个人资料",
+                onClick = onOpenProfile
+            )
+        }
+        item(key = "security", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Lock,
+                title = "账号与安全",
+                subtitle = "密码手机邮箱微信绑定状态",
+                onClick = onOpenSecurity
+            )
+        }
     }
 }
+
+@Composable
+private fun SettingsAccountSecurityDetail(
+    state: SettingsAccountSecurityUiState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (state.isLoading) {
+            item(key = "loading", contentType = "status") {
+                ElevatedCard(
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        } else if (state.loadFailed) {
+            item(key = "failed", contentType = "status") {
+                ElevatedCard(
+                    onClick = onRetry,
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "账号状态加载失败，点击重试",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        } else {
+            items(state.bindings(), key = { it.title }, contentType = { "binding" }) { binding ->
+                ElevatedCard(
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = binding.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                text = binding.statusText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Filled.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPlaceholderContent(title: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun SettingsMenuItem(
