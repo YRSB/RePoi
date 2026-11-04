@@ -668,6 +668,7 @@ private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
     ) {
         item(key = "version", contentType = "row") {
             SegmentedListItem(
+                onClick = {},
                 shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
                 leadingContent = {
                     Icon(
@@ -1228,6 +1229,7 @@ private fun SettingsAccountSecurityDetail(
             items(bindings.size, key = { bindings[it].title }, contentType = { "binding" }) { index ->
                 val binding = bindings[index]
                 SegmentedListItem(
+                    onClick = {},
                     shapes = ListItemDefaults.segmentedShapes(index = index, count = bindings.size),
                     leadingContent = {
                         Icon(
@@ -1322,6 +1324,7 @@ private fun SettingsMenuItem(
         )
     } else {
         SegmentedListItem(
+            onClick = {},
             shapes = shapes,
             leadingContent = leading,
             supportingContent = supporting,
