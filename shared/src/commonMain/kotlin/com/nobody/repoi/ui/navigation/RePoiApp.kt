@@ -11,7 +11,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +31,6 @@ import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberImageViewerState
 import com.nobody.repoi.ui.theme.PoiShelfTheme
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -52,19 +50,6 @@ fun RePoiApp() {
     val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
     val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
     val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
-    val scope = rememberCoroutineScope()
-    val onThemeModeChange: (ThemeMode) -> Unit = { mode ->
-        scope.launch { themeManager.setThemeMode(mode) }
-    }
-    val onDynamicColorChange: (Boolean) -> Unit = { enabled ->
-        scope.launch { themeManager.setDynamicColor(enabled) }
-    }
-    val onThemeSeedChange: (ThemeSeed) -> Unit = { seed ->
-        scope.launch { themeManager.setThemeSeed(seed) }
-    }
-    val onAmoledChange: (Boolean) -> Unit = { enabled ->
-        scope.launch { themeManager.setAmoled(enabled) }
-    }
 
     val darkTheme = when (themeMode) {
         ThemeMode.LIGHT -> false
@@ -74,30 +59,12 @@ fun RePoiApp() {
     val effectiveSeedArgb = if (themeSeed == ThemeSeed.Dynamic) null else themeSeed.orAvailable().argb
 
     PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedArgb = effectiveSeedArgb, amoled = amoled) {
-        RePoiNavHost(
-            themeMode = themeMode,
-            dynamicColor = dynamicColor,
-            themeSeed = themeSeed,
-            amoled = amoled,
-            onThemeModeChange = onThemeModeChange,
-            onDynamicColorChange = onDynamicColorChange,
-            onThemeSeedChange = onThemeSeedChange,
-            onAmoledChange = onAmoledChange
-        )
+        RePoiNavHost()
     }
 }
 
 @Composable
-private fun RePoiNavHost(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean,
-    themeSeed: ThemeSeed,
-    amoled: Boolean,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
-    onThemeSeedChange: (ThemeSeed) -> Unit,
-    onAmoledChange: (Boolean) -> Unit
-) {
+private fun RePoiNavHost() {
     val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
@@ -140,14 +107,6 @@ private fun RePoiNavHost(
                 tabEntries = tabEntries,
                 snackbarHostState = rootSnackbarHostState,
                 showSnackbarHost = atMainRoot,
-                themeMode = themeMode,
-                dynamicColor = dynamicColor,
-                themeSeed = themeSeed,
-                amoled = amoled,
-                onThemeModeChange = onThemeModeChange,
-                onDynamicColorChange = onDynamicColorChange,
-                onThemeSeedChange = onThemeSeedChange,
-                onAmoledChange = onAmoledChange,
                 onLoginSuccess = {
                     while (rootBackStack.size > 1) rootBackStack.removeLastOrNull()
                     navigator.selectTab(AppDestinations.PROFILE)

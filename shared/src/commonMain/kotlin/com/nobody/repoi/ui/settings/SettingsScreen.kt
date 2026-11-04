@@ -68,6 +68,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material.icons.filled.Close
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.orAvailable
@@ -84,6 +85,7 @@ import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private enum class SettingsGroup(val title: String, val icon: ImageVector) {
@@ -105,18 +107,11 @@ private fun formatBytes(bytes: Long): String {
 
 @Composable
 fun SettingsScreen(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean = true,
-    themeSeed: ThemeSeed = ThemeSeed.Dynamic,
-    amoled: Boolean = false,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit = {},
-    onThemeSeedChange: (ThemeSeed) -> Unit = {},
-    onAmoledChange: (Boolean) -> Unit = {},
-    onOpenShieldList: () -> Unit = {},
-    onOpenBlocklist: () -> Unit = {},
     onBack: () -> Unit,
     onOpenUserInfo: (Long) -> Unit,
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
+    themeManager: ThemeManager = koinInject(),
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
     cacheViewModel: SettingsCacheViewModel = koinViewModel(),
@@ -124,13 +119,22 @@ fun SettingsScreen(
     accountViewModel: SettingsAccountViewModel = koinViewModel()
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
+    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
+    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
+    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
     val accountState by accountViewModel.uiState.collectAsStateWithLifecycle()
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
+    val onThemeModeChange: (ThemeMode) -> Unit = { mode -> scope.launch { themeManager.setThemeMode(mode) } }
+    val onDynamicColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setDynamicColor(enabled) } }
+    val onThemeSeedChange: (ThemeSeed) -> Unit = { seed -> scope.launch { themeManager.setThemeSeed(seed) } }
+    val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
     var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.General.name) }
+    var narrowGroup by rememberSaveable { mutableStateOf("") }
     var subPage by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -183,8 +187,8 @@ fun SettingsScreen(
     }
 
     if (!wide) {
-        PoiShelfBackHandler(enabled = subPage.isNotEmpty()) {
-            subPage = ""
+        PoiShelfBackHandler(enabled = subPage.isNotEmpty() || narrowGroup.isNotEmpty()) {
+            if (subPage.isNotEmpty()) subPage = "" else narrowGroup = ""
         }
     }
 
@@ -202,7 +206,9 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (!wide && subPage.isNotEmpty()) subPage = "" else onBack()
+                        if (!wide && subPage.isNotEmpty()) subPage = ""
+                        else if (!wide && narrowGroup.isNotEmpty()) narrowGroup = ""
+                        else onBack()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -261,11 +267,11 @@ fun SettingsScreen(
                         onOpenBlocklist = onOpenBlocklist,
                         onClearCache = { cacheViewModel.clearCache() },
                         onRefreshAccount = { accountViewModel.refresh() },
-                        onBackToGroup = { subPage = "" }
                     )
                 }
             }
         } else {
+            val narrowSelected = narrowGroup.takeIf { it.isNotEmpty() }?.let { runCatching { SettingsGroup.valueOf(it) }.getOrNull() }
             when {
                 subPage == "cache" -> SettingsCacheDetail(
                     state = cacheState,
@@ -280,56 +286,43 @@ fun SettingsScreen(
                     onRetry = { accountViewModel.refresh() },
                     modifier = Modifier.padding(innerPadding)
                 )
+                narrowSelected != null -> SettingsDetailPane(
+                    group = narrowSelected,
+                    subPage = "",
+                    themeMode = themeMode,
+                    dynamicColor = dynamicColor,
+                    themeSeed = themeSeed,
+                    amoled = amoled,
+                    isExHobbyEnabled = isExHobbyEnabled,
+                    cacheState = cacheState,
+                    privacyState = privacyState,
+                    accountState = accountState,
+                    onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
+                    onThemeModeChange = onThemeModeChange,
+                    onDynamicColorChange = onDynamicColorChange,
+                    onThemeSeedChange = onThemeSeedChange,
+                    onAmoledChange = onAmoledChange,
+                    onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
+                    onExportLog = onExportLog,
+                    onOpenCache = { subPage = "cache" },
+                    onOpenAbout = { subPage = "about" },
+                    onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
+                    onOpenSecurity = { subPage = "security" },
+                    onOpenShieldList = onOpenShieldList,
+                    onOpenBlocklist = onOpenBlocklist,
+                    onClearCache = { cacheViewModel.clearCache() },
+                    onRefreshAccount = { accountViewModel.refresh() },
+                    modifier = Modifier.padding(innerPadding)
+                )
                 else -> SettingsGroupList(
                     selectedGroup = null,
                     isLoggedIn = profileState.isLoggedIn,
                     onSelectGroup = {
                         selectedGroup = it.name
-                        if (it == SettingsGroup.General || it == SettingsGroup.Repoi) {
-                            subPage = ""
-                        }
-                    },
-                    onOpenGroupDetail = { group ->
-                        selectedGroup = group.name
-                        if (group == SettingsGroup.Account) {
-                            val id = profileState.profile?.id ?: 0L
-                            if (id > 0L) {
-                                selectedGroup = SettingsGroup.General.name
-                                onOpenUserInfo(id)
-                            }
-                        }
+                        subPage = ""
+                        narrowGroup = it.name
                     },
                     onRequestLogout = { showLogoutConfirmDialog = true },
-                    detailInline = { group ->
-                        SettingsDetailPane(
-                            group = group,
-                            subPage = "",
-                            themeMode = themeMode,
-                            dynamicColor = dynamicColor,
-                            themeSeed = themeSeed,
-                            amoled = amoled,
-                            isExHobbyEnabled = isExHobbyEnabled,
-                            cacheState = cacheState,
-                            privacyState = privacyState,
-                            accountState = accountState,
-                            onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
-                            onThemeModeChange = onThemeModeChange,
-                            onDynamicColorChange = onDynamicColorChange,
-                            onThemeSeedChange = onThemeSeedChange,
-                            onAmoledChange = onAmoledChange,
-                            onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
-                            onExportLog = onExportLog,
-                            onOpenCache = { subPage = "cache" },
-                            onOpenAbout = { subPage = "about" },
-                            onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
-                            onOpenSecurity = { subPage = "security" },
-                            onOpenShieldList = onOpenShieldList,
-                            onOpenBlocklist = onOpenBlocklist,
-                            onClearCache = { cacheViewModel.clearCache() },
-                            onRefreshAccount = { accountViewModel.refresh() },
-                            onBackToGroup = {}
-                        )
-                    },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -343,9 +336,7 @@ private fun SettingsGroupList(
     isLoggedIn: Boolean,
     onSelectGroup: (SettingsGroup) -> Unit,
     onRequestLogout: () -> Unit,
-    modifier: Modifier = Modifier,
-    onOpenGroupDetail: ((SettingsGroup) -> Unit)? = null,
-    detailInline: @Composable ((SettingsGroup) -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     val groups = SettingsGroup.entries.toList()
     LazyColumn(
@@ -359,10 +350,7 @@ private fun SettingsGroupList(
         items(groups, key = { it.name }, contentType = { "group" }) { group ->
             val selected = selectedGroup == group
             ElevatedCard(
-                onClick = {
-                    onSelectGroup(group)
-                    onOpenGroupDetail?.invoke(group)
-                },
+                onClick = { onSelectGroup(group) },
                 shape = ExpressiveTokens.CardShape,
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
@@ -396,9 +384,6 @@ private fun SettingsGroupList(
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 )
-            }
-            if (detailInline != null && selectedGroup == group && onOpenGroupDetail != null) {
-                detailInline(group)
             }
         }
         if (isLoggedIn) {
@@ -455,8 +440,9 @@ private fun SettingsDetailPane(
     onOpenBlocklist: () -> Unit = {},
     onClearCache: () -> Unit,
     onRefreshAccount: () -> Unit,
-    onBackToGroup: () -> Unit
+    modifier: Modifier = Modifier
 ) {
+    Box(modifier = modifier.fillMaxSize()) {
     when {
         group == SettingsGroup.General && subPage == "cache" -> SettingsCacheDetail(
             state = cacheState,
@@ -507,6 +493,7 @@ private fun SettingsDetailPane(
             title = group.title,
             modifier = Modifier.fillMaxSize()
         )
+    }
     }
 }
 
