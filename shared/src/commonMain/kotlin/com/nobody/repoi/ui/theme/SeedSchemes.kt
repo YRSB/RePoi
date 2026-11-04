@@ -27,18 +27,3 @@ fun ColorScheme.withAmoledBlack(): ColorScheme = copy(
     surfaceContainerHigh = Color(0xFF111111),
     surfaceContainerHighest = Color(0xFF1A1A1A)
 )
-
-fun fallbackSeedScheme(seedArgb: Long, darkTheme: Boolean): ColorScheme =
-    if (darkTheme) darkColorScheme(
-        primary = Color(seedArgb),
-        onPrimary = Color.White,
-        primaryContainer = Color(seedArgb).copy(alpha = 0.35f),
-        secondary = Color(seedArgb),
-        tertiary = Color(seedArgb)
-    ) else lightColorScheme(
-        primary = Color(seedArgb),
-        onPrimary = Color.White,
-        primaryContainer = Color(seedArgb).copy(alpha = 0.15f),
-        secondary = Color(seedArgb),
-        tertiary = Color(seedArgb)
-    )
