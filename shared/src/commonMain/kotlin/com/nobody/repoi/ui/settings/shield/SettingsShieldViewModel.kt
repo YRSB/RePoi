@@ -29,9 +29,11 @@ class SettingsShieldViewModel(
 
     fun reload() {
         viewModelScope.launch {
+            println("DIAG-7f3a vm-enter")
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             settingsRepository.getMysqlSettings()
                 .onSuccess { state ->
+                    println("DIAG-7f3a vm-success r18=${state["setting_r18"]}")
                     _uiState.update {
                         it.copy(
                             nsfwVisible = (state["setting_r18"] ?: 1) == 2,
@@ -41,6 +43,7 @@ class SettingsShieldViewModel(
                 }
                 .onFailure { throwable ->
                     _uiState.update {
+                    println("DIAG-7f3a vm-failure ${throwable.message}")
                         it.copy(
                             isLoading = false,
                             errorMessage = throwable.message ?: "获取屏蔽设置失败"
