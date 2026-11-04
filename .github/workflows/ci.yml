@@ -37,7 +37,17 @@ jobs:
         uses: ./.github/actions/gradle-setup
 
       - name: Run unit tests
-        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace
+        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize first failure
+        if: failure()
+        run: |
+          {
+            echo "## 首个失败"
+            echo '```'
+            grep -m5 -E " e: |FAILED" test-output.log || echo "(未能提取错误行)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test reports
         if: failure()
@@ -47,6 +57,7 @@ jobs:
           path: |
             shared/build/reports/tests/
             shared/build/test-results/
+            test-output.log
 
   android:
     name: Build Android APK
