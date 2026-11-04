@@ -126,5 +126,6 @@ class SettingsPrivacyViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertEquals(1, state.values["setting_own_action"])
+        assertTrue(state.errorMessage?.isNotEmpty() == true)
     }
 }
