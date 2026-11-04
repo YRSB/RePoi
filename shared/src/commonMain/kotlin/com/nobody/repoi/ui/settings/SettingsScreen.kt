@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Info
@@ -233,7 +234,6 @@ fun SettingsScreen(
                         cacheState = cacheState,
                         privacyState = privacyState,
                         accountState = accountState,
-                        profileId = profileState.profile?.id ?: 0L,
                         onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
@@ -294,7 +294,6 @@ fun SettingsScreen(
                             cacheState = cacheState,
                             privacyState = privacyState,
                             accountState = accountState,
-                            profileId = profileState.profile?.id ?: 0L,
                             onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                             onThemeModeChange = onThemeModeChange,
                             onDynamicColorChange = onDynamicColorChange,
@@ -417,7 +416,6 @@ private fun SettingsDetailPane(
     cacheState: SettingsCacheUiState,
     privacyState: SettingsPrivacyUiState,
     accountState: SettingsAccountSecurityUiState,
-    profileId: Long,
     onPrivacyOptionChange: (String, Int) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
