@@ -35,7 +35,7 @@ class SettingsShieldViewModelTest {
     }
 
     private fun repositoryOf(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
 
     @Test
     fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
@@ -46,7 +46,6 @@ class SettingsShieldViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        println("DIAG-7f3a reqCount=${mock.requestCount} loading=${state.isLoading}")
         assertTrue(state.nsfwVisible)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)

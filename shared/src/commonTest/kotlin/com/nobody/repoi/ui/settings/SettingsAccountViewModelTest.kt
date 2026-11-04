@@ -33,7 +33,7 @@ class SettingsAccountViewModelTest {
     }
 
     private fun repository(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
 
     @Test
     fun initialState_loadsBindingStatus() = runTest(testDispatcher) {

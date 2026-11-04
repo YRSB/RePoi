@@ -35,7 +35,7 @@ class SettingsShieldListViewModelTest {
     }
 
     private fun repositoryOf(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
 
     private fun listBody(items: List<Pair<Long, String>>): String {
         val list = items.joinToString(",") { (id, name) ->
