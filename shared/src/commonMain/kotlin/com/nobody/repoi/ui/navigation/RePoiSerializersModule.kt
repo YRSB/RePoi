@@ -73,9 +73,10 @@ val RePoiSerializersModule = SerializersModule {
         subclass(PictureGalleryNavKey::class, PictureGalleryNavKey.serializer())
         subclass(ExHobbyListNavKey::class, ExHobbyListNavKey.serializer())
 
-        // 11. 设置与鉴权路由 (2)
+        // 11. 设置与鉴权路由 (3)
         subclass(LoginNavKey::class, LoginNavKey.serializer())
         subclass(SettingsNavKey::class, SettingsNavKey.serializer())
+        subclass(SettingsShieldListNavKey::class, SettingsShieldListNavKey.serializer())
 
         // 12. 消息中心与通知路由 (4)
         subclass(MessageCenterNavKey::class, MessageCenterNavKey.serializer())

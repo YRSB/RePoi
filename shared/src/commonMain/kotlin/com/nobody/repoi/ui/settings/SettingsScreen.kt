@@ -74,6 +74,7 @@ import com.nobody.repoi.platform.PoiShelfBackHandler
 import com.nobody.repoi.platform.shareLogFile
 import com.nobody.repoi.platform.supportsDynamicColor
 import com.nobody.repoi.ui.profile.ProfileViewModel
+import com.nobody.repoi.ui.settings.shield.SettingsShieldContent
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
@@ -105,6 +106,8 @@ fun SettingsScreen(
     dynamicColor: Boolean = true,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit = {},
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
     onBack: () -> Unit,
     onOpenUserInfo: (Long) -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
@@ -243,6 +246,8 @@ fun SettingsScreen(
                         onOpenAbout = { subPage = "about" },
                         onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
                         onOpenSecurity = { subPage = "security" },
+                        onOpenShieldList = onOpenShieldList,
+                        onOpenBlocklist = onOpenBlocklist,
                         onClearCache = { cacheViewModel.clearCache() },
                         onRefreshAccount = { accountViewModel.refresh() },
                         onBackToGroup = { subPage = "" }
@@ -303,6 +308,8 @@ fun SettingsScreen(
                             onOpenAbout = { subPage = "about" },
                             onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
                             onOpenSecurity = { subPage = "security" },
+                            onOpenShieldList = onOpenShieldList,
+                            onOpenBlocklist = onOpenBlocklist,
                             onClearCache = { cacheViewModel.clearCache() },
                             onRefreshAccount = { accountViewModel.refresh() },
                             onBackToGroup = {}
@@ -425,6 +432,8 @@ private fun SettingsDetailPane(
     onOpenAbout: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSecurity: () -> Unit,
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
     onClearCache: () -> Unit,
     onRefreshAccount: () -> Unit,
     onBackToGroup: () -> Unit
@@ -445,9 +454,11 @@ private fun SettingsDetailPane(
             onOpenAbout = onOpenAbout,
             modifier = Modifier.fillMaxSize()
         )
-        group == SettingsGroup.Privacy -> SettingsPrivacyContent(
-            state = privacyState,
-            onOptionChange = onPrivacyOptionChange,
+        group == SettingsGroup.Privacy -> SettingsPrivacyAndShieldContent(
+            privacyState = privacyState,
+            onPrivacyOptionChange = onPrivacyOptionChange,
+            onOpenShieldList = onOpenShieldList,
+            onOpenBlocklist = onOpenBlocklist,
             modifier = Modifier.fillMaxSize()
         )
         group == SettingsGroup.Repoi -> SettingsRepoiContent(
@@ -738,6 +749,28 @@ private fun SettingsRepoiContent(
                 onCheckedChange = onExHobbyEnabledChange
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsPrivacyAndShieldContent(
+    privacyState: SettingsPrivacyUiState,
+    onPrivacyOptionChange: (String, Int) -> Unit,
+    onOpenShieldList: () -> Unit,
+    onOpenBlocklist: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        com.nobody.repoi.ui.settings.shield.SettingsShieldContent(
+            onOpenShieldList = onOpenShieldList,
+            onOpenBlocklist = onOpenBlocklist,
+            modifier = Modifier.fillMaxWidth().weight(0.35f)
+        )
+        SettingsPrivacyContent(
+            state = privacyState,
+            onOptionChange = onPrivacyOptionChange,
+            modifier = Modifier.fillMaxWidth().weight(0.65f)
+        )
     }
 }
 

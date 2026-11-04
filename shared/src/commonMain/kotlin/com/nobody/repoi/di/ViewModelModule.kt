@@ -43,6 +43,9 @@ import com.nobody.repoi.ui.settings.SettingsAccountViewModel
 import com.nobody.repoi.ui.settings.SettingsCacheViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
 import com.nobody.repoi.ui.settings.SettingsPrivacyViewModel
+import com.nobody.repoi.ui.settings.SettingsViewModel
+import com.nobody.repoi.ui.settings.shield.SettingsShieldListViewModel
+import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
 import com.nobody.repoi.ui.user.UserInfoViewModel
 import com.nobody.repoi.ui.user.creation.UserCreationViewModel
 import com.nobody.repoi.ui.user.history.UserHistoryViewModel
@@ -100,6 +103,8 @@ val viewModelModule = module {
     viewModel { SeriesDetailViewModel(get(), get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { SettingsAccountViewModel(get()) }
+    viewModel { SettingsShieldViewModel(get()) }
+    viewModel { SettingsShieldListViewModel(get()) }
     viewModel { SettingsPrivacyViewModel(get()) }
     viewModel { SettingsCacheViewModel(get()) }
     viewModel { UserCreationViewModel(get(), get()) }

@@ -34,7 +34,9 @@ fun EntryProviderScope<NavKey>.systemEntries(
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
             onBack = onBack,
-            onOpenUserInfo = { userId -> navigator.navigateToUser(userId) }
+            onOpenUserInfo = { userId -> navigator.navigateToUser(userId) },
+            onOpenShieldList = { navigator.navigateToSettingsShieldList() },
+            onOpenBlocklist = { navigator.navigateToMessageBlock() }
         )
     }
 }
