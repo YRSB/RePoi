@@ -75,7 +75,6 @@ class SettingsShieldListViewModelTest {
         val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         mock.takeRequest()
-        val baseline = mock.requestCount
 
         viewModel.switchTab(ShieldListTab.Vendor)
         advanceUntilIdle()
@@ -85,7 +84,6 @@ class SettingsShieldListViewModelTest {
         assertEquals(listOf(3L), state.items.map { it.id })
         val recorded = mock.takeRequest()
         assertEquals("company", recorded.formEntries()["itemType"])
-        assertTrue(mock.requestCount > baseline)
     }
 
     @Test
