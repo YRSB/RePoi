@@ -19,11 +19,11 @@ import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.SearchRepository
 import com.nobody.repoi.data.repository.SeriesDetailRepository
 import com.nobody.repoi.data.repository.StickerRepository
+import com.nobody.repoi.data.repository.SettingsRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
-import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import org.koin.dsl.module
 
 /**
@@ -49,6 +49,7 @@ val repositoryModule = module {
     single { ResaleRepository(get()) }
     single { SearchRepository(get(), get()) }
     single { SeriesDetailRepository(get(), get()) }
+    single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
     single { UserRepository(get(), get()) }
     single { VendorDetailRepository(get(), get()) }

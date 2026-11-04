@@ -1,11 +1,14 @@
 package com.nobody.repoi.data.remote.api
 
+import com.nobody.repoi.data.remote.model.AccountCheckPayload
 import com.nobody.repoi.data.remote.model.ActionListData
 import com.nobody.repoi.data.remote.model.AlbumDetailPayload
 import com.nobody.repoi.data.remote.model.AlbumListPayload
 import com.nobody.repoi.data.remote.model.AttributeListPayload
 import com.nobody.repoi.data.remote.model.AutoFillPayload
 import com.nobody.repoi.data.remote.model.BlockListPayload
+import com.nobody.repoi.data.remote.model.MaskListPayload
+import com.nobody.repoi.data.remote.model.UserPrivacyPayload
 import com.nobody.repoi.data.remote.model.CategoryTreeData
 import com.nobody.repoi.data.remote.model.CharacterAlbumPayload
 import com.nobody.repoi.data.remote.model.CharacterDetailPayload
@@ -1132,6 +1135,49 @@ class HpoiApi(
     suspend fun getBlockList(page: Int = 1, pageSize: Int = 50): CommonResponse<BlockListPayload> =
         client.post("api/block/list") {
             setBody(formOf("page" to page, "pageSize" to pageSize))
+        }.decodeRefAware(json)
+
+    suspend fun addMask(itemNodeId: Long): CommonResponse<JsonElement> =
+        client.post("api/mask/add") {
+            setBody(formOf("itemNodeId" to itemNodeId))
+        }.decodeRefAware(json)
+
+    suspend fun deleteMask(itemNodeId: Long): CommonResponse<JsonElement> =
+        client.post("api/mask/del") {
+            setBody(formOf("itemNodeId" to itemNodeId))
+        }.decodeRefAware(json)
+
+    suspend fun getMaskList(page: Int = 1, pageSize: Int = 20, itemType: String): CommonResponse<MaskListPayload> =
+        client.post("api/mask/list") {
+            setBody(formOf("page" to page, "pageSize" to pageSize, "itemType" to itemType))
+        }.decodeRefAware(json)
+
+    suspend fun getMysqlSettings(): CommonResponse<JsonElement> =
+        client.get("api/setting/mysql/get").decodeRefAware(json)
+
+    suspend fun updateMysqlSetting(key: String, value: Int): CommonResponse<JsonElement> =
+        client.post("api/setting/mysql/upd") {
+            setBody(formOf("key" to key, "val" to value))
+        }.decodeRefAware(json)
+
+    suspend fun getRiakSettings(): CommonResponse<JsonElement> =
+        client.post("api/setting/riak/get") {
+            setBody(formOf("type" to "privacy"))
+        }.decodeRefAware(json)
+
+    suspend fun updateRiakSetting(key: String, value: Int): CommonResponse<JsonElement> =
+        client.post("api/setting/riak/upd") {
+            setBody(formOf("key" to key, "val" to value))
+        }.decodeRefAware(json)
+
+    suspend fun checkAccount(): CommonResponse<AccountCheckPayload> =
+        client.post("api/user/check/account") {
+            setBody(FormDataContent(Parameters.Empty))
+        }.decodeRefAware(json)
+
+    suspend fun getUserPrivacy(): CommonResponse<UserPrivacyPayload> =
+        client.post("api/user/privacy") {
+            setBody(formOf("type" to "all"))
         }.decodeRefAware(json)
 
     suspend fun updateUserBlock(userId: Long, blockState: Int): CommonResponse<JsonElement> =
