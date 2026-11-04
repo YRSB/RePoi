@@ -74,6 +74,7 @@ class SettingsShieldListViewModelTest {
         val mock = MockApi()
         val viewModel = viewModelOf(mock)
         advanceUntilIdle()
+        mock.takeRequest()
         val baseline = mock.requestCount
 
         viewModel.switchTab(ShieldListTab.Vendor)

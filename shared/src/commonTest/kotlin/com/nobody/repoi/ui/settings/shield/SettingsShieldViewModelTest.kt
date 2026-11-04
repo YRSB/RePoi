@@ -46,6 +46,7 @@ class SettingsShieldViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
+        println("DIAG-7f3a reqCount=${mock.requestCount} loading=${state.isLoading}")
         assertTrue(state.nsfwVisible)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
