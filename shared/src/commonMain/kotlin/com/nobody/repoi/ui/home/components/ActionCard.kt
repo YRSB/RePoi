@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
@@ -192,6 +193,30 @@ fun ActionCard(
                                 text = "暂无配图",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    // 官方同款左上角分类角标 Badge（如"手办随像"、"手办"、"模型"、"漫展"）
+                    if (!mediaInfo.badgeText.isNullOrBlank()) {
+                        val badgeColor = when (mediaInfo.badgeCategoryType) {
+                            "album" -> Color(0xFF59B6F5)
+                            "picture" -> Color(0xFF4FC3F7)
+                            "article" -> Color(0xFFFFB74D)
+                            "hobby" -> Color(0xFF81C784)
+                            else -> Color(0xFF59B6F5)
+                        }
+                        Surface(
+                            color = badgeColor,
+                            shape = RoundedCornerShape(bottomEnd = 4.dp),
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            Text(
+                                text = mediaInfo.badgeText,
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
                     }
