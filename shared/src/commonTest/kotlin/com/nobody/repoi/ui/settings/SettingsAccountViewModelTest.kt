@@ -66,6 +66,7 @@ class SettingsAccountViewModelTest {
         val viewModel = SettingsAccountViewModel(repository(mock))
         advanceUntilIdle()
 
+        val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertTrue(state.loadFailed)
     }
