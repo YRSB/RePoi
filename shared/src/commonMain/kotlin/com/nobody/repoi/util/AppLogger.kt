@@ -18,7 +18,7 @@ import com.nobody.repoi.platform.installUncaughtExceptionHook
 object AppLogger {
 
     private const val LOGCAT_TAG = "PoiShelf"
-    private const val MAX_LINES = 800
+    private const val MAX_LINES = 3000
     private const val DIR_NAME = "poishelf-logs"
     private const val KEEP_FILES = 5
 
