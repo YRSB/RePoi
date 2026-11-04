@@ -203,12 +203,9 @@ fun HobbyDetailScreen(
         val detail = uiState.detail
         val initialSkeleton = uiState.isInitialLoading && detail == null
         val heroImages = buildList {
-            val effectiveCover = resolveEffectiveCover(
-                explicitCover = detail?.cover ?: navParam.initialCover,
-                officialPics = uiState.officialPics
-            )
-            if (effectiveCover != null && effectiveCover.rawUrl.isNotBlank()) {
-                add(effectiveCover.rawUrl)
+            val rawCover = detail?.cover ?: navParam.initialCover
+            if (!rawCover.isNullOrBlank() && !CdnUrlUtils.isNoCover(rawCover)) {
+                add(CdnUrlUtils.getRawCoverUrl(rawCover))
             }
             uiState.officialPics.take(8).forEach { pic ->
                 val url = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
@@ -563,11 +560,11 @@ private fun HobbyHeaderOfficialSection(
     onMakerClick: (() -> Unit)? = null,
     isPicsLoading: Boolean = false
 ) {
-    val effectiveCover = resolveEffectiveCover(
-        explicitCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null },
-        officialPics = officialPics
-    )
-    val coverUrl = effectiveCover?.displayUrl ?: ""
+    val rawCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
+    val coverUrl = when {
+        detail == null && initialCover.isNullOrBlank() -> ""
+        else -> CdnUrlUtils.getCoverUrlOrDefault(rawCover)
+    }
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -1850,55 +1847,3 @@ private fun DetailErrorState(
         }
     }
 }
-
-/**
- * 手办详情页有效封面结构化解析结果。
- *
- * @param path 原始相对路径或 CDN 文件名
- * @param isOfficialPic 是否来自官方相册回退
- */
-data class EffectiveCover(
-    val path: String,
-    val isOfficialPic: Boolean
-) {
-    /** 详情页主封面与高斯模糊背景 CDN 链接（主封面走 cover/n/，官图走 pic/n/） */
-    val displayUrl: String
-        get() = if (isOfficialPic) CdnUrlUtils.getPicNUrl(path) else CdnUrlUtils.getCoverUrl(path)
-
-    /** 全屏大图查看器 CDN 链接（主封面走 cover/raw/，官图走 pic/raw/） */
-    val rawUrl: String
-        get() = if (isOfficialPic) CdnUrlUtils.getRawPicUrl(path) else CdnUrlUtils.getRawCoverUrl(path)
-}
-
-/**
- * 解析手办详情页的有效封面结构。
- *
- * 优先级策略：
- * 1. 显式指定的封面（条目自身 cover 或路由透传 initialCover，过滤空串及 none.jpg）；
- * 2. 官图智能回退（首张有效官方定妆照）；
- * 3. 若均不存在则返回 null（由 UI 层渲染“暂无封面”缺省态）。
- */
-fun resolveEffectiveCover(
-    explicitCover: String?,
-    officialPics: List<PicItem> = emptyList()
-): EffectiveCover? {
-    val cleanExplicit = explicitCover?.trim()?.takeIf {
-        it.isNotEmpty() && it != "null" && !CdnUrlUtils.isNoCover(it)
-    }
-    if (cleanExplicit != null) {
-        return EffectiveCover(path = cleanExplicit, isOfficialPic = false)
-    }
-
-    val picPath = officialPics.firstNotNullOfOrNull { pic ->
-        pic.imagePath?.trim()?.takeIf { it.isNotEmpty() && it != "null" && !CdnUrlUtils.isNoCover(it) }
-    }
-    return picPath?.let { EffectiveCover(path = it, isOfficialPic = true) }
-}
-
-/**
- * 兼容旧签名的路径解析委托。
- */
-fun resolveEffectiveCoverPath(
-    explicitCover: String?,
-    officialPics: List<PicItem> = emptyList()
-): String? = resolveEffectiveCover(explicitCover, officialPics)?.path
