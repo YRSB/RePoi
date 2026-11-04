@@ -53,4 +53,37 @@ class ThemeManagerTest {
         assertEquals(ThemeMode.LIGHT, manager.themeModeFlow.first())
         assertTrue(manager.dynamicColorFlow.first())
     }
+
+    @Test
+    fun setThemeSeed_updatesMemoryFlowAndInitialValue() = runTest {
+        val manager = manager()
+        manager.themeSeedFlow.first()
+        manager.setThemeSeed(ThemeSeed.Amber)
+
+        assertEquals(ThemeSeed.Amber, manager.themeSeed)
+        assertEquals(ThemeSeed.Amber, manager.getInitialThemeSeed())
+        assertEquals(ThemeSeed.Amber, manager.themeSeedFlow.first())
+    }
+
+    @Test
+    fun setAmoled_updatesMemoryFlowAndInitialValue() = runTest {
+        val manager = manager()
+        manager.amoledFlow.first()
+        manager.setAmoled(true)
+
+        assertTrue(manager.amoled)
+        assertTrue(manager.getInitialAmoled())
+        assertTrue(manager.amoledFlow.first())
+    }
+
+    @Test
+    fun unknownSeedName_fallsBackToDefault() = runTest {
+        val manager = manager()
+        manager.themeSeedFlow.first()
+        manager.setThemeSeed(ThemeSeed.Grape)
+        manager.setThemeMode(ThemeMode.DARK)
+
+        assertEquals(ThemeSeed.Grape, manager.themeSeedFlow.first())
+        assertEquals(ThemeMode.DARK, manager.themeModeFlow.first())
+    }
 }

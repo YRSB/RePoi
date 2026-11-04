@@ -32,6 +32,7 @@ okio = "3.18.2"
 gradle-msix = "0.3.0"
 turbine = "1.2.1"
 kotest = "6.2.6"
+materialKolor = "6.0.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -105,6 +106,7 @@ kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-ktor = { module = "co.touchlab:kermit-ktor", version.ref = "kermit" }
 kermit-coil = { module = "co.touchlab:kermit-coil", version.ref = "kermit" }
 ksp-symbol-processing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+materialkolor-material3 = { module = "com.materialkolor:material-kolor-material3", version.ref = "materialKolor" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

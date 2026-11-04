@@ -9,6 +9,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
 
 /**
  * 全局导航根容器：单根栈 `[MainNavKey, 二级页...]` 的页面分发。
@@ -25,8 +26,12 @@ fun AppNavDisplay(
     showSnackbarHost: Boolean,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
+    themeSeed: ThemeSeed,
+    amoled: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onThemeSeedChange: (ThemeSeed) -> Unit,
+    onAmoledChange: (Boolean) -> Unit,
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -44,16 +49,17 @@ fun AppNavDisplay(
         detailEntries(navigator, onBack)
         communityEntries(navigator, onBack)
         marketEntries(navigator, onBack)
-        userEntries(navigator, onBack)
-        messageEntries(navigator, onBack)
-        interactionEntries(navigator, onBack)
         systemEntries(
             navigator = navigator,
             onBack = onBack,
             themeMode = themeMode,
             dynamicColor = dynamicColor,
+            themeSeed = themeSeed,
+            amoled = amoled,
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
+            onThemeSeedChange = onThemeSeedChange,
+            onAmoledChange = onAmoledChange,
             onLoginSuccess = onLoginSuccess
         )
     }

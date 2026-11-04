@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.navigation
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.ui.login.LoginScreen
 import com.nobody.repoi.ui.settings.SettingsScreen
 
@@ -14,8 +15,12 @@ fun EntryProviderScope<NavKey>.systemEntries(
     onBack: () -> Unit,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
+    themeSeed: ThemeSeed,
+    amoled: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onThemeSeedChange: (ThemeSeed) -> Unit,
+    onAmoledChange: (Boolean) -> Unit,
     onLoginSuccess: () -> Unit,
 ) {
     entry<LoginNavKey> {
@@ -31,8 +36,12 @@ fun EntryProviderScope<NavKey>.systemEntries(
         SettingsScreen(
             themeMode = themeMode,
             dynamicColor = dynamicColor,
+            themeSeed = themeSeed,
+            amoled = amoled,
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
+            onThemeSeedChange = onThemeSeedChange,
+            onAmoledChange = onAmoledChange,
             onBack = onBack,
             onOpenUserInfo = { userId -> navigator.navigateToUser(userId) },
             onOpenShieldList = { navigator.navigateToSettingsShieldList() },
