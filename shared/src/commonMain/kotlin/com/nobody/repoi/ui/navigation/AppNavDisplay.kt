@@ -27,7 +27,6 @@ fun AppNavDisplay(
     dynamicColor: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
-    onOpenDebugScreen: () -> Unit,
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -54,7 +53,6 @@ fun AppNavDisplay(
             dynamicColor = dynamicColor,
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
-            onOpenDebugScreen = onOpenDebugScreen,
             onLoginSuccess = onLoginSuccess
         )
     }
