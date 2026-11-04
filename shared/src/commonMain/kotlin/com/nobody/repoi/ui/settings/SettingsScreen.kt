@@ -346,7 +346,7 @@ private fun SettingsGroupList(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
         items(groups.size, key = { groups[it].name }, contentType = { "group" }) { index ->
             val group = groups[index]
@@ -506,7 +506,7 @@ private fun SettingsGeneralContent(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
         item(key = "cache", contentType = "row") {
             SettingsMenuItem(
@@ -667,32 +667,12 @@ private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = "version", contentType = "row") {
-            SegmentedListItem(
-                onClick = {},
-                shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        text = "版本 ${AppInfo.versionName}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                content = {
-                    Text(
-                        text = "RePoi",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+            SettingsMenuItem(
+                icon = Icons.Filled.Info,
+                title = "RePoi",
+                subtitle = "版本 ${AppInfo.versionName}",
+                index = 0,
+                count = 1
             )
         }
     }
@@ -734,40 +714,41 @@ private fun SettingsRepoiContent(
                 onSelect = onThemeModeChange
             )
         }
-        if (supportsDynamicColor) {
-            item(key = "dynamic", contentType = "row") {
+        item(key = "switches", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                if (supportsDynamicColor) {
+                    SettingsSwitchItem(
+                        icon = Icons.Filled.Palette,
+                        title = "动态壁纸取色",
+                        subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
+                        checked = dynamicColor,
+                        index = 0,
+                        count = 3,
+                        onCheckedChange = onDynamicColorChange
+                    )
+                }
                 SettingsSwitchItem(
-                    icon = Icons.Filled.Palette,
-                    title = "动态壁纸取色",
-                    subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
-                    checked = dynamicColor,
-                    index = 0,
-                    count = 3,
-                    onCheckedChange = onDynamicColorChange
+                    icon = Icons.Filled.NightsStay,
+                    title = "AMOLED 纯黑",
+                    subtitle = "深色模式下使用纯黑背景省电护眼",
+                    checked = amoled,
+                    index = if (supportsDynamicColor) 1 else 0,
+                    count = if (supportsDynamicColor) 3 else 2,
+                    onCheckedChange = onAmoledChange
+                )
+                SettingsSwitchItem(
+                    icon = Icons.Filled.PhotoLibrary,
+                    title = "ExHobby 扩展图库",
+                    subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
+                    checked = isExHobbyEnabled,
+                    index = if (supportsDynamicColor) 2 else 1,
+                    count = if (supportsDynamicColor) 3 else 2,
+                    onCheckedChange = onExHobbyEnabledChange
                 )
             }
-        }
-        item(key = "amoled", contentType = "row") {
-            SettingsSwitchItem(
-                icon = Icons.Filled.NightsStay,
-                title = "AMOLED 纯黑",
-                subtitle = "深色模式下使用纯黑背景省电护眼",
-                checked = amoled,
-                index = if (supportsDynamicColor) 1 else 0,
-                count = if (supportsDynamicColor) 3 else 2,
-                onCheckedChange = onAmoledChange
-            )
-        }
-        item(key = "exhobby", contentType = "row") {
-            SettingsSwitchItem(
-                icon = Icons.Filled.PhotoLibrary,
-                title = "ExHobby 扩展图库",
-                subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
-                checked = isExHobbyEnabled,
-                index = if (supportsDynamicColor) 2 else 1,
-                count = if (supportsDynamicColor) 3 else 2,
-                onCheckedChange = onExHobbyEnabledChange
-            )
         }
     }
 }
@@ -1023,45 +1004,44 @@ private fun SettingsPrivacyContent(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
-        item(key = PrivacySettingKeys.COLLECT_HOBBY, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "周边条目(手办、动漫、模型、布偶、娃娃)",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
-                index = 0,
-                count = 4,
-                onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
-            )
-        }
-        item(key = PrivacySettingKeys.COLLECT_ALBUM, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "收藏内容(相册、图片、文章)",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
-                index = 1,
-                count = 4,
-                onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
-            )
-        }
-        item(key = PrivacySettingKeys.COLLECT_STATISTICS, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "收藏统计(历史消费、入手数量、待补款等)",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
-                index = 2,
-                count = 4,
-                onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
-            )
-        }
-        item(key = PrivacySettingKeys.COLLECT_OTHER, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "其他内容(系列、厂商、角色、人物、作品)",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
-                index = 3,
-                count = 4,
-                onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
-            )
+        item(key = "segment-collect", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "周边条目(手办、动漫、模型、布偶、娃娃)",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
+                    index = 0,
+                    count = 4,
+                    onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "收藏内容(相册、图片、文章)",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
+                    index = 1,
+                    count = 4,
+                    onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "收藏统计(历史消费、入手数量、待补款等)",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
+                    index = 2,
+                    count = 4,
+                    onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "其他内容(系列、厂商、角色、人物、作品)",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
+                    index = 3,
+                    count = 4,
+                    onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
+                )
+            }
         }
         item(key = "header-other", contentType = "header") {
             Text(
@@ -1071,35 +1051,36 @@ private fun SettingsPrivacyContent(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
-        item(key = PrivacySettingKeys.OWN_ACTION, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "个人主页动态",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
-                index = 0,
-                count = 3,
-                onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
-            )
-        }
-        item(key = PrivacySettingKeys.PRIVACY_FRIEND, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "关注、粉丝",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
-                index = 1,
-                count = 3,
-                onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
-            )
-        }
-        item(key = PrivacySettingKeys.PRIVACY_POSTS, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "讨论板个人主页",
-                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
-                index = 2,
-                count = 3,
-                onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
-            )
+        item(key = "segment-other", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "个人主页动态",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
+                    index = 0,
+                    count = 3,
+                    onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "关注、粉丝",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
+                    index = 1,
+                    count = 3,
+                    onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "讨论板个人主页",
+                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
+                    index = 2,
+                    count = 3,
+                    onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
+                )
+            }
         }
         item(key = "header-message", contentType = "header") {
             Text(
@@ -1146,7 +1127,7 @@ private fun SettingsAccountContent(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
         item(key = "profile", contentType = "row") {
             SettingsMenuItem(
@@ -1226,35 +1207,21 @@ private fun SettingsAccountSecurityDetail(
             }
         } else {
             val bindings = state.bindings()
-            items(bindings.size, key = { bindings[it].title }, contentType = { "binding" }) { index ->
-                val binding = bindings[index]
-                SegmentedListItem(
-                    onClick = {},
-                    shapes = ListItemDefaults.segmentedShapes(index = index, count = bindings.size),
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Filled.AccountCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            text = binding.statusText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    content = {
-                        Text(
-                            text = binding.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
+            item(key = "bindings", contentType = "segment") {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                ) {
+                    bindings.forEachIndexed { index, binding ->
+                        SettingsMenuItem(
+                            icon = Icons.Filled.AccountCircle,
+                            title = binding.title,
+                            subtitle = binding.statusText,
+                            index = index,
+                            count = bindings.size
                         )
                     }
-                )
+                }
             }
         }
     }
