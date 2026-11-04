@@ -84,6 +84,59 @@ object CdnUrlUtils {
      */
     fun getRawCoverUrl(path: String?): String = buildCoverUrl(path, CoverVariant.RAW)
 
+    /**
+     * Hpoi 官方缺省封面相对路径。
+     * 当条目没有上传独立封面时，服务端 CDN 部署了固定的 "none.jpg"（绿发吉祥物“暂无封面”插画）。
+     */
+    const val DEFAULT_COVER_PATH = "none.jpg"
+
+    /**
+     * 校验给定封面路径是否为空、空白、字符串 "null" 或官方缺省占位符。
+     */
+    fun isNoCover(path: String?): Boolean {
+        if (path.isNullOrBlank()) return true
+        val trimmed = path.trim().lowercase()
+        if (trimmed == "null" || trimmed == "none" || trimmed == "none.jpg") return true
+        val clean = cleanCoverPath(trimmed).removePrefix("/")
+        if (clean.isEmpty() || clean == "none.jpg" || clean == "none" || clean == "null") return true
+        val filename = clean.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
+        return filename == "none.jpg" || filename == "none" || filename == "null" || filename.isEmpty()
+    }
+
+    /**
+     * 获取指定变体的官方缺省封面完整 CDN URL。
+     */
+    fun getDefaultCoverUrl(variant: CoverVariant = CoverVariant.NORMAL): String =
+        "$CDN_BASE_URL${variant.prefix}$DEFAULT_COVER_PATH"
+
+    /**
+     * 获取手办/条目封面标准图（/n 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
+     */
+    fun getCoverUrlOrDefault(path: String?): String {
+        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.NORMAL) else getCoverUrl(path)
+    }
+
+    /**
+     * 获取手办/条目封面小图（/s 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
+     */
+    fun getCoverSmallUrlOrDefault(path: String?): String {
+        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.SMALL) else getCoverSmallUrl(path)
+    }
+
+    /**
+     * 获取手办/相册封面自适应比例缩略图（/sr 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
+     */
+    fun getCoverSrUrlOrDefault(path: String?): String {
+        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.SR) else getCoverSrUrl(path)
+    }
+
+    /**
+     * 获取手办/条目高清原图（/raw 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
+     */
+    fun getRawCoverUrlOrDefault(path: String?): String {
+        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.RAW) else getRawCoverUrl(path)
+    }
+
     fun cleanPicPath(path: String): String = cleanVariantPath(path, PicVariant.allPrefixes)
 
     fun buildPicUrl(path: String?, variant: PicVariant): String =

@@ -68,6 +68,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.theme.ExpressiveCard
@@ -292,8 +293,9 @@ private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifie
         ) {
         RankMedal(rank = rank)
         Spacer(modifier = Modifier.width(10.dp))
-        val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
-        if (item.hasCover && coverUrl.isNotBlank()) {
+        val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.cover)
+        val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverUrl(item.cover)
+        if (!isNoCover && coverUrl.isNotBlank()) {
             AsyncImage(
                 model = coverUrl,
                 contentDescription = item.displayName.ifBlank { "相册封面" },
@@ -303,23 +305,11 @@ private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifie
                     .clip(ExpressiveTokens.SmallCardShape)
             )
         } else {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(width = 72.dp, height = 96.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    .padding(4.dp)
-            ) {
-                Text(
-                    text = item.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            AlbumTextCover(
+                title = item.displayName,
+                modifier = Modifier.size(width = 72.dp, height = 96.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
+            )
         }
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {

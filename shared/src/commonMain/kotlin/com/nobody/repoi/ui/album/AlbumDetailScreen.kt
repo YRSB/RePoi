@@ -1058,12 +1058,14 @@ private fun RelatedAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(album.cover) {
-        album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = remember(album.cover, isNoCover) {
+        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
     }
     val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
 
     Card(
         onClick = onClick,
@@ -1079,7 +1081,12 @@ private fun RelatedAlbumCard(
                 .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
-            if (coverUrl.isNotBlank()) {
+            if (isNoCover) {
+                com.nobody.repoi.ui.album.components.AlbumTextCover(
+                    title = album.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalPlatformContext.current)
                         .data(coverUrl)
@@ -1097,18 +1104,6 @@ private fun RelatedAlbumCard(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
             }
 
             // 右上角半透明浮层点赞徽标

@@ -147,6 +147,66 @@ class CdnUrlUtilsTest {
     }
 
     @Test
+    fun isNoCover_identifiesEmptyAndPlaceholderPaths() {
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover(null))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover(""))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("   "))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("null"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("cover/n/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("/cover/sr/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/n/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/sr/none.jpg"))
+        kotlin.test.assertTrue(CdnUrlUtils.isNoCover("https://rfx.hpoi.net/gk/cover/raw/none.jpg"))
+
+        kotlin.test.assertFalse(CdnUrlUtils.isNoCover("2026/08/sample.jpg"))
+        kotlin.test.assertFalse(CdnUrlUtils.isNoCover("cover/n/2026/08/sample.jpg"))
+    }
+
+    @Test
+    fun getCoverUrlOrDefault_fallsBackToNoneJpgWhenEmptyOrPlaceholder() {
+        val expectedDefault = "https://rfx.hpoi.net/gk/cover/n/none.jpg"
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault(null))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault(""))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault("   "))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault("null"))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault("none.jpg"))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverUrlOrDefault("cover/n/none.jpg"))
+
+        assertEquals(
+            "https://rfx.hpoi.net/gk/cover/n/2026/08/real.jpg",
+            CdnUrlUtils.getCoverUrlOrDefault("2026/08/real.jpg")
+        )
+    }
+
+    @Test
+    fun getCoverSmallUrlOrDefault_fallsBackToNoneJpgSmall() {
+        val expectedDefault = "https://rfx.hpoi.net/gk/cover/s/none.jpg"
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSmallUrlOrDefault(null))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSmallUrlOrDefault(""))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSmallUrlOrDefault("none.jpg"))
+
+        assertEquals(
+            "https://rfx.hpoi.net/gk/cover/s/2026/08/real.jpg",
+            CdnUrlUtils.getCoverSmallUrlOrDefault("2026/08/real.jpg")
+        )
+    }
+
+    @Test
+    fun getCoverSrUrlOrDefault_fallsBackToNoneJpgSr() {
+        val expectedDefault = "https://rfx.hpoi.net/gk/cover/sr/none.jpg"
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSrUrlOrDefault(null))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSrUrlOrDefault(""))
+        assertEquals(expectedDefault, CdnUrlUtils.getCoverSrUrlOrDefault("none.jpg"))
+
+        assertEquals(
+            "https://rfx.hpoi.net/gk/cover/sr/2026/08/real.jpg",
+            CdnUrlUtils.getCoverSrUrlOrDefault("2026/08/real.jpg")
+        )
+    }
+
+    @Test
     fun cleanCoverPath_cleansAllPrefixes() {
         val rel = "2026/08/sample.png"
         assertEquals("2026/08/sample.png", CdnUrlUtils.cleanCoverPath("/$rel"))

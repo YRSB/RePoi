@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -274,7 +275,7 @@ internal fun HobbyCollectGridCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrl(item.actualCover) }
+    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrlOrDefault(item.actualCover) }
     val gridImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "grid")
     val bottomScrim = remember {
         Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x66000000)))
@@ -300,10 +301,11 @@ internal fun HobbyCollectGridCard(
         shape = ExpressiveTokens.SmallCardShape,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
+        val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
         Box(modifier = Modifier.fillMaxSize()) {
             var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-            if (coverUrl.isNotBlank() && !loadFailed) {
+            if (!loadFailed) {
                 AsyncImage(
                     model = gridImageRequest,
                     contentDescription = item.displayName,
@@ -311,19 +313,6 @@ internal fun HobbyCollectGridCard(
                     modifier = Modifier.fillMaxSize(),
                     onError = { loadFailed = true }
                 )
-            } else if (coverUrl.isBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "暂无配图",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
             } else {
                 Box(
                     modifier = Modifier
@@ -332,10 +321,10 @@ internal fun HobbyCollectGridCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.BrokenImage,
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.outline
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
                     )
                 }
             }
@@ -408,7 +397,7 @@ internal fun HobbyCollectListCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrl(item.actualCover) }
+    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrlOrDefault(item.actualCover) }
     val thumbImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "thumb")
 
     ExpressiveElevatedCard(
@@ -430,18 +419,32 @@ internal fun HobbyCollectListCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 左侧封面缩略图（68dp 方形，圆角 SmallCardShape）
+            val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
+            var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+
             Box(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbImageRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbImageRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
+                    )
+                }
 
                 if (selectionMode) {
                     SelectionOverlay(

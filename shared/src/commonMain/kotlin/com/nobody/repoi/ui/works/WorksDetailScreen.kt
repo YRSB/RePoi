@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -79,6 +80,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.WorksCharacterItem
 import com.nobody.repoi.data.remote.model.WorksData
@@ -105,6 +107,7 @@ import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.util.ImageAspectRatioCache
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -402,7 +405,7 @@ internal fun WorksHeaderSection(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                val coverUrl = CdnUrlUtils.getCoverUrl(works.cover ?: initialCover)
+                val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(works.cover ?: initialCover)
                 Box(
                     modifier = Modifier.width(96.dp).aspectRatio(9f / 13f).clip(ExpressiveTokens.MediumCardShape)
                         .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
@@ -505,7 +508,7 @@ internal fun WorksSeriesSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val coverUrl = CdnUrlUtils.getCoverUrl(seriesRef.cover)
+            val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(seriesRef.cover)
             Box(
                 modifier = Modifier.size(48.dp).clip(ExpressiveTokens.SmallCardShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -581,7 +584,7 @@ internal fun WorksCharactersSection(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     characters.take(6).forEach { character ->
-                        val coverUrl = CdnUrlUtils.getCoverUrl(character.cCover)
+                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(character.cCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveTokens.CardShape,
@@ -688,7 +691,7 @@ internal fun WorksHobbysSection(
                     mediumColumns = 5,
                     modifier = Modifier.fillMaxWidth()
                 ) { item ->
-                    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+                    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
                     Box(
                         modifier = Modifier.fillMaxWidth().aspectRatio(9f / 13f)
                             .clip(ExpressiveTokens.CardShape)
@@ -740,17 +743,37 @@ internal fun WorksAlbumsSection(
                                 .clickable { onAlbumClick(album) },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            val coverUrl = CdnUrlUtils.getCoverUrl(album.cover)
+                            val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+                            val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverUrl(album.cover)
+                            val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+                            val ratioKey = remember(album.cover, coverUrl) { "works_album:$coverUrl" }
+                            var aspectRatio by remember(ratioKey, isNoCover) {
+                                mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
+                            }
                             Box(
-                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                                modifier = Modifier.fillMaxWidth().aspectRatio(aspectRatio)
                                     .clip(ExpressiveTokens.CardShape)
                                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             ) {
-                                if (coverUrl.isNotBlank()) {
+                                if (isNoCover) {
+                                    AlbumTextCover(
+                                        title = album.displayName.ifBlank { "未知相册" },
+                                        modifier = Modifier.fillMaxSize(),
+                                        shape = ExpressiveTokens.CardShape
+                                    )
+                                } else if (coverUrl.isNotBlank()) {
                                     AsyncImage(
                                         model = coverUrl,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
+                                        onSuccess = { state ->
+                                            val size = state.painter.intrinsicSize
+                                            if (size.width > 0 && size.height > 0) {
+                                                val ratio = (size.width / size.height).coerceIn(0.6f, 2.0f)
+                                                aspectRatio = ratio
+                                                ImageAspectRatioCache[ratioKey] = ratio
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }

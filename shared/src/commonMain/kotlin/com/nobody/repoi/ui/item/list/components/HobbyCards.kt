@@ -13,11 +13,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,9 +53,11 @@ fun HobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
     val gridImageRequest = rememberListImageRequest(item.cover, coverUrl, "grid")
     val bottomScrim = remember { Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))) }
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -59,12 +68,29 @@ fun HobbyGridCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = gridImageRequest,
-                contentDescription = item.displayName,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (!loadFailed) {
+                AsyncImage(
+                    model = gridImageRequest,
+                    contentDescription = item.displayName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    onError = { loadFailed = true }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
+                        contentDescription = null,
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
 
             // 顶部热度角标
             val hitsText = item.displayHitsText
@@ -122,8 +148,10 @@ fun HobbyListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbImageRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -143,14 +171,25 @@ fun HobbyListCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbImageRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbImageRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
+                        contentDescription = null,
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             // 右侧信息列

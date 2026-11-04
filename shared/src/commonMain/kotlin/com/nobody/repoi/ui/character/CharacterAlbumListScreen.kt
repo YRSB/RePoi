@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.listImageKey
@@ -237,11 +238,13 @@ private fun CharacterAlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSrUrl(album.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(album.cover)
     val ratioKey = listImageKey(album.cover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(album.cover, coverUrl, "sr:waterfall")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    var aspectRatio by remember(ratioKey, isNoCover) {
+        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
     ExpressiveElevatedCard(
@@ -258,20 +261,27 @@ private fun CharacterAlbumStaggeredCard(
                     .aspectRatio(aspectRatio)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
-                AsyncImage(
-                    model = coverRequest,
-                    contentDescription = album.displayName,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (isNoCover) {
+                    AlbumTextCover(
+                        title = album.displayName,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    AsyncImage(
+                        model = coverRequest,
+                        contentDescription = album.displayName,
+                        contentScale = ContentScale.Crop,
+                        onSuccess = { state ->
+                            val size = state.painter.intrinsicSize
+                            if (size.width > 0 && size.height > 0) {
+                                val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
+                                aspectRatio = ratio
+                                ImageAspectRatioCache[ratioKey] = ratio
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // 右上角半透明浮层点赞徽标
                 val praiseCount = album.praiseCount ?: 0L

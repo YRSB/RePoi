@@ -112,6 +112,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.ThumbUp
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.HobbyDetailData
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.InfoListEntry
@@ -202,9 +203,9 @@ fun HobbyDetailScreen(
         val detail = uiState.detail
         val initialSkeleton = uiState.isInitialLoading && detail == null
         val heroImages = buildList {
-            val cover = detail?.cover ?: navParam.initialCover
-            if (!cover.isNullOrBlank()) {
-                add(CdnUrlUtils.getRawCoverUrl(cover))
+            val rawCover = detail?.cover ?: navParam.initialCover
+            if (!rawCover.isNullOrBlank() && !CdnUrlUtils.isNoCover(rawCover)) {
+                add(CdnUrlUtils.getRawCoverUrl(rawCover))
             }
             uiState.officialPics.take(8).forEach { pic ->
                 val url = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
@@ -559,8 +560,11 @@ private fun HobbyHeaderOfficialSection(
     onMakerClick: (() -> Unit)? = null,
     isPicsLoading: Boolean = false
 ) {
-    val cover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
-    val coverUrl = cover?.let { CdnUrlUtils.getCoverUrl(it) } ?: ""
+    val rawCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
+    val coverUrl = when {
+        detail == null && initialCover.isNullOrBlank() -> ""
+        else -> CdnUrlUtils.getCoverUrlOrDefault(rawCover)
+    }
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -568,7 +572,10 @@ private fun HobbyHeaderOfficialSection(
         // 1. 底层封面图高斯模糊背景 (Atmospheric Frosted Backdrop)
         if (coverUrl.isNotBlank()) {
             AsyncImage(
-                model = coverUrl,
+                model = ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -632,20 +639,73 @@ private fun HobbyHeaderOfficialSection(
                         )
                         .clickable(onClick = onCoverClick)
                 ) {
-                    if (coverUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = coverUrl,
-                            contentDescription = "手办完整封面",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        ShimmerHost {
-                            Box(
+                    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+                    when {
+                        coverUrl.isNotBlank() && !loadFailed -> {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(coverUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "手办完整封面",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                onError = { loadFailed = true }
+                            )
+                        }
+                        coverUrl.isNotBlank() && loadFailed -> {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .shimmerBackground()
-                            )
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.BrokenImage,
+                                    contentDescription = "封面加载失败",
+                                    tint = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "加载失败",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+                        detail == null -> {
+                            ShimmerHost {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .shimmerBackground()
+                                )
+                            }
+                        }
+                        else -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PhotoLibrary,
+                                    contentDescription = "暂无封面",
+                                    tint = if (isDark) Color.White.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "暂无封面",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.45f)
+                                )
+                            }
                         }
                     }
                 }
@@ -1579,12 +1639,14 @@ private fun HobbyUserAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(album.cover) {
-        album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = remember(album.cover, isNoCover) {
+        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
     }
     val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
 
     Card(
         onClick = onClick,
@@ -1600,7 +1662,12 @@ private fun HobbyUserAlbumCard(
                 .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
-            if (coverUrl.isNotBlank()) {
+            if (isNoCover) {
+                AlbumTextCover(
+                    title = album.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalPlatformContext.current)
                         .data(coverUrl)
@@ -1618,18 +1685,6 @@ private fun HobbyUserAlbumCard(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
             }
 
             // 右上角半透明浮层点赞徽标（与相册列表页及角色详情页完全一致的 ExtraSmallShape 与 padding）

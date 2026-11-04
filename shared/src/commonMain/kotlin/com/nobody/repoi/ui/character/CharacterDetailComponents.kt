@@ -74,6 +74,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.AlbumData
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.CharacterData
 import com.nobody.repoi.data.remote.model.CharacterPerformerItem
 import com.nobody.repoi.data.remote.model.CharacterRelevantItem
@@ -109,7 +110,7 @@ internal fun CharacterHeaderSection(
     val displayName = character?.displayName?.ifBlank { null } ?: initialName ?: "角色详情"
     val subName = character?.subName
     val cover = character?.cover?.ifBlank { null } ?: initialCover
-    val coverUrl = CdnUrlUtils.getCoverUrl(cover)
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(cover)
     val intro = character?.detailPlainText.orEmpty()
 
     ExpressiveElevatedCard(
@@ -338,7 +339,7 @@ internal fun CharacterWorksSection(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     works.take(5).forEach { work ->
-                        val coverUrl = CdnUrlUtils.getCoverUrl(work.wCover)
+                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(work.wCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveTokens.CardShape,
@@ -449,7 +450,7 @@ private fun PerformerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val avatarUrl = CdnUrlUtils.getCoverSmallUrl(performer.pCover)
+    val avatarUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(performer.pCover)
     Surface(
         onClick = onClick,
         shape = ExpressiveTokens.ButtonShape,
@@ -558,7 +559,7 @@ private fun CharacterHobbyCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(hobby.cover)
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(hobby.cover)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = ExpressiveTokens.CardShape,
@@ -699,12 +700,14 @@ private fun CharacterAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(album.cover) {
-        album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
+    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
+    val coverUrl = remember(album.cover, isNoCover) {
+        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
     }
     val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
 
     Card(
         onClick = onClick,
@@ -720,7 +723,12 @@ private fun CharacterAlbumCard(
                 .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
-            if (coverUrl.isNotBlank()) {
+            if (isNoCover) {
+                AlbumTextCover(
+                    title = album.name ?: "相册",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalPlatformContext.current)
                         .data(coverUrl)
@@ -738,18 +746,6 @@ private fun CharacterAlbumCard(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
             }
 
             // 右上角半透明浮层点赞徽标（与相关相册页完全一致的 ExtraSmallShape 与 padding）
@@ -883,7 +879,7 @@ private fun CharacterRelevantCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     Surface(
         modifier = modifier.width(108.dp),
         shape = ExpressiveTokens.CardShape,

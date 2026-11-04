@@ -16,6 +16,23 @@ import kotlin.test.assertTrue
 class FeedMediaResolverTest {
 
     @Test
+    fun resolve_hobbyItemWithoutCover_fallsBackToDefaultPlaceholder() {
+        val action = ActionItem(
+            id = 100L,
+            actionType = 1,
+            relateItem = RelateItem(
+                itemType = "hobby",
+                cover = ""
+            )
+        )
+        val info = action.resolveMediaDisplayInfo()
+
+        assertTrue(info.shouldShowLeftCover)
+        assertEquals("https://rfx.hpoi.net/gk/cover/n/none.jpg", info.coverUrl)
+        assertEquals(listOf("https://rfx.hpoi.net/gk/cover/raw/none.jpg"), info.allRawUrls)
+    }
+
+    @Test
     fun resolve_hobbyItemWithCover_returnsCoverNAndRaw() {
         val action = ActionItem(
             id = 1L,
@@ -50,7 +67,7 @@ class FeedMediaResolverTest {
     }
 
     @Test
-    fun resolve_albumNoneJpg_showsOfficialPlaceholder() {
+    fun resolve_albumNoneJpg_marksAlbumNoCoverAndKeepsLeftCover() {
         val action = ActionItem(
             id = 3L,
             actionType = 3,
@@ -61,12 +78,13 @@ class FeedMediaResolverTest {
         )
         val info = action.resolveMediaDisplayInfo()
         assertTrue(info.shouldShowLeftCover)
-        assertEquals("https://rfx.hpoi.net/gk/cover/sr/none.jpg", info.coverUrl)
-        assertFalse(info.isAlbumNoCover)
+        assertEquals("", info.coverUrl)
+        assertTrue(info.isAlbumNoCover)
+        assertTrue(info.allRawUrls.isEmpty())
     }
 
     @Test
-    fun resolve_albumWithoutCover_hidesLeftCover() {
+    fun resolve_albumWithoutCover_marksAlbumNoCoverAndKeepsLeftCover() {
         val actionWithBlank = ActionItem(
             id = 4L,
             actionType = 3,
@@ -76,8 +94,9 @@ class FeedMediaResolverTest {
             )
         )
         val infoBlank = actionWithBlank.resolveMediaDisplayInfo()
-        assertFalse(infoBlank.shouldShowLeftCover)
+        assertTrue(infoBlank.shouldShowLeftCover)
         assertEquals("", infoBlank.coverUrl)
+        assertTrue(infoBlank.isAlbumNoCover)
     }
 
     @Test

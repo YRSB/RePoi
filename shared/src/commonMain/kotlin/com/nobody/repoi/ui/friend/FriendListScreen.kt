@@ -560,7 +560,7 @@ private fun PraiseItemCard(
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val coverUrl = CdnUrlUtils.getCoverUrl(relate.cover ?: relate.path)
+                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(relate.cover ?: relate.path)
                         AsyncImage(
                             model = ImageRequest.Builder(LocalPlatformContext.current)
                                 .data(coverUrl)

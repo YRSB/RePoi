@@ -40,6 +40,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Done
@@ -612,8 +613,9 @@ private fun PreviewItemCard(
     item: HobbyItemSummary,
     onClick: () -> Unit
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
-    var loadFailed by remember(item.cover) { mutableStateOf(false) }
+    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
 
     Card(
         onClick = onClick,
@@ -637,11 +639,12 @@ private fun PreviewItemCard(
                     modifier = Modifier.fillMaxSize(),
                     onError = { loadFailed = true }
                 )
-            } else if (coverUrl.isBlank()) {
-                Text(
-                    text = "暂无配图",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
+            } else if (isNoCover) {
+                Icon(
+                    imageVector = Icons.Filled.PhotoLibrary,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                 )
             } else {
                 Icon(

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +43,7 @@ import coil3.compose.AsyncImage
 import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.data.remote.model.SearchResultItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.SearchUserItem
 import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
 import com.nobody.repoi.ui.theme.ExpressiveTokens
@@ -55,8 +59,10 @@ fun HobbySearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -75,14 +81,25 @@ fun HobbySearchCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
+                        contentDescription = null,
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             // 右侧文本详情
@@ -148,11 +165,13 @@ fun AlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSrUrl(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.cover)
     val ratioKey = listImageKey(item.cover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(item.cover, coverUrl, "sr:waterfall")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    var aspectRatio by remember(ratioKey, isNoCover) {
+        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
     ExpressiveElevatedCard(
@@ -169,20 +188,27 @@ fun AlbumStaggeredCard(
                     .aspectRatio(aspectRatio)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
-                AsyncImage(
-                    model = coverRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (isNoCover) {
+                    AlbumTextCover(
+                        title = item.displayName,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    AsyncImage(
+                        model = coverRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        onSuccess = { state ->
+                            val size = state.painter.intrinsicSize
+                            if (size.width > 0 && size.height > 0) {
+                                val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
+                                aspectRatio = ratio
+                                ImageAspectRatioCache[ratioKey] = ratio
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // 右上角半透明浮层点赞徽标
                 if (item.praiseCountText.isNotBlank()) {
@@ -292,8 +318,10 @@ fun GeneralSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrl(item.cover)
+    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
+    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ExpressiveElevatedCard(
         onClick = onClick,
@@ -312,14 +340,25 @@ fun GeneralSearchCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(ExpressiveTokens.SmallCardShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = thumbRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (!loadFailed) {
+                    AsyncImage(
+                        model = thumbRequest,
+                        contentDescription = item.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { loadFailed = true }
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
+                        contentDescription = null,
+                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Column(

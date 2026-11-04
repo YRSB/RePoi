@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
+import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.collect.MediaOrderOption
 import com.nobody.repoi.ui.common.listImageKey
@@ -99,43 +100,14 @@ internal fun CollectAlbumCard(
             )
     ) {
         Column {
-            if (item.hasCover) {
-                CollectAlbumCover(
-                    item = item,
-                    isSelected = isSelected,
-                    isSelectionMode = isSelectionMode
-                )
-            } else {
-                // 无封面兜底：原版过滤 none.jpg 后改为直接显标题（UserCollectAlbumAdapter）
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = item.actualTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
-                    )
-                    if (isSelectionMode) {
-                        SelectionMark(
-                            selected = isSelected,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(6.dp)
-                        )
-                    }
-                }
-            }
+            CollectAlbumCover(
+                item = item,
+                isSelected = isSelected,
+                isSelectionMode = isSelectionMode
+            )
 
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                if (item.hasCover && item.actualTitle.isNotBlank()) {
+                if (item.actualTitle.isNotBlank()) {
                     Text(
                         text = item.actualTitle,
                         style = MaterialTheme.typography.bodyMedium,
@@ -211,13 +183,15 @@ private fun CollectAlbumCover(
     isSelectionMode: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.id, item.actualCover) {
-        CdnUrlUtils.getCoverSrUrl(item.actualCover)
+    val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.actualCover)
+    val coverUrl = remember(item.id, item.actualCover, isNoCover) {
+        if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.actualCover)
     }
     val ratioKey = listImageKey(item.actualCover, coverUrl, "sr")
     val coverRequest = rememberListImageRequest(item.actualCover, coverUrl, "sr:collect")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
+    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
+    var aspectRatio by remember(ratioKey, isNoCover) {
+        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
     Box(
@@ -226,20 +200,27 @@ private fun CollectAlbumCover(
             .aspectRatio(aspectRatio)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
-        AsyncImage(
-            model = coverRequest,
-            contentDescription = item.actualTitle.ifBlank { "相册封面" },
-            contentScale = ContentScale.Crop,
-            onSuccess = { state ->
-                val size = state.painter.intrinsicSize
-                if (size.width > 0 && size.height > 0) {
-                    val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                    aspectRatio = ratio
-                    ImageAspectRatioCache[ratioKey] = ratio
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isNoCover) {
+            AlbumTextCover(
+                title = item.actualTitle,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            AsyncImage(
+                model = coverRequest,
+                contentDescription = item.actualTitle.ifBlank { "相册封面" },
+                contentScale = ContentScale.Crop,
+                onSuccess = { state ->
+                    val size = state.painter.intrinsicSize
+                    if (size.width > 0 && size.height > 0) {
+                        val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
+                        aspectRatio = ratio
+                        ImageAspectRatioCache[ratioKey] = ratio
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         if (item.actualPraiseCount > 0) {
             CollectPraiseBadge(
