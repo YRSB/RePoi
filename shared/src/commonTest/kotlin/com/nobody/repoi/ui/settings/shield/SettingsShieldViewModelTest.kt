@@ -48,7 +48,7 @@ class SettingsShieldViewModelTest {
 
         val state = viewModel.uiState.value
         println("DIAG-7f3a shield nsfw=${state.nsfwVisible} loading=${state.isLoading} err=${state.errorMessage} reqCount=${mock.requestCount}")
-        println("DIAG-7f3a sched same=${testScheduler === testDispatcher.scheduler} mainIsTest=${kotlinx.coroutines.Dispatchers.getMain() === testDispatcher}")
+        println("DIAG-7f3a sched same=${testScheduler === testDispatcher.scheduler} mainIsTest=${Dispatchers.Main === testDispatcher}")
         assertTrue(state.nsfwVisible)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
