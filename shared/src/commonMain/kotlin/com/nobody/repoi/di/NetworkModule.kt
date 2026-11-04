@@ -35,7 +35,7 @@ private fun HttpClientConfig<*>.applyCommonLoggingAndNegotiation(json: Json) {
             override fun log(message: String) {
                 val formatted = KtorLogFormatter.format(message) ?: return
                 KermitLogger.withTag("Ktor").v { formatted }
-                if (formatted.startsWith("<-- 4") || formatted.startsWith("<-- 5") || formatted.contains("exception", ignoreCase = true)) {
+                if (formatted.startsWith("<-- 4") || formatted.startsWith("<-- 5") || formatted.contains("failed with exception", ignoreCase = true)) {
                     AppLogger.w("Ktor", formatted)
                 } else {
                     AppLogger.d("Ktor", formatted)

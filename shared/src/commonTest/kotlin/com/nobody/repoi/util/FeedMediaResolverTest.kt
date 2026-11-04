@@ -193,4 +193,59 @@ class FeedMediaResolverTest {
             info.allRawUrls
         )
     }
+
+    @Test
+    fun resolve_noCoverWithExtraImages_fallsBackToFirstExtraAsPicN() {
+        val action = ActionItem(
+            id = 8L,
+            actionType = 1,
+            relateItem = RelateItem(
+                itemType = "hobby"
+            ),
+            relateData = listOf(
+                RelateData(path = "2026/first_extra.jpg"),
+                RelateData(path = "2026/second_extra.jpg")
+            )
+        )
+        val info = action.resolveMediaDisplayInfo()
+
+        assertTrue(info.shouldShowLeftCover)
+        assertEquals("https://rfx.hpoi.net/gk/pic/n/2026/first_extra.jpg", info.coverUrl)
+        assertEquals(listOf("2026/second_extra.jpg"), info.displayExtraImages)
+        assertEquals(
+            listOf(
+                "https://rfx.hpoi.net/gk/pic/raw/2026/first_extra.jpg",
+                "https://rfx.hpoi.net/gk/pic/raw/2026/second_extra.jpg"
+            ),
+            info.allRawUrls
+        )
+    }
+
+    @Test
+    fun resolve_partialDuplicateExtraImages_filtersCoverFileName() {
+        val action = ActionItem(
+            id = 9L,
+            actionType = 1,
+            relateItem = RelateItem(
+                itemType = "hobby",
+                cover = "main_cover.jpg"
+            ),
+            relateData = listOf(
+                RelateData(path = "main_cover.jpg"),
+                RelateData(path = "extra_other.jpg")
+            )
+        )
+        val info = action.resolveMediaDisplayInfo()
+
+        assertTrue(info.shouldShowLeftCover)
+        assertEquals("https://rfx.hpoi.net/gk/cover/n/main_cover.jpg", info.coverUrl)
+        assertEquals(listOf("extra_other.jpg"), info.displayExtraImages)
+        assertEquals(
+            listOf(
+                "https://rfx.hpoi.net/gk/cover/raw/main_cover.jpg",
+                "https://rfx.hpoi.net/gk/pic/raw/extra_other.jpg"
+            ),
+            info.allRawUrls
+        )
+    }
 }

@@ -45,52 +45,57 @@ object FeedMediaResolver {
         val hasPath = !rawPath.isNullOrBlank()
         val isAlbumNoCover = isAlbum && (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover))
 
-        val coverUrl: String
-        val coverRawUrl: String
-        val shouldShowLeftCover: Boolean
+        data class CoverPick(val url: String, val rawUrl: String, val showLeft: Boolean, val dedupPath: String?)
 
-        when {
-            // 分支 1：存在 path 属性（picture 类实体 / 用户随像单图）
-            hasPath -> {
-                coverUrl = CdnUrlUtils.getPicNUrl(rawPath)
-                coverRawUrl = CdnUrlUtils.getRawPicUrl(rawPath)
-                shouldShowLeftCover = true
-            }
-            // 分支 2：相册无有效封面 -> 官方规范展示浅蓝纯文本卡片 titleCover (AlbumTextCover)
-            isAlbum && isAlbumNoCover -> {
-                coverUrl = ""
-                coverRawUrl = ""
-                shouldShowLeftCover = true
-            }
-            // 分支 3：相册有有效封面 -> 官方规范走 cover/sr/ 自适应比例档位（严禁走 cover/n/ 导致 CDN 404）
-            isAlbum -> {
-                coverUrl = CdnUrlUtils.getCoverSrUrl(rawCover)
-                coverRawUrl = CdnUrlUtils.getRawCoverUrl(rawCover)
-                shouldShowLeftCover = true
-            }
-            // 分支 4：常规条目无封面或为缺省占位符 -> 走 cover/n/none.jpg
-            rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover) -> {
-                coverUrl = CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.NORMAL)
-                coverRawUrl = CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.RAW)
-                shouldShowLeftCover = relateItem != null
-            }
-            // 分支 5：常规条目（hobby/周边等）有封面 -> 走 cover/n/
-            else -> {
-                coverUrl = CdnUrlUtils.getCoverUrl(rawCover)
-                coverRawUrl = CdnUrlUtils.getRawCoverUrl(rawCover)
-                shouldShowLeftCover = true
-            }
+        // 官方判定逻辑（ActionListAdapter.java 536-574 & FollowAdapter.java 21-36）：
+        // 存在 path 用 pic/n/；相册有封面走 cover/sr/（无 cover/n/ 规格，请求报 404），无封面走纯文本卡；
+        // 常规有封面走 cover/n/，无封面回退首张附图或 cover/n/none.jpg。
+        val pick = when {
+            hasPath -> CoverPick(
+                CdnUrlUtils.getPicNUrl(rawPath),
+                CdnUrlUtils.getRawPicUrl(rawPath),
+                true,
+                rawPath
+            )
+            isAlbum && isAlbumNoCover -> CoverPick("", "", true, null)
+            isAlbum -> CoverPick(
+                CdnUrlUtils.getCoverSrUrl(rawCover),
+                CdnUrlUtils.getRawCoverUrl(rawCover),
+                true,
+                rawCover
+            )
+            (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover)) && extraImages.isNotEmpty() -> CoverPick(
+                CdnUrlUtils.getPicNUrl(extraImages.first()),
+                CdnUrlUtils.getRawPicUrl(extraImages.first()),
+                relateItem != null,
+                extraImages.first()
+            )
+            rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover) -> CoverPick(
+                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.NORMAL),
+                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.RAW),
+                relateItem != null,
+                null
+            )
+            else -> CoverPick(
+                CdnUrlUtils.getCoverUrl(rawCover),
+                CdnUrlUtils.getRawCoverUrl(rawCover),
+                true,
+                rawCover
+            )
         }
+        val coverUrl = pick.url
+        val coverRawUrl = pick.rawUrl
+        val shouldShowLeftCover = pick.showLeft
 
-        // 附图列表（对齐官方 ActionListAdapter.java:666-677）：
-        // 官方直接遍历 relateData 渲染附图九宫格（pic/s/），若仅有 1 张附图且与左侧主图完全同名，保留单图去重以保持精致排版
-        val coverFileName = (rawPath ?: rawCover)?.substringAfterLast("/")?.substringBefore("?") ?: ""
-        val displayExtraImages = if (extraImages.size == 1 && extraImages[0].substringAfterLast("/").substringBefore("?") == coverFileName) {
-            emptyList()
-        } else {
+        val coverFileName = pick.dedupPath?.substringAfterLast("/")?.substringBefore("?") ?: ""
+        val displayExtraImages = if (coverFileName.isBlank()) {
             extraImages
+        } else {
+            val nonCoverImages = extraImages.filter {
+                it.substringAfterLast("/").substringBefore("?") != coverFileName
+            }
+            if (nonCoverImages.isNotEmpty()) nonCoverImages else extraImages
         }
-
         // 原图列表全量收集（供全屏大图查看器）
         val extraRawUrls = displayExtraImages.map { CdnUrlUtils.getRawPicUrl(it) }
         val allRawUrls = buildList {

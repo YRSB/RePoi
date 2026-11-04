@@ -22,36 +22,37 @@ class CorruptCacheRecoveryInterceptor(
         val request = chain.request
         val result = chain.proceed()
 
-        // 仅在首次请求失败且启用了读缓存时才尝试自愈重试，单次自愈避免死循环
-        if (result is ErrorResult && request.diskCachePolicy.readEnabled) {
-            val throwable = result.throwable
-            val msg = throwable.message?.lowercase() ?: ""
-
-            // 识别解码器崩溃、格式错误、输入截断或解析异常
-            val isCorruptOrDecodeError = msg.contains("decoder") ||
-                msg.contains("unimplemented") ||
-                msg.contains("input contained an error") ||
-                msg.contains("corrupt") ||
-                msg.contains("eof") ||
-                msg.contains("premature") ||
-                throwable is IllegalArgumentException ||
-                throwable is IllegalStateException
-
-            if (isCorruptOrDecodeError) {
-                val key = request.diskCacheKey ?: request.data.toString()
-                if (key.isNotBlank()) {
-                    diskCache.remove(key)
-                    AppLogger.w("ImageLoader", "检测到解码异常($msg)，已抹除脏缓存并立即触发网络重试: $key")
-                    // 构造强制跳过读缓存的新请求，重新走网络拉取并写入磁盘
-                    val retryRequest = request.newBuilder()
-                        .diskCachePolicy(CachePolicy.WRITE_ONLY)
-                        .memoryCachePolicy(CachePolicy.WRITE_ONLY)
-                        .build()
-                    return chain.withRequest(retryRequest).proceed()
-                }
+        if (result is ErrorResult && request.diskCachePolicy.readEnabled && isCorruptOrDecodeError(result.throwable)) {
+            val key = request.diskCacheKey ?: request.data.toString()
+            if (key.isNotBlank()) {
+                diskCache.remove(key)
+                AppLogger.w("ImageLoader", "检测到解码异常(${result.throwable.message})，已抹除脏缓存并立即触发网络重试: $key")
+                val retryRequest = request.newBuilder()
+                    .diskCachePolicy(CachePolicy.WRITE_ONLY)
+                    .memoryCachePolicy(CachePolicy.WRITE_ONLY)
+                    .build()
+                return chain.withRequest(retryRequest).proceed()
             }
         }
 
         return result
     }
+
+    private fun isCorruptOrDecodeError(throwable: Throwable): Boolean {
+        var current: Throwable? = throwable
+        while (current != null) {
+            val msg = current.message?.lowercase().orEmpty()
+            if (msg.contains("decod") ||
+                msg.contains("unimplemented") ||
+                msg.contains("input contained an error") ||
+                msg.contains("corrupt") ||
+                msg.contains("premature") ||
+                msg.contains("truncat") ||
+                msg.contains("eof")
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
 }

@@ -1,12 +1,9 @@
 package com.nobody.repoi.di
 
-import coil3.EventListener
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
-import coil3.request.ErrorResult
-import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
 import com.nobody.repoi.platform.cacheDirPath
@@ -46,17 +43,6 @@ val imageModule = module {
                     CoilLogger.Level.Info -> AppLogger.i(tag, msg)
                     CoilLogger.Level.Warn -> AppLogger.w(tag, msg)
                     CoilLogger.Level.Error -> AppLogger.e(tag, msg, throwable)
-                }
-            }
-        }).eventListener(object : EventListener() {
-            override fun onError(request: ImageRequest, result: ErrorResult) {
-                // 当图片加载或解码抛出异常时，自动剔除本地可能损坏、截断或写入了非图片数据的脏磁盘缓存
-                val key = request.diskCacheKey ?: request.data.toString()
-                if (key.isNotBlank()) {
-                    val removed = diskCacheInstance.remove(key)
-                    if (removed) {
-                        AppLogger.w("ImageLoader", "图片加载/解码失败，已自动剔除本地损坏缓存: $key")
-                    }
                 }
             }
         }).apply {

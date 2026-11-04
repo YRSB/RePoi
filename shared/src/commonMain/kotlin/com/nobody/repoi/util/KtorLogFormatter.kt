@@ -14,9 +14,15 @@ package com.nobody.repoi.util
 object KtorLogFormatter {
 
     private const val MAX_BODY_LENGTH = 3000
+    private val tokenValuePattern = Regex("(utoken=)([^&\\s\"}]+)", RegexOption.IGNORE_CASE)
+    private val tokenJsonPattern = Regex("(\"utoken\"\\s*:\\s*\")([^\"]+)(\")", RegexOption.IGNORE_CASE)
+
+    fun sanitizeToken(text: String): String =
+        tokenJsonPattern.replace(tokenValuePattern.replace(text, "$1***"), "$1***$3")
 
     fun format(message: String): String? {
-        val trimmed = message.trim()
+        val sanitized = sanitizeToken(message)
+        val trimmed = sanitized.trim()
         if (trimmed.isEmpty()) return null
 
         // 0. 网络失败/异常直接透传，防止漏报
@@ -28,7 +34,7 @@ object KtorLogFormatter {
         if (trimmed.startsWith("REQUEST: ")) {
             val lines = trimmed.lines()
             val url = lines.firstOrNull { it.startsWith("REQUEST: ") }?.removePrefix("REQUEST: ")?.trim() ?: ""
-            val method = lines.firstOrNull { it.startsWith("METHOD: ") }?.removePrefix("METHOD: ")?.trim() ?: "GET"
+            val method = lines.firstOrNull { it.startsWith("METHOD: ") }?.removePrefix("METHOD: ")?.trim()?.ifBlank { null } ?: "UNKNOWN"
             return "--> $method $url"
         }
 
