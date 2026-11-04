@@ -7,6 +7,7 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.interceptor.CommonParams
 import com.nobody.repoi.data.remote.plugin.installCommonParams
 import com.nobody.repoi.util.AppLogger
+import com.nobody.repoi.util.KtorLogFormatter
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.okhttp.OkHttp
@@ -23,19 +24,25 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * 为 HttpClientConfig 配置统一的日志系统与 ContentNegotiation。
+ * 为业务 HttpClientConfig 配置统一的日志系统与 ContentNegotiation。
  *
- * 日志通过 [AppKtorLogger] 桥接到 [AppLogger] 环形缓冲中，支持从设置页面导出排查网络问题。
+ * 日志级别配置为 [LogLevel.BODY]，配合 [KtorLogFormatter] 自动过滤冗余 HTTP Headers，
+ * 提炼精简的请求行、响应行及 JSON 响应体，记录至 [AppLogger] 环形缓冲中。
  */
 private fun HttpClientConfig<*>.applyCommonLoggingAndNegotiation(json: Json) {
     install(Logging) {
         logger = object : Logger {
             override fun log(message: String) {
-                KermitLogger.withTag("Ktor").v { message }
-                AppLogger.d("Ktor", message)
+                val formatted = KtorLogFormatter.format(message) ?: return
+                KermitLogger.withTag("Ktor").v { formatted }
+                if (formatted.startsWith("<-- 4") || formatted.startsWith("<-- 5") || formatted.contains("exception", ignoreCase = true)) {
+                    AppLogger.w("Ktor", formatted)
+                } else {
+                    AppLogger.d("Ktor", formatted)
+                }
             }
         }
-        level = LogLevel.HEADERS
+        level = LogLevel.BODY
         sanitizeHeader { header -> header == HttpHeaders.Authorization }
     }
     install(ContentNegotiation) {
@@ -99,9 +106,12 @@ val networkModule = module {
         }
     }
     single(named("coil")) {
-        val json = get<Json>()
         HttpClient(OkHttp) {
-            applyCommonLoggingAndNegotiation(json)
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 30_000
+            }
             defaultRequest {
                 headers.append("Referer", CommonParams.REFERER_URL)
                 headers.append("User-Agent", CommonParams.USER_AGENT)
