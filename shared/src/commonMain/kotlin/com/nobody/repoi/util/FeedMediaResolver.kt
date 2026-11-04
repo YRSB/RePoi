@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.util
+package com.nobody.repoi.util
 
 import com.nobody.repoi.data.remote.model.ActionItem
 
@@ -15,75 +15,88 @@ data class FeedMediaDisplayInfo(
 
 object FeedMediaResolver {
     /**
-     * 根据 Hpoi 官方规范解析动态条目的媒体展示数据。
+     * 100% 对齐 Hpoi 官方规范 (ActionListAdapter.java:534-574 & FollowAdapter.java:21-36) 解析动态条目的媒体展示数据。
      */
     fun resolve(actionItem: ActionItem): FeedMediaDisplayInfo {
         val relateItem = actionItem.relateItem
         val extraImages = actionItem.relateData?.mapNotNull { it.path }?.filter { it.isNotBlank() } ?: emptyList()
 
-        val itemType = relateItem?.itemType?.lowercase()
-        val isAlbum = itemType == "album" || actionItem.actionType == 3
+        val isAlbum = relateItem?.isAlbum == true || actionItem.actionType == 3
 
-        val rawCover = relateItem?.cover?.trim()
-        val isAlbumNoCover = isAlbum && (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover))
-        val hasValidCover = !rawCover.isNullOrBlank() && (!isAlbum || !isAlbumNoCover)
-
-        // 检查是否为用户传图 / picture 类（官方逻辑：有 path 则为 picture 类）
         val rawPath = relateItem?.path?.trim()
-        val isPicture = !rawPath.isNullOrBlank() ||
-            (relateItem?.cover == null && relateItem?.path == null && extraImages.isNotEmpty())
+        val rawCover = relateItem?.cover?.trim()
 
-        val coverPath = when {
-            isAlbum -> if (hasValidCover) rawCover else null
-            hasValidCover -> rawCover
-            !rawPath.isNullOrBlank() -> rawPath
-            extraImages.isNotEmpty() -> extraImages.firstOrNull()
-            relateItem != null -> CdnUrlUtils.DEFAULT_COVER_PATH
-            else -> null
+        // 官方判定逻辑（ActionListAdapter.java 536-574 & FollowAdapter.java 21-36）：
+        // 1. 若 relateItem 具有 path 属性（picture 类/手办随像）：
+        //    直接使用 pic/n/ + path；原图使用 pic/raw/ + path。
+        // 2. 若为相册（isAlbum）：
+        //    - 若 cover 为空或为 none.jpg，显示纯文本卡片（isAlbumNoCover = true，coverUrl = ""）；
+        //    - 若有封面，官方必须走 cover/sr/ + cover（CDN 上相册无 cover/n/ 规格，请求会报 404！）；
+        //      原图查看器使用 cover/raw/ + cover。
+        // 3. 否则为常规条目（hobby / article 等）：
+        //    - 若 cover 为空或为 none.jpg，回退到官方缺省图 cover/n/none.jpg；
+        //    - 若有封面，走 cover/n/ + cover；原图查看器使用 cover/raw/ + cover。
+
+        val hasPath = !rawPath.isNullOrBlank()
+        val isAlbumNoCover = isAlbum && (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover))
+
+        data class CoverPick(val url: String, val rawUrl: String, val showLeft: Boolean, val dedupPath: String?)
+
+        // 官方判定逻辑（ActionListAdapter.java 536-574 & FollowAdapter.java 21-36）：
+        // 存在 path 用 pic/n/；相册有封面走 cover/sr/（无 cover/n/ 规格，请求报 404），无封面走纯文本卡；
+        // 常规有封面走 cover/n/，无封面回退首张附图或 cover/n/none.jpg。
+        val pick = when {
+            hasPath -> CoverPick(
+                CdnUrlUtils.getPicNUrl(rawPath),
+                CdnUrlUtils.getRawPicUrl(rawPath),
+                true,
+                rawPath
+            )
+            isAlbum && isAlbumNoCover -> CoverPick("", "", true, null)
+            isAlbum -> CoverPick(
+                CdnUrlUtils.getCoverSrUrl(rawCover),
+                CdnUrlUtils.getRawCoverUrl(rawCover),
+                true,
+                rawCover
+            )
+            (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover)) && extraImages.isNotEmpty() -> CoverPick(
+                CdnUrlUtils.getPicNUrl(extraImages.first()),
+                CdnUrlUtils.getRawPicUrl(extraImages.first()),
+                relateItem != null,
+                extraImages.first()
+            )
+            rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover) -> CoverPick(
+                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.NORMAL),
+                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.RAW),
+                relateItem != null,
+                null
+            )
+            else -> CoverPick(
+                CdnUrlUtils.getCoverUrl(rawCover),
+                CdnUrlUtils.getRawCoverUrl(rawCover),
+                true,
+                rawCover
+            )
         }
+        val coverUrl = pick.url
+        val coverRawUrl = pick.rawUrl
+        val shouldShowLeftCover = pick.showLeft
 
-        // 官方规则（ActionListAdapter.java:540-563）：
-        // 相册有图时左侧展示封面图，无图时左侧展示 17:24 的浅天青纯文本卡片 (titleCover)！
-        val shouldShowLeftCover = when {
-            isAlbum -> true
-            else -> !coverPath.isNullOrBlank()
-        }
-
-        // 首页左侧大封面 CDN 档位策略：
-        // 1. 相册：若无封面则为 ""（由 ActionCard 渲染 AlbumTextCover），有封面则为 cover/sr/
-        // 2. 用户发的图（picture 类型）：pic/n/
-        // 3. 周边/手办/模型等常规条目：cover/n/（列表中图）
-        val coverUrl = when {
-            !shouldShowLeftCover || coverPath.isNullOrBlank() || isAlbumNoCover -> ""
-            isPicture -> CdnUrlUtils.getPicNUrl(coverPath)
-            isAlbum -> CdnUrlUtils.getCoverSrUrl(coverPath)
-            else -> CdnUrlUtils.getCoverUrl(coverPath)
-        }
-
-        // 智能去重：若仅有一张图且与左侧主封面相同，右侧附图不重复展示
-        val coverFileName = coverPath?.substringAfterLast("/")?.substringBefore("?") ?: ""
-        val isSingleDuplicateCover = extraImages.size == 1 &&
-            extraImages[0].substringAfterLast("/").substringBefore("?") == coverFileName
-
-        val displayExtraImages = if (isSingleDuplicateCover) {
-            emptyList()
+        val coverFileName = pick.dedupPath?.substringAfterLast("/")?.substringBefore("?") ?: ""
+        val displayExtraImages = if (coverFileName.isBlank()) {
+            extraImages
         } else {
             val nonCoverImages = extraImages.filter {
                 it.substringAfterLast("/").substringBefore("?") != coverFileName
             }
-            if (nonCoverImages.isNotEmpty()) nonCoverImages else extraImages
+            if (nonCoverImages.isNotEmpty() || extraImages.size <= 1) nonCoverImages else extraImages
         }
-
-        // 原图 URL 收集（全屏图片查看器直接使用 raw 档全量原图）
-        val coverRawUrl = when {
-            !shouldShowLeftCover || coverPath.isNullOrBlank() || isAlbumNoCover -> ""
-            isPicture -> CdnUrlUtils.getRawPicUrl(coverPath)
-            else -> CdnUrlUtils.getRawCoverUrl(coverPath)
-        }
+        // 原图列表全量收集（供全屏大图查看器）
         val extraRawUrls = displayExtraImages.map { CdnUrlUtils.getRawPicUrl(it) }
-
         val allRawUrls = buildList {
-            if (coverRawUrl.isNotBlank() && shouldShowLeftCover) add(coverRawUrl)
+            if (coverRawUrl.isNotBlank() && shouldShowLeftCover && !isAlbumNoCover) {
+                add(coverRawUrl)
+            }
             extraRawUrls.forEach { if (it.isNotBlank() && !contains(it)) add(it) }
         }
 
