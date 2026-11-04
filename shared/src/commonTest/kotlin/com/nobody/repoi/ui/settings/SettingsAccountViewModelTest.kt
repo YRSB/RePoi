@@ -5,7 +5,7 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsAccountViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
     fun setUpMain() {
@@ -44,7 +44,6 @@ class SettingsAccountViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        println("DIAG-7f3a isLoading=${state.isLoading} failed=${state.loadFailed} reqCount=${mock.requestCount}")
         assertFalse(state.isLoading)
         assertFalse(state.loadFailed)
         assertTrue(state.passwordBound)
@@ -67,8 +66,6 @@ class SettingsAccountViewModelTest {
         val viewModel = SettingsAccountViewModel(repository(mock))
         advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        println("DIAG-7f3a checkFail loading=${state.isLoading} failed=${state.loadFailed} reqCount=${mock.requestCount}")
         assertFalse(state.isLoading)
         assertTrue(state.loadFailed)
     }

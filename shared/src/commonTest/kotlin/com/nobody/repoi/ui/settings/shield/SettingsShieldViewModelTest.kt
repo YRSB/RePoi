@@ -6,7 +6,6 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -23,8 +22,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsShieldViewModelTest {
-
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
     fun setUpMain() {
@@ -40,8 +38,7 @@ class SettingsShieldViewModelTest {
         SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
 
     @Test
-    fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(UnconfinedTestDispatcher()) {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+    fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
 
@@ -49,8 +46,6 @@ class SettingsShieldViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        println("DIAG-7f3a shield nsfw=${state.nsfwVisible} loading=${state.isLoading} err=${state.errorMessage} reqCount=${mock.requestCount}")
-        println("DIAG-7f3a sched same=${testScheduler === testDispatcher.scheduler} mainIsTest=${Dispatchers.Main === testDispatcher}")
         assertTrue(state.nsfwVisible)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
