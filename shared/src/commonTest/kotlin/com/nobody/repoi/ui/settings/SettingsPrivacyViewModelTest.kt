@@ -5,7 +5,7 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsPrivacyViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
     fun setUpMain() {
@@ -40,7 +40,7 @@ class SettingsPrivacyViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok(mysqlBody))
         mock.route("api/setting/riak/get", mock.ok(riakBody))
-        val repository = SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        val repository = SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
         return Triple(mock, repository, SettingsPrivacyViewModel(repository))
     }
 
@@ -68,6 +68,7 @@ class SettingsPrivacyViewModelTest {
         advanceUntilIdle()
         mock.takeRequest()
         mock.takeRequest()
+        mock.route("api/setting/mysql/upd", mock.ok("{}"))
 
         vm.setOption("setting_collect_hobby", 2)
         assertEquals(2, vm.uiState.value.values["setting_collect_hobby"])
@@ -87,6 +88,7 @@ class SettingsPrivacyViewModelTest {
         advanceUntilIdle()
         mock.takeRequest()
         mock.takeRequest()
+        mock.route("api/setting/riak/upd", mock.ok("{}"))
 
         vm.setOption("setting_stranger_message", 1)
         advanceUntilIdle()
@@ -119,7 +121,7 @@ class SettingsPrivacyViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
         mock.route("api/setting/riak/get", mock.failure(500, "读取失败"))
-        val repository = SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        val repository = SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
         val vm = SettingsPrivacyViewModel(repository)
         advanceUntilIdle()
 

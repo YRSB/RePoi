@@ -6,12 +6,15 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.MockEngineConfig
+import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
@@ -96,8 +99,8 @@ class MockApi {
     fun failure(code: Int, msg: String): String =
         """{"success":false,"code":$code,"msg":"$msg","data":null}"""
 
-    fun api(): HpoiApi {
-        val mock = MockEngine { request ->
+    fun api(dispatcher: CoroutineDispatcher? = null): HpoiApi {
+        val handler: MockRequestHandler = { request ->
             requests.update { it + request }
             val path = request.url.encodedPath
             val form = formOf(request)
@@ -116,6 +119,14 @@ class MockApi {
                 status = next.status,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
+        }
+        val mock = if (dispatcher == null) {
+            MockEngine(handler)
+        } else {
+            MockEngine(MockEngineConfig().apply {
+                this.dispatcher = dispatcher
+                requestHandlers.add(handler)
+            })
         }
         return HpoiApi(HttpClient(mock) {
             expectSuccess = false

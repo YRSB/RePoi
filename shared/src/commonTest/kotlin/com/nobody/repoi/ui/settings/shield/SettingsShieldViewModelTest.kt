@@ -6,7 +6,7 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -22,8 +22,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsShieldViewModelTest {
-
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
     fun setUpMain() {
@@ -36,7 +35,7 @@ class SettingsShieldViewModelTest {
     }
 
     private fun repositoryOf(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
 
     @Test
     fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {

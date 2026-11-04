@@ -5,7 +5,7 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsAccountViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
     fun setUpMain() {
@@ -33,7 +33,7 @@ class SettingsAccountViewModelTest {
     }
 
     private fun repository(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
 
     @Test
     fun initialState_loadsBindingStatus() = runTest(testDispatcher) {

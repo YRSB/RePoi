@@ -69,9 +69,13 @@ class SettingsRepository(
         }
     }
 
-    suspend fun updateMysqlSetting(key: String, value: Int): Result<Unit> = updatePrivacySetting(key, value)
+    suspend fun updateMysqlSetting(key: String, value: Int): Result<Unit> = runCatching {
+        api.updateMysqlSetting(key = key, value = value).unwrapUnit(tokenManager, "更新隐私设置失败")
+    }
 
-    suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = updatePrivacySetting(key, value)
+    suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = runCatching {
+        api.updateRiakSetting(key = key, value = value).unwrapUnit(tokenManager, "更新隐私设置失败")
+    }
 
     suspend fun checkAccount(): Result<AccountCheckResult> = runCatching {
         val response = api.checkAccount()

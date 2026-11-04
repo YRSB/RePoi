@@ -84,9 +84,7 @@ fun PoiShelfTheme(
     amoled: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val seedScheme = seedArgb?.let {
-        runCatching { seedColorScheme(it, darkTheme, amoled) }.getOrElse { fallbackSeedScheme(it, darkTheme) }
-    }
+    val seedScheme = seedArgb?.let { seedColorScheme(it, darkTheme, amoled) }
     val dynamicScheme = if (seedScheme == null && dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null
     val baseScheme = seedScheme ?: dynamicScheme ?: if (darkTheme) DarkColorScheme else LightColorScheme
     val colorScheme = if (amoled && darkTheme) {

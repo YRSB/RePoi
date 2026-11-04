@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.settings
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountCircle
@@ -318,6 +320,7 @@ fun SettingsScreen(
                             onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                             onExportLog = onExportLog,
                             onOpenCache = { subPage = "cache" },
+                            onOpenAbout = { subPage = "about" },
                             onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
                             onOpenSecurity = { subPage = "security" },
                             onOpenShieldList = onOpenShieldList,
@@ -442,6 +445,7 @@ private fun SettingsDetailPane(
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
+    onExHobbyEnabledChange: (Boolean) -> Unit,
     onExportLog: () -> Unit,
     onOpenCache: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -917,12 +921,6 @@ private fun ThemeModeRow(
                     )
                 }
             }
-        }
-    }
-}
-                checked = isExHobbyEnabled,
-                onCheckedChange = onExHobbyEnabledChange
-            )
         }
     }
 }

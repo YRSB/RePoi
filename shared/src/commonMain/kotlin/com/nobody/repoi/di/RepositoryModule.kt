@@ -24,6 +24,7 @@ import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
+import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import org.koin.dsl.module
 
 /**
