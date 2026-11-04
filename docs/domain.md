@@ -19,6 +19,13 @@
 | **二手交易** | `Resale` | 用户手办二手转让行情、发帖求购与地域筛选。 | `ResaleItem`, `ResaleDetailData` |
 | **收藏管理** | `Collect` | 用户收藏资产（心愿想买、预定在途、已入柜、已出转）。 | `CollectItem`, `CollectState` |
 
+### 1.1 设置与偏好术语
+
+| 领域术语 | 英文标识 | 概念定义与业务范围 | 典型实体/模型 |
+|---|---|---|---|
+| **图片变体** | `CoverVariant` / `PicVariant` | CDN 路径档（`/s` 方图、`/sr` 自适应缩略、`/n` 标准、`raw` 原图），语义为尺寸/比例/质量档；误名「CDN 线路」已废弃。 | `CdnUrlUtils` |
+| **屏蔽设置** | `Shield` | 原版入口名，含 NSFW 显示、屏蔽列表（用户/厂商/条目）、黑名单；原版无「屏蔽管理」四字，历史文案中的「屏蔽管理」视为误名。 | 原版 `UserShieldActivity` / `ShieldListActivity` |
+
 ---
 
 ## 2. 架构决策记录规范 (ADR)
