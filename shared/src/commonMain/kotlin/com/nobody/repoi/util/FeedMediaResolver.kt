@@ -10,9 +10,7 @@ data class FeedMediaDisplayInfo(
     val coverUrl: String,
     val displayExtraImages: List<String>,
     val allRawUrls: List<String>,
-    val isAlbumNoCover: Boolean = false,
-    val badgeText: String? = null,
-    val badgeCategoryType: String? = null
+    val isAlbumNoCover: Boolean = false
 )
 
 object FeedMediaResolver {
@@ -102,43 +100,13 @@ object FeedMediaResolver {
             extraRawUrls.forEach { if (it.isNotBlank() && !contains(it)) add(it) }
         }
 
-        // 解析左上角角标文本与分类类型（对齐官方 Companion.a & o.r）
-        val badgeCategoryType = when {
-            hasPath -> "picture"
-            isAlbum -> "album"
-            itemType != null -> itemType
-            else -> "hobby"
-        }
-        val badgeText = resolveBadgeText(relateItem?.categoryId, isAlbum)
-
         return FeedMediaDisplayInfo(
             shouldShowLeftCover = shouldShowLeftCover,
             coverUrl = coverUrl,
             displayExtraImages = displayExtraImages,
             allRawUrls = allRawUrls,
-            isAlbumNoCover = isAlbumNoCover,
-            badgeText = badgeText,
-            badgeCategoryType = badgeCategoryType
+            isAlbumNoCover = isAlbumNoCover
         )
-    }
-
-    /**
-     * 根据 categoryId 与是否为相册推断官方同款分类标签文本（对齐 net.hpoi.utils.o.r 逻辑）。
-     */
-    private fun resolveBadgeText(categoryId: Int?, isAlbum: Boolean): String? {
-        if (categoryId == null || categoryId <= 0) return if (isAlbum) "相册" else null
-        return when (categoryId) {
-            60001 -> "手办随像"
-            60003 -> "漫展"
-            60004 -> "痛车"
-            60100 -> "日常"
-            60900 -> "其他"
-            in 60000..69999 -> "相册"
-            1, 101, 102, 103, 104, 105, 106, 107, 108 -> "手办"
-            2, 201, 202, 203, 204 -> "模型"
-            3, 301, 302, 303, 304 -> "周边"
-            else -> if (isAlbum) "相册" else null
-        }
     }
 }
 

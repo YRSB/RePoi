@@ -164,8 +164,8 @@ class FeedMediaResolverTest {
     }
 
     @Test
-    fun resolve_albumWithCategoryId60001_resolvesAsCoverSrAndBadgeText() {
-        // 用户真实生产动态样本：actionType=104, relateItem.categoryId=60001 (手办随像), 封面 png
+    fun resolve_albumWithCategoryId60001_resolvesAsCoverSr() {
+        // 用户真实生产动态样本：actionType=104, relateItem.categoryId=60001（相册分类区间）, 封面 png
         val action = ActionItem(
             id = 41122930L,
             actionType = 104,
@@ -183,8 +183,6 @@ class FeedMediaResolverTest {
         assertTrue(info.shouldShowLeftCover)
         // 关键断言：相册必须解析为 cover/sr/，严禁走 cover/n/ 导致 CDN 404！
         assertEquals("https://rfx.hpoi.net/gk/cover/sr/2026/11/4174eeb5bdff4c54a24f788845c1cd25.png", info.coverUrl)
-        assertEquals("手办随像", info.badgeText)
-        assertEquals("album", info.badgeCategoryType)
         assertEquals(listOf("2026/11/photo1.jpg", "2026/11/photo2.jpg"), info.displayExtraImages)
         assertEquals(
             listOf(
@@ -194,33 +192,5 @@ class FeedMediaResolverTest {
             ),
             info.allRawUrls
         )
-    }
-
-    @Test
-    fun resolve_badgeText_resolvesCategoriesCorrectly() {
-        val hobbyAction = ActionItem(
-            id = 11L,
-            relateItem = RelateItem(categoryId = 1, itemType = "hobby", cover = "c1.jpg")
-        ).resolveMediaDisplayInfo()
-        assertEquals("手办", hobbyAction.badgeText)
-        assertEquals("hobby", hobbyAction.badgeCategoryType)
-
-        val modelAction = ActionItem(
-            id = 12L,
-            relateItem = RelateItem(categoryId = 201, itemType = "model", cover = "c2.jpg")
-        ).resolveMediaDisplayInfo()
-        assertEquals("模型", modelAction.badgeText)
-
-        val goodsAction = ActionItem(
-            id = 13L,
-            relateItem = RelateItem(categoryId = 301, itemType = "goods", cover = "c3.jpg")
-        ).resolveMediaDisplayInfo()
-        assertEquals("周边", goodsAction.badgeText)
-
-        val pictureAction = ActionItem(
-            id = 14L,
-            relateItem = RelateItem(path = "p1.jpg")
-        ).resolveMediaDisplayInfo()
-        assertEquals("picture", pictureAction.badgeCategoryType)
     }
 }
