@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.album.components
 
 import androidx.compose.foundation.background
-import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -20,30 +19,23 @@ import androidx.compose.ui.unit.dp
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
- * Hpoi 官方原版相册纯文本封面组件 (titleCover)。
+ * 相册纯文本封面组件 (titleCover)。
  *
- * 官方策略：相册在无封面（cover 为空或为 none.jpg）时，从不展示吉祥物哭泣图（none.jpg），
- * 而是展示 17:24 黄金比例的浅天青色纯文本卡片，居中高对比展示相册标题。
- *
- * 官方标准参数（来自 net.hpoi.utils.extend.f.c / f.g）：
- * - 亮色底色：#D1EFFF（官方 bgTextCover）
- * - 亮色文字色：#1A354D / #333333（官方 textMainNoNight）
- * - 暗色底色适配：#16324F（深蓝灰石底），文字色：#D1EFFF
- * - 对齐：居中对齐 (Gravity.CENTER)
+ * 当相册无封面（cover 为空或无图）时，居中高对比展示相册标题。
+ * 遵循 Material 3 Expressive 规范，默认采用 [MaterialTheme.colorScheme.primaryContainer] 动态容器色
+ * 与 [MaterialTheme.colorScheme.onPrimaryContainer] 文字色，跟随系统 Monet 动态主题自动着色。
  */
 @Composable
 fun AlbumTextCover(
     title: String,
     modifier: Modifier = Modifier,
     shape: Shape = ExpressiveTokens.SmallCardShape,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     textStyle: TextStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
     maxLines: Int = 4,
     contentAlignment: Alignment = Alignment.Center
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val containerColor = if (isDark) Color(0xFF16324F) else Color(0xFFD1EFFF)
-    val contentColor = if (isDark) Color(0xFFD1EFFF) else Color(0xFF1A354D)
-
     Box(
         modifier = modifier
             .clip(shape)
