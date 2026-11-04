@@ -54,7 +54,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：45 `viewModel { }`（dev-only DebugApiViewModel 已移至 androidMain；M3 起按 NavKey 传参）。
+ * ViewModel 模块：45 `viewModel { }`（M3 起按 NavKey 传参）。
  *
  * SavedStateHandle 已删除（见各 VM 注释）：NavKey 字段经 `koinViewModel(parameters = ...)`
  * 或 `loadInitial/initParam` 传入；plain `koinViewModel()` 保持条目作用域。

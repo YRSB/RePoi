@@ -102,7 +102,6 @@ fun SettingsScreen(
     dynamicColor: Boolean = true,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit = {},
-    onOpenDebug: () -> Unit,
     onBack: () -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
