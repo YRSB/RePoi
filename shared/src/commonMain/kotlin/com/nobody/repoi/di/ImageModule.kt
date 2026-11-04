@@ -11,6 +11,7 @@ import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
 import com.nobody.repoi.platform.cacheDirPath
 import com.nobody.repoi.util.AppLogger
+import com.nobody.repoi.util.CorruptCacheRecoveryInterceptor
 import io.ktor.client.HttpClient
 import okio.Path.Companion.toPath
 import org.koin.core.qualifier.named
@@ -19,7 +20,7 @@ import org.koin.dsl.module
 /**
  * Coil3 图片模块：单例 `ImageLoader`，网络经命名 `"coil"` Ktor client
  *（Referer+UA 图片头），磁盘缓存 250MB（`cacheDir/image_cache`），集成 `AppLogger` 记录图片加载日志，
- * 并支持解码/加载失败时自动剔除本地损坏磁盘缓存的自愈机制。
+ * 并通过 [CorruptCacheRecoveryInterceptor] 在解码/加载失败时自动剔除本地损坏磁盘缓存并立即自动重试。
  *
  * 平台差异收敛到 [platformCoilContext] + [ImageLoader.Builder.poiShelfPlatformComponents]
  *（PodAura `PodAuraImage` 同形；gif/video 解码器不在本模块依赖内，android 实际为空实现）。
@@ -32,6 +33,7 @@ val imageModule = module {
             .build()
 
         ImageLoader.Builder(platformCoilContext()).components {
+            add(CorruptCacheRecoveryInterceptor(diskCacheInstance))
             add(SvgDecoder.Factory())
             add(KtorNetworkFetcherFactory(httpClient = get<HttpClient>(named("coil"))))
         }.logger(object : CoilLogger {
