@@ -102,6 +102,7 @@ fun NavBackStack<NavKey>.navigateToMessageChat(targetUserId: Long, targetUserNam
         )
     )
 fun NavBackStack<NavKey>.navigateToMessageBlock() = add(MessageBlockNavKey())
+fun NavBackStack<NavKey>.navigateToSettingsShieldList() = add(SettingsShieldListNavKey())
 
 /**
  * 为 [RePoiNavigator] 提供与 [NavBackStack] 完全对齐的强类型语义跳转扩展，
@@ -172,5 +173,6 @@ fun RePoiNavigator.navigateToMessageNotice(type: String, typeNumber: Int = 0, ti
 fun RePoiNavigator.navigateToMessageChat(param: MessageChatNavParam) = currentBackStack.navigateToMessageChat(param)
 fun RePoiNavigator.navigateToMessageChat(targetUserId: Long, targetUserName: String = "", targetUserHeader: String? = null) =
     currentBackStack.navigateToMessageChat(targetUserId, targetUserName, targetUserHeader)
+fun RePoiNavigator.navigateToSettingsShieldList() = currentBackStack.navigateToSettingsShieldList()
 fun RePoiNavigator.navigateToMessageBlock() = currentBackStack.navigateToMessageBlock()
 

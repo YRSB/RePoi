@@ -4,12 +4,15 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.ui.login.LoginScreen
+import com.nobody.repoi.ui.navigation.navigateToMessageBlock
+import com.nobody.repoi.ui.navigation.navigateToSettingsShieldList
 import com.nobody.repoi.ui.settings.SettingsScreen
 
 /**
  * 注册登录鉴权与系统设置等系统支撑路由。
  */
 fun EntryProviderScope<NavKey>.systemEntries(
+    navigator: RePoiNavigator,
     onBack: () -> Unit,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
@@ -34,6 +37,8 @@ fun EntryProviderScope<NavKey>.systemEntries(
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
             onOpenDebug = onOpenDebugScreen,
+            onOpenShieldList = { navigator.navigateToSettingsShieldList() },
+            onOpenBlocklist = { navigator.navigateToMessageBlock() },
             onBack = onBack
         )
     }

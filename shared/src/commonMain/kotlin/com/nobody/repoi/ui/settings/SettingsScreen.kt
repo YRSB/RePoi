@@ -71,6 +71,7 @@ import com.nobody.repoi.platform.PoiShelfBackHandler
 import com.nobody.repoi.platform.shareLogFile
 import com.nobody.repoi.platform.supportsDynamicColor
 import com.nobody.repoi.ui.profile.ProfileViewModel
+import com.nobody.repoi.ui.settings.shield.SettingsShieldContent
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
@@ -103,6 +104,8 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit = {},
     onOpenDebug: () -> Unit,
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
     onBack: () -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
@@ -231,6 +234,8 @@ fun SettingsScreen(
                         onExportLog = onExportLog,
                         onOpenCache = { subPage = "cache" },
                         onOpenAbout = { subPage = "about" },
+                        onOpenShieldList = onOpenShieldList,
+                        onOpenBlocklist = onOpenBlocklist,
                         onClearCache = { cacheViewModel.clearCache() },
                         onBackToGroup = { subPage = "" }
                     )
@@ -273,6 +278,8 @@ fun SettingsScreen(
                             onExportLog = onExportLog,
                             onOpenCache = { subPage = "cache" },
                             onOpenAbout = { subPage = "about" },
+                            onOpenShieldList = onOpenShieldList,
+                            onOpenBlocklist = onOpenBlocklist,
                             onClearCache = { cacheViewModel.clearCache() },
                             onBackToGroup = {}
                         )
@@ -389,6 +396,8 @@ private fun SettingsDetailPane(
     onExportLog: () -> Unit,
     onOpenCache: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
     onClearCache: () -> Unit,
     onBackToGroup: () -> Unit
 ) {
@@ -406,6 +415,11 @@ private fun SettingsDetailPane(
             onOpenCache = onOpenCache,
             onExportLog = onExportLog,
             onOpenAbout = onOpenAbout,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.Privacy -> SettingsShieldContent(
+            onOpenShieldList = onOpenShieldList,
+            onOpenBlocklist = onOpenBlocklist,
             modifier = Modifier.fillMaxSize()
         )
         group == SettingsGroup.Repoi -> SettingsRepoiContent(
