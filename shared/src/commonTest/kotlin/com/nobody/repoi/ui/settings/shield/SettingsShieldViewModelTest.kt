@@ -7,6 +7,7 @@ import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -39,7 +40,8 @@ class SettingsShieldViewModelTest {
         SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
 
     @Test
-    fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
+    fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(UnconfinedTestDispatcher()) {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
 
