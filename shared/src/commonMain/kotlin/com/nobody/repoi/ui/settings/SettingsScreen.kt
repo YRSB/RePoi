@@ -106,11 +106,13 @@ fun SettingsScreen(
     onBack: () -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
-    cacheViewModel: SettingsCacheViewModel = koinViewModel()
+    cacheViewModel: SettingsCacheViewModel = koinViewModel(),
+    privacyViewModel: SettingsPrivacyViewModel = koinViewModel()
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
+    val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
     var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.General.name) }
@@ -225,6 +227,8 @@ fun SettingsScreen(
                         dynamicColor = dynamicColor,
                         isExHobbyEnabled = isExHobbyEnabled,
                         cacheState = cacheState,
+                        privacyState = privacyState,
+                        onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
                         onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
@@ -267,6 +271,8 @@ fun SettingsScreen(
                             dynamicColor = dynamicColor,
                             isExHobbyEnabled = isExHobbyEnabled,
                             cacheState = cacheState,
+                            privacyState = privacyState,
+                            onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                             onThemeModeChange = onThemeModeChange,
                             onDynamicColorChange = onDynamicColorChange,
                             onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
@@ -383,6 +389,8 @@ private fun SettingsDetailPane(
     dynamicColor: Boolean,
     isExHobbyEnabled: Boolean,
     cacheState: SettingsCacheUiState,
+    privacyState: SettingsPrivacyUiState,
+    onPrivacyOptionChange: (String, Int) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
@@ -406,6 +414,11 @@ private fun SettingsDetailPane(
             onOpenCache = onOpenCache,
             onExportLog = onExportLog,
             onOpenAbout = onOpenAbout,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.Privacy -> SettingsPrivacyContent(
+            state = privacyState,
+            onOptionChange = onPrivacyOptionChange,
             modifier = Modifier.fillMaxSize()
         )
         group == SettingsGroup.Repoi -> SettingsRepoiContent(
@@ -687,6 +700,190 @@ private fun SettingsRepoiContent(
             )
         }
     }
+}
+
+@Composable
+private fun SettingsPrivacyContent(
+    state: SettingsPrivacyUiState,
+    onOptionChange: (String, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var editingKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val visibilityOptions = listOf("所有人可见", "互相关注可见", "仅自己可见")
+    val strangerOptions = listOf("可随便私聊我", "只能私聊一次", "不能私聊我")
+    val editing = editingKey
+    if (editing != null) {
+        val isStranger = editing == PrivacySettingKeys.STRANGER_MESSAGE
+        val options = if (isStranger) strangerOptions else visibilityOptions
+        val current = state.values[editing] ?: 0
+        Dialog(onDismissRequest = { editingKey = null }) {
+            Surface(
+                shape = ExpressiveTokens.CardShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = privacyTitle(editing),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { editingKey = null }) {
+                            Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
+                        }
+                    }
+                    options.forEachIndexed { index, label ->
+                        val selected = index == current
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clickable {
+                                    editingKey = null
+                                    onOptionChange(editing, index)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            RadioButton(
+                                selected = selected,
+                                onClick = {
+                                    editingKey = null
+                                    onOptionChange(editing, index)
+                                }
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (state.isLoading) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "header-collect", contentType = "header") {
+            Text(
+                text = "收藏信息",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = PrivacySettingKeys.COLLECT_HOBBY, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "周边条目(手办、动漫、模型、布偶、娃娃)",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
+            )
+        }
+        item(key = PrivacySettingKeys.COLLECT_ALBUM, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "收藏内容(相册、图片、文章)",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
+            )
+        }
+        item(key = PrivacySettingKeys.COLLECT_STATISTICS, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "收藏统计(历史消费、入手数量、待补款等)",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
+            )
+        }
+        item(key = PrivacySettingKeys.COLLECT_OTHER, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "其他内容(系列、厂商、角色、人物、作品)",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
+            )
+        }
+        item(key = "header-other", contentType = "header") {
+            Text(
+                text = "其他信息",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = PrivacySettingKeys.OWN_ACTION, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "个人主页动态",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
+            )
+        }
+        item(key = PrivacySettingKeys.PRIVACY_FRIEND, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "关注、粉丝",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
+            )
+        }
+        item(key = PrivacySettingKeys.PRIVACY_POSTS, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "讨论板个人主页",
+                subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
+            )
+        }
+        item(key = "header-message", contentType = "header") {
+            Text(
+                text = "私信设置",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Shield,
+                title = "陌生人私信设置",
+                subtitle = strangerOptions.getOrElse(state.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
+                onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
+            )
+        }
+    }
+}
+
+private fun privacyTitle(key: String): String = when (key) {
+    PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
+    PrivacySettingKeys.COLLECT_ALBUM -> "收藏内容(相册、图片、文章)"
+    PrivacySettingKeys.COLLECT_STATISTICS -> "收藏统计(历史消费、入手数量、待补款等)"
+    PrivacySettingKeys.COLLECT_OTHER -> "其他内容(系列、厂商、角色、人物、作品)"
+    PrivacySettingKeys.OWN_ACTION -> "个人主页动态"
+    PrivacySettingKeys.PRIVACY_FRIEND -> "关注、粉丝"
+    PrivacySettingKeys.PRIVACY_POSTS -> "讨论板个人主页"
+    PrivacySettingKeys.STRANGER_MESSAGE -> "陌生人私信设置"
+    else -> "隐私设置"
 }
 
 @Composable
