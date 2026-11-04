@@ -44,6 +44,7 @@ class SettingsAccountViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
+        println("DIAG-7f3a isLoading=${state.isLoading} failed=${state.loadFailed} reqCount=${mock.requestCount}")
         assertFalse(state.isLoading)
         assertFalse(state.loadFailed)
         assertTrue(state.passwordBound)
