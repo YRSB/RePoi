@@ -75,11 +75,7 @@ class SettingsPrivacyViewModel(
             )
         }
         viewModelScope.launch {
-            val result = if (key in PrivacySettingKeys.mysqlKeys) {
-                repository.updateMysqlSetting(key, value)
-            } else {
-                repository.updateRiakSetting(key, value)
-            }
+            val result = repository.updatePrivacySetting(key, value)
             _uiState.update {
                 val restored = if (result.isFailure) {
                     if (previous == null) it.values - key else it.values + (key to previous)

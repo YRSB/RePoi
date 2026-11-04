@@ -14,17 +14,19 @@ fun seedColorScheme(seedArgb: Long, darkTheme: Boolean, amoled: Boolean): ColorS
         isDark = darkTheme,
         isAmoled = amoled
     )
-    return if (darkTheme && amoled) scheme.copy(
-        background = Color.Black,
-        surface = Color.Black,
-        surfaceDim = Color.Black,
-        surfaceContainerLowest = Color.Black,
-        surfaceContainerLow = Color.Black,
-        surfaceContainer = Color(0xFF0A0A0A),
-        surfaceContainerHigh = Color(0xFF111111),
-        surfaceContainerHighest = Color(0xFF1A1A1A)
-    ) else scheme
+    return if (darkTheme && amoled) scheme.withAmoledBlack() else scheme
 }
+
+fun ColorScheme.withAmoledBlack(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color.Black,
+    surfaceContainer = Color(0xFF0A0A0A),
+    surfaceContainerHigh = Color(0xFF111111),
+    surfaceContainerHighest = Color(0xFF1A1A1A)
+)
 
 fun fallbackSeedScheme(seedArgb: Long, darkTheme: Boolean): ColorScheme =
     if (darkTheme) darkColorScheme(

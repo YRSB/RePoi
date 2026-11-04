@@ -21,11 +21,9 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.savedstate.serialization.SavedStateConfiguration
-import coil3.ImageLoader
-import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
-import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberImageViewerState
@@ -67,7 +65,7 @@ fun RePoiApp() {
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val effectiveSeedArgb = if (themeSeed == ThemeSeed.Dynamic) null else themeSeed.argb
+    val effectiveSeedArgb = if (themeSeed == ThemeSeed.Dynamic) null else themeSeed.orAvailable().argb
 
     PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedArgb = effectiveSeedArgb, amoled = amoled) {
         RePoiNavHost(

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.supportsDynamicColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -152,4 +153,7 @@ class ThemeManager(
 }
 
 private fun defaultThemeSeed(): ThemeSeed =
-    if (supportsDynamicColor) ThemeSeed.Dynamic else ThemeSeed.Pink
+    if (isDynamicSeedAvailable) ThemeSeed.Dynamic else ThemeSeed.Pink
+
+fun ThemeSeed.orAvailable(): ThemeSeed =
+    if (this == ThemeSeed.Dynamic && !isDynamicSeedAvailable) ThemeSeed.Pink else this

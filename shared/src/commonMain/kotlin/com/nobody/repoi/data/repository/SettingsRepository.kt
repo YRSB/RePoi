@@ -10,6 +10,16 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 
+object PrivacyChannels {
+    val MYSQL_KEYS: Set<String> = setOf(
+        "setting_collect_hobby",
+        "setting_collect_album",
+        "setting_collect_statistics",
+        "setting_collect_other",
+        "setting_privacy_friend"
+    )
+}
+
 class SettingsRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager
@@ -34,24 +44,34 @@ class SettingsRepository(
     }
 
     suspend fun getMysqlSettings(): Result<Map<String, Int>> = runCatching {
-        val response = api.getMysqlSettings()
-        response.unwrapData(tokenManager, "获取隐私设置失败").parseUserState()
-    }
-
-    suspend fun updateMysqlSetting(key: String, value: Int): Result<Unit> = runCatching {
-        val response = api.updateMysqlSetting(key = key, value = value)
-        response.unwrapUnit(tokenManager, "更新隐私设置失败")
+        api.getMysqlSettings().unwrapData(tokenManager, "获取隐私设置失败").parseUserState()
     }
 
     suspend fun getRiakSettings(): Result<Map<String, Int>> = runCatching {
-        val response = api.getRiakSettings()
-        response.unwrapData(tokenManager, "获取隐私设置失败").parseUserState()
+        api.getRiakSettings().unwrapData(tokenManager, "获取隐私设置失败").parseUserState()
     }
 
-    suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = runCatching {
-        val response = api.updateRiakSetting(key = key, value = value)
-        response.unwrapUnit(tokenManager, "更新隐私设置失败")
+    suspend fun getPrivacySettings(): Result<Map<String, Int>> {
+        val mysql = getMysqlSettings()
+        val riak = getRiakSettings()
+        val merged = mutableMapOf<String, Int>()
+        mysql.onSuccess { merged.putAll(it) }
+        riak.onSuccess { merged.putAll(it) }
+        val failure = if (mysql.isFailure) mysql.exceptionOrNull() else riak.exceptionOrNull()
+        return if (failure != null && merged.isEmpty()) Result.failure(failure) else Result.success(merged)
     }
+
+    suspend fun updatePrivacySetting(key: String, value: Int): Result<Unit> = runCatching {
+        if (key in PrivacyChannels.MYSQL_KEYS) {
+            api.updateMysqlSetting(key = key, value = value).unwrapUnit(tokenManager, "更新隐私设置失败")
+        } else {
+            api.updateRiakSetting(key = key, value = value).unwrapUnit(tokenManager, "更新隐私设置失败")
+        }
+    }
+
+    suspend fun updateMysqlSetting(key: String, value: Int): Result<Unit> = updatePrivacySetting(key, value)
+
+    suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = updatePrivacySetting(key, value)
 
     suspend fun checkAccount(): Result<AccountCheckResult> = runCatching {
         val response = api.checkAccount()

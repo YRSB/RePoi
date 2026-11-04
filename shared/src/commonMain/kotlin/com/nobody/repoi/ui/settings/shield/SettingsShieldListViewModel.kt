@@ -22,6 +22,7 @@ data class SettingsShieldListUiState(
     val isLoading: Boolean = true,
     val isUnblocking: Boolean = false,
     val unblockTarget: MaskItem? = null,
+    val isBlocking: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -48,6 +49,26 @@ class SettingsShieldListViewModel(
     fun dismissUnblockDialog() {
         _uiState.update { it.copy(unblockTarget = null) }
     }
+
+    fun blockItem(itemNodeId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBlocking = true, errorMessage = null) }
+            settingsRepository.addMask(itemNodeId = itemNodeId)
+                .onSuccess {
+                    _uiState.update { it.copy(isBlocking = false) }
+                    loadTab(_uiState.value.tab)
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(
+                            isBlocking = false,
+                            errorMessage = throwable.message ?: "屏蔽失败"
+                        )
+                    }
+                }
+        }
+    }
+
 
     fun executeUnblock() {
         val target = _uiState.value.unblockTarget ?: return

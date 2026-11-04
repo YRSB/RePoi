@@ -49,6 +49,9 @@ fun AppNavDisplay(
         detailEntries(navigator, onBack)
         communityEntries(navigator, onBack)
         marketEntries(navigator, onBack)
+        userEntries(navigator, onBack)
+        messageEntries(navigator, onBack)
+        interactionEntries(navigator, onBack)
         systemEntries(
             navigator = navigator,
             onBack = onBack,
