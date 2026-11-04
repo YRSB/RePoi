@@ -1,5 +1,6 @@
 package com.nobody.repoi.util
 
+import coil3.PlatformContext
 import coil3.disk.DiskCache
 import coil3.intercept.Interceptor
 import coil3.request.CachePolicy
@@ -7,7 +8,6 @@ import coil3.request.ErrorResult
 import coil3.request.ImageRequest
 import coil3.request.ImageResult
 import coil3.size.Size
-import com.nobody.repoi.di.platformCoilContext
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import okio.Path
@@ -69,7 +69,7 @@ class CorruptCacheRecoveryInterceptorTest {
         val fakeDiskCache = FakeDiskCache()
         val interceptor = CorruptCacheRecoveryInterceptor(fakeDiskCache)
 
-        val context = platformCoilContext()
+        val context = PlatformContext.INSTANCE
         val testUrl = "https://rfx.hpoi.net/gk/cover/sr/corrupt_test.png"
         val request = ImageRequest.Builder(context)
             .data(testUrl)
@@ -114,7 +114,7 @@ class CorruptCacheRecoveryInterceptorTest {
         val fakeDiskCache = FakeDiskCache()
         val interceptor = CorruptCacheRecoveryInterceptor(fakeDiskCache)
 
-        val context = platformCoilContext()
+        val context = PlatformContext.INSTANCE
         val testUrl = "https://rfx.hpoi.net/gk/cover/sr/normal.png"
         val request = ImageRequest.Builder(context)
             .data(testUrl)
