@@ -89,7 +89,7 @@ object FeedMediaResolver {
             val nonCoverImages = extraImages.filter {
                 it.substringAfterLast("/").substringBefore("?") != coverFileName
             }
-            if (nonCoverImages.isNotEmpty()) nonCoverImages else extraImages
+            if (nonCoverImages.isNotEmpty() || extraImages.size <= 1) nonCoverImages else extraImages
         }
         // 原图列表全量收集（供全屏大图查看器）
         val extraRawUrls = displayExtraImages.map { CdnUrlUtils.getRawPicUrl(it) }

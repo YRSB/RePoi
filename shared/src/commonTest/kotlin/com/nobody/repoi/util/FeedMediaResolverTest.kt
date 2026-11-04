@@ -248,4 +248,23 @@ class FeedMediaResolverTest {
             info.allRawUrls
         )
     }
+
+    @Test
+    fun resolve_allDuplicateExtraImages_fallsBackToFullList() {
+        val action = ActionItem(
+            id = 10L,
+            actionType = 1,
+            relateItem = RelateItem(
+                itemType = "hobby",
+                cover = "same.jpg"
+            ),
+            relateData = listOf(
+                RelateData(path = "a/same.jpg"),
+                RelateData(path = "b/same.jpg")
+            )
+        )
+        val info = action.resolveMediaDisplayInfo()
+
+        assertEquals(listOf("a/same.jpg", "b/same.jpg"), info.displayExtraImages)
+    }
 }
