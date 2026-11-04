@@ -355,6 +355,7 @@ private fun SettingsGroupList(
                 selected = selected,
                 onClick = { onSelectGroup(group) },
                 shapes = ListItemDefaults.segmentedShapes(index = index, count = groups.size),
+                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 leadingContent = {
                     Icon(
                         imageVector = group.icon,
@@ -1284,6 +1285,7 @@ private fun SettingsMenuItem(
         SegmentedListItem(
             onClick = click,
             shapes = shapes,
+            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             leadingContent = leading,
             trailingContent = trailing,
             supportingContent = supporting,
@@ -1293,6 +1295,7 @@ private fun SettingsMenuItem(
         SegmentedListItem(
             onClick = {},
             shapes = shapes,
+            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             leadingContent = leading,
             supportingContent = supporting,
             content = label
@@ -1314,6 +1317,7 @@ private fun SettingsSwitchItem(
         checked = checked,
         onCheckedChange = onCheckedChange,
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         leadingContent = {
             Icon(
                 imageVector = icon,

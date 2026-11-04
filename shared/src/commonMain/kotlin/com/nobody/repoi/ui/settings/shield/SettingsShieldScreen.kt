@@ -116,6 +116,7 @@ private fun ShieldSwitchCard(
         checked = checked,
         onCheckedChange = onCheckedChange,
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         enabled = enabled,
         leadingContent = {
             Icon(
@@ -167,6 +168,7 @@ private fun ShieldMenuCard(
     SegmentedListItem(
         onClick = onClick,
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         leadingContent = {
             Icon(
                 imageVector = icon,
