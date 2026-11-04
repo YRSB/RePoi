@@ -1,49 +1,35 @@
 package com.nobody.repoi.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.runtime.rememberCoroutineScope
-import com.nobody.repoi.platform.AppInfo
-import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.platform.shareLogFile
-import com.nobody.repoi.platform.supportsDynamicColor
-import com.nobody.repoi.util.AppLogger
-import kotlinx.coroutines.launch
-import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -55,10 +41,13 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,15 +60,41 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Card
 import androidx.compose.material3.RadioButton
 import androidx.compose.material.icons.filled.Close
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.platform.AppInfo
+import com.nobody.repoi.platform.LocalAppMessages
+import com.nobody.repoi.platform.PoiShelfBackHandler
+import com.nobody.repoi.platform.shareLogFile
+import com.nobody.repoi.platform.supportsDynamicColor
 import com.nobody.repoi.ui.profile.ProfileViewModel
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.theme.PoiShelfTheme
+import com.nobody.repoi.util.AppLogger
+import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
+
+private enum class SettingsGroup(val title: String, val icon: ImageVector) {
+    Account("账号", Icons.Filled.Lock),
+    Privacy("隐私", Icons.Filled.Shield),
+    General("通用", Icons.Filled.Tune),
+    Repoi("RePoi", Icons.Filled.Palette)
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes < 0) return "未知"
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "%.1f KB".format(kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return "%.1f MB".format(mb)
+    return "%.2f GB".format(mb / 1024.0)
+}
 
 @Composable
 fun SettingsScreen(
@@ -90,73 +105,18 @@ fun SettingsScreen(
     onOpenDebug: () -> Unit,
     onBack: () -> Unit,
     profileViewModel: ProfileViewModel = koinViewModel(),
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel = koinViewModel(),
+    cacheViewModel: SettingsCacheViewModel = koinViewModel()
 ) {
-    val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
+    val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
-
-    SettingsContent(
-        themeMode = themeMode,
-        dynamicColor = dynamicColor,
-        isLoggedIn = uiState.isLoggedIn,
-        isExHobbyEnabled = isExHobbyEnabled,
-        onThemeModeChange = onThemeModeChange,
-        onDynamicColorChange = onDynamicColorChange,
-        onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
-        onOpenDebug = onOpenDebug,
-        onExportLog = {
-            scope.launch {
-                try {
-                    val (fileName, bytes) = AppLogger.exportLogBytes()
-                    shareLogFile(fileName, bytes.decodeToString())
-                } catch (e: Exception) {
-                    AppLogger.w("设置", "日志导出失败：${e.message}")
-                    appMessages.show("日志导出失败请重试")
-                }
-            }
-        },
-        onLogout = {
-            profileViewModel.logout()
-            onBack()
-        },
-        onBack = onBack
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsContent(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean = true,
-    isLoggedIn: Boolean = false,
-    isExHobbyEnabled: Boolean = true,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit = {},
-    onExHobbyEnabledChange: (Boolean) -> Unit = {},
-    onOpenDebug: () -> Unit,
-    onExportLog: () -> Unit = {},
-    onLogout: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isDark = LocalIsDarkTheme.current
-    val scrollState = rememberScrollState()
-
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.General.name) }
+    var subPage by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
-
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            currentMode = themeMode,
-            onSelectMode = { selectedMode ->
-                onThemeModeChange(selectedMode)
-                showThemeDialog = false
-            },
-            onDismissRequest = { showThemeDialog = false }
-        )
-    }
+    val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     if (showLogoutConfirmDialog) {
         AlertDialog(
@@ -178,7 +138,8 @@ fun SettingsContent(
                 TextButton(
                     onClick = {
                         showLogoutConfirmDialog = false
-                        onLogout()
+                        profileViewModel.logout()
+                        onBack()
                     }
                 ) {
                     Text("退出", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
@@ -192,10 +153,27 @@ fun SettingsContent(
         )
     }
 
+    val onExportLog: () -> Unit = {
+        scope.launch {
+            try {
+                val (fileName, bytes) = AppLogger.exportLogBytes()
+                shareLogFile(fileName, bytes.decodeToString())
+            } catch (e: Exception) {
+                AppLogger.w("设置", "日志导出失败：${e.message}")
+                appMessages.show("日志导出失败请重试")
+            }
+        }
+    }
+
+    if (!wide) {
+        PoiShelfBackHandler(enabled = subPage.isNotEmpty()) {
+            subPage = ""
+        }
+    }
+
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            // 顶栏导航
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -206,7 +184,9 @@ fun SettingsContent(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        if (!wide && subPage.isNotEmpty()) subPage = "" else onBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
@@ -220,166 +200,166 @@ fun SettingsContent(
             )
         }
     ) { innerPadding ->
-        // 设置内容列表（大屏 680dp 居中约束）
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding())),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            val contentModifier = if (maxWidth > 680.dp) Modifier.width(680.dp) else Modifier.fillMaxWidth()
-            Column(
-                modifier = contentModifier
-                    .fillMaxHeight()
-                    .verticalScroll(scrollState)
-                    .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
-                    .padding(
-                        start = 16.dp,
-                        top = 12.dp,
-                        end = 16.dp,
-                        bottom = 24.dp + innerPadding.calculateBottomPadding()
-                    ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        if (wide) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-            // 分组 1：外观与个性化
-            Text(
-                text = "外观与个性化",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsMenuItem(
-                        icon = if (isDark) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
-                        title = "外观与主题风格",
-                        subtitle = themeMode.title,
-                        onClick = { showThemeDialog = true }
-                    )
-
-                    if (supportsDynamicColor) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-                        SettingsSwitchItem(
-                            icon = Icons.Filled.Palette,
-                            title = "动态壁纸取色 (Dynamic Color)",
-                            subtitle = "启用 Material You 风格跟随系统壁纸调色板",
-                            checked = dynamicColor,
-                            onCheckedChange = onDynamicColorChange
-                        )
-                    }
-                }
-            }
-
-            // 分组 2：内容与第三方扩展
-            Text(
-                text = "内容与第三方扩展",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsSwitchItem(
-                        icon = Icons.Filled.PhotoLibrary,
-                        title = "ExHobby 扩展图库",
-                        subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
-                        checked = isExHobbyEnabled,
-                        onCheckedChange = onExHobbyEnabledChange
-                    )
-                }
-            }
-
-            // 分组 3：开发者与关于
-            Text(
-                text = "开发者与关于",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsMenuItem(
-                        icon = Icons.Filled.BugReport,
-                        title = "API 调试控制台",
-                        subtitle = "测试 Hpoi 各接口数据与网络层",
-                        onClick = onOpenDebug
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsMenuItem(
-                        icon = Icons.Filled.Share,
-                        title = "导出应用日志",
-                        subtitle = "打包近期运行日志并分享便于排查问题",
-                        onClick = onExportLog
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsMenuItem(
-                        icon = Icons.Filled.Info,
-                        title = "关于 PoiShelf",
-                        subtitle = "版本 ${AppInfo.versionName} (Material 3 Expressive 版)"
-                    )
-                }
-            }
-
-            // 分组 3：账号操作（仅已登录时显示）
-            if (isLoggedIn) {
-                Text(
-                    text = "账号管理",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 4.dp)
+                SettingsGroupList(
+                    selectedGroup = SettingsGroup.valueOf(selectedGroup),
+                    isLoggedIn = profileState.isLoggedIn,
+                    onSelectGroup = {
+                        selectedGroup = it.name
+                        subPage = ""
+                    },
+                    onRequestLogout = { showLogoutConfirmDialog = true },
+                    modifier = Modifier.fillMaxHeight().weight(0.38f)
                 )
+                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Box(modifier = Modifier.fillMaxHeight().weight(0.62f)) {
+                    SettingsDetailPane(
+                        group = SettingsGroup.valueOf(selectedGroup),
+                        subPage = subPage,
+                        themeMode = themeMode,
+                        dynamicColor = dynamicColor,
+                        isExHobbyEnabled = isExHobbyEnabled,
+                        cacheState = cacheState,
+                        onThemeModeChange = onThemeModeChange,
+                        onDynamicColorChange = onDynamicColorChange,
+                        onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
+                        onExportLog = onExportLog,
+                        onOpenCache = { subPage = "cache" },
+                        onOpenAbout = { subPage = "about" },
+                        onClearCache = { cacheViewModel.clearCache() },
+                        onBackToGroup = { subPage = "" }
+                    )
+                }
+            }
+        } else {
+            when {
+                subPage == "cache" -> SettingsCacheDetail(
+                    state = cacheState,
+                    onClearCache = { cacheViewModel.clearCache() },
+                    modifier = Modifier.padding(innerPadding)
+                )
+                subPage == "about" -> SettingsAboutDetail(
+                    modifier = Modifier.padding(innerPadding)
+                )
+                else -> SettingsGroupList(
+                    selectedGroup = null,
+                    isLoggedIn = profileState.isLoggedIn,
+                    onSelectGroup = {
+                        selectedGroup = it.name
+                        if (it == SettingsGroup.General || it == SettingsGroup.Repoi) {
+                            subPage = ""
+                        }
+                    },
+                    onOpenGroupDetail = { group ->
+                        selectedGroup = group.name
+                    },
+                    onRequestLogout = { showLogoutConfirmDialog = true },
+                    detailInline = { group ->
+                        SettingsDetailPane(
+                            group = group,
+                            subPage = "",
+                            themeMode = themeMode,
+                            dynamicColor = dynamicColor,
+                            isExHobbyEnabled = isExHobbyEnabled,
+                            cacheState = cacheState,
+                            onThemeModeChange = onThemeModeChange,
+                            onDynamicColorChange = onDynamicColorChange,
+                            onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
+                            onExportLog = onExportLog,
+                            onOpenCache = { subPage = "cache" },
+                            onOpenAbout = { subPage = "about" },
+                            onClearCache = { cacheViewModel.clearCache() },
+                            onBackToGroup = {}
+                        )
+                    },
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
+    }
+}
 
+@Composable
+private fun SettingsGroupList(
+    selectedGroup: SettingsGroup?,
+    isLoggedIn: Boolean,
+    onSelectGroup: (SettingsGroup) -> Unit,
+    onRequestLogout: () -> Unit,
+    modifier: Modifier = Modifier,
+    onOpenGroupDetail: ((SettingsGroup) -> Unit)? = null,
+    detailInline: @Composable ((SettingsGroup) -> Unit)? = null
+) {
+    val groups = SettingsGroup.entries.toList()
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(groups, key = { it.name }, contentType = { "group" }) { group ->
+            val selected = selectedGroup == group
+            ElevatedCard(
+                onClick = {
+                    onSelectGroup(group)
+                    onOpenGroupDetail?.invoke(group)
+                },
+                shape = ExpressiveTokens.CardShape,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
+                    else MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = group.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = group.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingContent = {
+                        Text(
+                            text = "›",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+            }
+            if (detailInline != null && selectedGroup == group && onOpenGroupDetail != null) {
+                detailInline(group)
+            }
+        }
+        if (isLoggedIn) {
+            item(key = "logout", contentType = "logout") {
                 ElevatedCard(
-                    onClick = { showLogoutConfirmDialog = true },
+                    onClick = onRequestLogout,
                     shape = ExpressiveTokens.CardShape,
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -394,6 +374,330 @@ fun SettingsContent(
         }
     }
 }
+
+@Composable
+private fun SettingsDetailPane(
+    group: SettingsGroup,
+    subPage: String,
+    themeMode: ThemeMode,
+    dynamicColor: Boolean,
+    isExHobbyEnabled: Boolean,
+    cacheState: SettingsCacheUiState,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onExHobbyEnabledChange: (Boolean) -> Unit,
+    onExportLog: () -> Unit,
+    onOpenCache: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onClearCache: () -> Unit,
+    onBackToGroup: () -> Unit
+) {
+    when {
+        group == SettingsGroup.General && subPage == "cache" -> SettingsCacheDetail(
+            state = cacheState,
+            onClearCache = onClearCache,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.General && subPage == "about" -> SettingsAboutDetail(
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.General -> SettingsGeneralContent(
+            cacheState = cacheState,
+            onOpenCache = onOpenCache,
+            onExportLog = onExportLog,
+            onOpenAbout = onOpenAbout,
+            modifier = Modifier.fillMaxSize()
+        )
+        group == SettingsGroup.Repoi -> SettingsRepoiContent(
+            themeMode = themeMode,
+            dynamicColor = dynamicColor,
+            isExHobbyEnabled = isExHobbyEnabled,
+            onThemeModeChange = onThemeModeChange,
+            onDynamicColorChange = onDynamicColorChange,
+            onExHobbyEnabledChange = onExHobbyEnabledChange,
+            modifier = Modifier.fillMaxSize()
+        )
+        else -> SettingsPlaceholderContent(
+            title = group.title,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+private fun SettingsGeneralContent(
+    cacheState: SettingsCacheUiState,
+    onOpenCache: () -> Unit,
+    onExportLog: () -> Unit,
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "cache", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.CleaningServices,
+                title = "清理图片缓存",
+                subtitle = if (cacheState.isLoading) "正在统计…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
+                onClick = onOpenCache
+            )
+        }
+        item(key = "export", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Share,
+                title = "导出应用日志",
+                subtitle = "打包近期运行日志并分享便于排查问题",
+                onClick = onExportLog
+            )
+        }
+        item(key = "about", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Info,
+                title = "关于 RePoi",
+                subtitle = "版本 ${AppInfo.versionName}",
+                onClick = onOpenAbout
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsCacheDetail(
+    state: SettingsCacheUiState,
+    onClearCache: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showConfirm by rememberSaveable { mutableStateOf(false) }
+    val appMessages = LocalAppMessages.current
+    LaunchedEffect(state.actionMessage) {
+        state.actionMessage?.let { appMessages.show(it) }
+    }
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = {
+                Text(
+                    text = "清理图片缓存",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "确定要清理全部图片缓存吗？清理后图片需要重新加载。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirm = false
+                        onClearCache()
+                    }
+                ) {
+                    Text("清理", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "occupancy", contentType = "row") {
+            ElevatedCard(
+                shape = ExpressiveTokens.CardShape,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CleaningServices,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "图片缓存占用",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (state.isLoading) "正在统计…" else formatBytes(state.sizeBytes),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (state.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        }
+        item(key = "clear", contentType = "action") {
+            ElevatedCard(
+                onClick = { if (!state.isClearing) showConfirm = true },
+                shape = ExpressiveTokens.CardShape,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (state.isClearing) "清理中…" else "一键清理",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "version", contentType = "row") {
+            ElevatedCard(
+                shape = ExpressiveTokens.CardShape,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = "RePoi",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = "版本 ${AppInfo.versionName}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRepoiContent(
+    themeMode: ThemeMode,
+    dynamicColor: Boolean,
+    isExHobbyEnabled: Boolean,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onExHobbyEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = LocalIsDarkTheme.current
+    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentMode = themeMode,
+            onSelectMode = { onThemeModeChange(it); showThemeDialog = false },
+            onDismissRequest = { showThemeDialog = false }
+        )
+    }
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "theme", contentType = "row") {
+            SettingsMenuItem(
+                icon = if (isDark) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
+                title = "外观与主题风格",
+                subtitle = themeMode.title,
+                onClick = { showThemeDialog = true }
+            )
+        }
+        if (supportsDynamicColor) {
+            item(key = "dynamic", contentType = "row") {
+                SettingsSwitchItem(
+                    icon = Icons.Filled.Palette,
+                    title = "动态壁纸取色 (Dynamic Color)",
+                    subtitle = "启用 Material You 风格跟随系统壁纸调色板",
+                    checked = dynamicColor,
+                    onCheckedChange = onDynamicColorChange
+                )
+            }
+        }
+        item(key = "exhobby", contentType = "row") {
+            SettingsSwitchItem(
+                icon = Icons.Filled.PhotoLibrary,
+                title = "ExHobby 扩展图库",
+                subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
+                checked = isExHobbyEnabled,
+                onCheckedChange = onExHobbyEnabledChange
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsPlaceholderContent(title: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text = "${title}分组后续票据接入",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
@@ -428,17 +732,21 @@ private fun SettingsMenuItem(
             )
         },
         trailingContent = {
-            Text(
-                text = "›",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
+            if (onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+            }
         },
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .clip(ExpressiveTokens.CardShape)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
     )
 }
@@ -498,21 +806,15 @@ private fun SettingsSwitchItem(
 @Composable
 private fun SettingsContentPreview() {
     PoiShelfTheme {
-        SettingsContent(
-            themeMode = ThemeMode.SYSTEM,
-            dynamicColor = true,
-            onThemeModeChange = {},
-            onDynamicColorChange = {},
-            onOpenDebug = {},
-            onLogout = {},
-            onBack = {}
+        SettingsGeneralContent(
+            cacheState = SettingsCacheUiState(sizeBytes = 12_582_912L, isLoading = false),
+            onOpenCache = {},
+            onExportLog = {},
+            onOpenAbout = {}
         )
     }
 }
 
-/**
- * 主题切换对话框
- */
 @Composable
 fun ThemeSelectionDialog(
     currentMode: ThemeMode,
@@ -521,136 +823,53 @@ fun ThemeSelectionDialog(
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = ExpressiveTokens.DialogShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = ExpressiveTokens.DialogElevation
+            shape = ExpressiveTokens.CardShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "外观与主题风格",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = "选择主题模式",
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        modifier = Modifier.weight(1f)
                     )
-
-                    IconButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "关闭",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    IconButton(onClick = onDismissRequest) {
+                        Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
                     }
                 }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.SYSTEM,
-                        title = "跟随系统",
-                        subtitle = "自动根据 Android 系统模式切换",
-                        isSelected = currentMode == ThemeMode.SYSTEM,
-                        icon = Icons.Filled.Smartphone,
-                        onClick = { onSelectMode(ThemeMode.SYSTEM) }
-                    )
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.LIGHT,
-                        title = "浅色模式",
-                        subtitle = "明亮清爽，经典珊瑚红",
-                        isSelected = currentMode == ThemeMode.LIGHT,
-                        icon = Icons.Filled.WbSunny,
-                        onClick = { onSelectMode(ThemeMode.LIGHT) }
-                    )
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.DARK,
-                        title = "深色模式",
-                        subtitle = "暗色优雅，夜间舒适沉浸",
-                        isSelected = currentMode == ThemeMode.DARK,
-                        icon = Icons.Filled.NightsStay,
-                        onClick = { onSelectMode(ThemeMode.DARK) }
-                    )
+                ThemeMode.entries.forEach { mode ->
+                    val isSelected = mode == currentMode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(ExpressiveTokens.MediumCardShape)
+                            .clickable { onSelectMode(mode) }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        RadioButton(selected = isSelected, onClick = { onSelectMode(mode) })
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = mode.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ThemeModeOptionItem(
-    mode: ThemeMode,
-    title: String,
-    subtitle: String,
-    isSelected: Boolean,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                    color = contentColor
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
+                    text = "跟随系统 / 浅色 / 深色",
                     style = MaterialTheme.typography.labelSmall,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp
+                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                 )
             }
-            RadioButton(
-                selected = isSelected,
-                onClick = null
-            )
         }
     }
 }
