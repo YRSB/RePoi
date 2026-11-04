@@ -115,17 +115,18 @@ class SettingsPrivacyViewModelTest {
     }
 
     @Test
-    fun initialLoad_failureSurfacesMessage() = runTest(testDispatcher) {
+    fun refresh_partialFailureKeepsLoadedKeysAndSurfacesMessage() = runTest(testDispatcher) {
         val mock = MockApi()
-        mock.route("api/setting/mysql/get", mock.failure(500, "读取失败"))
-        mock.route("api/setting/riak/get", mock.ok("""{"userState":{"setting_own_action":1}}"""))
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
+        mock.route("api/setting/riak/get", mock.failure(500, "读取失败"))
         val repository = SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
         val vm = SettingsPrivacyViewModel(repository)
         advanceUntilIdle()
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
-        assertEquals(1, state.values["setting_own_action"])
+        assertEquals(1, state.values["setting_collect_hobby"])
         assertTrue(state.errorMessage?.isNotEmpty() == true)
     }
 }
+

@@ -90,18 +90,8 @@ fun PoiShelfTheme(
     val dynamicScheme = if (seedScheme == null && dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null
     val baseScheme = seedScheme ?: dynamicScheme ?: if (darkTheme) DarkColorScheme else LightColorScheme
     val colorScheme = if (amoled && darkTheme) {
-        baseScheme.copy(
-            background = Color.Black,
-            surface = Color.Black,
-            surfaceDim = Color.Black,
-            surfaceContainerLowest = Color.Black,
-            surfaceContainerLow = Color.Black,
-            surfaceContainer = Color(0xFF0A0A0A),
-            surfaceContainerHigh = Color(0xFF111111),
-            surfaceContainerHighest = Color(0xFF1A1A1A)
-        )
+        baseScheme.withAmoledBlack()
     } else baseScheme
-
     CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

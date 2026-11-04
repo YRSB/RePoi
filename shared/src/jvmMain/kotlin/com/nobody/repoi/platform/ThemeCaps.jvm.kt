@@ -3,6 +3,8 @@ package com.nobody.repoi.platform
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 
+actual val supportsDynamicColor: Boolean = false
+
 actual val isDynamicSeedAvailable: Boolean = false
 
 @Composable

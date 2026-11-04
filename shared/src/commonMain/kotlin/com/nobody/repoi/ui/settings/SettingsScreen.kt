@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
@@ -737,7 +738,7 @@ private fun SettingsRepoiContent(
     ) {
         item(key = "seeds", contentType = "seeds") {
             ThemeSeedRow(
-                selected = themeSeed,
+                selected = themeSeed.orAvailable(),
                 seeds = seeds,
                 onSelect = onThemeSeedChange
             )

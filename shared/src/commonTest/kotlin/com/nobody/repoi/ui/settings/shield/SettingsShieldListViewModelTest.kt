@@ -136,6 +136,43 @@ class SettingsShieldListViewModelTest {
     }
 
     @Test
+    fun block_postsAddAndReloadsCurrentTab() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/mask/add", mock.ok("{}"))
+        val viewModel = viewModelOf(mock)
+        advanceUntilIdle()
+        mock.takeRequest()
+
+        viewModel.blockItem(9L)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isBlocking)
+        assertNull(state.errorMessage)
+        val recorded = mock.takeRequest()
+        assertEquals("/api/mask/add", recorded.encodedPath)
+        assertEquals("9", recorded.formEntries()["itemNodeId"])
+        assertEquals(listOf(1L, 2L), state.items.map { it.id })
+    }
+
+    @Test
+    fun block_failureKeepsListAndSetsError() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/mask/add", mock.failure(500, "屏蔽失败"))
+        val viewModel = viewModelOf(mock)
+        advanceUntilIdle()
+        mock.takeRequest()
+
+        viewModel.blockItem(9L)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isBlocking)
+        assertEquals(listOf(1L, 2L), state.items.map { it.id })
+        assertEquals("屏蔽失败", state.errorMessage)
+    }
+
+    @Test
     fun dialogsAndMessages_canBeDismissed() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/mask/del", mock.failure(500, "网络异常"))

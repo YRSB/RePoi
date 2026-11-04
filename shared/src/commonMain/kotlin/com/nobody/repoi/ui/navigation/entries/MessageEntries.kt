@@ -6,7 +6,6 @@ import com.nobody.repoi.ui.message.block.MessageBlockScreen
 import com.nobody.repoi.ui.message.center.MessageCenterScreen
 import com.nobody.repoi.ui.message.chat.MessageChatScreen
 import com.nobody.repoi.ui.message.notice.MessageNoticeScreen
-import com.nobody.repoi.ui.settings.shield.SettingsShieldListContent
 
 /**
  * 注册消息主中心、分类通知、1v1 私信聊天及黑名单管理路由。
@@ -68,9 +67,6 @@ fun EntryProviderScope<NavKey>.messageEntries(
             onNavigateBack = onBack,
             onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) }
         )
-    }
-    entry<SettingsShieldListNavKey> {
-        SettingsShieldListContent(onBack = onBack)
     }
 }
 
