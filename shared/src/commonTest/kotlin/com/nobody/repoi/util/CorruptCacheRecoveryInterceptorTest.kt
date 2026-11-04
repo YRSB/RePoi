@@ -1,6 +1,5 @@
 package com.nobody.repoi.util
 
-import coil3.Image
 import coil3.disk.DiskCache
 import coil3.intercept.Interceptor
 import coil3.request.CachePolicy
@@ -40,12 +39,6 @@ class CorruptCacheRecoveryInterceptorTest {
         override fun shutdown() {}
     }
 
-    private class FakeSuccessResult(
-        override val request: ImageRequest
-    ) : ImageResult {
-        override val image: Image? = null
-    }
-
     private class FakeChain(
         initialRequest: ImageRequest,
         private val results: MutableList<(ImageRequest) -> ImageResult>
@@ -83,17 +76,22 @@ class CorruptCacheRecoveryInterceptorTest {
             .diskCachePolicy(CachePolicy.ENABLED)
             .build()
 
-        val mockError = ErrorResult(
+        val mockDecodeError = ErrorResult(
             image = null,
             request = request,
             throwable = RuntimeException("Failed to create image decoder with message 'unimplemented'Input contained an error.")
+        )
+        val mockRetryResult = ErrorResult(
+            image = null,
+            request = request,
+            throwable = RuntimeException("Network retry success placeholder")
         )
 
         val chain = FakeChain(
             initialRequest = request,
             results = mutableListOf(
-                { mockError },
-                { req -> FakeSuccessResult(request = req) }
+                { mockDecodeError },
+                { req -> mockRetryResult.copy(request = req) }
             )
         )
 
@@ -107,12 +105,12 @@ class CorruptCacheRecoveryInterceptorTest {
         val retryRequest = chain.executedRequests[1]
         assertFalse(retryRequest.diskCachePolicy.readEnabled)
         assertTrue(retryRequest.diskCachePolicy.writeEnabled)
-        // 4. 最终结果成功自愈为 Success
-        assertTrue(finalResult is FakeSuccessResult)
+        // 4. 最终结果为重试步骤的返回结果
+        assertEquals("Network retry success placeholder", (finalResult as? ErrorResult)?.throwable?.message)
     }
 
     @Test
-    fun intercept_whenNoError_doesNotTouchDiskCacheOrRetry() = runTest {
+    fun intercept_whenNoErrorOrNotCorrupt_doesNotTouchDiskCacheOrRetry() = runTest {
         val fakeDiskCache = FakeDiskCache()
         val interceptor = CorruptCacheRecoveryInterceptor(fakeDiskCache)
 
@@ -122,15 +120,22 @@ class CorruptCacheRecoveryInterceptorTest {
             .data(testUrl)
             .build()
 
+        // 常规网络 404 等业务错误，不属于坏缓存解码异常，不触发自愈重试
+        val normalError = ErrorResult(
+            image = null,
+            request = request,
+            throwable = RuntimeException("HTTP 404 Not Found")
+        )
+
         val chain = FakeChain(
             initialRequest = request,
-            results = mutableListOf({ req -> FakeSuccessResult(request = req) })
+            results = mutableListOf({ normalError })
         )
 
         val finalResult = interceptor.intercept(chain)
 
         assertTrue(fakeDiskCache.removedKeys.isEmpty())
         assertEquals(1, chain.executedRequests.size)
-        assertTrue(finalResult is FakeSuccessResult)
+        assertEquals("HTTP 404 Not Found", (finalResult as? ErrorResult)?.throwable?.message)
     }
 }
