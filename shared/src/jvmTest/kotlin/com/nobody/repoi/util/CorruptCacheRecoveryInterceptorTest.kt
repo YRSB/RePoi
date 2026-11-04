@@ -84,7 +84,7 @@ class CorruptCacheRecoveryInterceptorTest {
         val mockRetryResult = ErrorResult(
             image = null,
             request = request,
-            throwable = RuntimeException("Network retry success placeholder")
+            throwable = RuntimeException("unimplemented Input contained an error")
         )
 
         val chain = FakeChain(
@@ -105,8 +105,10 @@ class CorruptCacheRecoveryInterceptorTest {
         val retryRequest = chain.executedRequests[1]
         assertFalse(retryRequest.diskCachePolicy.readEnabled)
         assertTrue(retryRequest.diskCachePolicy.writeEnabled)
+        assertFalse(retryRequest.memoryCachePolicy.readEnabled)
+        assertTrue(retryRequest.memoryCachePolicy.writeEnabled)
         // 4. 最终结果为重试步骤的返回结果
-        assertEquals("Network retry success placeholder", (finalResult as? ErrorResult)?.throwable?.message)
+        assertEquals("unimplemented Input contained an error", (finalResult as? ErrorResult)?.throwable?.message)
     }
 
     @Test
@@ -137,5 +139,63 @@ class CorruptCacheRecoveryInterceptorTest {
         assertTrue(fakeDiskCache.removedKeys.isEmpty())
         assertEquals(1, chain.executedRequests.size)
         assertEquals("HTTP 404 Not Found", (finalResult as? ErrorResult)?.throwable?.message)
+    }
+
+    @Test
+    fun intercept_whenIllegalArgumentWithoutDecodeMessage_doesNotRetry() = runTest {
+        val fakeDiskCache = FakeDiskCache()
+        val interceptor = CorruptCacheRecoveryInterceptor(fakeDiskCache)
+
+        val request = ImageRequest.Builder(PlatformContext.INSTANCE)
+            .data("https://example.com/invalid_params.png")
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+        val chain = FakeChain(
+            initialRequest = request,
+            results = mutableListOf({
+                ErrorResult(image = null, request = request, throwable = IllegalArgumentException("invalid image url"))
+            })
+        )
+
+        interceptor.intercept(chain)
+
+        assertTrue(fakeDiskCache.removedKeys.isEmpty())
+        assertEquals(1, chain.executedRequests.size)
+    }
+
+    @Test
+    fun intercept_whenCauseChainCarriesDecodeError_clearsKeyAndRetries() = runTest {
+        val fakeDiskCache = FakeDiskCache()
+        val interceptor = CorruptCacheRecoveryInterceptor(fakeDiskCache)
+
+        val testUrl = "https://example.com/truncated.png"
+        val request = ImageRequest.Builder(PlatformContext.INSTANCE)
+            .data(testUrl)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+        val chain = FakeChain(
+            initialRequest = request,
+            results = mutableListOf(
+                {
+                    ErrorResult(
+                        image = null,
+                        request = request,
+                        throwable = RuntimeException("load failed", IllegalStateException("Failed to decode image"))
+                    )
+                },
+                { req ->
+                    ErrorResult(
+                        image = null,
+                        request = req,
+                        throwable = RuntimeException("still corrupt after retry")
+                    )
+                }
+            )
+        )
+
+        interceptor.intercept(chain)
+
+        assertEquals(listOf(testUrl), fakeDiskCache.removedKeys)
+        assertEquals(2, chain.executedRequests.size)
     }
 }

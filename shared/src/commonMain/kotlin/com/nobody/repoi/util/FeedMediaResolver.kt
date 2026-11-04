@@ -21,12 +21,7 @@ object FeedMediaResolver {
         val relateItem = actionItem.relateItem
         val extraImages = actionItem.relateData?.mapNotNull { it.path }?.filter { it.isNotBlank() } ?: emptyList()
 
-        // 判定条目类型（对齐官方：优先 itemType，兼容 categoryId 区间 60000..69999 与 actionType）
-        val itemType = relateItem?.itemType?.lowercase()
-        val isAlbum = relateItem?.isAlbum == true ||
-            itemType == "album" ||
-            actionItem.actionType == 3 ||
-            (relateItem?.categoryId != null && relateItem.categoryId in 60000..69999)
+        val isAlbum = relateItem?.isAlbum == true || actionItem.actionType == 3
 
         val rawPath = relateItem?.path?.trim()
         val rawCover = relateItem?.cover?.trim()

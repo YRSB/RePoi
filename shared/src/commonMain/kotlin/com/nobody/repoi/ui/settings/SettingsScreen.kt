@@ -113,7 +113,7 @@ fun SettingsScreen(
                     shareLogFile(fileName, bytes.decodeToString())
                 } catch (e: Exception) {
                     AppLogger.w("设置", "日志导出失败：${e.message}")
-                    appMessages.show("日志导出失败：${e.message ?: "请重试"}")
+                    appMessages.show("日志导出失败请重试")
                 }
             }
         },

@@ -80,4 +80,58 @@ class KtorLogFormatterTest {
         val errorMsg = "REQUEST https://www.hpoi.net.cn/api/user/self failed with exception: java.net.SocketTimeoutException: timeout"
         assertEquals(errorMsg, KtorLogFormatter.format(errorMsg))
     }
+
+    @Test
+    fun formatRequest_missingMethod_reportsUnknown() {
+        val formatted = KtorLogFormatter.format("REQUEST: https://www.hpoi.net.cn/api/user/self")
+        assertEquals("--> UNKNOWN https://www.hpoi.net.cn/api/user/self", formatted)
+    }
+
+    @Test
+    fun formatResponse_missingFrom_reportsStatusOnly() {
+        val formatted = KtorLogFormatter.format("RESPONSE: 200")
+        assertEquals("<-- 200", formatted)
+    }
+
+    @Test
+    fun formatBody_emptyBody_returnsNull() {
+        assertNull(KtorLogFormatter.format("BODY START\n[EMPTY]\nBODY END"))
+        assertNull(KtorLogFormatter.format("BODY START\n   \nBODY END"))
+    }
+
+    @Test
+    fun formatBody_missingEndMarker_returnsNull() {
+        assertNull(KtorLogFormatter.format("BODY START\n{\"status\":1}"))
+    }
+
+    @Test
+    fun formatBody_keywordInsideBody_notTruncatedEarly() {
+        val formatted = KtorLogFormatter.format("BODY START\n{\"text\":\"BODY END\"}\nBODY END")
+        assertEquals("""[Body] {"text":"BODY END"}""", formatted)
+    }
+
+    @Test
+    fun formatBody_boundary3000And3001() {
+        val exact = "b".repeat(3000)
+        assertEquals("[Body] $exact", KtorLogFormatter.format("BODY START\n$exact\nBODY END"))
+        val over = "b".repeat(3001)
+        val formatted = KtorLogFormatter.format("BODY START\n$over\nBODY END")
+        assertTrue(formatted != null && formatted.contains("... (共 3001 字符，已截断)"))
+    }
+
+    @Test
+    fun sanitizeToken_masksQueryFormAndJson() {
+        assertEquals(
+            "--> POST https://www.hpoi.net.cn/api/user/self?utoken=***&categoryId=0",
+            KtorLogFormatter.format("REQUEST: https://www.hpoi.net.cn/api/user/self?utoken=secret123&categoryId=0\nMETHOD: POST")
+        )
+        assertEquals(
+            "[Body] utoken=***&platform=android",
+            KtorLogFormatter.format("BODY START\nutoken=secret123&platform=android\nBODY END")
+        )
+        assertEquals(
+            """[Body] {"utoken":"***","user":"u1"}""",
+            KtorLogFormatter.format("BODY START\n{\"utoken\":\"secret123\",\"user\":\"u1\"}\nBODY END")
+        )
+    }
 }

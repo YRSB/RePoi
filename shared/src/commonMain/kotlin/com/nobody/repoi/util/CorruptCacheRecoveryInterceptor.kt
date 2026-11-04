@@ -55,4 +55,5 @@ class CorruptCacheRecoveryInterceptor(
             current = current.cause
         }
         return false
+    }
 }

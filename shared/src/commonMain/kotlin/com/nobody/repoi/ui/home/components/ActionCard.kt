@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
@@ -185,7 +184,7 @@ fun ActionCard(
                                 }
                             },
                             onError = { state ->
-                                AppLogger.w("ActionCard", "封面加载失败: url=$coverUrl, error=${state.result.throwable.message}")
+                                AppLogger.d("ActionCard", "封面加载失败: url=$coverUrl, error=${state.result.throwable.message ?: "未知"}")
                             }
                         )
                     } else {

@@ -50,11 +50,11 @@ object KtorLogFormatter {
             }
         }
 
-        // 3. Body 提炼与保护
         if (trimmed.contains("BODY START")) {
+            if (!trimmed.contains("BODY END")) return null
             val body = trimmed
-                .substringAfter("BODY START")
-                .substringBefore("BODY END")
+                .substringAfterLast("BODY START")
+                .substringBeforeLast("BODY END")
                 .trim()
             if (body.isBlank() || body == "[EMPTY]") {
                 return null

@@ -106,6 +106,7 @@ val networkModule = module {
         }
     }
     single(named("coil")) {
+        // 图片流故意不装 Logging/ContentNegotiation：二进制图体不可灌入 AppLogger，失败可见性由 Coil Logger 补偿。
         HttpClient(OkHttp) {
             install(HttpTimeout) {
                 requestTimeoutMillis = 30_000
