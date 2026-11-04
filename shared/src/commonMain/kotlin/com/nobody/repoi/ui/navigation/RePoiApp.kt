@@ -25,6 +25,8 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -136,6 +138,8 @@ private fun RePoiNavHost(
                 rootBackStack = rootBackStack,
                 navigator = navigator,
                 tabEntries = tabEntries,
+                snackbarHostState = rootSnackbarHostState,
+                showSnackbarHost = atMainRoot,
                 themeMode = themeMode,
                 dynamicColor = dynamicColor,
                 themeSeed = themeSeed,
