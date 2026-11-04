@@ -39,6 +39,8 @@ import com.nobody.repoi.ui.resale.ResaleDetailViewModel
 import com.nobody.repoi.ui.resale.ResaleMarketViewModel
 import com.nobody.repoi.ui.search.SearchViewModel
 import com.nobody.repoi.ui.series.SeriesDetailViewModel
+import com.nobody.repoi.ui.settings.SettingsPrivacyViewModel
+import com.nobody.repoi.ui.settings.SettingsViewModel
 import com.nobody.repoi.ui.settings.shield.SettingsShieldListViewModel
 import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
 import com.nobody.repoi.ui.user.UserInfoViewModel
@@ -55,7 +57,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：45 `viewModel { }`（dev-only DebugApiViewModel 已移至 androidMain；M3 起按 NavKey 传参）。
+ * ViewModel 模块：45 `viewModel { }`（M3 起按 NavKey 传参）。
  *
  * SavedStateHandle 已删除（见各 VM 注释）：NavKey 字段经 `koinViewModel(parameters = ...)`
  * 或 `loadInitial/initParam` 传入；plain `koinViewModel()` 保持条目作用域。
@@ -99,6 +101,7 @@ val viewModelModule = module {
     viewModel { SettingsViewModel(get()) }
     viewModel { SettingsShieldViewModel(get()) }
     viewModel { SettingsShieldListViewModel(get()) }
+    viewModel { SettingsPrivacyViewModel(get()) }
     viewModel { SettingsCacheViewModel(get()) }
     viewModel { UserCreationViewModel(get(), get()) }
     viewModel { UserHistoryViewModel(get()) }

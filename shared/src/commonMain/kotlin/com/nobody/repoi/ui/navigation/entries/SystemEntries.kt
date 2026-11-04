@@ -18,7 +18,6 @@ fun EntryProviderScope<NavKey>.systemEntries(
     dynamicColor: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
-    onOpenDebugScreen: () -> Unit,
     onLoginSuccess: () -> Unit,
 ) {
     entry<LoginNavKey> {
@@ -36,7 +35,6 @@ fun EntryProviderScope<NavKey>.systemEntries(
             dynamicColor = dynamicColor,
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
-            onOpenDebug = onOpenDebugScreen,
             onOpenShieldList = { navigator.navigateToSettingsShieldList() },
             onOpenBlocklist = { navigator.navigateToMessageBlock() },
             onBack = onBack

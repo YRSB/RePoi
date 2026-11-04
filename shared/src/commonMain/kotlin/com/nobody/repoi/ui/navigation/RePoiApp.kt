@@ -82,7 +82,6 @@ private fun RePoiNavHost(
     val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
-    val rootScope = rememberCoroutineScope()
 
     val savedStateConfiguration = remember {
         SavedStateConfiguration { serializersModule = RePoiSerializersModule }
@@ -126,9 +125,6 @@ private fun RePoiNavHost(
                 dynamicColor = dynamicColor,
                 onThemeModeChange = onThemeModeChange,
                 onDynamicColorChange = onDynamicColorChange,
-                onOpenDebugScreen = {
-                    rootScope.launch { appMessages.show("API 调试控制台在此版本中不可用") }
-                },
                 onLoginSuccess = {
                     while (rootBackStack.size > 1) rootBackStack.removeLastOrNull()
                     navigator.selectTab(AppDestinations.PROFILE)
