@@ -85,6 +85,7 @@ kotlin {
             implementation(libs.kermit)
             implementation(libs.kermit.ktor)
             implementation(libs.kermit.coil)
+            implementation(libs.materialkolor.material3)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

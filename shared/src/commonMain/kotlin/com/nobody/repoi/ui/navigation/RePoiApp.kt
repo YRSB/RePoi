@@ -25,7 +25,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
-import com.nobody.repoi.platform.LocalAppMessages
+import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberImageViewerState
@@ -43,11 +43,11 @@ import org.koin.compose.koinInject
  */
 @Composable
 fun RePoiApp() {
-    val imageLoader: ImageLoader = koinInject()
-    setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
-    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = true)
+    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
+    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
+    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
+    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
     val scope = rememberCoroutineScope()
     val onThemeModeChange: (ThemeMode) -> Unit = { mode ->
         scope.launch { themeManager.setThemeMode(mode) }
@@ -55,19 +55,30 @@ fun RePoiApp() {
     val onDynamicColorChange: (Boolean) -> Unit = { enabled ->
         scope.launch { themeManager.setDynamicColor(enabled) }
     }
+    val onThemeSeedChange: (ThemeSeed) -> Unit = { seed ->
+        scope.launch { themeManager.setThemeSeed(seed) }
+    }
+    val onAmoledChange: (Boolean) -> Unit = { enabled ->
+        scope.launch { themeManager.setAmoled(enabled) }
+    }
 
     val darkTheme = when (themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
+    val effectiveSeedArgb = if (themeSeed == ThemeSeed.Dynamic) null else themeSeed.argb
 
-    PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
+    PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, seedArgb = effectiveSeedArgb, amoled = amoled) {
         RePoiNavHost(
             themeMode = themeMode,
             dynamicColor = dynamicColor,
+            themeSeed = themeSeed,
+            amoled = amoled,
             onThemeModeChange = onThemeModeChange,
-            onDynamicColorChange = onDynamicColorChange
+            onDynamicColorChange = onDynamicColorChange,
+            onThemeSeedChange = onThemeSeedChange,
+            onAmoledChange = onAmoledChange
         )
     }
 }
@@ -76,8 +87,12 @@ fun RePoiApp() {
 private fun RePoiNavHost(
     themeMode: ThemeMode,
     dynamicColor: Boolean,
+    themeSeed: ThemeSeed,
+    amoled: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit
+    onDynamicColorChange: (Boolean) -> Unit,
+    onThemeSeedChange: (ThemeSeed) -> Unit,
+    onAmoledChange: (Boolean) -> Unit
 ) {
     val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
@@ -119,12 +134,14 @@ private fun RePoiNavHost(
                 rootBackStack = rootBackStack,
                 navigator = navigator,
                 tabEntries = tabEntries,
-                snackbarHostState = rootSnackbarHostState,
-                showSnackbarHost = atMainRoot,
                 themeMode = themeMode,
                 dynamicColor = dynamicColor,
+                themeSeed = themeSeed,
+                amoled = amoled,
                 onThemeModeChange = onThemeModeChange,
                 onDynamicColorChange = onDynamicColorChange,
+                onThemeSeedChange = onThemeSeedChange,
+                onAmoledChange = onAmoledChange,
                 onLoginSuccess = {
                     while (rootBackStack.size > 1) rootBackStack.removeLastOrNull()
                     navigator.selectTab(AppDestinations.PROFILE)

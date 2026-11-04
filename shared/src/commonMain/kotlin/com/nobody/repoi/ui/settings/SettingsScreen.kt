@@ -1,6 +1,6 @@
 package com.nobody.repoi.ui.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -68,6 +67,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.PoiShelfBackHandler
@@ -77,7 +78,6 @@ import com.nobody.repoi.ui.profile.ProfileViewModel
 import com.nobody.repoi.ui.settings.shield.SettingsShieldContent
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
-import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
@@ -104,8 +104,12 @@ private fun formatBytes(bytes: Long): String {
 fun SettingsScreen(
     themeMode: ThemeMode,
     dynamicColor: Boolean = true,
+    themeSeed: ThemeSeed = ThemeSeed.Dynamic,
+    amoled: Boolean = false,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit = {},
+    onThemeSeedChange: (ThemeSeed) -> Unit = {},
+    onAmoledChange: (Boolean) -> Unit = {},
     onOpenShieldList: () -> Unit = {},
     onOpenBlocklist: () -> Unit = {},
     onBack: () -> Unit,
@@ -233,6 +237,8 @@ fun SettingsScreen(
                         subPage = subPage,
                         themeMode = themeMode,
                         dynamicColor = dynamicColor,
+                        themeSeed = themeSeed,
+                        amoled = amoled,
                         isExHobbyEnabled = isExHobbyEnabled,
                         cacheState = cacheState,
                         privacyState = privacyState,
@@ -240,6 +246,8 @@ fun SettingsScreen(
                         onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
+                        onThemeSeedChange = onThemeSeedChange,
+                        onAmoledChange = onAmoledChange,
                         onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                         onExportLog = onExportLog,
                         onOpenCache = { subPage = "cache" },
@@ -295,6 +303,8 @@ fun SettingsScreen(
                             subPage = "",
                             themeMode = themeMode,
                             dynamicColor = dynamicColor,
+                            themeSeed = themeSeed,
+                            amoled = amoled,
                             isExHobbyEnabled = isExHobbyEnabled,
                             cacheState = cacheState,
                             privacyState = privacyState,
@@ -302,10 +312,11 @@ fun SettingsScreen(
                             onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                             onThemeModeChange = onThemeModeChange,
                             onDynamicColorChange = onDynamicColorChange,
+                            onThemeSeedChange = onThemeSeedChange,
+                            onAmoledChange = onAmoledChange,
                             onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                             onExportLog = onExportLog,
                             onOpenCache = { subPage = "cache" },
-                            onOpenAbout = { subPage = "about" },
                             onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
                             onOpenSecurity = { subPage = "security" },
                             onOpenShieldList = onOpenShieldList,
@@ -419,6 +430,8 @@ private fun SettingsDetailPane(
     subPage: String,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
+    themeSeed: ThemeSeed,
+    amoled: Boolean,
     isExHobbyEnabled: Boolean,
     cacheState: SettingsCacheUiState,
     privacyState: SettingsPrivacyUiState,
@@ -426,7 +439,8 @@ private fun SettingsDetailPane(
     onPrivacyOptionChange: (String, Int) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
-    onExHobbyEnabledChange: (Boolean) -> Unit,
+    onThemeSeedChange: (ThemeSeed) -> Unit,
+    onAmoledChange: (Boolean) -> Unit,
     onExportLog: () -> Unit,
     onOpenCache: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -464,9 +478,13 @@ private fun SettingsDetailPane(
         group == SettingsGroup.Repoi -> SettingsRepoiContent(
             themeMode = themeMode,
             dynamicColor = dynamicColor,
+            themeSeed = themeSeed,
+            amoled = amoled,
             isExHobbyEnabled = isExHobbyEnabled,
             onThemeModeChange = onThemeModeChange,
             onDynamicColorChange = onDynamicColorChange,
+            onThemeSeedChange = onThemeSeedChange,
+            onAmoledChange = onAmoledChange,
             onExHobbyEnabledChange = onExHobbyEnabledChange,
             modifier = Modifier.fillMaxSize()
         )
@@ -698,21 +716,17 @@ private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
 private fun SettingsRepoiContent(
     themeMode: ThemeMode,
     dynamicColor: Boolean,
+    themeSeed: ThemeSeed,
+    amoled: Boolean,
     isExHobbyEnabled: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onThemeSeedChange: (ThemeSeed) -> Unit,
+    onAmoledChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            currentMode = themeMode,
-            onSelectMode = { onThemeModeChange(it); showThemeDialog = false },
-            onDismissRequest = { showThemeDialog = false }
-        )
-    }
+    val seeds = ThemeSeed.entries.filter { it == ThemeSeed.Dynamic && isDynamicSeedAvailable || it != ThemeSeed.Dynamic }
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
@@ -721,30 +735,190 @@ private fun SettingsRepoiContent(
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(key = "theme", contentType = "row") {
-            SettingsMenuItem(
-                icon = if (isDark) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
-                title = "外观与主题风格",
-                subtitle = themeMode.title,
-                onClick = { showThemeDialog = true }
+        item(key = "seeds", contentType = "seeds") {
+            ThemeSeedRow(
+                selected = themeSeed,
+                seeds = seeds,
+                onSelect = onThemeSeedChange
+            )
+        }
+        item(key = "mode", contentType = "row") {
+            ThemeModeRow(
+                current = themeMode,
+                onSelect = onThemeModeChange
             )
         }
         if (supportsDynamicColor) {
             item(key = "dynamic", contentType = "row") {
                 SettingsSwitchItem(
                     icon = Icons.Filled.Palette,
-                    title = "动态壁纸取色 (Dynamic Color)",
-                    subtitle = "启用 Material You 风格跟随系统壁纸调色板",
+                    title = "动态壁纸取色",
+                    subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
                     checked = dynamicColor,
                     onCheckedChange = onDynamicColorChange
                 )
             }
+        }
+        item(key = "amoled", contentType = "row") {
+            SettingsSwitchItem(
+                icon = Icons.Filled.NightsStay,
+                title = "AMOLED 纯黑",
+                subtitle = "深色模式下使用纯黑背景省电护眼",
+                checked = amoled,
+                onCheckedChange = onAmoledChange
+            )
         }
         item(key = "exhobby", contentType = "row") {
             SettingsSwitchItem(
                 icon = Icons.Filled.PhotoLibrary,
                 title = "ExHobby 扩展图库",
                 subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
+                checked = isExHobbyEnabled,
+                onCheckedChange = onExHobbyEnabledChange
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeSeedRow(
+    selected: ThemeSeed,
+    seeds: List<ThemeSeed>,
+    onSelect: (ThemeSeed) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        shape = ExpressiveTokens.CardShape,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "种子色板",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                seeds.forEach { seed ->
+                    ThemeSeedDot(
+                        seed = seed,
+                        selected = seed == selected,
+                        onClick = { onSelect(seed) }
+                    )
+                }
+            }
+            Text(
+                text = selected.title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeSeedDot(
+    seed: ThemeSeed,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val dotColor = seed.argb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+        val border = if (selected) {
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(48.dp)
+                .border(border, androidx.compose.foundation.shape.CircleShape)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clickable(onClick = onClick)
+                .padding(4.dp)
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                drawCircle(color = dotColor)
+            }
+            if (seed == ThemeSeed.Tricolor) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                    drawArc(color = Color(0xFFFF6B9D), startAngle = 270f, sweepAngle = 120f, useCenter = true)
+                    drawArc(color = Color(0xFF2EC4B6), startAngle = 30f, sweepAngle = 120f, useCenter = true)
+                    drawArc(color = Color(0xFFFFD166), startAngle = 150f, sweepAngle = 120f, useCenter = true)
+                }
+            }
+            if (selected) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                    drawCircle(color = Color.Black.copy(alpha = 0.25f))
+                }
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Text(
+            text = seed.title,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+@Composable
+private fun ThemeModeRow(
+    current: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        shape = ExpressiveTokens.CardShape,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "深色模式",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            ThemeMode.entries.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(ExpressiveTokens.MediumCardShape)
+                        .clickable { onSelect(mode) }
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    RadioButton(selected = mode == current, onClick = { onSelect(mode) })
+                    Text(
+                        text = mode.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (mode == current) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
                 checked = isExHobbyEnabled,
                 onCheckedChange = onExHobbyEnabledChange
             )

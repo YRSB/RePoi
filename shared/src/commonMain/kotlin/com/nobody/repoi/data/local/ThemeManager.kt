@@ -18,20 +18,23 @@ import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+enum class ThemeSeed(val title: String, val argb: Long?) {
+    Dynamic("动态壁纸取色", null),
+    Pink("樱粉", 0xFFFF4D8D),
+    Coral("珊瑚红", 0xFFFF4D4F),
+    Amber("琥珀金", 0xFFFA8C16),
+    Lotus("青莲", 0xFF1890FF),
+    Mint("薄荷", 0xFF12B76A),
+    Grape("紫藤", 0xFF7A5AF8),
+    Tricolor("真寻三色", 0xFF2EC4B6)
+}
+
 enum class ThemeMode(val title: String) {
     SYSTEM("跟随系统"),
     LIGHT("浅色模式"),
     DARK("深色模式")
 }
 
-/**
- * 主题管理器（KMP 移植）。
- *
- * - 构造器改取 `DataStore<Preferences>`；`SharedPreferences` 同步镜相对 DataStore 单一真相源
- *   + atomics 内存镜像替代（桌面无 SP；common 无 `@Volatile`）。
- * - **已删除**旧版 `checkLegacyDynamicColorPreference` 字节扫描（ThemeManager.kt:92-118）：
- *   桌面路径不存在、Android 侧为脆弱字节嗅探；改用 `supportsDynamicColor` expect。
- */
 @OptIn(ExperimentalAtomicApi::class)
 class ThemeManager(
     private val dataStore: DataStore<Preferences>,
@@ -40,6 +43,8 @@ class ThemeManager(
 
     private val themeModeRef = AtomicReference(ThemeMode.SYSTEM)
     private val dynamicColorRef = AtomicBoolean(supportsDynamicColor)
+    private val themeSeedRef = AtomicReference(defaultThemeSeed())
+    private val amoledRef = AtomicBoolean(false)
 
     var themeMode: ThemeMode
         get() = themeModeRef.load()
@@ -48,6 +53,14 @@ class ThemeManager(
     var dynamicColor: Boolean
         get() = dynamicColorRef.load()
         private set(value) { dynamicColorRef.store(value) }
+
+    var themeSeed: ThemeSeed
+        get() = themeSeedRef.load()
+        private set(value) { themeSeedRef.store(value) }
+
+    var amoled: Boolean
+        get() = amoledRef.load()
+        private set(value) { amoledRef.store(value) }
 
     val themeModeFlow: Flow<ThemeMode> = dataStore.data.map { prefs ->
         when (prefs[THEME_MODE_KEY]) {
@@ -61,11 +74,18 @@ class ThemeManager(
         prefs[DYNAMIC_COLOR_KEY] ?: supportsDynamicColor
     }
 
+    val themeSeedFlow: Flow<ThemeSeed> = dataStore.data.map { prefs ->
+        prefs[THEME_SEED_KEY]?.let { runCatching { ThemeSeed.valueOf(it) }.getOrNull() }
+            ?: defaultThemeSeed()
+    }
+
+    val amoledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[AMOLED_KEY] ?: false
+    }
+
     init {
         runCatching {
             scope.launch {
-                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
-                // 不使用持续 collect，避免与本地写入产生异步时序竞态。
                 val prefs = dataStore.data.first()
                 prefs[THEME_MODE_KEY]?.let {
                     themeMode = when (it) {
@@ -77,6 +97,12 @@ class ThemeManager(
                 prefs[DYNAMIC_COLOR_KEY]?.let {
                     dynamicColor = it
                 }
+                prefs[THEME_SEED_KEY]?.let {
+                    runCatching { ThemeSeed.valueOf(it) }.getOrNull()?.let { seed -> themeSeed = seed }
+                }
+                prefs[AMOLED_KEY]?.let {
+                    amoled = it
+                }
             }
         }
     }
@@ -84,6 +110,10 @@ class ThemeManager(
     fun getInitialThemeMode(): ThemeMode = themeMode
 
     fun getInitialDynamicColor(): Boolean = dynamicColor
+
+    fun getInitialThemeSeed(): ThemeSeed = themeSeed
+
+    fun getInitialAmoled(): Boolean = amoled
 
     suspend fun setThemeMode(mode: ThemeMode) {
         themeMode = mode
@@ -99,8 +129,27 @@ class ThemeManager(
         }
     }
 
+    suspend fun setThemeSeed(seed: ThemeSeed) {
+        themeSeed = seed
+        dataStore.edit { prefs ->
+            prefs[THEME_SEED_KEY] = seed.name
+        }
+    }
+
+    suspend fun setAmoled(enabled: Boolean) {
+        amoled = enabled
+        dataStore.edit { prefs ->
+            prefs[AMOLED_KEY] = enabled
+        }
+    }
+
     companion object {
         private val THEME_MODE_KEY = stringPreferencesKey("app_theme_mode")
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("app_dynamic_color")
+        private val THEME_SEED_KEY = stringPreferencesKey("app_theme_seed")
+        private val AMOLED_KEY = booleanPreferencesKey("app_amoled")
     }
 }
+
+private fun defaultThemeSeed(): ThemeSeed =
+    if (supportsDynamicColor) ThemeSeed.Dynamic else ThemeSeed.Pink
