@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.settings
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -347,44 +347,38 @@ private fun SettingsGroupList(
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(groups, key = { it.name }, contentType = { "group" }) { group ->
+        items(groups.size, key = { groups[it].name }, contentType = { "group" }) { index ->
+            val group = groups[index]
             val selected = selectedGroup == group
-            ElevatedCard(
+            SegmentedListItem(
+                selected = selected,
                 onClick = { onSelectGroup(group) },
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = group.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = group.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingContent = {
-                        Text(
-                            text = "›",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
+                shapes = ListItemDefaults.segmentedShapes(index = index, count = groups.size),
+                leadingContent = {
+                    Icon(
+                        imageVector = group.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                },
+                content = {
+                    Text(
+                        text = group.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            )
         }
         if (isLoggedIn) {
             item(key = "logout", contentType = "logout") {
@@ -518,6 +512,8 @@ private fun SettingsGeneralContent(
                 icon = Icons.Filled.CleaningServices,
                 title = "清理图片缓存",
                 subtitle = if (cacheState.isLoading) "正在统计…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
+                index = 0,
+                count = 3,
                 onClick = onOpenCache
             )
         }
@@ -526,6 +522,8 @@ private fun SettingsGeneralContent(
                 icon = Icons.Filled.Share,
                 title = "导出应用日志",
                 subtitle = "打包近期运行日志并分享便于排查问题",
+                index = 1,
+                count = 3,
                 onClick = onExportLog
             )
         }
@@ -534,6 +532,8 @@ private fun SettingsGeneralContent(
                 icon = Icons.Filled.Info,
                 title = "关于 RePoi",
                 subtitle = "版本 ${AppInfo.versionName}",
+                index = 2,
+                count = 3,
                 onClick = onOpenAbout
             )
         }
@@ -666,40 +666,32 @@ private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = "version", contentType = "row") {
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = "RePoi",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            text = "版本 ${AppInfo.versionName}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Filled.Info,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
+            SegmentedListItem(
+                shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = "版本 ${AppInfo.versionName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                content = {
+                    Text(
+                        text = "RePoi",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            )
         }
     }
 }
@@ -747,6 +739,8 @@ private fun SettingsRepoiContent(
                     title = "动态壁纸取色",
                     subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
                     checked = dynamicColor,
+                    index = 0,
+                    count = 3,
                     onCheckedChange = onDynamicColorChange
                 )
             }
@@ -757,6 +751,8 @@ private fun SettingsRepoiContent(
                 title = "AMOLED 纯黑",
                 subtitle = "深色模式下使用纯黑背景省电护眼",
                 checked = amoled,
+                index = if (supportsDynamicColor) 1 else 0,
+                count = if (supportsDynamicColor) 3 else 2,
                 onCheckedChange = onAmoledChange
             )
         }
@@ -766,6 +762,8 @@ private fun SettingsRepoiContent(
                 title = "ExHobby 扩展图库",
                 subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
                 checked = isExHobbyEnabled,
+                index = if (supportsDynamicColor) 2 else 1,
+                count = if (supportsDynamicColor) 3 else 2,
                 onCheckedChange = onExHobbyEnabledChange
             )
         }
@@ -1028,6 +1026,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "周边条目(手办、动漫、模型、布偶、娃娃)",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
+                index = 0,
+                count = 4,
                 onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
             )
         }
@@ -1036,6 +1036,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "收藏内容(相册、图片、文章)",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
+                index = 1,
+                count = 4,
                 onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
             )
         }
@@ -1044,6 +1046,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "收藏统计(历史消费、入手数量、待补款等)",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
+                index = 2,
+                count = 4,
                 onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
             )
         }
@@ -1052,6 +1056,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "其他内容(系列、厂商、角色、人物、作品)",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
+                index = 3,
+                count = 4,
                 onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
             )
         }
@@ -1068,6 +1074,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "个人主页动态",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
+                index = 0,
+                count = 3,
                 onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
             )
         }
@@ -1076,6 +1084,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "关注、粉丝",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
+                index = 1,
+                count = 3,
                 onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
             )
         }
@@ -1084,6 +1094,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "讨论板个人主页",
                 subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
+                index = 2,
+                count = 3,
                 onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
             )
         }
@@ -1100,6 +1112,8 @@ private fun SettingsPrivacyContent(
                 icon = Icons.Filled.Shield,
                 title = "陌生人私信设置",
                 subtitle = strangerOptions.getOrElse(state.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
+                index = 0,
+                count = 1,
                 onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
             )
         }
@@ -1137,6 +1151,8 @@ private fun SettingsAccountContent(
                 icon = Icons.Filled.Person,
                 title = "个人信息",
                 subtitle = "头像昵称与个人资料",
+                index = 0,
+                count = 2,
                 onClick = onOpenProfile
             )
         }
@@ -1145,6 +1161,8 @@ private fun SettingsAccountContent(
                 icon = Icons.Filled.Lock,
                 title = "账号与安全",
                 subtitle = "密码手机邮箱微信绑定状态",
+                index = 1,
+                count = 2,
                 onClick = onOpenSecurity
             )
         }
@@ -1205,41 +1223,35 @@ private fun SettingsAccountSecurityDetail(
                 }
             }
         } else {
-            items(state.bindings(), key = { it.title }, contentType = { "binding" }) { binding ->
-                ElevatedCard(
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                text = binding.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        supportingContent = {
-                            Text(
-                                text = binding.statusText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                imageVector = Icons.Filled.AccountCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
-                }
+            val bindings = state.bindings()
+            items(bindings.size, key = { bindings[it].title }, contentType = { "binding" }) { index ->
+                val binding = bindings[index]
+                SegmentedListItem(
+                    shapes = ListItemDefaults.segmentedShapes(index = index, count = bindings.size),
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Filled.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = binding.statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    content = {
+                        Text(
+                            text = binding.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                )
             }
         }
     }
@@ -1261,50 +1273,60 @@ private fun SettingsMenuItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    index: Int,
+    count: Int,
     onClick: (() -> Unit)? = null
 ) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
-        trailingContent = {
-            if (onClick != null) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            }
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ExpressiveTokens.CardShape)
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
-    )
+    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
+    val label: @Composable () -> Unit = {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+    val supporting: @Composable () -> Unit = {
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    val leading: @Composable () -> Unit = {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+    }
+    val trailing: @Composable () -> Unit = {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.outline
+        )
+    }
+    val click = onClick
+    if (click != null) {
+        SegmentedListItem(
+            onClick = click,
+            shapes = shapes,
+            leadingContent = leading,
+            trailingContent = trailing,
+            supportingContent = supporting,
+            content = label
+        )
+    } else {
+        SegmentedListItem(
+            shapes = shapes,
+            leadingContent = leading,
+            supportingContent = supporting,
+            content = label
+        )
+    }
 }
 
 @Composable
@@ -1313,24 +1335,14 @@ private fun SettingsSwitchItem(
     title: String,
     subtitle: String,
     checked: Boolean,
+    index: Int,
+    count: Int,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
+    SegmentedListItem(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
         leadingContent = {
             Icon(
                 imageVector = icon,
@@ -1342,19 +1354,28 @@ private fun SettingsSwitchItem(
         trailingContent = {
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary
                 )
             )
         },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
+        supportingContent = {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        content = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     )
 }
 

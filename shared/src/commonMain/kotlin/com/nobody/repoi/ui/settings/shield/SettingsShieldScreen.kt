@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.settings.shield
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +24,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -73,6 +73,8 @@ fun SettingsShieldContent(
                 subtitle = if (state.isLoading) "正在读取…" else if (state.nsfwVisible) "显示" else "不显示",
                 checked = state.nsfwVisible,
                 enabled = !state.isLoading && !state.isSaving,
+                index = 0,
+                count = 3,
                 onCheckedChange = { shieldViewModel.setNsfwVisible(it) }
             )
         }
@@ -81,6 +83,8 @@ fun SettingsShieldContent(
                 icon = Icons.Filled.Block,
                 title = "屏蔽列表",
                 subtitle = "用户 / 厂商 / 条目",
+                index = 1,
+                count = 3,
                 onClick = onOpenShieldList
             )
         }
@@ -89,6 +93,8 @@ fun SettingsShieldContent(
                 icon = Icons.Filled.Block,
                 title = "黑名单",
                 subtitle = "被屏蔽的用户将无法向您发送私信",
+                index = 2,
+                count = 3,
                 onClick = onOpenBlocklist
             )
         }
@@ -102,55 +108,51 @@ private fun ShieldSwitchCard(
     subtitle: String,
     checked: Boolean,
     enabled: Boolean,
+    index: Int,
+    count: Int,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+    SegmentedListItem(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        enabled = enabled,
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        trailingContent = {
+            if (!enabled) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            else Switch(
+                checked = checked,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
                 )
-            },
-            supportingContent = {
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            leadingContent = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            trailingContent = {
-                if (!enabled) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                else Switch(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { onCheckedChange(!checked) }
-        )
-    }
+            )
+        },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        content = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    )
 }
 
 @Composable
@@ -158,52 +160,46 @@ private fun ShieldMenuCard(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    index: Int,
+    count: Int,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            leadingContent = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            trailingContent = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-        )
-    }
+    SegmentedListItem(
+        onClick = onClick,
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.outline
+            )
+        },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        content = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    )
 }
 
 @Composable
