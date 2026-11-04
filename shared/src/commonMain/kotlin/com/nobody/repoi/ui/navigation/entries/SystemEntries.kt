@@ -4,8 +4,6 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.ui.login.LoginScreen
-import com.nobody.repoi.ui.navigation.navigateToMessageBlock
-import com.nobody.repoi.ui.navigation.navigateToSettingsShieldList
 import com.nobody.repoi.ui.settings.SettingsScreen
 
 /**
