@@ -23,12 +23,15 @@ import org.koin.dsl.module
  *（PodAura `PodAuraImage` 同形；gif/video 解码器不在本模块依赖内，android 实际为空实现）。
  */
 val imageModule = module {
-    single<ImageLoader> {
-        val diskCacheInstance = DiskCache.Builder()
+    single<DiskCache> {
+        DiskCache.Builder()
             .directory(cacheDirPath().toPath().resolve("image_cache"))
             .maxSizeBytes(250L * 1024L * 1024L)
             .build()
+    }
 
+    single<ImageLoader> {
+        val diskCacheInstance = get<DiskCache>()
         ImageLoader.Builder(platformCoilContext()).components {
             add(CorruptCacheRecoveryInterceptor(diskCacheInstance))
             add(SvgDecoder.Factory())
