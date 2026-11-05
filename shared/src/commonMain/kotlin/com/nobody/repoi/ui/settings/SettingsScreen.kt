@@ -188,10 +188,8 @@ fun SettingsScreen(
         }
     }
 
-    if (!wide) {
-        PoiShelfBackHandler(enabled = subPage.isNotEmpty() || narrowGroup.isNotEmpty()) {
-            if (subPage.isNotEmpty()) subPage = "" else narrowGroup = ""
-        }
+    PoiShelfBackHandler(enabled = subPage.isNotEmpty() || (!wide && narrowGroup.isNotEmpty())) {
+        if (subPage.isNotEmpty()) subPage = "" else narrowGroup = ""
     }
 
     Scaffold(
@@ -208,7 +206,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (!wide && subPage.isNotEmpty()) subPage = ""
+                        if (subPage.isNotEmpty()) subPage = ""
                         else if (!wide && narrowGroup.isNotEmpty()) narrowGroup = ""
                         else onBack()
                     }) {
@@ -236,6 +234,7 @@ fun SettingsScreen(
                     isLoggedIn = profileState.isLoggedIn,
                     onSelectGroup = {
                         selectedGroup = it.name
+                        narrowGroup = it.name
                         subPage = ""
                     },
                     onRequestLogout = { showLogoutConfirmDialog = true },
@@ -263,11 +262,12 @@ fun SettingsScreen(
                         onExportLog = onExportLog,
                         onOpenCache = { subPage = "cache" },
                         onOpenAbout = { subPage = "about" },
-                        onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
+                        onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") } },
                         onOpenSecurity = { subPage = "security" },
                         onOpenShieldList = onOpenShieldList,
                         onOpenBlocklist = onOpenBlocklist,
                         onClearCache = { cacheViewModel.clearCache() },
+                        onConsumeCacheMessage = { cacheViewModel.consumeMessage() },
                         onRefreshAccount = { accountViewModel.refresh() },
                     )
                 }
@@ -278,6 +278,7 @@ fun SettingsScreen(
                 subPage == "cache" -> SettingsCacheDetail(
                     state = cacheState,
                     onClearCache = { cacheViewModel.clearCache() },
+                    onConsumeMessage = { cacheViewModel.consumeMessage() },
                     modifier = Modifier.padding(innerPadding)
                 )
                 subPage == "about" -> SettingsAboutDetail(
@@ -308,11 +309,12 @@ fun SettingsScreen(
                     onExportLog = onExportLog,
                     onOpenCache = { subPage = "cache" },
                     onOpenAbout = { subPage = "about" },
-                    onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) },
+                    onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") } },
                     onOpenSecurity = { subPage = "security" },
                     onOpenShieldList = onOpenShieldList,
                     onOpenBlocklist = onOpenBlocklist,
                     onClearCache = { cacheViewModel.clearCache() },
+                    onConsumeCacheMessage = { cacheViewModel.consumeMessage() },
                     onRefreshAccount = { accountViewModel.refresh() },
                     modifier = Modifier.padding(innerPadding)
                 )
@@ -436,6 +438,7 @@ private fun SettingsDetailPane(
     onOpenShieldList: () -> Unit = {},
     onOpenBlocklist: () -> Unit = {},
     onClearCache: () -> Unit,
+    onConsumeCacheMessage: () -> Unit,
     onRefreshAccount: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -444,6 +447,7 @@ private fun SettingsDetailPane(
         group == SettingsGroup.General && subPage == "cache" -> SettingsCacheDetail(
             state = cacheState,
             onClearCache = onClearCache,
+            onConsumeMessage = onConsumeCacheMessage,
             modifier = Modifier.fillMaxSize()
         )
         group == SettingsGroup.General && subPage == "about" -> SettingsAboutDetail(
@@ -547,12 +551,16 @@ private fun SettingsGeneralContent(
 private fun SettingsCacheDetail(
     state: SettingsCacheUiState,
     onClearCache: () -> Unit,
+    onConsumeMessage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showConfirm by rememberSaveable { mutableStateOf(false) }
     val appMessages = LocalAppMessages.current
     LaunchedEffect(state.actionMessage) {
-        state.actionMessage?.let { appMessages.show(it) }
+        state.actionMessage?.let {
+            appMessages.show(it)
+            onConsumeMessage()
+        }
     }
     if (showConfirm) {
         AlertDialog(
@@ -837,7 +845,7 @@ private fun ThemeSeedDot(
                     drawCircle(color = Color.Black.copy(alpha = 0.25f))
                 }
                 Icon(
-                    imageVector = Icons.Filled.Info,
+                    imageVector = Icons.Filled.Check,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -1296,6 +1304,7 @@ private fun SettingsMenuItem(
         SegmentedListItem(
             onClick = {},
             shapes = shapes,
+            enabled = false,
             colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             leadingContent = leading,
             supportingContent = supporting,

@@ -52,8 +52,17 @@ class SettingsShieldViewModel(
 
     fun setNsfwVisible(visible: Boolean) {
         val previous = _uiState.value.nsfwVisible
+        var started = false
+        _uiState.update {
+            if (it.isSaving) {
+                it
+            } else {
+                started = true
+                it.copy(nsfwVisible = visible, isSaving = true, errorMessage = null)
+            }
+        }
+        if (!started) return
         viewModelScope.launch {
-            _uiState.update { it.copy(nsfwVisible = visible, isSaving = true, errorMessage = null) }
             settingsRepository.updateMysqlSetting("setting_r18", if (visible) 2 else 1)
                 .onSuccess {
                     _uiState.update { it.copy(isSaving = false) }

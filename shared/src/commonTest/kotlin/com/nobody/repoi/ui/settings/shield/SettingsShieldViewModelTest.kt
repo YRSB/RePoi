@@ -156,4 +156,23 @@ class SettingsShieldViewModelTest {
 
         assertNull(viewModel.uiState.value.errorMessage)
     }
+
+    @Test
+    fun setNsfwVisible_concurrentToggleSecondWriteIgnored() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":1}}"""))
+        mock.route("api/setting/mysql/upd", mock.ok("{}"))
+
+        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        advanceUntilIdle()
+        mock.takeRequest()
+
+        viewModel.setNsfwVisible(true)
+        viewModel.setNsfwVisible(false)
+        advanceUntilIdle()
+
+        assertEquals(1, mock.requestCount)
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+        assertFalse(viewModel.uiState.value.isSaving)
+    }
 }

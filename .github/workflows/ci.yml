@@ -45,7 +45,7 @@ jobs:
           {
             echo "## 首个失败"
             echo '```'
-            grep -m5 -E " e: |FAILED" test-output.log || echo "(未能提取错误行)"
+            grep -m5 -E "e: |FAILED" test-output.log || echo "(未能提取错误行)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

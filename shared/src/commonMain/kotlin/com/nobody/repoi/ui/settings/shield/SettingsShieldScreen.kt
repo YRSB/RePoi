@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.settings.shield
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
@@ -19,15 +21,20 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -213,6 +220,12 @@ private fun ShieldMenuCard(
     )
 }
 
+private fun ShieldListTab.unblockConfirmText(targetName: String): String = when (this) {
+    ShieldListTab.User -> "确定取消屏蔽用户「$targetName」吗？取消后将会查看到对方动态"
+    ShieldListTab.Vendor -> "确定取消屏蔽厂商「$targetName」吗？取消后其周边将重新在首页展示"
+    ShieldListTab.Entry -> "确定取消屏蔽条目「$targetName」吗？取消后其动态将重新在首页展示"
+}
+
 @Composable
 fun SettingsShieldListContent(
     onBack: () -> Unit = {},
@@ -228,12 +241,15 @@ fun SettingsShieldListContent(
         }
     }
     state.unblockTarget?.let { target ->
+        val targetName = target.name?.ifBlank { null }
+            ?: target.title?.ifBlank { null }
+            ?: "ID:${target.id}"
         AlertDialog(
             onDismissRequest = { listViewModel.dismissUnblockDialog() },
             title = { Text(text = "取消屏蔽", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    text = "取消屏蔽后，将会查看到对方动态",
+                    text = state.tab.unblockConfirmText(targetName),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
@@ -252,14 +268,39 @@ fun SettingsShieldListContent(
             }
         )
     }
-    Column(modifier = modifier.fillMaxSize()) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "屏蔽列表",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ShieldListTab.entries.forEach { tab ->
                 val selected = tab == state.tab
-                androidx.compose.material3.FilterChip(
+                FilterChip(
                     selected = selected,
                     onClick = { listViewModel.switchTab(tab) },
                     label = { Text(tab.title) }
@@ -272,6 +313,26 @@ fun SettingsShieldListContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator()
+            }
+        } else if (state.loadFailed) {
+            ElevatedCard(
+                onClick = { listViewModel.retry() },
+                shape = ExpressiveTokens.CardShape,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "屏蔽列表加载失败，点击重试",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         } else if (state.items.isEmpty()) {
             Row(
@@ -336,6 +397,7 @@ fun SettingsShieldListContent(
                     }
                 }
             }
+        }
         }
     }
 }

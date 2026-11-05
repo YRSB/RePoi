@@ -51,11 +51,11 @@ class SettingsPrivacyViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val mysql = repository.getMysqlSettings()
             val riak = repository.getRiakSettings()
-            val merged = mutableMapOf<String, Int>()
-            mysql.onSuccess { merged.putAll(it) }
-            riak.onSuccess { merged.putAll(it) }
             val failure = if (mysql.isFailure) mysql else riak
             _uiState.update {
+                val merged = it.values.toMutableMap()
+                mysql.onSuccess { merged.putAll(it) }
+                riak.onSuccess { merged.putAll(it) }
                 it.copy(
                     isLoading = false,
                     values = merged,
@@ -67,13 +67,20 @@ class SettingsPrivacyViewModel(
 
     fun setOption(key: String, value: Int) {
         val previous = _uiState.value.values[key]
+        var started = false
         _uiState.update {
-            it.copy(
-                values = it.values + (key to value),
-                savingKeys = it.savingKeys + key,
-                errorMessage = null
-            )
+            if (key in it.savingKeys) {
+                it
+            } else {
+                started = true
+                it.copy(
+                    values = it.values + (key to value),
+                    savingKeys = it.savingKeys + key,
+                    errorMessage = null
+                )
+            }
         }
+        if (!started) return
         viewModelScope.launch {
             val result = repository.updatePrivacySetting(key, value)
             _uiState.update {

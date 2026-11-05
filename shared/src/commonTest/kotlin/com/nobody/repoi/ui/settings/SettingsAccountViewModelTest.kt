@@ -69,6 +69,27 @@ class SettingsAccountViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertTrue(state.loadFailed)
+        assertEquals(1, mock.requestCount)
+    }
+
+    @Test
+    fun refresh_whenPrivacyFailsAfterSuccess_retainsMaskedContacts() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":true,"wechat":false}}"""))
+        mock.enqueue(mock.ok("""{"phone":"138****8000","email":"a****@x.com"}"""))
+        val viewModel = SettingsAccountViewModel(repository(mock))
+        advanceUntilIdle()
+        assertEquals("138****8000", viewModel.uiState.value.maskedPhone)
+
+        mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":true,"wechat":false}}"""))
+        mock.enqueue(mock.failure(500, "服务端异常"))
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.loadFailed)
+        assertEquals("138****8000", state.maskedPhone)
+        assertEquals("a****@x.com", state.maskedEmail)
     }
 
     @Test

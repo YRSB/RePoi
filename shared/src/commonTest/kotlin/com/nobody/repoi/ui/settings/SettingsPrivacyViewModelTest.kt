@@ -130,5 +130,42 @@ class SettingsPrivacyViewModelTest {
         assertEquals(1, state.values["setting_collect_hobby"])
         assertTrue(state.errorMessage?.isNotEmpty() == true)
     }
+
+    @Test
+    fun refresh_partialFailureAfterSuccessRetainsPreviousChannelValues() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
+        mock.route("api/setting/riak/get", mock.ok("""{"userState":{"setting_own_action":2}}"""))
+        val repository = SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
+        val vm = SettingsPrivacyViewModel(repository)
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.values["setting_own_action"])
+
+        mock.route("api/setting/mysql/get", mock.failure(500, "抖动"))
+        vm.refresh()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(1, state.values["setting_collect_hobby"])
+        assertEquals(2, state.values["setting_own_action"])
+        assertTrue(state.errorMessage?.isNotEmpty() == true)
+    }
+
+    @Test
+    fun setOption_concurrentSameKeySecondWriteIgnored() = runTest(testDispatcher) {
+        val (mock, _, vm) = viewModel()
+        advanceUntilIdle()
+        mock.takeRequest()
+        mock.takeRequest()
+        mock.route("api/setting/mysql/upd", mock.ok("{}"))
+
+        vm.setOption("setting_collect_hobby", 2)
+        vm.setOption("setting_collect_hobby", 0)
+        advanceUntilIdle()
+
+        assertEquals(1, mock.requestCount)
+        assertEquals(2, vm.uiState.value.values["setting_collect_hobby"])
+        assertTrue(vm.uiState.value.savingKeys.isEmpty())
+    }
 }
 

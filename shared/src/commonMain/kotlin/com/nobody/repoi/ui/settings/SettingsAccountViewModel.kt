@@ -49,11 +49,11 @@ class SettingsAccountViewModel(
         _uiState.update { it.copy(isLoading = true, loadFailed = false) }
         viewModelScope.launch {
             val check: AccountCheckResult? = settingsRepository.checkAccount().getOrNull()
-            val privacy: UserPrivacyPayload? = settingsRepository.getUserPrivacy().getOrNull()
             if (check == null) {
                 _uiState.update { it.copy(isLoading = false, loadFailed = true) }
                 return@launch
             }
+            val privacy: UserPrivacyPayload? = settingsRepository.getUserPrivacy().getOrNull()
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -62,8 +62,8 @@ class SettingsAccountViewModel(
                     phoneBound = check.phone,
                     emailBound = check.email,
                     wechatBound = check.wechat,
-                    maskedPhone = privacy?.phone.orEmpty(),
-                    maskedEmail = privacy?.email.orEmpty()
+                    maskedPhone = privacy?.phone ?: it.maskedPhone,
+                    maskedEmail = privacy?.email ?: it.maskedEmail
                 )
             }
         }

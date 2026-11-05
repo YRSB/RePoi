@@ -33,7 +33,7 @@ class SettingsCacheViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, actionMessage = null) }
+            _uiState.update { it.copy(isLoading = true) }
             val size = withContext(ioDispatcher) { runCatching { diskCache.size }.getOrDefault(-1L) }
             _uiState.update { it.copy(sizeBytes = size, isLoading = false) }
         }
@@ -43,7 +43,7 @@ class SettingsCacheViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isClearing = true, actionMessage = null) }
             val ok = withContext(ioDispatcher) { runCatching { diskCache.clear() }.isSuccess }
-            val size = withContext(ioDispatcher) { runCatching { diskCache.size }.getOrDefault(-1L) }
+            val size = withContext(ioDispatcher) { runCatching { diskCache.size }.getOrElse { if (ok) 0L else -1L } }
             _uiState.update {
                 it.copy(
                     sizeBytes = size,

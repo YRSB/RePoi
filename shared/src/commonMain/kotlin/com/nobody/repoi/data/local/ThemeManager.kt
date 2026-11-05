@@ -76,7 +76,7 @@ class ThemeManager(
     }
 
     val themeSeedFlow: Flow<ThemeSeed> = dataStore.data.map { prefs ->
-        prefs[THEME_SEED_KEY]?.let { runCatching { ThemeSeed.valueOf(it) }.getOrNull() }
+        prefs[THEME_SEED_KEY]?.let { runCatching { ThemeSeed.valueOf(it) }.getOrNull() }?.orAvailable()
             ?: defaultThemeSeed()
     }
 
@@ -99,7 +99,7 @@ class ThemeManager(
                     dynamicColor = it
                 }
                 prefs[THEME_SEED_KEY]?.let {
-                    runCatching { ThemeSeed.valueOf(it) }.getOrNull()?.let { seed -> themeSeed = seed }
+                    runCatching { ThemeSeed.valueOf(it) }.getOrNull()?.orAvailable()?.let { seed -> themeSeed = seed }
                 }
                 prefs[AMOLED_KEY]?.let {
                     amoled = it

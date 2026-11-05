@@ -101,6 +101,35 @@ class SettingsCacheViewModelTest {
     }
 
     @Test
+    fun refresh_preservesUnconsumedActionMessage() = runTest(testDispatcher) {
+        val cache = FakeDiskCache()
+        val viewModel = SettingsCacheViewModel(cache, testDispatcher)
+        advanceUntilIdle()
+        viewModel.clearCache()
+        advanceUntilIdle()
+        assertEquals("图片缓存已清理", viewModel.uiState.value.actionMessage)
+
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        assertEquals("图片缓存已清理", viewModel.uiState.value.actionMessage)
+    }
+
+    @Test
+    fun clearCache_whenSizeReadFailsAfterSuccess_reportsZero() = runTest(testDispatcher) {
+        val cache = object : DiskCache by FakeDiskCache() {
+            override val size: Long get() = throw IllegalStateException("stat")
+        }
+        val viewModel = SettingsCacheViewModel(cache, testDispatcher)
+        advanceUntilIdle()
+        viewModel.clearCache()
+        advanceUntilIdle()
+
+        assertEquals(0L, viewModel.uiState.value.sizeBytes)
+        assertEquals("图片缓存已清理", viewModel.uiState.value.actionMessage)
+    }
+
+    @Test
     fun upstreamClear_updatesExposedState() = runTest(testDispatcher) {
         val cache = FakeDiskCache()
         val viewModel = SettingsCacheViewModel(cache, testDispatcher)

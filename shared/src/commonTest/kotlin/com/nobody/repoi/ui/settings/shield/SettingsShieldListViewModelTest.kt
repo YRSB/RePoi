@@ -4,8 +4,10 @@ import com.nobody.repoi.data.remote.model.MaskItem
 import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -148,11 +150,69 @@ class SettingsShieldListViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isBlocking)
         assertNull(state.errorMessage)
-        val recorded = mock.takeRequest()
-        assertEquals("/api/mask/add", recorded.encodedPath)
-        assertEquals("9", recorded.formEntries()["itemNodeId"])
+        val add = mock.takeRequest()
+        assertEquals("/api/mask/add", add.encodedPath)
+        assertEquals("9", add.formEntries()["itemNodeId"])
+        val reload = mock.takeRequest()
+        assertEquals("/api/mask/list", reload.encodedPath)
+        assertEquals("user", reload.formEntries()["itemType"])
         assertEquals(listOf(1L, 2L), state.items.map { it.id })
     }
+
+    @Test
+    fun switchTab_staleSlowResponseDoesNotOverwriteCurrentTab() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val firstGate = CompletableDeferred<Unit>()
+        val secondGate = CompletableDeferred<Unit>()
+        var listCalls = 0
+        mock.routeWhen(
+            predicate = { path, _, _ -> path.contains("api/mask/list") },
+            body = { _, form, _ ->
+                listCalls += 1
+                when (listCalls) {
+                    2 -> runBlocking { firstGate.await() }
+                    3 -> runBlocking { secondGate.await() }
+                }
+                when (form["itemType"]) {
+                    "company" -> listBody(listOf(3L to "厂商3"))
+                    else -> listBody(listOf(1L to "用户1", 2L to "用户2"))
+                }
+            }
+        )
+        val viewModel = SettingsShieldListViewModel(repositoryOf(mock))
+        advanceUntilIdle()
+
+        viewModel.switchTab(ShieldListTab.Vendor)
+        viewModel.switchTab(ShieldListTab.User)
+        secondGate.complete(Unit)
+        advanceUntilIdle()
+        firstGate.complete(Unit)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ShieldListTab.User, state.tab)
+        assertEquals(listOf(1L, 2L), state.items.map { it.id })
+    }
+
+    @Test
+    fun loadTab_failureSetsLoadFailedAndRetryRecovers() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/mask/list", mock.failure(500, "网络异常"))
+        val viewModel = SettingsShieldListViewModel(repositoryOf(mock))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.loadFailed)
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+
+        mock.route("api/mask/list", listBody(listOf(1L to "用户1")))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.loadFailed)
+        assertEquals(listOf(1L), state.items.map { it.id })
+    }
+
 
     @Test
     fun block_failureKeepsListAndSetsError() = runTest(testDispatcher) {

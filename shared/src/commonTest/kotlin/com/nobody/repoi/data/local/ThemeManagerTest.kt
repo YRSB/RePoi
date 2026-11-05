@@ -1,5 +1,8 @@
 package com.nobody.repoi.data.local
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nobody.repoi.platform.isDynamicSeedAvailable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -78,12 +81,18 @@ class ThemeManagerTest {
 
     @Test
     fun unknownSeedName_fallsBackToDefault() = runTest {
-        val manager = manager()
-        manager.themeSeedFlow.first()
-        manager.setThemeSeed(ThemeSeed.Grape)
-        manager.setThemeMode(ThemeMode.DARK)
+        val dataStore = TestDataStore.themePrefs()
+        dataStore.edit { prefs -> prefs[stringPreferencesKey("app_theme_seed")] = "NotASeed" }
+        val manager = ThemeManager(dataStore)
 
-        assertEquals(ThemeSeed.Grape, manager.themeSeedFlow.first())
-        assertEquals(ThemeMode.DARK, manager.themeModeFlow.first())
+        val expected = if (isDynamicSeedAvailable) ThemeSeed.Dynamic else ThemeSeed.Pink
+        assertEquals(expected, manager.themeSeedFlow.first())
+    }
+
+    @Test
+    fun dynamicSeed_orAvailableRespectsPlatform() {
+        val expected = if (isDynamicSeedAvailable) ThemeSeed.Dynamic else ThemeSeed.Pink
+        assertEquals(expected, ThemeSeed.Dynamic.orAvailable())
+        assertEquals(ThemeSeed.Amber, ThemeSeed.Amber.orAvailable())
     }
 }
