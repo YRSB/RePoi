@@ -7,7 +7,6 @@ import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -162,17 +161,13 @@ class SettingsShieldListViewModelTest {
     @Test
     fun switchTab_staleSlowResponseDoesNotOverwriteCurrentTab() = runTest(testDispatcher) {
         val mock = MockApi()
-        val firstGate = CompletableDeferred<Unit>()
-        val secondGate = CompletableDeferred<Unit>()
+        val vendorGate = CompletableDeferred<Unit>()
         var listCalls = 0
-        mock.routeWhen(
+        mock.routeWhenSuspend(
             predicate = { path, _, _ -> path.contains("api/mask/list") },
             body = { _, form, _ ->
                 listCalls += 1
-                when (listCalls) {
-                    2 -> runBlocking { firstGate.await() }
-                    3 -> runBlocking { secondGate.await() }
-                }
+                if (form["itemType"] == "company") vendorGate.await()
                 when (form["itemType"]) {
                     "company" -> listBody(listOf(3L to "厂商3"))
                     else -> listBody(listOf(1L to "用户1", 2L to "用户2"))
@@ -181,12 +176,19 @@ class SettingsShieldListViewModelTest {
         )
         val viewModel = SettingsShieldListViewModel(repositoryOf(mock))
         advanceUntilIdle()
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.items.map { it.id })
 
         viewModel.switchTab(ShieldListTab.Vendor)
-        viewModel.switchTab(ShieldListTab.User)
-        secondGate.complete(Unit)
         advanceUntilIdle()
-        firstGate.complete(Unit)
+        assertEquals(ShieldListTab.Vendor, viewModel.uiState.value.tab)
+        assertTrue(viewModel.uiState.value.isLoading)
+
+        viewModel.switchTab(ShieldListTab.User)
+        advanceUntilIdle()
+        assertEquals(ShieldListTab.User, viewModel.uiState.value.tab)
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.items.map { it.id })
+
+        vendorGate.complete(Unit)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -204,7 +206,7 @@ class SettingsShieldListViewModelTest {
         assertTrue(viewModel.uiState.value.loadFailed)
         assertTrue(viewModel.uiState.value.items.isEmpty())
 
-        mock.route("api/mask/list", listBody(listOf(1L to "用户1")))
+        mock.replaceRoute("api/mask/list", listBody(listOf(1L to "用户1")))
         viewModel.retry()
         advanceUntilIdle()
 
