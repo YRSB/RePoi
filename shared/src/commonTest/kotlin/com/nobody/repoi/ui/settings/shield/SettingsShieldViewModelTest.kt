@@ -4,6 +4,7 @@ import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -161,7 +162,11 @@ class SettingsShieldViewModelTest {
     fun setNsfwVisible_concurrentToggleSecondWriteIgnored() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":1}}"""))
-        mock.route("api/setting/mysql/upd", mock.ok("{}"))
+        val gate = CompletableDeferred<Unit>()
+        mock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/setting/mysql/upd") },
+            body = { _, _, _ -> gate.await(); "{}" }
+        )
 
         val viewModel = SettingsShieldViewModel(repositoryOf(mock))
         advanceUntilIdle()
@@ -169,9 +174,14 @@ class SettingsShieldViewModelTest {
 
         viewModel.setNsfwVisible(true)
         viewModel.setNsfwVisible(false)
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+
+        gate.complete(Unit)
         advanceUntilIdle()
 
-        assertEquals(1, mock.requestCount)
+        val recorded = mock.takeRequest()
+        assertEquals("2", recorded.formEntries()["val"])
+        assertEquals(0, mock.requestCount)
         assertTrue(viewModel.uiState.value.nsfwVisible)
         assertFalse(viewModel.uiState.value.isSaving)
     }

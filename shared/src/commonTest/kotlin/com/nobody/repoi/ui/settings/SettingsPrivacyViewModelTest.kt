@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.settings
 import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -141,7 +142,7 @@ class SettingsPrivacyViewModelTest {
         advanceUntilIdle()
         assertEquals(2, vm.uiState.value.values["setting_own_action"])
 
-        mock.route("api/setting/mysql/get", mock.failure(500, "抖动"))
+        mock.replaceRoute("api/setting/mysql/get", mock.failure(500, "抖动"))
         vm.refresh()
         advanceUntilIdle()
 
@@ -157,13 +158,23 @@ class SettingsPrivacyViewModelTest {
         advanceUntilIdle()
         mock.takeRequest()
         mock.takeRequest()
-        mock.route("api/setting/mysql/upd", mock.ok("{}"))
+        val gate = CompletableDeferred<Unit>()
+        mock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/setting/mysql/upd") },
+            body = { _, _, _ -> gate.await(); "{}" }
+        )
 
         vm.setOption("setting_collect_hobby", 2)
         vm.setOption("setting_collect_hobby", 0)
+        assertEquals(2, vm.uiState.value.values["setting_collect_hobby"])
+
+        gate.complete(Unit)
         advanceUntilIdle()
 
-        assertEquals(1, mock.requestCount)
+        val recorded = mock.takeRequest()
+        assertEquals("/api/setting/mysql/upd", recorded.encodedPath)
+        assertEquals("2", recorded.formEntries()["val"])
+        assertEquals(0, mock.requestCount)
         assertEquals(2, vm.uiState.value.values["setting_collect_hobby"])
         assertTrue(vm.uiState.value.savingKeys.isEmpty())
     }
