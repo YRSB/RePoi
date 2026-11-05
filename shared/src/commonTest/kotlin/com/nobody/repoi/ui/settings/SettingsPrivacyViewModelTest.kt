@@ -161,7 +161,7 @@ class SettingsPrivacyViewModelTest {
         val gate = CompletableDeferred<Unit>()
         mock.routeWhenSuspend(
             predicate = { path, _, _ -> path.contains("api/setting/mysql/upd") },
-            body = { _, _, _ -> gate.await(); "{}" }
+            body = { _, _, _ -> gate.await(); mock.ok("{}") }
         )
 
         vm.setOption("setting_collect_hobby", 2)
