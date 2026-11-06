@@ -18,8 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NightsStay
@@ -29,21 +31,22 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -65,23 +68,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.material3.Surface
-import androidx.compose.material3.RadioButton
-import androidx.compose.material.icons.filled.Close
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.orAvailable
-import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.PoiShelfBackHandler
+import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.shareLogFile
 import com.nobody.repoi.platform.supportsDynamicColor
 import com.nobody.repoi.ui.profile.ProfileViewModel
-import com.nobody.repoi.ui.settings.shield.SettingsShieldContent
+import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
+import com.nobody.repoi.ui.settings.shield.SettingsShieldUiState
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
@@ -91,10 +92,10 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private enum class SettingsGroup(val title: String, val icon: ImageVector) {
-    Account("账号", Icons.Filled.Lock),
-    Privacy("隐私", Icons.Filled.Shield),
+    Appearance("外观", Icons.Filled.Palette),
+    Content("内容", Icons.Filled.Shield),
     General("通用", Icons.Filled.Tune),
-    Repoi("RePoi", Icons.Filled.Palette)
+    Account("账号", Icons.Filled.Person)
 }
 
 private fun formatBytes(bytes: Long): String {
@@ -118,7 +119,8 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = koinViewModel(),
     cacheViewModel: SettingsCacheViewModel = koinViewModel(),
     privacyViewModel: SettingsPrivacyViewModel = koinViewModel(),
-    accountViewModel: SettingsAccountViewModel = koinViewModel()
+    accountViewModel: SettingsAccountViewModel = koinViewModel(),
+    shieldViewModel: SettingsShieldViewModel = koinViewModel()
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
@@ -129,17 +131,37 @@ fun SettingsScreen(
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
     val accountState by accountViewModel.uiState.collectAsStateWithLifecycle()
+    val shieldState by shieldViewModel.uiState.collectAsStateWithLifecycle()
+
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
+
     val onThemeModeChange: (ThemeMode) -> Unit = { mode -> scope.launch { themeManager.setThemeMode(mode) } }
     val onDynamicColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setDynamicColor(enabled) } }
     val onThemeSeedChange: (ThemeSeed) -> Unit = { seed -> scope.launch { themeManager.setThemeSeed(seed) } }
     val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
-    var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.General.name) }
+
+    var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.Appearance.name) }
     var narrowGroup by rememberSaveable { mutableStateOf("") }
-    var subPage by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var showClearCacheConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
+
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
+
+    LaunchedEffect(cacheState.actionMessage) {
+        cacheState.actionMessage?.let {
+            appMessages.show(it)
+            cacheViewModel.consumeMessage()
+        }
+    }
+
+    LaunchedEffect(shieldState.errorMessage) {
+        shieldState.errorMessage?.let {
+            appMessages.show(it)
+            shieldViewModel.clearErrorMessage()
+        }
+    }
 
     if (showLogoutConfirmDialog) {
         AlertDialog(
@@ -176,6 +198,78 @@ fun SettingsScreen(
         )
     }
 
+    if (showClearCacheConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheConfirmDialog = false },
+            title = {
+                Text(
+                    text = "清理图片缓存",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "确定要清理全部图片缓存吗？当前已占用 ${formatBytes(cacheState.sizeBytes)}，清理后图片需要重新加载。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCacheConfirmDialog = false
+                        cacheViewModel.clearCache()
+                    }
+                ) {
+                    Text("清理", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheConfirmDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = {
+                Text(
+                    text = "关于 RePoi",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "RePoi 跨平台客户端",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "版本：${AppInfo.versionName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "基于 Kotlin Multiplatform 开发的 Hpoi 手办维基跨平台客户端，支持 Android 与 Windows Desktop 端。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text("确定", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
     val onExportLog: () -> Unit = {
         scope.launch {
             try {
@@ -188,8 +282,8 @@ fun SettingsScreen(
         }
     }
 
-    PoiShelfBackHandler(enabled = subPage.isNotEmpty() || (!wide && narrowGroup.isNotEmpty())) {
-        if (subPage.isNotEmpty()) subPage = "" else narrowGroup = ""
+    PoiShelfBackHandler(enabled = !wide && narrowGroup.isNotEmpty()) {
+        narrowGroup = ""
     }
 
     Scaffold(
@@ -197,8 +291,13 @@ fun SettingsScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
+                    val currentTitle = if (!wide && narrowGroup.isNotEmpty()) {
+                        runCatching { SettingsGroup.valueOf(narrowGroup).title + "设置" }.getOrDefault("系统设置")
+                    } else {
+                        "系统设置"
+                    }
                     Text(
-                        text = "系统设置",
+                        text = currentTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -206,8 +305,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (subPage.isNotEmpty()) subPage = ""
-                        else if (!wide && narrowGroup.isNotEmpty()) narrowGroup = ""
+                        if (!wide && narrowGroup.isNotEmpty()) narrowGroup = ""
                         else onBack()
                     }) {
                         Icon(
@@ -230,12 +328,11 @@ fun SettingsScreen(
                     .padding(innerPadding)
             ) {
                 SettingsGroupList(
-                    selectedGroup = SettingsGroup.valueOf(selectedGroup),
+                    selectedGroup = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance),
                     isLoggedIn = profileState.isLoggedIn,
                     onSelectGroup = {
                         selectedGroup = it.name
                         narrowGroup = it.name
-                        subPage = ""
                     },
                     onRequestLogout = { showLogoutConfirmDialog = true },
                     modifier = Modifier.fillMaxHeight().weight(0.38f)
@@ -243,87 +340,79 @@ fun SettingsScreen(
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Box(modifier = Modifier.fillMaxHeight().weight(0.62f)) {
                     SettingsDetailPane(
-                        group = SettingsGroup.valueOf(selectedGroup),
-                        subPage = subPage,
+                        group = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance),
+                        isLoggedIn = profileState.isLoggedIn,
                         themeMode = themeMode,
                         dynamicColor = dynamicColor,
                         themeSeed = themeSeed,
                         amoled = amoled,
                         isExHobbyEnabled = isExHobbyEnabled,
+                        shieldState = shieldState,
                         cacheState = cacheState,
                         privacyState = privacyState,
                         accountState = accountState,
-                        onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
                         onThemeSeedChange = onThemeSeedChange,
                         onAmoledChange = onAmoledChange,
                         onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
-                        onExportLog = onExportLog,
-                        onOpenCache = { subPage = "cache" },
-                        onOpenAbout = { subPage = "about" },
-                        onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") } },
-                        onOpenSecurity = { subPage = "security" },
+                        onNsfwChange = { shieldViewModel.setNsfwVisible(it) },
+                        onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onOpenShieldList = onOpenShieldList,
                         onOpenBlocklist = onOpenBlocklist,
-                        onClearCache = { cacheViewModel.clearCache() },
-                        onConsumeCacheMessage = { cacheViewModel.consumeMessage() },
+                        onRequestClearCache = { showClearCacheConfirmDialog = true },
+                        onExportLog = onExportLog,
+                        onRequestAbout = { showAboutDialog = true },
+                        onOpenProfile = {
+                            val id = profileState.profile?.id ?: 0L
+                            if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") }
+                        },
                         onRefreshAccount = { accountViewModel.refresh() },
+                        onRequestLogout = { showLogoutConfirmDialog = true }
                     )
                 }
             }
         } else {
             val narrowSelected = narrowGroup.takeIf { it.isNotEmpty() }?.let { runCatching { SettingsGroup.valueOf(it) }.getOrNull() }
-            when {
-                subPage == "cache" -> SettingsCacheDetail(
-                    state = cacheState,
-                    onClearCache = { cacheViewModel.clearCache() },
-                    onConsumeMessage = { cacheViewModel.consumeMessage() },
-                    modifier = Modifier.padding(innerPadding)
-                )
-                subPage == "about" -> SettingsAboutDetail(
-                    modifier = Modifier.padding(innerPadding)
-                )
-                subPage == "security" -> SettingsAccountSecurityDetail(
-                    state = accountState,
-                    onRetry = { accountViewModel.refresh() },
-                    modifier = Modifier.padding(innerPadding)
-                )
-                narrowSelected != null -> SettingsDetailPane(
+            if (narrowSelected != null) {
+                SettingsDetailPane(
                     group = narrowSelected,
-                    subPage = "",
+                    isLoggedIn = profileState.isLoggedIn,
                     themeMode = themeMode,
                     dynamicColor = dynamicColor,
                     themeSeed = themeSeed,
                     amoled = amoled,
                     isExHobbyEnabled = isExHobbyEnabled,
+                    shieldState = shieldState,
                     cacheState = cacheState,
                     privacyState = privacyState,
                     accountState = accountState,
-                    onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onThemeSeedChange = onThemeSeedChange,
                     onAmoledChange = onAmoledChange,
                     onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
-                    onExportLog = onExportLog,
-                    onOpenCache = { subPage = "cache" },
-                    onOpenAbout = { subPage = "about" },
-                    onOpenProfile = { val id = profileState.profile?.id ?: 0L; if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") } },
-                    onOpenSecurity = { subPage = "security" },
+                    onNsfwChange = { shieldViewModel.setNsfwVisible(it) },
+                    onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                     onOpenShieldList = onOpenShieldList,
                     onOpenBlocklist = onOpenBlocklist,
-                    onClearCache = { cacheViewModel.clearCache() },
-                    onConsumeCacheMessage = { cacheViewModel.consumeMessage() },
+                    onRequestClearCache = { showClearCacheConfirmDialog = true },
+                    onExportLog = onExportLog,
+                    onRequestAbout = { showAboutDialog = true },
+                    onOpenProfile = {
+                        val id = profileState.profile?.id ?: 0L
+                        if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") }
+                    },
                     onRefreshAccount = { accountViewModel.refresh() },
+                    onRequestLogout = { showLogoutConfirmDialog = true },
                     modifier = Modifier.padding(innerPadding)
                 )
-                else -> SettingsGroupList(
+            } else {
+                SettingsGroupList(
                     selectedGroup = null,
                     isLoggedIn = profileState.isLoggedIn,
                     onSelectGroup = {
                         selectedGroup = it.name
-                        subPage = ""
                         narrowGroup = it.name
                     },
                     onRequestLogout = { showLogoutConfirmDialog = true },
@@ -415,291 +504,86 @@ private fun SettingsGroupList(
 @Composable
 private fun SettingsDetailPane(
     group: SettingsGroup,
-    subPage: String,
+    isLoggedIn: Boolean,
     themeMode: ThemeMode,
     dynamicColor: Boolean,
     themeSeed: ThemeSeed,
     amoled: Boolean,
     isExHobbyEnabled: Boolean,
+    shieldState: SettingsShieldUiState,
     cacheState: SettingsCacheUiState,
     privacyState: SettingsPrivacyUiState,
     accountState: SettingsAccountSecurityUiState,
-    onPrivacyOptionChange: (String, Int) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
+    onNsfwChange: (Boolean) -> Unit,
+    onPrivacyOptionChange: (String, Int) -> Unit,
+    onOpenShieldList: () -> Unit,
+    onOpenBlocklist: () -> Unit,
+    onRequestClearCache: () -> Unit,
     onExportLog: () -> Unit,
-    onOpenCache: () -> Unit,
-    onOpenAbout: () -> Unit,
+    onRequestAbout: () -> Unit,
     onOpenProfile: () -> Unit,
-    onOpenSecurity: () -> Unit,
-    onOpenShieldList: () -> Unit = {},
-    onOpenBlocklist: () -> Unit = {},
-    onClearCache: () -> Unit,
-    onConsumeCacheMessage: () -> Unit,
     onRefreshAccount: () -> Unit,
+    onRequestLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-    when {
-        group == SettingsGroup.General && subPage == "cache" -> SettingsCacheDetail(
-            state = cacheState,
-            onClearCache = onClearCache,
-            onConsumeMessage = onConsumeCacheMessage,
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.General && subPage == "about" -> SettingsAboutDetail(
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.General -> SettingsGeneralContent(
-            cacheState = cacheState,
-            onOpenCache = onOpenCache,
-            onExportLog = onExportLog,
-            onOpenAbout = onOpenAbout,
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.Privacy -> SettingsPrivacyAndShieldContent(
-            privacyState = privacyState,
-            onPrivacyOptionChange = onPrivacyOptionChange,
-            onOpenShieldList = onOpenShieldList,
-            onOpenBlocklist = onOpenBlocklist,
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.Repoi -> SettingsRepoiContent(
-            themeMode = themeMode,
-            dynamicColor = dynamicColor,
-            themeSeed = themeSeed,
-            amoled = amoled,
-            isExHobbyEnabled = isExHobbyEnabled,
-            onThemeModeChange = onThemeModeChange,
-            onDynamicColorChange = onDynamicColorChange,
-            onThemeSeedChange = onThemeSeedChange,
-            onAmoledChange = onAmoledChange,
-            onExHobbyEnabledChange = onExHobbyEnabledChange,
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.Account && subPage == "security" -> SettingsAccountSecurityDetail(
-            state = accountState,
-            onRetry = onRefreshAccount,
-            modifier = Modifier.fillMaxSize()
-        )
-        group == SettingsGroup.Account -> SettingsAccountContent(
-            onOpenProfile = onOpenProfile,
-            onOpenSecurity = onOpenSecurity,
-            modifier = Modifier.fillMaxSize()
-        )
-        else -> SettingsPlaceholderContent(
-            title = group.title,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
-    }
-}
-
-@Composable
-private fun SettingsGeneralContent(
-    cacheState: SettingsCacheUiState,
-    onOpenCache: () -> Unit,
-    onExportLog: () -> Unit,
-    onOpenAbout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-    ) {
-        item(key = "cache", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.CleaningServices,
-                title = "清理图片缓存",
-                subtitle = if (cacheState.isLoading) "正在统计…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
-                index = 0,
-                count = 3,
-                onClick = onOpenCache
+        when (group) {
+            SettingsGroup.Appearance -> SettingsAppearanceContent(
+                themeMode = themeMode,
+                dynamicColor = dynamicColor,
+                themeSeed = themeSeed,
+                amoled = amoled,
+                onThemeModeChange = onThemeModeChange,
+                onDynamicColorChange = onDynamicColorChange,
+                onThemeSeedChange = onThemeSeedChange,
+                onAmoledChange = onAmoledChange,
+                modifier = Modifier.fillMaxSize()
             )
-        }
-        item(key = "export", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Share,
-                title = "导出应用日志",
-                subtitle = "打包近期运行日志并分享便于排查问题",
-                index = 1,
-                count = 3,
-                onClick = onExportLog
+            SettingsGroup.Content -> SettingsContentContent(
+                shieldState = shieldState,
+                isExHobbyEnabled = isExHobbyEnabled,
+                privacyState = privacyState,
+                onNsfwChange = onNsfwChange,
+                onExHobbyEnabledChange = onExHobbyEnabledChange,
+                onOpenShieldList = onOpenShieldList,
+                onOpenBlocklist = onOpenBlocklist,
+                onPrivacyOptionChange = onPrivacyOptionChange,
+                modifier = Modifier.fillMaxSize()
             )
-        }
-        item(key = "about", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Info,
-                title = "关于 RePoi",
-                subtitle = "版本 ${AppInfo.versionName}",
-                index = 2,
-                count = 3,
-                onClick = onOpenAbout
+            SettingsGroup.General -> SettingsGeneralContent(
+                cacheState = cacheState,
+                onRequestClearCache = onRequestClearCache,
+                onExportLog = onExportLog,
+                onRequestAbout = onRequestAbout,
+                modifier = Modifier.fillMaxSize()
+            )
+            SettingsGroup.Account -> SettingsAccountContent(
+                isLoggedIn = isLoggedIn,
+                state = accountState,
+                onOpenProfile = onOpenProfile,
+                onRefreshAccount = onRefreshAccount,
+                onRequestLogout = onRequestLogout,
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
 }
 
 @Composable
-private fun SettingsCacheDetail(
-    state: SettingsCacheUiState,
-    onClearCache: () -> Unit,
-    onConsumeMessage: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showConfirm by rememberSaveable { mutableStateOf(false) }
-    val appMessages = LocalAppMessages.current
-    LaunchedEffect(state.actionMessage) {
-        state.actionMessage?.let {
-            appMessages.show(it)
-            onConsumeMessage()
-        }
-    }
-    if (showConfirm) {
-        AlertDialog(
-            onDismissRequest = { showConfirm = false },
-            title = {
-                Text(
-                    text = "清理图片缓存",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Text(
-                    text = "确定要清理全部图片缓存吗？清理后图片需要重新加载。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showConfirm = false
-                        onClearCache()
-                    }
-                ) {
-                    Text("清理", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirm = false }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item(key = "occupancy", contentType = "row") {
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.CleaningServices,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "图片缓存占用",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (state.isLoading) "正在统计…" else formatBytes(state.sizeBytes),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (state.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-            }
-        }
-        item(key = "clear", contentType = "action") {
-            ElevatedCard(
-                onClick = { if (!state.isClearing) showConfirm = true },
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (state.isClearing) "清理中…" else "一键清理",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsAboutDetail(modifier: Modifier = Modifier) {
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item(key = "version", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Info,
-                title = "RePoi",
-                subtitle = "版本 ${AppInfo.versionName}",
-                index = 0,
-                count = 1
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsRepoiContent(
+private fun SettingsAppearanceContent(
     themeMode: ThemeMode,
     dynamicColor: Boolean,
     themeSeed: ThemeSeed,
     amoled: Boolean,
-    isExHobbyEnabled: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
-    onExHobbyEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val seeds = ThemeSeed.entries.filter { it == ThemeSeed.Dynamic && isDynamicSeedAvailable || it != ThemeSeed.Dynamic }
@@ -725,6 +609,7 @@ private fun SettingsRepoiContent(
             )
         }
         item(key = "switches", contentType = "segment") {
+            val count = if (supportsDynamicColor) 2 else 1
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
@@ -736,7 +621,7 @@ private fun SettingsRepoiContent(
                         subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
                         checked = dynamicColor,
                         index = 0,
-                        count = 3,
+                        count = count,
                         onCheckedChange = onDynamicColorChange
                     )
                 }
@@ -746,18 +631,469 @@ private fun SettingsRepoiContent(
                     subtitle = "深色模式下使用纯黑背景省电护眼",
                     checked = amoled,
                     index = if (supportsDynamicColor) 1 else 0,
-                    count = if (supportsDynamicColor) 3 else 2,
+                    count = count,
                     onCheckedChange = onAmoledChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsContentContent(
+    shieldState: SettingsShieldUiState,
+    isExHobbyEnabled: Boolean,
+    privacyState: SettingsPrivacyUiState,
+    onNsfwChange: (Boolean) -> Unit,
+    onExHobbyEnabledChange: (Boolean) -> Unit,
+    onOpenShieldList: () -> Unit,
+    onOpenBlocklist: () -> Unit,
+    onPrivacyOptionChange: (String, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var editingKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val visibilityOptions = listOf("所有人可见", "互相关注可见", "仅自己可见")
+    val strangerOptions = listOf("可随便私聊我", "只能私聊一次", "不能私聊我")
+    val editing = editingKey
+
+    if (editing != null) {
+        val isStranger = editing == PrivacySettingKeys.STRANGER_MESSAGE
+        val options = if (isStranger) strangerOptions else visibilityOptions
+        val current = privacyState.values[editing] ?: 0
+        Dialog(onDismissRequest = { editingKey = null }) {
+            Surface(
+                shape = ExpressiveTokens.CardShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = privacyTitle(editing),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { editingKey = null }) {
+                            Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
+                        }
+                    }
+                    options.forEachIndexed { index, label ->
+                        val selected = index == current
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clickable {
+                                    editingKey = null
+                                    onPrivacyOptionChange(editing, index)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            RadioButton(
+                                selected = selected,
+                                onClick = {
+                                    editingKey = null
+                                    onPrivacyOptionChange(editing, index)
+                                }
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "header-content", contentType = "header") {
+            Text(
+                text = "内容与扩展",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = "segment-content", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                SettingsSwitchItem(
+                    icon = Icons.Filled.Visibility,
+                    title = "R18 内容",
+                    subtitle = if (shieldState.isLoading) "正在读取…" else if (shieldState.nsfwVisible) "显示" else "不显示",
+                    checked = shieldState.nsfwVisible,
+                    index = 0,
+                    count = 2,
+                    onCheckedChange = { onNsfwChange(!shieldState.nsfwVisible) }
                 )
                 SettingsSwitchItem(
                     icon = Icons.Filled.PhotoLibrary,
                     title = "ExHobby 扩展图库",
                     subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
                     checked = isExHobbyEnabled,
-                    index = if (supportsDynamicColor) 2 else 1,
-                    count = if (supportsDynamicColor) 3 else 2,
+                    index = 1,
+                    count = 2,
                     onCheckedChange = onExHobbyEnabledChange
                 )
+            }
+        }
+
+        item(key = "header-shield", contentType = "header") {
+            Text(
+                text = "名单管理",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = "segment-shield", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                SettingsMenuItem(
+                    icon = Icons.Filled.Block,
+                    title = "屏蔽列表",
+                    subtitle = "用户 / 厂商 / 条目",
+                    index = 0,
+                    count = 2,
+                    onClick = onOpenShieldList
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Block,
+                    title = "黑名单",
+                    subtitle = "被屏蔽的用户将无法向您发送私信",
+                    index = 1,
+                    count = 2,
+                    onClick = onOpenBlocklist
+                )
+            }
+        }
+
+        item(key = "header-collect", contentType = "header") {
+            Text(
+                text = "收藏信息可见性",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = "segment-collect", contentType = "segment") {
+            if (privacyState.isLoading) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                ) {
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "周边条目(手办、动漫、模型、布偶、娃娃)",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
+                        index = 0,
+                        count = 4,
+                        onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
+                    )
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "收藏内容(相册、图片、文章)",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
+                        index = 1,
+                        count = 4,
+                        onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
+                    )
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "收藏统计(历史消费、入手数量、待补款等)",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
+                        index = 2,
+                        count = 4,
+                        onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
+                    )
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "其他内容(系列、厂商、角色、人物、作品)",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
+                        index = 3,
+                        count = 4,
+                        onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
+                    )
+                }
+            }
+        }
+
+        item(key = "header-other", contentType = "header") {
+            Text(
+                text = "动态与社交可见性",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = "segment-other", contentType = "segment") {
+            if (!privacyState.isLoading) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                ) {
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "个人主页动态",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
+                        index = 0,
+                        count = 3,
+                        onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
+                    )
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "关注、粉丝",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
+                        index = 1,
+                        count = 3,
+                        onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
+                    )
+                    SettingsMenuItem(
+                        icon = Icons.Filled.Shield,
+                        title = "讨论板个人主页",
+                        subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
+                        index = 2,
+                        count = 3,
+                        onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
+                    )
+                }
+            }
+        }
+
+        item(key = "header-message", contentType = "header") {
+            Text(
+                text = "私信设置",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
+            if (!privacyState.isLoading) {
+                SettingsMenuItem(
+                    icon = Icons.Filled.Shield,
+                    title = "陌生人私信设置",
+                    subtitle = strangerOptions.getOrElse(privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
+                    index = 0,
+                    count = 1,
+                    onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
+                )
+            }
+        }
+    }
+}
+
+private fun privacyTitle(key: String): String = when (key) {
+    PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
+    PrivacySettingKeys.COLLECT_ALBUM -> "收藏内容(相册、图片、文章)"
+    PrivacySettingKeys.COLLECT_STATISTICS -> "收藏统计(历史消费、入手数量、待补款等)"
+    PrivacySettingKeys.COLLECT_OTHER -> "其他内容(系列、厂商、角色、人物、作品)"
+    PrivacySettingKeys.OWN_ACTION -> "个人主页动态"
+    PrivacySettingKeys.PRIVACY_FRIEND -> "关注、粉丝"
+    PrivacySettingKeys.PRIVACY_POSTS -> "讨论板个人主页"
+    PrivacySettingKeys.STRANGER_MESSAGE -> "陌生人私信设置"
+    else -> "隐私设置"
+}
+
+@Composable
+private fun SettingsGeneralContent(
+    cacheState: SettingsCacheUiState,
+    onRequestClearCache: () -> Unit,
+    onExportLog: () -> Unit,
+    onRequestAbout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+    ) {
+        item(key = "cache", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.CleaningServices,
+                title = "清理图片缓存",
+                subtitle = if (cacheState.isLoading) "正在统计…" else if (cacheState.isClearing) "正在清理…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
+                index = 0,
+                count = 3,
+                onClick = onRequestClearCache
+            )
+        }
+        item(key = "export", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Share,
+                title = "导出应用日志",
+                subtitle = "打包近期运行日志并分享便于排查问题",
+                index = 1,
+                count = 3,
+                onClick = onExportLog
+            )
+        }
+        item(key = "about", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Info,
+                title = "关于 RePoi",
+                subtitle = "版本 ${AppInfo.versionName}",
+                index = 2,
+                count = 3,
+                onClick = onRequestAbout
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsAccountContent(
+    isLoggedIn: Boolean,
+    state: SettingsAccountSecurityUiState,
+    onOpenProfile: () -> Unit,
+    onRefreshAccount: () -> Unit,
+    onRequestLogout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "header-profile", contentType = "header") {
+            Text(
+                text = "基本信息",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+        item(key = "profile", contentType = "row") {
+            SettingsMenuItem(
+                icon = Icons.Filled.Person,
+                title = "个人信息",
+                subtitle = "头像昵称与个人主页",
+                index = 0,
+                count = 1,
+                onClick = onOpenProfile
+            )
+        }
+
+        item(key = "header-security", contentType = "header") {
+            Text(
+                text = "账号安全与绑定",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+
+        if (state.isLoading) {
+            item(key = "loading", contentType = "status") {
+                ElevatedCard(
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        } else if (state.loadFailed) {
+            item(key = "failed", contentType = "status") {
+                ElevatedCard(
+                    onClick = onRefreshAccount,
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "账号状态加载失败，点击重试",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        } else {
+            val bindings = state.bindings()
+            item(key = "bindings", contentType = "segment") {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                ) {
+                    bindings.forEachIndexed { index, binding ->
+                        SettingsMenuItem(
+                            icon = Icons.Filled.AccountCircle,
+                            title = binding.title,
+                            subtitle = binding.statusText,
+                            index = index,
+                            count = bindings.size
+                        )
+                    }
+                }
+            }
+        }
+
+        if (isLoggedIn) {
+            item(key = "logout", contentType = "logout") {
+                ElevatedCard(
+                    onClick = onRequestLogout,
+                    shape = ExpressiveTokens.CardShape,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "退出当前账号",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
         }
     }
@@ -859,6 +1195,7 @@ private fun ThemeSeedDot(
         )
     }
 }
+
 @Composable
 private fun ThemeModeRow(
     current: ThemeMode,
@@ -900,351 +1237,6 @@ private fun ThemeModeRow(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsPrivacyAndShieldContent(
-    privacyState: SettingsPrivacyUiState,
-    onPrivacyOptionChange: (String, Int) -> Unit,
-    onOpenShieldList: () -> Unit,
-    onOpenBlocklist: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.fillMaxSize()) {
-        com.nobody.repoi.ui.settings.shield.SettingsShieldContent(
-            onOpenShieldList = onOpenShieldList,
-            onOpenBlocklist = onOpenBlocklist,
-            modifier = Modifier.fillMaxWidth().weight(0.35f)
-        )
-        SettingsPrivacyContent(
-            state = privacyState,
-            onOptionChange = onPrivacyOptionChange,
-            modifier = Modifier.fillMaxWidth().weight(0.65f)
-        )
-    }
-}
-
-@Composable
-private fun SettingsPrivacyContent(
-    state: SettingsPrivacyUiState,
-    onOptionChange: (String, Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var editingKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val visibilityOptions = listOf("所有人可见", "互相关注可见", "仅自己可见")
-    val strangerOptions = listOf("可随便私聊我", "只能私聊一次", "不能私聊我")
-    val editing = editingKey
-    if (editing != null) {
-        val isStranger = editing == PrivacySettingKeys.STRANGER_MESSAGE
-        val options = if (isStranger) strangerOptions else visibilityOptions
-        val current = state.values[editing] ?: 0
-        Dialog(onDismissRequest = { editingKey = null }) {
-            Surface(
-                shape = ExpressiveTokens.CardShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = privacyTitle(editing),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { editingKey = null }) {
-                            Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
-                        }
-                    }
-                    options.forEachIndexed { index, label ->
-                        val selected = index == current
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(ExpressiveTokens.MediumCardShape)
-                                .clickable {
-                                    editingKey = null
-                                    onOptionChange(editing, index)
-                                }
-                                .padding(horizontal = 8.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            RadioButton(
-                                selected = selected,
-                                onClick = {
-                                    editingKey = null
-                                    onOptionChange(editing, index)
-                                }
-                            )
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if (state.isLoading) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item(key = "header-collect", contentType = "header") {
-            Text(
-                text = "收藏信息",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-        item(key = "segment-collect", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "周边条目(手办、动漫、模型、布偶、娃娃)",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
-                    index = 0,
-                    count = 4,
-                    onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
-                )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "收藏内容(相册、图片、文章)",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
-                    index = 1,
-                    count = 4,
-                    onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
-                )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "收藏统计(历史消费、入手数量、待补款等)",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
-                    index = 2,
-                    count = 4,
-                    onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
-                )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "其他内容(系列、厂商、角色、人物、作品)",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
-                    index = 3,
-                    count = 4,
-                    onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
-                )
-            }
-        }
-        item(key = "header-other", contentType = "header") {
-            Text(
-                text = "其他信息",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-        item(key = "segment-other", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "个人主页动态",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
-                    index = 0,
-                    count = 3,
-                    onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
-                )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "关注、粉丝",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
-                    index = 1,
-                    count = 3,
-                    onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
-                )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
-                    title = "讨论板个人主页",
-                    subtitle = visibilityOptions.getOrElse(state.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
-                    index = 2,
-                    count = 3,
-                    onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
-                )
-            }
-        }
-        item(key = "header-message", contentType = "header") {
-            Text(
-                text = "私信设置",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-        item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Shield,
-                title = "陌生人私信设置",
-                subtitle = strangerOptions.getOrElse(state.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
-                index = 0,
-                count = 1,
-                onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
-            )
-        }
-    }
-}
-
-private fun privacyTitle(key: String): String = when (key) {
-    PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
-    PrivacySettingKeys.COLLECT_ALBUM -> "收藏内容(相册、图片、文章)"
-    PrivacySettingKeys.COLLECT_STATISTICS -> "收藏统计(历史消费、入手数量、待补款等)"
-    PrivacySettingKeys.COLLECT_OTHER -> "其他内容(系列、厂商、角色、人物、作品)"
-    PrivacySettingKeys.OWN_ACTION -> "个人主页动态"
-    PrivacySettingKeys.PRIVACY_FRIEND -> "关注、粉丝"
-    PrivacySettingKeys.PRIVACY_POSTS -> "讨论板个人主页"
-    PrivacySettingKeys.STRANGER_MESSAGE -> "陌生人私信设置"
-    else -> "隐私设置"
-}
-
-@Composable
-private fun SettingsAccountContent(
-    onOpenProfile: () -> Unit,
-    onOpenSecurity: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-    ) {
-        item(key = "profile", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Person,
-                title = "个人信息",
-                subtitle = "头像昵称与个人资料",
-                index = 0,
-                count = 2,
-                onClick = onOpenProfile
-            )
-        }
-        item(key = "security", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Lock,
-                title = "账号与安全",
-                subtitle = "密码手机邮箱微信绑定状态",
-                index = 1,
-                count = 2,
-                onClick = onOpenSecurity
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsAccountSecurityDetail(
-    state: SettingsAccountSecurityUiState,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (state.isLoading) {
-            item(key = "loading", contentType = "status") {
-                ElevatedCard(
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-            }
-        } else if (state.loadFailed) {
-            item(key = "failed", contentType = "status") {
-                ElevatedCard(
-                    onClick = onRetry,
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "账号状态加载失败，点击重试",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        } else {
-            val bindings = state.bindings()
-            item(key = "bindings", contentType = "segment") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-                ) {
-                    bindings.forEachIndexed { index, binding ->
-                        SettingsMenuItem(
-                            icon = Icons.Filled.AccountCircle,
-                            title = binding.title,
-                            subtitle = binding.statusText,
-                            index = index,
-                            count = bindings.size
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsPlaceholderContent(title: String, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text = "${title}分组后续票据接入",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -1378,9 +1370,9 @@ private fun SettingsContentPreview() {
     PoiShelfTheme {
         SettingsGeneralContent(
             cacheState = SettingsCacheUiState(sizeBytes = 12_582_912L, isLoading = false),
-            onOpenCache = {},
+            onRequestClearCache = {},
             onExportLog = {},
-            onOpenAbout = {}
+            onRequestAbout = {}
         )
     }
 }
