@@ -50,7 +50,8 @@ fun RePoiApp() {
     val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
     val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
     val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
-    val expressiveColor by themeManager.expressiveColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialExpressiveColor())
+    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
+    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
 
     val darkTheme = when (themeMode) {
         ThemeMode.LIGHT -> false
@@ -68,7 +69,8 @@ fun RePoiApp() {
         dynamicColor = dynamicColor,
         themeSeed = effectiveSeed,
         amoled = amoled,
-        expressiveColor = expressiveColor
+        paletteStyle = paletteStyle,
+        specVersion = specVersion
     ) {
         RePoiNavHost()
     }

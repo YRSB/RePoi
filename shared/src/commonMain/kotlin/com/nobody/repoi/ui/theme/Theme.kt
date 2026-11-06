@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Color
 import com.nobody.repoi.platform.dynamicPoiShelfColorScheme
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.toColors
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
@@ -85,9 +87,23 @@ fun PoiShelfTheme(
     seedArgb: Long? = null,
     themeSeed: ThemeSeed? = null,
     amoled: Boolean = false,
+    paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    specVersion: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     expressiveColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val effectiveStyle = if (paletteStyle != PaletteStyle.TonalSpot) {
+        paletteStyle
+    } else if (expressiveColor) {
+        PaletteStyle.Expressive
+    } else {
+        PaletteStyle.TonalSpot
+    }
+    val effectiveSpec = if (expressiveColor && specVersion == ColorSpec.SpecVersion.SPEC_2025 && paletteStyle == PaletteStyle.TonalSpot) {
+        ColorSpec.SpecVersion.SPEC_2025
+    } else {
+        specVersion
+    }
     val activeSeed = themeSeed ?: seedArgb?.let { argb -> ThemeSeed.entries.firstOrNull { it.argb == argb } }
     val (seedPrimary, seedSecondary, seedTertiary) = activeSeed?.toColors()
         ?: Triple(seedArgb?.let { Color(it) }, null, null)
@@ -98,7 +114,8 @@ fun PoiShelfTheme(
             amoled = amoled,
             secondary = seedSecondary,
             tertiary = seedTertiary,
-            expressiveColor = expressiveColor
+            style = effectiveStyle,
+            specVersion = effectiveSpec
         )
     }
     val dynamicScheme = if (seedScheme == null && dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null

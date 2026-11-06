@@ -3,6 +3,9 @@ package com.nobody.repoi.data.local
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nobody.repoi.platform.isDynamicSeedAvailable
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -114,6 +117,42 @@ class ThemeManagerTest {
 
         assertTrue(manager.expressiveColor)
         assertTrue(manager.getInitialExpressiveColor())
+        assertTrue(manager.expressiveColorFlow.first())
+        assertEquals(PaletteStyle.Expressive, manager.paletteStyle)
+        assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
+    }
+
+    @Test
+    fun setPaletteStyle_updatesMemoryFlowAndInitialValue() = runTest {
+        val manager = manager()
+        manager.paletteStyleFlow.first()
+        manager.setPaletteStyle(PaletteStyle.Vibrant)
+
+        assertEquals(PaletteStyle.Vibrant, manager.paletteStyle)
+        assertEquals(PaletteStyle.Vibrant, manager.getInitialPaletteStyle())
+        assertEquals(PaletteStyle.Vibrant, manager.paletteStyleFlow.first())
+    }
+
+    @Test
+    fun setSpecVersion_updatesMemoryFlowAndInitialValue() = runTest {
+        val manager = manager()
+        manager.specVersionFlow.first()
+        manager.setSpecVersion(ColorSpec.SpecVersion.SPEC_2021)
+
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.specVersion)
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.getInitialSpecVersion())
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.specVersionFlow.first())
+    }
+
+    @Test
+    fun legacyExpressiveColor_migratesToExpressiveStyle() = runTest {
+        val dataStore = TestDataStore.themePrefs()
+        dataStore.edit { prefs ->
+            prefs[booleanPreferencesKey("app_expressive_color")] = true
+        }
+        val manager = ThemeManager(dataStore)
+
+        assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
         assertTrue(manager.expressiveColorFlow.first())
     }
 

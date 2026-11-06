@@ -14,7 +14,8 @@ fun seedColorScheme(
     amoled: Boolean,
     secondary: Color? = null,
     tertiary: Color? = null,
-    expressiveColor: Boolean = false
+    style: PaletteStyle = PaletteStyle.TonalSpot,
+    specVersion: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025
 ): ColorScheme {
     val scheme = dynamicColorScheme(
         seedColor = seedColor,
@@ -22,11 +23,48 @@ fun seedColorScheme(
         isAmoled = amoled,
         secondary = secondary,
         tertiary = tertiary,
-        style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
-        specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
+        style = style,
+        specVersion = specVersion
     )
     return if (darkTheme && amoled) scheme.withAmoledBlack() else scheme
 }
+
+@Composable
+fun seedColorScheme(
+    seedColor: Color,
+    darkTheme: Boolean,
+    amoled: Boolean,
+    secondary: Color? = null,
+    tertiary: Color? = null,
+    expressiveColor: Boolean = false
+): ColorScheme = seedColorScheme(
+    seedColor = seedColor,
+    darkTheme = darkTheme,
+    amoled = amoled,
+    secondary = secondary,
+    tertiary = tertiary,
+    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
+    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
+)
+
+@Composable
+fun seedColorScheme(
+    seedArgb: Long,
+    darkTheme: Boolean,
+    amoled: Boolean,
+    secondary: Color? = null,
+    tertiary: Color? = null,
+    style: PaletteStyle = PaletteStyle.TonalSpot,
+    specVersion: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025
+): ColorScheme = seedColorScheme(
+    seedColor = Color(seedArgb),
+    darkTheme = darkTheme,
+    amoled = amoled,
+    secondary = secondary,
+    tertiary = tertiary,
+    style = style,
+    specVersion = specVersion
+)
 
 @Composable
 fun seedColorScheme(
@@ -37,12 +75,13 @@ fun seedColorScheme(
     tertiary: Color? = null,
     expressiveColor: Boolean = false
 ): ColorScheme = seedColorScheme(
-    seedColor = Color(seedArgb),
+    seedArgb = seedArgb,
     darkTheme = darkTheme,
     amoled = amoled,
     secondary = secondary,
     tertiary = tertiary,
-    expressiveColor = expressiveColor
+    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
+    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
 )
 
 fun ColorScheme.withAmoledBlack(): ColorScheme = copy(

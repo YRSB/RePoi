@@ -19,6 +19,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -477,6 +483,96 @@ fun SettingSliderItem(
                     )
                 }
             )
+        }
+    }
+}
+
+
+/**
+ * 带 DropdownMenu 下拉菜单的设置条目。
+ *
+ * 遵循 Material 3 Expressive 规范：
+ * 1. 采用 [SegmentedListItem] 排版，右侧展示当前选中项值；
+ * 2. 点击整行在条目处呼出带有圆角的 [DropdownMenu]；
+ * 3. 选中项采用高亮胶囊背景块 [RoundedCornerShape] 与前置对勾图标。
+ */
+@Composable
+fun <T> SettingDropdownItem(
+    title: String,
+    selectedValue: T,
+    values: List<T>,
+    valueLabel: (T) -> String,
+    onValueChange: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        SettingItem(
+            title = title,
+            subtitle = subtitle,
+            icon = icon,
+            enabled = enabled,
+            onClick = { if (enabled) expanded = true },
+            trailingContent = {
+                Text(
+                    text = valueLabel(selectedValue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            values.forEach { item ->
+                val isSelected = item == selectedValue
+                val itemModifier = if (isSelected) {
+                    Modifier
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                } else {
+                    Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                }
+
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = valueLabel(item),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    } else null,
+                    onClick = {
+                        onValueChange(item)
+                        expanded = false
+                    },
+                    modifier = itemModifier,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }

@@ -56,6 +56,8 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Style
+import com.nobody.repoi.ui.settings.components.SettingDropdownItem
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -213,6 +215,8 @@ fun SettingsScreen(
     val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
     val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
     val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
+    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
+    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
     val expressiveColor by themeManager.expressiveColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialExpressiveColor())
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
@@ -227,6 +231,8 @@ fun SettingsScreen(
     val onDynamicColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setDynamicColor(enabled) } }
     val onThemeSeedChange: (ThemeSeed) -> Unit = { seed -> scope.launch { themeManager.setThemeSeed(seed) } }
     val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
+    val onPaletteStyleChange: (PaletteStyle) -> Unit = { style -> scope.launch { themeManager.setPaletteStyle(style) } }
+    val onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit = { version -> scope.launch { themeManager.setSpecVersion(version) } }
     val onExpressiveColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setExpressiveColor(enabled) } }
 
     var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.Appearance.name) }
@@ -449,6 +455,10 @@ fun SettingsScreen(
                         dynamicColor = dynamicColor,
                         themeSeed = themeSeed,
                         amoled = amoled,
+                        paletteStyle = paletteStyle,
+                        onPaletteStyleChange = onPaletteStyleChange,
+                        specVersion = specVersion,
+                        onSpecVersionChange = onSpecVersionChange,
                         expressiveColor = expressiveColor,
                         isExHobbyEnabled = isExHobbyEnabled,
                         shieldState = shieldState,
@@ -483,6 +493,10 @@ fun SettingsScreen(
                     dynamicColor = dynamicColor,
                     themeSeed = themeSeed,
                     amoled = amoled,
+                    paletteStyle = paletteStyle,
+                    onPaletteStyleChange = onPaletteStyleChange,
+                    specVersion = specVersion,
+                    onSpecVersionChange = onSpecVersionChange,
                     expressiveColor = expressiveColor,
                     isExHobbyEnabled = isExHobbyEnabled,
                     shieldState = shieldState,
@@ -640,6 +654,10 @@ private fun SettingsDetailPane(
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
+    paletteStyle: PaletteStyle,
+    onPaletteStyleChange: (PaletteStyle) -> Unit,
+    specVersion: ColorSpec.SpecVersion,
+    onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit,
     expressiveColor: Boolean,
     onExpressiveColorChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
@@ -663,6 +681,10 @@ private fun SettingsDetailPane(
                 onDynamicColorChange = onDynamicColorChange,
                 onThemeSeedChange = onThemeSeedChange,
                 onAmoledChange = onAmoledChange,
+                paletteStyle = paletteStyle,
+                onPaletteStyleChange = onPaletteStyleChange,
+                specVersion = specVersion,
+                onSpecVersionChange = onSpecVersionChange,
                 expressiveColor = expressiveColor,
                 onExpressiveColorChange = onExpressiveColorChange,
                 modifier = Modifier.fillMaxSize()
@@ -701,6 +723,10 @@ private fun SettingsAppearanceContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
+    paletteStyle: PaletteStyle,
+    onPaletteStyleChange: (PaletteStyle) -> Unit,
+    specVersion: ColorSpec.SpecVersion,
+    onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit,
     expressiveColor: Boolean,
     onExpressiveColorChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -716,7 +742,7 @@ private fun SettingsAppearanceContent(
         ThemeSeed.Tricolor
     )
     val dynamicColors = MaterialTheme.colorScheme
-    val palettes: Map<ThemeSeed, List<TonalPalette>> = remember(expressiveColor, dynamicColors) {
+    val palettes: Map<ThemeSeed, List<TonalPalette>> = remember(paletteStyle, specVersion, dynamicColors) {
         seeds.associateWith { seed ->
             if (seed == ThemeSeed.Dynamic) {
                 listOf(
@@ -732,8 +758,8 @@ private fun SettingsAppearanceContent(
                     isAmoled = false,
                     secondary = secondary,
                     tertiary = tertiary,
-                    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
-                    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
+                    style = paletteStyle,
+                    specVersion = specVersion
                 )
                 listOf(
                     TonalPalette.from(scheme.primary),
@@ -802,6 +828,42 @@ private fun SettingsAppearanceContent(
             }
         }
 
+        item(key = "color-spec-group", contentType = "segment") {
+            val paletteStyles = listOf(
+                PaletteStyle.TonalSpot,
+                PaletteStyle.Neutral,
+                PaletteStyle.Vibrant,
+                PaletteStyle.Expressive,
+                PaletteStyle.Rainbow,
+                PaletteStyle.FruitSalad,
+                PaletteStyle.Monochrome,
+                PaletteStyle.Fidelity,
+                PaletteStyle.Content
+            )
+            val specVersions = listOf(
+                ColorSpec.SpecVersion.SPEC_2025,
+                ColorSpec.SpecVersion.SPEC_2021
+            )
+            SettingItemGroup {
+                SettingDropdownItem(
+                    icon = Icons.Outlined.Style,
+                    title = "色彩风格",
+                    selectedValue = paletteStyle,
+                    values = paletteStyles,
+                    valueLabel = { it.name },
+                    onValueChange = onPaletteStyleChange
+                )
+                SettingDropdownItem(
+                    icon = Icons.Outlined.Tune,
+                    title = "色彩标准",
+                    selectedValue = specVersion,
+                    values = specVersions,
+                    valueLabel = { it.name },
+                    onValueChange = onSpecVersionChange
+                )
+            }
+        }
+
         item(key = "switches", contentType = "segment") {
             SettingItemGroup {
                 if (supportsDynamicColor) {
@@ -813,13 +875,6 @@ private fun SettingsAppearanceContent(
                         onCheckedChange = onDynamicColorChange
                     )
                 }
-                SettingSwitchItem(
-                    icon = Icons.Outlined.AutoAwesome,
-                    title = "富有表现力的颜色",
-                    subtitle = "增强色彩对比与层次表现力",
-                    checked = expressiveColor,
-                    onCheckedChange = onExpressiveColorChange
-                )
                 SettingSwitchItem(
                     icon = Icons.Outlined.DarkMode,
                     title = "Amoled 深色",
