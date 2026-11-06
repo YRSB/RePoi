@@ -38,6 +38,7 @@
 ### 1. 路由规则与拓扑
 - **路由基类**：所有路由统一继承 `AppNavKey : NavKey`（声明于 `ui/navigation/NavRoutes.kt`），由 `ui/navigation/AppNavDisplay.kt` 承载映射。
 - **全局单根栈**：应用只有一条根栈 `[MainNavKey, 二级页...]`（`RePoiNavigator.rootBackStack`）。`MainNavKey` 承载主界面（`ui/navigation/MainScreen.kt`：自适应导航套件 + 5 个 Tab 首屏），二级页平铺压栈并整屏覆盖主界面；返回完全交由 Nav3 原生出栈，栈底 `MainNavKey` 永不出栈，主界面按返回直接退出 Activity。
+- **自适应双窗格局部子栈豁免**：对于系统设置等自适应双窗格页面（`SettingsNavKey`），外部保持单一二级页入根栈不变，模块内部允许维护私有局部子栈（继承自 `NavKey` 的 `SettingsSubNavKey`），通过 `rememberListDetailSceneStrategy` 驱动双窗格分栏与窄屏压栈出栈，实现模块内部自治，避免细碎子路由污染全局导航拓扑与序列化注册（见 `ADR-0003`）。
 - **Tab 切换**：仅变更 `RePoiNavigationState.currentDestination`，不触碰根栈，也不修改任何 Tab 栈内容。
 - **实例隔离**：
   - 顶层 Tab 使用无参 `data object`。

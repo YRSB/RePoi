@@ -88,7 +88,6 @@ fun SettingsScreen(
     val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
     val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
     val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
-    val expressiveColor by themeManager.expressiveColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialExpressiveColor())
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
@@ -104,7 +103,6 @@ fun SettingsScreen(
     val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
     val onPaletteStyleChange: (PaletteStyle) -> Unit = { style -> scope.launch { themeManager.setPaletteStyle(style) } }
     val onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit = { version -> scope.launch { themeManager.setSpecVersion(version) } }
-    val onExpressiveColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setExpressiveColor(enabled) } }
 
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var showClearCacheConfirmDialog by rememberSaveable { mutableStateOf(false) }
@@ -124,13 +122,12 @@ fun SettingsScreen(
         }
     }
 
-    val backStack = rememberNavBackStack(savedStateConfiguration, SettingsListNavKey)
-    remember(backStack) {
-        if (isWide && backStack.size == 1) {
-            backStack.add(SettingsAppearanceNavKey)
-        }
-        true
+    val initialKeys: Array<NavKey> = if (isWide) {
+        arrayOf(SettingsListNavKey, SettingsAppearanceNavKey)
+    } else {
+        arrayOf(SettingsListNavKey)
     }
+    val backStack = rememberNavBackStack(savedStateConfiguration, *initialKeys)
 
     LaunchedEffect(isWide) {
         if (isWide && backStack.size == 1 && backStack.firstOrNull() is SettingsListNavKey) {
@@ -354,8 +351,6 @@ fun SettingsScreen(
                 onPaletteStyleChange = onPaletteStyleChange,
                 specVersion = specVersion,
                 onSpecVersionChange = onSpecVersionChange,
-                expressiveColor = expressiveColor,
-                onExpressiveColorChange = onExpressiveColorChange,
                 onThemeModeChange = onThemeModeChange,
                 onDynamicColorChange = onDynamicColorChange,
                 onThemeSeedChange = onThemeSeedChange,

@@ -20,10 +20,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
@@ -36,9 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
@@ -54,7 +50,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.nobody.repoi.data.local.AllPaletteStyles
@@ -91,8 +86,6 @@ fun SettingsAppearancePane(
     onPaletteStyleChange: (PaletteStyle) -> Unit,
     specVersion: ColorSpec.SpecVersion,
     onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit,
-    expressiveColor: Boolean,
-    onExpressiveColorChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
@@ -280,7 +273,7 @@ private fun PodAuraThemeCard(
         Box(
             modifier = Modifier
                 .size(74.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(ExpressiveTokens.CardShape)
                 .clickable(onClick = onClick)
         ) {
             Box(
@@ -321,7 +314,7 @@ private fun PodAuraThemeCard(
                         .border(
                             width = 2.dp,
                             color = colors.primaryTone50,
-                            shape = RoundedCornerShape(16.dp)
+                            shape = ExpressiveTokens.CardShape
                         )
                 )
             }
@@ -329,61 +322,4 @@ private fun PodAuraThemeCard(
     }
 }
 
-@Composable
-fun ThemeSelectionDialog(
-    currentMode: ThemeMode,
-    onSelectMode: (ThemeMode) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            shape = ExpressiveTokens.CardShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "选择主题模式",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismissRequest) {
-                        Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
-                    }
-                }
-                ThemeMode.entries.forEach { mode ->
-                    val isSelected = mode == currentMode
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(ExpressiveTokens.MediumCardShape)
-                            .clickable { onSelectMode(mode) }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        RadioButton(selected = isSelected, onClick = { onSelectMode(mode) })
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = mode.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = "跟随系统 / 浅色 / 深色",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                )
-            }
-        }
-    }
-}
+
