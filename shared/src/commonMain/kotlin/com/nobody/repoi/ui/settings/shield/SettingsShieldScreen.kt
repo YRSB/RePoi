@@ -14,9 +14,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,7 +77,7 @@ fun SettingsShieldContent(
     ) {
         item(key = "nsfw", contentType = "row") {
             ShieldSwitchCard(
-                icon = Icons.Filled.Visibility,
+                icon = Icons.Outlined.Visibility,
                 title = "R18 内容",
                 subtitle = if (state.isLoading) "正在读取…" else if (state.nsfwVisible) "显示" else "不显示",
                 checked = state.nsfwVisible,
@@ -88,7 +89,7 @@ fun SettingsShieldContent(
         }
         item(key = "shieldList", contentType = "row") {
             ShieldMenuCard(
-                icon = Icons.Filled.Block,
+                icon = Icons.Outlined.Block,
                 title = "屏蔽列表",
                 subtitle = "用户 / 厂商 / 条目",
                 index = 1,
@@ -98,7 +99,7 @@ fun SettingsShieldContent(
         }
         item(key = "blocklist", contentType = "row") {
             ShieldMenuCard(
-                icon = Icons.Filled.Block,
+                icon = Icons.Outlined.PersonOff,
                 title = "黑名单",
                 subtitle = "被屏蔽的用户将无法向您发送私信",
                 index = 2,

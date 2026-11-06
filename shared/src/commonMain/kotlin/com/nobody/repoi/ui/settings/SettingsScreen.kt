@@ -26,29 +26,31 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Colorize
-import androidx.compose.material.icons.filled.Domain
-import androidx.compose.material.icons.filled.DynamicFeed
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MarkEmailRead
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Domain
+import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -130,9 +132,9 @@ import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 
 private enum class SettingsGroup(val title: String, val description: String, val icon: ImageVector) {
-    Appearance("外观与主题", "主题颜色、深色模式与壁纸取色", Icons.Filled.Palette),
-    Content("浏览与内容", "屏蔽过滤、R18 限制与隐私可见性", Icons.Filled.Shield),
-    Account("账号与安全", "当前账号状态、个人主页与手账同步", Icons.Filled.Person)
+    Appearance("外观与主题", "主题颜色、深色模式与壁纸取色", Icons.Outlined.Palette),
+    Content("浏览与内容", "屏蔽过滤、R18 限制与隐私可见性", Icons.Outlined.Tune),
+    Account("账号与安全", "当前账号状态、个人主页与手账同步", Icons.Outlined.ManageAccounts)
 }
 
 private fun formatBytes(bytes: Long): String {
@@ -520,19 +522,19 @@ private fun SettingsGroupList(
                 SettingItem(
                     title = "清理图片缓存",
                     subtitle = if (cacheState.isLoading) "正在统计…" else if (cacheState.isClearing) "正在清理…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
-                    icon = Icons.Filled.CleaningServices,
+                    icon = Icons.Outlined.DeleteSweep,
                     onClick = onRequestClearCache
                 )
                 SettingItem(
                     title = "导出应用日志",
                     subtitle = "打包近期运行日志并分享便于排查问题",
-                    icon = Icons.Filled.Share,
+                    icon = Icons.Outlined.Article,
                     onClick = onExportLog
                 )
                 SettingItem(
                     title = "关于 RePoi",
                     subtitle = "版本 ${AppInfo.versionName}",
-                    icon = Icons.Filled.Info,
+                    icon = Icons.Outlined.Info,
                     onClick = onRequestAbout
                 )
             }
@@ -543,7 +545,7 @@ private fun SettingsGroupList(
                 SettingItemGroup {
                     SettingItem(
                         title = "退出当前账号",
-                        icon = Icons.AutoMirrored.Filled.Logout,
+                        icon = Icons.AutoMirrored.Outlined.Logout,
                         iconTint = MaterialTheme.colorScheme.error,
                         titleColor = MaterialTheme.colorScheme.error,
                         onClick = onRequestLogout
@@ -749,7 +751,7 @@ private fun SettingsAppearanceContent(
             SettingItemGroup {
                 if (supportsDynamicColor) {
                     SettingSwitchItem(
-                        icon = Icons.Filled.Colorize,
+                        icon = Icons.Outlined.Wallpaper,
                         title = "动态主题",
                         subtitle = "将壁纸颜色应用于主题",
                         checked = dynamicColor,
@@ -757,14 +759,14 @@ private fun SettingsAppearanceContent(
                     )
                 }
                 SettingSwitchItem(
-                    icon = Icons.Filled.Palette,
+                    icon = Icons.Outlined.AutoAwesome,
                     title = "富有表现力的颜色",
                     subtitle = "增强色彩对比与层次表现力",
                     checked = expressiveColor,
                     onCheckedChange = onExpressiveColorChange
                 )
                 SettingSwitchItem(
-                    icon = Icons.Filled.NightsStay,
+                    icon = Icons.Outlined.DarkMode,
                     title = "Amoled 深色",
                     subtitle = "深色模式下使用纯黑背景省电护眼",
                     checked = amoled,
@@ -940,14 +942,14 @@ private fun SettingsContentContent(
         item(key = "segment-content", contentType = "segment") {
             SettingItemGroup(title = "内容与扩展") {
                 SettingSwitchItem(
-                    icon = Icons.Filled.Visibility,
+                    icon = Icons.Outlined.Visibility,
                     title = "R18 内容",
                     subtitle = if (shieldState.isLoading) "正在读取…" else if (shieldState.nsfwVisible) "显示" else "不显示",
                     checked = shieldState.nsfwVisible,
                     onCheckedChange = { onNsfwChange(!shieldState.nsfwVisible) }
                 )
                 SettingSwitchItem(
-                    icon = Icons.Filled.PhotoLibrary,
+                    icon = Icons.Outlined.Collections,
                     title = "ExHobby 扩展图库",
                     subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
                     checked = isExHobbyEnabled,
@@ -959,7 +961,7 @@ private fun SettingsContentContent(
         item(key = "segment-shield", contentType = "segment") {
             SettingItemGroup(title = "名单管理") {
                 SettingItem(
-                    icon = Icons.Filled.VisibilityOff,
+                    icon = Icons.Outlined.Block,
                     title = "屏蔽列表",
                     subtitle = "用户 / 厂商 / 条目",
                     trailingContent = {
@@ -973,7 +975,7 @@ private fun SettingsContentContent(
                     onClick = onOpenShieldList
                 )
                 SettingItem(
-                    icon = Icons.Filled.PersonOff,
+                    icon = Icons.Outlined.PersonOff,
                     title = "黑名单",
                     subtitle = "被屏蔽的用户将无法向您发送私信",
                     trailingContent = {
@@ -997,7 +999,7 @@ private fun SettingsContentContent(
                     }
                 } else {
                     SettingItem(
-                        icon = Icons.Filled.Category,
+                        icon = Icons.Outlined.Category,
                         title = "周边条目(手办、动漫、模型、布偶、娃娃)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1011,7 +1013,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
                     )
                     SettingItem(
-                        icon = Icons.Filled.PhotoLibrary,
+                        icon = Icons.Outlined.Bookmarks,
                         title = "收藏内容(相册、图片、文章)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1025,7 +1027,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
                     )
                     SettingItem(
-                        icon = Icons.Filled.BarChart,
+                        icon = Icons.Outlined.BarChart,
                         title = "收藏统计(历史消费、入手数量、待补款等)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1039,7 +1041,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
                     )
                     SettingItem(
-                        icon = Icons.Filled.Domain,
+                        icon = Icons.Outlined.Domain,
                         title = "其他内容(系列、厂商、角色、人物、作品)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1060,7 +1062,7 @@ private fun SettingsContentContent(
             if (!privacyState.isLoading) {
                 SettingItemGroup(title = "动态与社交可见性") {
                     SettingItem(
-                        icon = Icons.Filled.DynamicFeed,
+                        icon = Icons.Outlined.DynamicFeed,
                         title = "个人主页动态",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1074,7 +1076,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
                     )
                     SettingItem(
-                        icon = Icons.Filled.People,
+                        icon = Icons.Outlined.Groups,
                         title = "关注、粉丝",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1088,7 +1090,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
                     )
                     SettingItem(
-                        icon = Icons.Filled.Forum,
+                        icon = Icons.Outlined.Forum,
                         title = "讨论板个人主页",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
                         trailingContent = {
@@ -1109,7 +1111,7 @@ private fun SettingsContentContent(
             if (!privacyState.isLoading) {
                 SettingItemGroup(title = "私信设置") {
                     SettingItem(
-                        icon = Icons.Filled.MarkEmailRead,
+                        icon = Icons.Outlined.Chat,
                         title = "陌生人私信设置",
                         subtitle = strangerOptions.getOrElse(privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
                         trailingContent = {
@@ -1158,7 +1160,7 @@ private fun SettingsAccountContent(
         item(key = "profile", contentType = "row") {
             SettingItemGroup(title = "基本信息") {
                 SettingItem(
-                    icon = Icons.Filled.Person,
+                    icon = Icons.Outlined.Person,
                     title = "个人信息",
                     subtitle = "头像昵称与个人主页",
                     trailingContent = {
@@ -1188,7 +1190,7 @@ private fun SettingsAccountContent(
                     }
                 } else if (state.loadFailed) {
                     SettingItem(
-                        icon = Icons.Filled.AccountCircle,
+                        icon = Icons.Outlined.AccountCircle,
                         title = "账号状态加载失败",
                         subtitle = "点击重试",
                         titleColor = MaterialTheme.colorScheme.error,
@@ -1198,7 +1200,7 @@ private fun SettingsAccountContent(
                     val bindings = state.bindings()
                     bindings.forEach { binding ->
                         SettingItem(
-                            icon = Icons.Filled.AccountCircle,
+                            icon = Icons.Outlined.AccountCircle,
                             title = binding.title,
                             subtitle = binding.statusText
                         )
@@ -1212,7 +1214,7 @@ private fun SettingsAccountContent(
                 SettingItemGroup {
                     SettingItem(
                         title = "退出当前账号",
-                        icon = Icons.AutoMirrored.Filled.Logout,
+                        icon = Icons.AutoMirrored.Outlined.Logout,
                         iconTint = MaterialTheme.colorScheme.error,
                         titleColor = MaterialTheme.colorScheme.error,
                         onClick = onRequestLogout
