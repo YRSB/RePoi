@@ -60,8 +60,8 @@ class ThemeManager(
     private val dynamicColorRef = AtomicBoolean(supportsDynamicColor)
     private val themeSeedRef = AtomicReference(defaultThemeSeed())
     private val amoledRef = AtomicBoolean(false)
-    private val paletteStyleRef = AtomicReference(PaletteStyle.TonalSpot)
-    private val specVersionRef = AtomicReference(ColorSpec.SpecVersion.SPEC_2025)
+    private val paletteStyleRef = AtomicReference<PaletteStyle>(PaletteStyle.TonalSpot)
+    private val specVersionRef = AtomicReference<ColorSpec.SpecVersion>(ColorSpec.SpecVersion.SPEC_2025)
 
     var themeMode: ThemeMode
         get() = themeModeRef.load()
@@ -115,12 +115,12 @@ class ThemeManager(
     }
 
     val paletteStyleFlow: Flow<PaletteStyle> = dataStore.data.map { prefs ->
-        prefs[PALETTE_STYLE_KEY]?.let { runCatching { PaletteStyle.valueOf(it) }.getOrNull() }
+        prefs[PALETTE_STYLE_KEY]?.let { name -> PaletteStyle.entries.firstOrNull { it.name == name } }
             ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
     }
 
     val specVersionFlow: Flow<ColorSpec.SpecVersion> = dataStore.data.map { prefs ->
-        prefs[SPEC_VERSION_KEY]?.let { runCatching { ColorSpec.SpecVersion.valueOf(it) }.getOrNull() }
+        prefs[SPEC_VERSION_KEY]?.let { name -> ColorSpec.SpecVersion.entries.firstOrNull { it.name == name } }
             ?: ColorSpec.SpecVersion.SPEC_2025
     }
 
@@ -146,10 +146,10 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
-                val initialStyle = prefs[PALETTE_STYLE_KEY]?.let { runCatching { PaletteStyle.valueOf(it) }.getOrNull() }
+                val initialStyle = prefs[PALETTE_STYLE_KEY]?.let { name -> PaletteStyle.entries.firstOrNull { it.name == name } }
                     ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
                 paletteStyle = initialStyle
-                val initialSpecVersion = prefs[SPEC_VERSION_KEY]?.let { runCatching { ColorSpec.SpecVersion.valueOf(it) }.getOrNull() }
+                val initialSpecVersion = prefs[SPEC_VERSION_KEY]?.let { name -> ColorSpec.SpecVersion.entries.firstOrNull { it.name == name } }
                     ?: ColorSpec.SpecVersion.SPEC_2025
                 specVersion = initialSpecVersion
             }
