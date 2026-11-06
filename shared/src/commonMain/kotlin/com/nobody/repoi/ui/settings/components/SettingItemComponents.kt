@@ -510,29 +510,29 @@ fun <T> SettingDropdownItem(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxWidth()) {
-        SettingItem(
-            title = title,
-            subtitle = subtitle,
-            icon = icon,
-            enabled = enabled,
-            onClick = { if (enabled) expanded = true },
-            trailingContent = {
+    SettingItem(
+        modifier = modifier,
+        title = title,
+        subtitle = subtitle,
+        icon = icon,
+        enabled = enabled,
+        onClick = { if (enabled) expanded = true },
+        trailingContent = {
+            Box {
                 Text(
                     text = valueLabel(selectedValue),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
-            }
-        )
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.heightIn(max = 360.dp)
+                ) {
             values.forEach { item ->
                 val isSelected = item == selectedValue
                 val itemModifier = if (isSelected) {
