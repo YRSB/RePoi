@@ -105,7 +105,7 @@ val viewModelModule = module {
     viewModel { SettingsShieldViewModel(get()) }
     viewModel { SettingsShieldListViewModel(get()) }
     viewModel { SettingsPrivacyViewModel(get()) }
-    viewModel { SettingsCacheViewModel(get()) }
+    viewModel { SettingsCacheViewModel(get(), get(), get()) }
     viewModel { UserInfoViewModel(get()) }
     viewModel { UserCreationViewModel(get(), get()) }
     viewModel { UserHistoryViewModel(get()) }

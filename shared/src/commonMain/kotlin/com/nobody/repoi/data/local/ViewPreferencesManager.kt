@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
@@ -37,6 +39,7 @@ class ViewPreferencesManager(
     private val feedSubTypeRef = AtomicReference("recommend")
     private val feedZoneTabKeyRef = AtomicReference("all")
     private val exHobbyEnabledRef = AtomicBoolean(true)
+    private val imageCacheMaxBytesRef = AtomicLong(DEFAULT_IMAGE_CACHE_MAX_BYTES)
 
     var isHobbyListGridMode: Boolean
         get() = hobbyListGridRef.load()
@@ -61,6 +64,10 @@ class ViewPreferencesManager(
     var isExHobbyEnabled: Boolean
         get() = exHobbyEnabledRef.load()
         private set(value) { exHobbyEnabledRef.store(value) }
+
+    var imageCacheMaxBytes: Long
+        get() = imageCacheMaxBytesRef.load()
+        private set(value) { imageCacheMaxBytesRef.store(value) }
 
     val isHobbyListGridModeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_HOBBY_LIST_GRID_MODE] ?: true
@@ -94,6 +101,10 @@ class ViewPreferencesManager(
         prefs[KEY_EXHOBBY_ENABLED] ?: true
     }
 
+    val imageCacheMaxBytesFlow: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[KEY_IMAGE_CACHE_MAX_BYTES] ?: DEFAULT_IMAGE_CACHE_MAX_BYTES
+    }
+
     init {
         runCatching {
             scope.launch {
@@ -106,6 +117,7 @@ class ViewPreferencesManager(
                 prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = it }
                 prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
                 prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
+                prefs[KEY_IMAGE_CACHE_MAX_BYTES]?.let { imageCacheMaxBytes = it }
             }
         }
     }
@@ -216,6 +228,13 @@ class ViewPreferencesManager(
         }
     }
 
+    suspend fun setImageCacheMaxBytes(bytes: Long) {
+        imageCacheMaxBytes = bytes
+        dataStore.edit { prefs ->
+            prefs[KEY_IMAGE_CACHE_MAX_BYTES] = bytes
+        }
+    }
+
     suspend fun getCachedFocusZones(): String? =
         dataStore.data.first()[KEY_CACHED_FOCUS_ZONES]
 
@@ -223,6 +242,8 @@ class ViewPreferencesManager(
         dataStore.data.first()[KEY_CACHED_ZONE_SETTINGS]
 
     companion object {
+        const val DEFAULT_IMAGE_CACHE_MAX_BYTES: Long = 500L * 1024L * 1024L
+
         private val KEY_HOBBY_LIST_GRID_MODE = booleanPreferencesKey("hobby_list_is_grid_mode")
         private val KEY_COLLECT_LIST_GRID_MODE = booleanPreferencesKey("collect_list_is_grid_mode")
         private val KEY_FEED_CATEGORY_ID = intPreferencesKey("feed_category_id")
@@ -231,6 +252,7 @@ class ViewPreferencesManager(
         private val KEY_CACHED_FOCUS_ZONES = stringPreferencesKey("cached_focus_zones_json")
         private val KEY_CACHED_ZONE_SETTINGS = stringPreferencesKey("cached_zone_settings_json")
         private val KEY_EXHOBBY_ENABLED = booleanPreferencesKey("is_exhobby_enabled")
+        private val KEY_IMAGE_CACHE_MAX_BYTES = longPreferencesKey("image_cache_max_bytes")
 
         private fun keyOfCollectHobbyOrder(collectState: String) =
             stringPreferencesKey("collect_hobby_order_$collectState")

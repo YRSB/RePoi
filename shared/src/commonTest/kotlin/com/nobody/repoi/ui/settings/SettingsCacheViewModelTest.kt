@@ -158,4 +158,16 @@ class SettingsCacheViewModelTest {
 
         assertNull(viewModel.uiState.value.actionMessage)
     }
+
+    @Test
+    fun updateMaxSizeBytes_updatesState() = runTest(testDispatcher) {
+        val cache = FakeDiskCache()
+        val viewModel = SettingsCacheViewModel(cache, testDispatcher)
+        advanceUntilIdle()
+
+        viewModel.updateMaxSizeBytes(1024L * 1024L * 1024L)
+        advanceUntilIdle()
+
+        assertEquals(1024L * 1024L * 1024L, viewModel.uiState.value.maxSizeBytes)
+    }
 }

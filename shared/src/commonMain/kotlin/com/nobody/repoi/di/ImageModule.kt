@@ -6,6 +6,7 @@ import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
+import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.platform.cacheDirPath
 import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.CorruptCacheRecoveryInterceptor
@@ -24,9 +25,10 @@ import org.koin.dsl.module
  */
 val imageModule = module {
     single<DiskCache> {
+        val viewPrefs = get<ViewPreferencesManager>()
         DiskCache.Builder()
             .directory(cacheDirPath().toPath().resolve("image_cache"))
-            .maxSizeBytes(250L * 1024L * 1024L)
+            .maxSizeBytes(viewPrefs.imageCacheMaxBytes)
             .build()
     }
 
