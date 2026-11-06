@@ -410,7 +410,10 @@ fun SettingsScreen(
                         title = {
                             Text(
                                 text = "系统设置",
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
@@ -423,6 +426,7 @@ fun SettingsScreen(
                                 )
                             }
                         },
+                        expandedHeight = 120.dp,
                         scrollBehavior = wideLeftScrollBehavior,
                         colors = TopAppBarDefaults.largeTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -462,10 +466,14 @@ fun SettingsScreen(
                         title = {
                             Text(
                                 text = currentSelectedGroup.title,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
+                        expandedHeight = 120.dp,
                         scrollBehavior = wideRightScrollBehavior,
                         colors = TopAppBarDefaults.largeTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -531,7 +539,10 @@ fun SettingsScreen(
                     title = {
                         Text(
                             text = currentTitle,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     },
@@ -547,6 +558,7 @@ fun SettingsScreen(
                             )
                         }
                     },
+                    expandedHeight = 120.dp,
                     scrollBehavior = narrowScrollBehavior,
                     colors = TopAppBarDefaults.largeTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -629,7 +641,7 @@ private fun SettingsGroupList(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = "segment-preferences", contentType = "segment") {
@@ -831,7 +843,7 @@ private fun SettingsAppearanceContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item(key = "theme-mode", contentType = "mode") {
@@ -951,7 +963,7 @@ private fun PodAuraThemeCard(
         ) {
             Box(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.inverseOnSurface)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
@@ -1073,7 +1085,7 @@ private fun SettingsContentContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = "segment-content", contentType = "segment") {
@@ -1299,7 +1311,7 @@ private fun SettingsAccountContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = "profile", contentType = "row") {
