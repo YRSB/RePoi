@@ -117,13 +117,10 @@ import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.data.local.toColors
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
-import com.materialkolor.ktx.from
-import com.materialkolor.ktx.toneColor
-import com.materialkolor.material3.dynamicColorScheme
-import com.materialkolor.palettes.TonalPalette
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.PoiShelfBackHandler
+import com.nobody.repoi.platform.dynamicPoiShelfColorScheme
 import com.nobody.repoi.platform.isDynamicSeedAvailable
 import com.nobody.repoi.platform.shareLogFile
 import com.nobody.repoi.platform.supportsDynamicColor
@@ -133,6 +130,9 @@ import com.nobody.repoi.ui.settings.shield.SettingsShieldUiState
 import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
+import com.nobody.repoi.ui.theme.ThemeCardColors
+import com.nobody.repoi.ui.theme.getOrCreateThemeCardColors
+import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -734,42 +734,29 @@ private fun SettingsAppearanceContent(
     onExpressiveColorChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val seeds = listOf(
-        ThemeSeed.Dynamic,
-        ThemeSeed.Lotus,
-        ThemeSeed.Coral,
-        ThemeSeed.Amber,
-        ThemeSeed.Pink,
-        ThemeSeed.Mint,
-        ThemeSeed.Grape,
-        ThemeSeed.Tricolor
-    )
-    val dynamicColors = MaterialTheme.colorScheme
-    val palettes: Map<ThemeSeed, List<TonalPalette>> = remember(paletteStyle, specVersion, dynamicColors) {
-        seeds.associateWith { seed ->
-            if (seed == ThemeSeed.Dynamic) {
-                listOf(
-                    TonalPalette.from(dynamicColors.primary),
-                    TonalPalette.from(dynamicColors.secondary),
-                    TonalPalette.from(dynamicColors.tertiary)
-                )
-            } else {
-                val (primary, secondary, tertiary) = seed.toColors()
-                val scheme = dynamicColorScheme(
-                    seedColor = primary!!,
-                    isDark = false,
-                    isAmoled = false,
-                    secondary = secondary,
-                    tertiary = tertiary,
-                    style = paletteStyle,
-                    specVersion = specVersion
-                )
-                listOf(
-                    TonalPalette.from(scheme.primary),
-                    TonalPalette.from(scheme.secondary),
-                    TonalPalette.from(scheme.tertiary)
-                )
-            }
+    val seeds = remember {
+        listOf(
+            ThemeSeed.Dynamic,
+            ThemeSeed.Lotus,
+            ThemeSeed.Coral,
+            ThemeSeed.Amber,
+            ThemeSeed.Pink,
+            ThemeSeed.Mint,
+            ThemeSeed.Grape,
+            ThemeSeed.Tricolor
+        )
+    }
+    val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
+    val dynamicCardColors = remember(systemDynamicScheme) {
+        if (systemDynamicScheme != null) {
+            themeCardColorsFromScheme(systemDynamicScheme)
+        } else {
+            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
+        }
+    }
+    val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, specVersion) {
+        seeds.filter { it != ThemeSeed.Dynamic }.associateWith { seed ->
+            getOrCreateThemeCardColors(seed, paletteStyle, specVersion)
         }
     }
 
@@ -809,14 +796,14 @@ private fun SettingsAppearanceContent(
                     } else {
                         seed == themeSeed.orAvailable()
                     }
-                    val accents = palettes[seed] ?: listOf(
-                        TonalPalette.from(dynamicColors.primary),
-                        TonalPalette.from(dynamicColors.secondary),
-                        TonalPalette.from(dynamicColors.tertiary)
-                    )
+                    val cardColors = if (seed == ThemeSeed.Dynamic) {
+                        dynamicCardColors
+                    } else {
+                        staticCardColors[seed] ?: dynamicCardColors
+                    }
                     PodAuraThemeCard(
                         seed = seed,
-                        accents = accents,
+                        colors = cardColors,
                         isSelected = isSelected,
                         onClick = { onThemeSeedChange(seed) }
                     )
@@ -872,7 +859,7 @@ private fun SettingsAppearanceContent(
 @Composable
 private fun PodAuraThemeCard(
     seed: ThemeSeed,
-    accents: List<TonalPalette>,
+    colors: ThemeCardColors,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -897,25 +884,26 @@ private fun PodAuraThemeCard(
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Surface(
-                    modifier = Modifier.size(50.dp),
-                    shape = CircleShape,
-                    color = accents[0].toneColor(36)
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(colors.primaryTone36)
                 ) {
-                    Box {
-                        Surface(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .offset((-25).dp, 25.dp),
-                            color = accents[1].toneColor(80)
-                        ) {}
-                        Surface(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .offset(25.dp, 25.dp),
-                            color = accents[2].toneColor(65)
-                        ) {}
-                    }
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .offset((-25).dp, 25.dp)
+                            .clip(CircleShape)
+                            .background(colors.secondaryTone80)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .offset(25.dp, 25.dp)
+                            .clip(CircleShape)
+                            .background(colors.tertiaryTone65)
+                    )
                 }
             }
 
@@ -929,7 +917,7 @@ private fun PodAuraThemeCard(
                         .fillMaxSize()
                         .border(
                             width = 2.dp,
-                            color = accents[0].toneColor(50),
+                            color = colors.primaryTone50,
                             shape = RoundedCornerShape(16.dp)
                         )
                         .padding(2.dp)

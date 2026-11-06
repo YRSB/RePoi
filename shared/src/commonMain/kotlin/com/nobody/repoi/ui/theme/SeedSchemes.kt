@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
 import com.materialkolor.material3.dynamicColorScheme
@@ -16,7 +17,7 @@ fun seedColorScheme(
     tertiary: Color? = null,
     style: PaletteStyle = PaletteStyle.TonalSpot,
     specVersion: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025
-): ColorScheme {
+): ColorScheme = remember(seedColor, darkTheme, amoled, secondary, tertiary, style, specVersion) {
     val scheme = dynamicColorScheme(
         seedColor = seedColor,
         isDark = darkTheme,
@@ -26,7 +27,7 @@ fun seedColorScheme(
         style = style,
         specVersion = specVersion
     )
-    return if (darkTheme && amoled) scheme.withAmoledBlack() else scheme
+    if (darkTheme && amoled) scheme.withAmoledBlack() else scheme
 }
 
 @Composable

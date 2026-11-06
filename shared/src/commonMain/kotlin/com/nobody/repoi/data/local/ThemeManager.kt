@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.theme.warmUpThemeCardColors
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -153,6 +154,9 @@ class ThemeManager(
                     ?: ColorSpec.SpecVersion.SPEC_2025
                 specVersion = initialSpecVersion
             }
+        }
+        scope.launch(Dispatchers.Default) {
+            warmUpThemeCardColors()
         }
     }
 
