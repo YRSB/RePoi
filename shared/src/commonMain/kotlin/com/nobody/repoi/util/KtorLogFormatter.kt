@@ -21,35 +21,10 @@ object KtorLogFormatter {
         tokenJsonPattern.replace(tokenValuePattern.replace(text, "$1***"), "$1***$3")
 
     fun format(message: String): String? {
-        val sanitized = sanitizeToken(message)
-        val trimmed = sanitized.trim()
+        val trimmed = message.trim()
         if (trimmed.isEmpty()) return null
 
-        // 0. 网络失败/异常直接透传，防止漏报
-        if (trimmed.contains("failed with exception", ignoreCase = true)) {
-            return trimmed
-        }
-
-        // 1. 请求行提炼
-        if (trimmed.startsWith("REQUEST: ")) {
-            val lines = trimmed.lines()
-            val url = lines.firstOrNull { it.startsWith("REQUEST: ") }?.removePrefix("REQUEST: ")?.trim() ?: ""
-            val method = lines.firstOrNull { it.startsWith("METHOD: ") }?.removePrefix("METHOD: ")?.trim()?.ifBlank { null } ?: "UNKNOWN"
-            return "--> $method $url"
-        }
-
-        // 2. 响应行提炼
-        if (trimmed.startsWith("RESPONSE: ")) {
-            val lines = trimmed.lines()
-            val status = lines.firstOrNull { it.startsWith("RESPONSE: ") }?.removePrefix("RESPONSE: ")?.trim() ?: ""
-            val from = lines.firstOrNull { it.startsWith("FROM: ") }?.removePrefix("FROM: ")?.trim() ?: ""
-            return if (from.isNotBlank()) {
-                "<-- $status $from"
-            } else {
-                "<-- $status"
-            }
-        }
-
+        // 1. 报文体截断提炼：先截断至 MAX_BODY_LENGTH，仅对截取后的安全长度执行脱敏
         if (trimmed.contains("BODY START")) {
             if (!trimmed.contains("BODY END")) return null
             val body = trimmed
@@ -60,14 +35,14 @@ object KtorLogFormatter {
                 return null
             }
             val formattedBody = if (body.length > MAX_BODY_LENGTH) {
-                "${body.take(MAX_BODY_LENGTH)}\n... (共 ${body.length} 字符，已截断)"
+                "${sanitizeToken(body.take(MAX_BODY_LENGTH))}\n... (共 ${body.length} 字符，已截断)"
             } else {
-                body
+                sanitizeToken(body)
             }
             return "[Body] $formattedBody"
         }
 
-        // 4. 纯冗余头信息直接过滤
+        // 2. 纯冗余头信息直接短路过滤，完全跳过正则
         if (trimmed.startsWith("COMMON HEADERS") ||
             trimmed.startsWith("CONTENT HEADERS") ||
             trimmed.startsWith("RESPONSE HEADERS") ||
@@ -77,7 +52,33 @@ object KtorLogFormatter {
             return null
         }
 
-        // 5. 其他关键信息保留原样
-        return trimmed
+        // 3. 网络失败/异常直接透传，防止漏报
+        if (trimmed.contains("failed with exception", ignoreCase = true)) {
+            return sanitizeToken(trimmed)
+        }
+
+        // 4. 请求行提炼
+        if (trimmed.startsWith("REQUEST: ")) {
+            val lines = trimmed.lines()
+            val url = lines.firstOrNull { it.startsWith("REQUEST: ") }?.removePrefix("REQUEST: ")?.trim() ?: ""
+            val method = lines.firstOrNull { it.startsWith("METHOD: ") }?.removePrefix("METHOD: ")?.trim()?.ifBlank { null } ?: "UNKNOWN"
+            return sanitizeToken("--> $method $url")
+        }
+
+        // 5. 响应行提炼
+        if (trimmed.startsWith("RESPONSE: ")) {
+            val lines = trimmed.lines()
+            val status = lines.firstOrNull { it.startsWith("RESPONSE: ") }?.removePrefix("RESPONSE: ")?.trim() ?: ""
+            val from = lines.firstOrNull { it.startsWith("FROM: ") }?.removePrefix("FROM: ")?.trim() ?: ""
+            val res = if (from.isNotBlank()) {
+                "<-- $status $from"
+            } else {
+                "<-- $status"
+            }
+            return sanitizeToken(res)
+        }
+
+        // 6. 其他关键信息保留原样
+        return sanitizeToken(trimmed)
     }
 }

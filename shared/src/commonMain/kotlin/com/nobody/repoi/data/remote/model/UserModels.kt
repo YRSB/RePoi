@@ -10,10 +10,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
+import com.nobody.repoi.util.DefaultJson
 import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
-
-private val defaultJson = Json { ignoreUnknownKeys = true }
 
 // ── 4. 用户与登录模型 ───────────────────────────────
 
@@ -891,7 +890,7 @@ data class UserHistoryItem(
             if (element is kotlinx.serialization.json.JsonObject) {
                 // 1. 直接反序列化
                 val direct = runCatching {
-                    defaultJson.decodeFromJsonElement(UserHistoryUserInfoData.serializer(), element)
+                    DefaultJson.decodeFromJsonElement(UserHistoryUserInfoData.serializer(), element)
                 }.getOrNull()
                 if (direct != null && (direct.authorNickname.isNotBlank() || direct.authorAvatar.isNotBlank())) {
                     return direct

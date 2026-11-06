@@ -3,6 +3,7 @@ package com.nobody.repoi.di
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
@@ -38,6 +39,10 @@ val imageModule = module {
             add(CorruptCacheRecoveryInterceptor(diskCacheInstance))
             add(SvgDecoder.Factory())
             add(KtorNetworkFetcherFactory(httpClient = get<HttpClient>(named("coil"))))
+        }.memoryCache {
+            MemoryCache.Builder()
+                .maxSizeBytes(192 * 1024 * 1024L)
+                .build()
         }.logger(object : CoilLogger {
             override var minLevel: CoilLogger.Level = CoilLogger.Level.Info
 

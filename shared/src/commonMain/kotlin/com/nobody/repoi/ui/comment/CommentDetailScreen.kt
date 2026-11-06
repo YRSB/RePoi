@@ -206,7 +206,7 @@ fun CommentDetailScreen(
                 ) {
                     val comment = uiState.comment
                     if (comment != null) {
-                        item(key = "detail_header_${comment.id}") {
+                        item(key = "detail_header_${comment.id}", contentType = "detail_header") {
                             CommentItemCard(
                                 comment = comment,
                                 isHot = uiState.isHot,
@@ -232,7 +232,7 @@ fun CommentDetailScreen(
                     }
 
                     if (uiState.replies.isNotEmpty()) {
-                        item(key = "detail_replies_title") {
+                        item(key = "detail_replies_title", contentType = "detail_replies_title") {
                             // 原版标题无计数
                             Text(
                                 text = "全部回复",
@@ -244,7 +244,8 @@ fun CommentDetailScreen(
                         }
                         items(
                             items = uiState.replies,
-                            key = { "detail_reply_${it.id}" }
+                            key = { "detail_reply_${it.id}" },
+                            contentType = { "detail_reply" }
                         ) { reply ->
                             CommentReplyRow(
                                 reply = reply,
@@ -256,7 +257,7 @@ fun CommentDetailScreen(
                         }
                     }
 
-                    item(key = "detail_footer") {
+                    item(key = "detail_footer", contentType = "detail_footer") {
                         CommentFooter(
                             isLoadingMore = uiState.isLoadingMore,
                             hasMore = uiState.hasMore,

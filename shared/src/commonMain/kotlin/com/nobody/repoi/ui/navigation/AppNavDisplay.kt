@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
@@ -25,28 +26,37 @@ fun AppNavDisplay(
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val onBack: () -> Unit = { navigator.pop() }
+    val onBack: () -> Unit = remember(navigator) { { navigator.pop() } }
 
-    val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
-        entry<MainNavKey> {
-            MainScreen(
+    val entryProvider: (NavKey) -> NavEntry<NavKey> = remember(
+        navigator,
+        tabEntries,
+        snackbarHostState,
+        showSnackbarHost,
+        onLoginSuccess,
+        onBack
+    ) {
+        entryProvider {
+            entry<MainNavKey> {
+                MainScreen(
+                    navigator = navigator,
+                    tabEntries = tabEntries,
+                    snackbarHostState = snackbarHostState,
+                    showSnackbarHost = showSnackbarHost
+                )
+            }
+            detailEntries(navigator, onBack)
+            communityEntries(navigator, onBack)
+            marketEntries(navigator, onBack)
+            userEntries(navigator, onBack)
+            messageEntries(navigator, onBack)
+            interactionEntries(navigator, onBack)
+            systemEntries(
                 navigator = navigator,
-                tabEntries = tabEntries,
-                snackbarHostState = snackbarHostState,
-                showSnackbarHost = showSnackbarHost
+                onBack = onBack,
+                onLoginSuccess = onLoginSuccess
             )
         }
-        detailEntries(navigator, onBack)
-        communityEntries(navigator, onBack)
-        marketEntries(navigator, onBack)
-        userEntries(navigator, onBack)
-        messageEntries(navigator, onBack)
-        interactionEntries(navigator, onBack)
-        systemEntries(
-            navigator = navigator,
-            onBack = onBack,
-            onLoginSuccess = onLoginSuccess
-        )
     }
 
     RePoiNavDisplay(

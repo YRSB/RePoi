@@ -1,14 +1,9 @@
 package com.nobody.repoi.data.remote.model
 
+import com.nobody.repoi.util.DefaultJson
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-private val VendorJson = Json {
-    ignoreUnknownKeys = true
-    isLenient = true
-}
 
 /**
  * 厂商主体响应 (api/company/v2/get)
@@ -81,7 +76,7 @@ data class CompanyData(
         get() {
             val jsonStr = otherInfo ?: return emptyList()
             return try {
-                VendorJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
+                DefaultJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
             } catch (_: Exception) {
                 emptyList()
             }

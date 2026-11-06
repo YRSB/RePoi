@@ -50,7 +50,7 @@ class MessageChatViewModel(
         viewModelScope.launch {
             val result = repository.getChatMessages(fromId = param.targetUserId, page = 1, pageSize = pageSize)
             result.onSuccess { payload ->
-                val list = payload.messages
+                val list = payload.messages.sortedBy { it.date }
                 maxKnownMessageId = list.maxOfOrNull { it.actualMessageId } ?: 0L
                 val isBlocked = payload.direction == 1 || payload.direction == 3
 

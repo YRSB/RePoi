@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.navigation
 
 import com.nobody.repoi.platform.AppMessageBus
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 
 /**
@@ -12,7 +13,10 @@ import kotlinx.coroutines.channels.Channel
  * 消费 `take()`，形成完整链路。
  */
 internal class RootMessageBus : AppMessageBus {
-    private val channel = Channel<String>(Channel.UNLIMITED)
+    private val channel = Channel<String>(
+        capacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     override fun show(message: String) {
         channel.trySend(message)

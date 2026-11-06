@@ -105,9 +105,25 @@ class ImageViewerStateHolder internal constructor(
     }
 
     companion object {
+        private const val MAX_SAVED_IMAGES = 50
+
         val Saver: Saver<ImageViewerStateHolder, Any> = listSaver(
             save = { holder ->
-                listOf(ArrayList(holder.imageUrls), holder.currentIndex)
+                val urls = holder.imageUrls
+                val current = holder.currentIndex
+                val (savedUrls, savedIndex) = if (urls.size > MAX_SAVED_IMAGES) {
+                    // 仅截取以当前索引为中心的安全窗口（最多 50 项），防止 Binder TransactionTooLargeException
+                    val halfWindow = MAX_SAVED_IMAGES / 2
+                    val start = (current - halfWindow).coerceAtLeast(0)
+                    val end = (start + MAX_SAVED_IMAGES).coerceAtMost(urls.size)
+                    val actualStart = (end - MAX_SAVED_IMAGES).coerceAtLeast(0)
+                    val sublist = urls.subList(actualStart, end)
+                    val newIndex = (current - actualStart).coerceIn(0, (sublist.size - 1).coerceAtLeast(0))
+                    sublist to newIndex
+                } else {
+                    urls to current
+                }
+                listOf(ArrayList(savedUrls), savedIndex)
             },
             restore = { list ->
                 @Suppress("UNCHECKED_CAST")
