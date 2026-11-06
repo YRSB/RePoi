@@ -103,9 +103,10 @@ import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.data.local.toColors
 import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamicColorScheme
 import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.ktx.from
 import com.materialkolor.ktx.toneColor
+import com.materialkolor.material3.dynamicColorScheme
 import com.materialkolor.palettes.TonalPalette
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
