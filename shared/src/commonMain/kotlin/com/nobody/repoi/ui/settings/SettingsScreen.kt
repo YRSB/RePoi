@@ -139,7 +139,7 @@ fun SettingsScreen(
         }
     }
 
-    val backStack = rememberNavBackStack<NavKey>(savedStateConfiguration, SettingsListNavKey)
+    val backStack = rememberNavBackStack(savedStateConfiguration, SettingsListNavKey)
     remember(backStack) {
         if (isWide && backStack.size == 1) {
             backStack.add(SettingsAppearanceNavKey)
