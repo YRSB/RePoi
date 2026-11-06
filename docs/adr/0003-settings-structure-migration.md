@@ -24,14 +24,14 @@ RePoi 设置页需承载原版 Hpoi 核心功能迁移、第三方客户端能�
 ## 决策结论
 
 ### 1. Navigation 3 原生自适应双窗格架构 (Native Nav3 Adaptive List-Detail)
-- **全局单根栈隔离**：外部全局根栈始终保持单一 `SettingsNavKey`，设置页内部子页面（`SettingsAppearanceNavKey`, `SettingsContentNavKey`, `SettingsAccountNavKey`）为私有子 Key，定义于 `ui/settings/navigation/SettingsSubNavKeys.kt`，不污染全局导航拓扑与序列化模块；
-- **官方 SceneStrategy 驱动**：使用 Compose Multiplatform 原生 `rememberListDetailSceneStrategy<SettingsSubNavKey>` 结合 `calculatePaneScaffoldDirective(windowAdaptiveInfo).copy(horizontalPartitionSpacerSize = 0.dp)`；
+- **全局单根栈隔离**：外部全局根栈始终保持单一 `SettingsNavKey`，设置页内部子页面（`SettingsAppearanceNavKey`, `SettingsContentNavKey`, `SettingsAccountNavKey`）为私有子 Key，定义于 `ui/settings/navigation/SettingsSubNavKeys.kt`，不污染全局导航拓扑；内部子栈多态序列化统一由 `SettingsSubNavSerializersModule` 闭环管理；
+- **官方 SceneStrategy 驱动**：使用 Compose Multiplatform 原生 `rememberListDetailSceneStrategy<NavKey>` 结合 `calculatePaneScaffoldDirective(windowAdaptiveInfo).copy(horizontalPartitionSpacerSize = 0.dp)`；
 - **元数据角色声明**：
   - `SettingsListNavKey` 声明 `metadata = ListDetailSceneStrategy.listPane(...)`；
   - 各二级详情页声明 `metadata = ListDetailSceneStrategy.detailPane()`；
 - **宽窄屏返回栈交互规范**：
   - 宽屏（>= 600dp）：初始返回栈为 `[SettingsListNavKey, SettingsAppearanceNavKey]`，右侧始终呈现默认详情；左侧点击不同分组时执行栈顶替换（Replace Top），避免无谓的历史栈堆叠；
-  - 窄屏（< 600dp）：初始返回栈为 `[SettingsListNavKey]`，点击分组后正常压栈，按返回键出栈回到分组列表，再次返回退出设置页；
+  - 窄屏（< 600dp）：初始返回栈为 `[SettingsListNavKey]`，点击分组后正常压栈，按返回键出栈回到分组列表，在仅有一级列表时按返回退出设置页；
   - 窗口跨端拉伸时：自适应策略根据当前窗口尺寸平滑在单/双栏间切换，保留当前激活的分组。
 
 ### 2. 标准 Material 3 原生大顶栏与独立 Pane 封装 (Independent Scaffolds)

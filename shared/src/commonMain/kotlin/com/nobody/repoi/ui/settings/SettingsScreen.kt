@@ -49,6 +49,7 @@ import com.nobody.repoi.ui.settings.navigation.SettingsContentNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsGroup
 import com.nobody.repoi.ui.settings.navigation.SettingsListNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsSubNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsSubNavSerializersModule
 import com.nobody.repoi.ui.settings.panes.SettingsAccountPane
 import com.nobody.repoi.ui.settings.panes.SettingsAppearancePane
 import com.nobody.repoi.ui.settings.panes.SettingsContentPane
@@ -57,9 +58,6 @@ import com.nobody.repoi.ui.settings.panes.formatBytes
 import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -122,25 +120,12 @@ fun SettingsScreen(
 
     val savedStateConfiguration = remember {
         SavedStateConfiguration {
-            serializersModule = SerializersModule {
-                polymorphic(NavKey::class) {
-                    subclass(SettingsListNavKey::class)
-                    subclass(SettingsAppearanceNavKey::class)
-                    subclass(SettingsContentNavKey::class)
-                    subclass(SettingsAccountNavKey::class)
-                }
-                polymorphic(SettingsSubNavKey::class) {
-                    subclass(SettingsListNavKey::class)
-                    subclass(SettingsAppearanceNavKey::class)
-                    subclass(SettingsContentNavKey::class)
-                    subclass(SettingsAccountNavKey::class)
-                }
-            }
+            serializersModule = SettingsSubNavSerializersModule
         }
     }
 
     val backStack = rememberNavBackStack(savedStateConfiguration, SettingsListNavKey)
-    remember(backStack) {
+    remember(backStack, isWide) {
         if (isWide && backStack.size == 1) {
             backStack.add(SettingsAppearanceNavKey)
         }
@@ -177,7 +162,9 @@ fun SettingsScreen(
                 backStack.add(targetKey)
             }
         } else {
-            backStack.add(targetKey)
+            if (backStack.lastOrNull() != targetKey) {
+                backStack.add(targetKey)
+            }
         }
     }
 
@@ -185,13 +172,17 @@ fun SettingsScreen(
         if (isWide) {
             onBack()
         } else {
-            backStack.removeLastOrNull()
+            if (backStack.size > 1) {
+                backStack.removeLastOrNull()
+            } else {
+                onBack()
+            }
         }
     }
 
     val currentDetailKey = backStack.lastOrNull()
     val selectedGroup = if (isWide) {
-        SettingsGroup.fromNavKey(currentDetailKey) ?: SettingsGroup.Appearance
+        SettingsGroup.fromNavKey(currentDetailKey)
     } else {
         null
     }

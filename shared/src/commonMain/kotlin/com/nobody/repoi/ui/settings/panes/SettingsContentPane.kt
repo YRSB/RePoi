@@ -207,7 +207,7 @@ fun SettingsContentPane(
                             "不显示"
                         },
                         checked = shieldState.nsfwVisible,
-                        onCheckedChange = { onNsfwChange(!shieldState.nsfwVisible) }
+                        onCheckedChange = onNsfwChange
                     )
                     SettingSwitchItem(
                         icon = Icons.Outlined.Collections,

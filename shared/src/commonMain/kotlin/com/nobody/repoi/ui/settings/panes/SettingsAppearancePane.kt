@@ -114,7 +114,7 @@ fun SettingsAppearancePane(
         )
     }
     val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
-    val dynamicCardColors = remember(systemDynamicScheme) {
+    val dynamicCardColors = remember(systemDynamicScheme, paletteStyle, specVersion) {
         if (systemDynamicScheme != null) {
             themeCardColorsFromScheme(systemDynamicScheme)
         } else {

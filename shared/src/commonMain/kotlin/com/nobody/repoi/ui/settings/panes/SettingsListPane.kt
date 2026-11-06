@@ -156,6 +156,16 @@ fun SettingsListPane(
                                 } else {
                                     MaterialTheme.colorScheme.surface
                                 },
+                                titleColor = if (selected) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                iconTint = if (selected) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 onClick = { onSelectGroup(group) }
                             )
                         }

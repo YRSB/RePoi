@@ -1,12 +1,15 @@
 package com.nobody.repoi.ui.settings
 
 import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsAccountNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsAppearanceNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsContentNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsGroup
 import com.nobody.repoi.ui.settings.navigation.SettingsListNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsSubNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsSubNavSerializersModule
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -95,6 +98,61 @@ class SettingsSubNavKeysTest {
     }
 
     @Test
+    fun testNarrowScreenPopFromSingleKeyExits() {
+        val stack = NavBackStack<NavKey>(SettingsListNavKey)
+        var exitCalled = false
+        val onBack = { exitCalled = true }
+        val localOnBack = {
+            if (stack.size > 1) {
+                stack.removeLastOrNull()
+            } else {
+                onBack()
+            }
+        }
+
+        // 仅有一级列表时，按返回触发退出回调，不破坏返回栈
+        localOnBack()
+        assertEquals(true, exitCalled)
+        assertEquals(1, stack.size)
+        assertEquals(SettingsListNavKey, stack.single())
+
+        // 压入二级详情后，按返回出栈且不触发退出
+        exitCalled = false
+        stack.add(SettingsAppearanceNavKey)
+        assertEquals(2, stack.size)
+
+        localOnBack()
+        assertEquals(false, exitCalled)
+        assertEquals(1, stack.size)
+        assertEquals(SettingsListNavKey, stack.single())
+
+        // 再次返回，触发退出
+        localOnBack()
+        assertEquals(true, exitCalled)
+        assertEquals(1, stack.size)
+    }
+
+    @Test
+    fun testNarrowScreenRapidClickNoDuplicate() {
+        val stack = NavBackStack<NavKey>(SettingsListNavKey)
+        val onSelectGroup: (SettingsGroup) -> Unit = { group ->
+            val targetKey = group.navKey
+            if (stack.lastOrNull() != targetKey) {
+                stack.add(targetKey)
+            }
+        }
+
+        onSelectGroup(SettingsGroup.Appearance)
+        assertEquals(2, stack.size)
+        assertEquals(SettingsAppearanceNavKey, stack.last())
+
+        // 重复点击同一分组，不应重复压栈
+        onSelectGroup(SettingsGroup.Appearance)
+        assertEquals(2, stack.size)
+        assertEquals(SettingsAppearanceNavKey, stack.last())
+    }
+
+    @Test
     fun testSubNavKeysPolymorphicSerialization() {
         val keys: List<SettingsSubNavKey> = listOf(
             SettingsListNavKey,
@@ -109,4 +167,34 @@ class SettingsSubNavKeysTest {
             assertEquals(key, decoded)
         }
     }
+
+    @Test
+    fun testSubNavKeysPolymorphicSerializationWithModule() {
+        val jsonWithModule = Json {
+            serializersModule = SettingsSubNavSerializersModule
+            ignoreUnknownKeys = true
+        }
+
+        val keys: List<SettingsSubNavKey> = listOf(
+            SettingsListNavKey,
+            SettingsAppearanceNavKey,
+            SettingsContentNavKey,
+            SettingsAccountNavKey
+        )
+
+        keys.forEach { key ->
+            // 验证基于 NavKey 基类的多态反序列化
+            val navKeySerializer = PolymorphicSerializer(NavKey::class)
+            val encodedNavKey = jsonWithModule.encodeToString(navKeySerializer, key)
+            val decodedNavKey = jsonWithModule.decodeFromString(navKeySerializer, encodedNavKey)
+            assertEquals(key, decodedNavKey)
+
+            // 验证基于 SettingsSubNavKey 密封接口的多态反序列化
+            val subKeySerializer = PolymorphicSerializer(SettingsSubNavKey::class)
+            val encodedSubKey = jsonWithModule.encodeToString(subKeySerializer, key)
+            val decodedSubKey = jsonWithModule.decodeFromString(subKeySerializer, encodedSubKey)
+            assertEquals(key, decodedSubKey)
+        }
+    }
 }
+
