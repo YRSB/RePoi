@@ -28,9 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.savedstate.serialization.SavedStateConfiguration
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
@@ -56,6 +56,9 @@ import com.nobody.repoi.ui.settings.panes.formatBytes
 import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -114,9 +117,22 @@ fun SettingsScreen(
         calculatePaneScaffoldDirective(windowAdaptiveInfo)
             .copy(horizontalPartitionSpacerSize = 0.dp)
     }
-    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
+    val listDetailStrategy = rememberListDetailSceneStrategy<SettingsSubNavKey>(directive = directive)
 
-    val backStack = rememberNavBackStack(SettingsListNavKey as NavKey)
+    val savedStateConfiguration = remember {
+        SavedStateConfiguration {
+            serializersModule = SerializersModule {
+                polymorphic(SettingsSubNavKey::class) {
+                    subclass(SettingsListNavKey::class)
+                    subclass(SettingsAppearanceNavKey::class)
+                    subclass(SettingsContentNavKey::class)
+                    subclass(SettingsAccountNavKey::class)
+                }
+            }
+        }
+    }
+
+    val backStack = rememberNavBackStack(savedStateConfiguration, SettingsListNavKey)
     remember(backStack) {
         if (isWide && backStack.size == 1) {
             backStack.add(SettingsAppearanceNavKey)
@@ -168,7 +184,7 @@ fun SettingsScreen(
 
     val currentDetailKey = backStack.lastOrNull()
     val selectedGroup = if (isWide) {
-        SettingsGroup.fromNavKey(currentDetailKey as? SettingsSubNavKey) ?: SettingsGroup.Appearance
+        SettingsGroup.fromNavKey(currentDetailKey) ?: SettingsGroup.Appearance
     } else {
         null
     }
@@ -292,7 +308,7 @@ fun SettingsScreen(
         }
     }
 
-    val entryProvider = entryProvider<NavKey> {
+    val entryProvider = entryProvider<SettingsSubNavKey> {
         entry<SettingsListNavKey>(
             metadata = ListDetailSceneStrategy.listPane(
                 detailPlaceholder = {
