@@ -533,46 +533,48 @@ fun <T> SettingDropdownItem(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.heightIn(max = 360.dp)
                 ) {
-            values.forEach { item ->
-                val isSelected = item == selectedValue
-                val itemModifier = if (isSelected) {
-                    Modifier
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                } else {
-                    Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                }
-
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = valueLabel(item),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    leadingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                    values.forEach { item ->
+                        val isSelected = item == selectedValue
+                        val itemModifier = if (isSelected) {
+                            Modifier
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                        } else {
+                            Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         }
-                    } else null,
-                    onClick = {
-                        onValueChange(item)
-                        expanded = false
-                    },
-                    modifier = itemModifier,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                )
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = valueLabel(item),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            } else null,
+                            onClick = {
+                                onValueChange(item)
+                                expanded = false
+                            },
+                            modifier = itemModifier,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
             }
         }
-    }
+    )
 }
