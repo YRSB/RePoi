@@ -1,5 +1,9 @@
 package com.nobody.repoi.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,12 +14,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,6 +58,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -63,9 +70,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -132,33 +143,33 @@ private fun getSeedPalette(seed: ThemeSeed): SeedPaletteColors {
     return when (seed) {
         ThemeSeed.Pink -> SeedPaletteColors(
             primary = Color(0xFFFF4D8D),
-            secondary = Color(0xFFFF85A2),
-            tertiary = Color(0xFFFFB2D1)
+            secondary = Color(0xFFFFB2D1),
+            tertiary = Color(0xFFFF80AA)
         )
         ThemeSeed.Coral -> SeedPaletteColors(
             primary = Color(0xFFFF4D4F),
-            secondary = Color(0xFFFFA39E),
-            tertiary = Color(0xFFFFCCC7)
+            secondary = Color(0xFFFFCCC7),
+            tertiary = Color(0xFFFFA39E)
         )
         ThemeSeed.Amber -> SeedPaletteColors(
             primary = Color(0xFFFA8C16),
-            secondary = Color(0xFFFFC069),
-            tertiary = Color(0xFFFFE7BA)
+            secondary = Color(0xFFFFE7BA),
+            tertiary = Color(0xFFFFC069)
         )
         ThemeSeed.Lotus -> SeedPaletteColors(
             primary = Color(0xFF1890FF),
-            secondary = Color(0xFF69C0FF),
-            tertiary = Color(0xFFBAE7FF)
+            secondary = Color(0xFFBAE7FF),
+            tertiary = Color(0xFF69C0FF)
         )
         ThemeSeed.Mint -> SeedPaletteColors(
             primary = Color(0xFF12B76A),
-            secondary = Color(0xFF38C793),
-            tertiary = Color(0xFFA6F4C5)
+            secondary = Color(0xFFA6F4C5),
+            tertiary = Color(0xFF38C793)
         )
         ThemeSeed.Grape -> SeedPaletteColors(
             primary = Color(0xFF7A5AF8),
-            secondary = Color(0xFF9B8AFB),
-            tertiary = Color(0xFFD9D6FE)
+            secondary = Color(0xFFD9D6FE),
+            tertiary = Color(0xFF9B8AFB)
         )
         ThemeSeed.Tricolor -> SeedPaletteColors(
             primary = Color(0xFFFF6B9D),
@@ -167,8 +178,8 @@ private fun getSeedPalette(seed: ThemeSeed): SeedPaletteColors {
         )
         ThemeSeed.Dynamic -> SeedPaletteColors(
             primary = Color(0xFF0061A4),
-            secondary = Color(0xFF535F70),
-            tertiary = Color(0xFF6B5778)
+            secondary = Color(0xFFD1E4FF),
+            tertiary = Color(0xFF535F70)
         )
     }
 }
@@ -759,7 +770,7 @@ private fun SettingsAppearanceContent(
         item(key = "seeds-flow", contentType = "seeds") {
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 2.dp)
             ) {
                 items(seeds, key = { it.name }, contentType = { "seed" }) { seed ->
@@ -824,6 +835,7 @@ private fun SettingsAppearanceContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PodAuraThemeCard(
     seed: ThemeSeed,
@@ -835,47 +847,88 @@ private fun PodAuraThemeCard(
     val palette = if (seed == ThemeSeed.Dynamic && isDynamicActive) {
         SeedPaletteColors(
             primary = dynamicColors.primary,
-            secondary = dynamicColors.secondary,
-            tertiary = dynamicColors.tertiary
+            secondary = dynamicColors.secondaryContainer,
+            tertiary = dynamicColors.tertiaryContainer
         )
     } else {
         getSeedPalette(seed)
     }
 
-    val border = if (isSelected) {
-        androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-    } else {
-        null
-    }
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(68.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .then(
-                if (border != null) Modifier.border(border, RoundedCornerShape(18.dp))
-                else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(6.dp)
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = {
+            PlainTooltip {
+                Text(text = seed.title)
+            }
+        },
+        state = rememberTooltipState()
     ) {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .size(74.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick)
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.size(44.dp)) {
+            Box(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.inverseOnSurface)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.size(50.dp),
+                    shape = CircleShape,
+                    color = palette.primary
+                ) {
                     if (seed == ThemeSeed.Tricolor) {
-                        drawArc(color = palette.primary, startAngle = 270f, sweepAngle = 120f, useCenter = true)
-                        drawArc(color = palette.secondary, startAngle = 30f, sweepAngle = 120f, useCenter = true)
-                        drawArc(color = palette.tertiary, startAngle = 150f, sweepAngle = 120f, useCenter = true)
+                        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                            drawArc(color = palette.primary, startAngle = 270f, sweepAngle = 120f, useCenter = true)
+                            drawArc(color = palette.secondary, startAngle = 30f, sweepAngle = 120f, useCenter = true)
+                            drawArc(color = palette.tertiary, startAngle = 150f, sweepAngle = 120f, useCenter = true)
+                        }
                     } else {
-                        drawArc(color = palette.primary, startAngle = 180f, sweepAngle = 180f, useCenter = true)
-                        drawArc(color = palette.secondary, startAngle = 90f, sweepAngle = 90f, useCenter = true)
-                        drawArc(color = palette.tertiary, startAngle = 0f, sweepAngle = 90f, useCenter = true)
+                        Box {
+                            Surface(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .offset((-25).dp, 25.dp),
+                                color = palette.secondary
+                            ) {}
+                            Surface(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .offset(25.dp, 25.dp),
+                                color = palette.tertiary
+                            ) {}
+                        }
                     }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(
+                            width = 2.dp,
+                            color = palette.primary,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                    )
                 }
             }
         }
