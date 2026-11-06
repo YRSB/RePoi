@@ -10,7 +10,6 @@ import com.nobody.repoi.ui.settings.navigation.SettingsSubNavKey
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class SettingsSubNavKeysTest {
@@ -37,7 +36,8 @@ class SettingsSubNavKeysTest {
 
     @Test
     fun testWideScreenReplaceTopBehavior() {
-        val stack = NavBackStack<SettingsSubNavKey>(SettingsListNavKey, SettingsAppearanceNavKey)
+        val stack = NavBackStack<SettingsSubNavKey>(SettingsListNavKey)
+        stack.add(SettingsAppearanceNavKey)
         assertEquals(2, stack.size)
         assertEquals(SettingsAppearanceNavKey, stack.last())
 

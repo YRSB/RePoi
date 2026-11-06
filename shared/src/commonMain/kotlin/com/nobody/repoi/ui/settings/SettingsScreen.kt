@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
@@ -113,16 +114,15 @@ fun SettingsScreen(
         calculatePaneScaffoldDirective(windowAdaptiveInfo)
             .copy(horizontalPartitionSpacerSize = 0.dp)
     }
-    val listDetailStrategy = rememberListDetailSceneStrategy<SettingsSubNavKey>(directive = directive)
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
 
-    val initialKeys = remember {
-        if (isWide) {
-            arrayOf<SettingsSubNavKey>(SettingsListNavKey, SettingsAppearanceNavKey)
-        } else {
-            arrayOf<SettingsSubNavKey>(SettingsListNavKey)
+    val backStack = rememberNavBackStack(SettingsListNavKey as NavKey)
+    remember(backStack) {
+        if (isWide && backStack.size == 1) {
+            backStack.add(SettingsAppearanceNavKey)
         }
+        true
     }
-    val backStack = rememberNavBackStack(*initialKeys)
 
     LaunchedEffect(isWide) {
         if (isWide && backStack.size == 1 && backStack.firstOrNull() is SettingsListNavKey) {
@@ -168,7 +168,7 @@ fun SettingsScreen(
 
     val currentDetailKey = backStack.lastOrNull()
     val selectedGroup = if (isWide) {
-        SettingsGroup.fromNavKey(currentDetailKey) ?: SettingsGroup.Appearance
+        SettingsGroup.fromNavKey(currentDetailKey as? SettingsSubNavKey) ?: SettingsGroup.Appearance
     } else {
         null
     }
@@ -292,7 +292,7 @@ fun SettingsScreen(
         }
     }
 
-    val entryProvider = entryProvider<SettingsSubNavKey> {
+    val entryProvider = entryProvider<NavKey> {
         entry<SettingsListNavKey>(
             metadata = ListDetailSceneStrategy.listPane(
                 detailPlaceholder = {
