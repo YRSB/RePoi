@@ -410,10 +410,6 @@ fun SettingsScreen(
                         title = {
                             Text(
                                 text = "系统设置",
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
@@ -426,7 +422,6 @@ fun SettingsScreen(
                                 )
                             }
                         },
-                        expandedHeight = 120.dp,
                         scrollBehavior = wideLeftScrollBehavior,
                         colors = TopAppBarDefaults.largeTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -466,14 +461,9 @@ fun SettingsScreen(
                         title = {
                             Text(
                                 text = currentSelectedGroup.title,
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
-                        expandedHeight = 120.dp,
                         scrollBehavior = wideRightScrollBehavior,
                         colors = TopAppBarDefaults.largeTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -539,10 +529,6 @@ fun SettingsScreen(
                     title = {
                         Text(
                             text = currentTitle,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     },
@@ -558,7 +544,6 @@ fun SettingsScreen(
                             )
                         }
                     },
-                    expandedHeight = 120.dp,
                     scrollBehavior = narrowScrollBehavior,
                     colors = TopAppBarDefaults.largeTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
