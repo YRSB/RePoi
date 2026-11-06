@@ -57,6 +57,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
+ * 设置分组的小标题。
+ *
+ * 遵循 Material 3 Expressive 规范，与 [SettingItemGroup] 的标题排版与边距规范完全对齐：
+ * - 字体排版：[MaterialTheme.typography.labelLarge]；
+ * - 字体颜色：[MaterialTheme.colorScheme.primary]；
+ * - 边距对齐：水平起始对齐 24.dp（外层 16.dp + 内层 8.dp），垂直上下内边距各 8.dp。
+ */
+@Composable
+fun SettingGroupTitle(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)
+    )
+}
+
+/**
  * 设置页的分组容器。
  *
  * 遵循 Material 3 Expressive 规范：

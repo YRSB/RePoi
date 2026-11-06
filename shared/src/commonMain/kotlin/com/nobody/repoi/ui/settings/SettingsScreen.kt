@@ -139,6 +139,7 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.settings.components.ButtonGroupOption
 import com.nobody.repoi.ui.settings.components.SettingButtonGroup
+import com.nobody.repoi.ui.settings.components.SettingGroupTitle
 import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSliderItem
@@ -778,28 +779,21 @@ private fun SettingsAppearanceContent(
         contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item(key = "header-theme", contentType = "header") {
-            Text(
-                text = "主题",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-        }
-
-        item(key = "mode-segmented", contentType = "mode") {
-            val themeOptions = listOf(
-                ButtonGroupOption(ThemeMode.LIGHT, "浅色", Icons.Outlined.LightMode),
-                ButtonGroupOption(ThemeMode.DARK, "深色", Icons.Outlined.DarkMode),
-                ButtonGroupOption(ThemeMode.SYSTEM, "跟随系统", Icons.Outlined.BrightnessAuto)
-            )
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                SettingButtonGroup(
-                    options = themeOptions,
-                    selected = themeMode,
-                    onSelect = onThemeModeChange
+        item(key = "theme-mode", contentType = "mode") {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SettingGroupTitle(text = "主题")
+                val themeOptions = listOf(
+                    ButtonGroupOption(ThemeMode.LIGHT, "浅色", Icons.Outlined.LightMode),
+                    ButtonGroupOption(ThemeMode.DARK, "深色", Icons.Outlined.DarkMode),
+                    ButtonGroupOption(ThemeMode.SYSTEM, "跟随系统", Icons.Outlined.BrightnessAuto)
                 )
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    SettingButtonGroup(
+                        options = themeOptions,
+                        selected = themeMode,
+                        onSelect = onThemeModeChange
+                    )
+                }
             }
         }
 
