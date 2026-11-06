@@ -768,7 +768,7 @@ private fun SettingsAppearanceContent(
     ) {
         item(key = "theme-mode", contentType = "mode") {
             Column(modifier = Modifier.fillMaxWidth()) {
-                SettingGroupTitle(text = "主题")
+                SettingGroupTitle(text = "显示模式")
                 val themeOptions = listOf(
                     ButtonGroupOption(ThemeMode.LIGHT, "浅色", Icons.Outlined.LightMode),
                     ButtonGroupOption(ThemeMode.DARK, "深色", Icons.Outlined.DarkMode),
@@ -785,34 +785,37 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "seeds-flow", contentType = "seeds") {
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
-                items(seeds, key = { it.name }, contentType = { "seed" }) { seed ->
-                    val isSelected = if (dynamicColor) {
-                        seed == ThemeSeed.Dynamic
-                    } else {
-                        seed == themeSeed.orAvailable()
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SettingGroupTitle(text = "主题配色")
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    items(seeds, key = { it.name }, contentType = { "seed" }) { seed ->
+                        val isSelected = if (dynamicColor) {
+                            seed == ThemeSeed.Dynamic
+                        } else {
+                            seed == themeSeed.orAvailable()
+                        }
+                        val cardColors = if (seed == ThemeSeed.Dynamic) {
+                            dynamicCardColors
+                        } else {
+                            staticCardColors[seed] ?: dynamicCardColors
+                        }
+                        PodAuraThemeCard(
+                            seed = seed,
+                            colors = cardColors,
+                            isSelected = isSelected,
+                            onClick = { onThemeSeedChange(seed) }
+                        )
                     }
-                    val cardColors = if (seed == ThemeSeed.Dynamic) {
-                        dynamicCardColors
-                    } else {
-                        staticCardColors[seed] ?: dynamicCardColors
-                    }
-                    PodAuraThemeCard(
-                        seed = seed,
-                        colors = cardColors,
-                        isSelected = isSelected,
-                        onClick = { onThemeSeedChange(seed) }
-                    )
                 }
             }
         }
 
         item(key = "color-spec-group", contentType = "segment") {
-            SettingItemGroup {
+            SettingItemGroup(title = "色彩算法与规范") {
                 SettingDropdownItem(
                     icon = Icons.Outlined.Style,
                     title = "色彩风格",
@@ -833,7 +836,7 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "switches", contentType = "segment") {
-            SettingItemGroup {
+            SettingItemGroup(title = "显示效果") {
                 if (supportsDynamicColor) {
                     SettingSwitchItem(
                         icon = Icons.Outlined.Wallpaper,
@@ -892,16 +895,14 @@ private fun PodAuraThemeCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
-                            .offset((-25).dp, 25.dp)
-                            .clip(CircleShape)
+                            .size(25.dp)
+                            .align(Alignment.BottomStart)
                             .background(colors.secondaryTone80)
                     )
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
-                            .offset(25.dp, 25.dp)
-                            .clip(CircleShape)
+                            .size(25.dp)
+                            .align(Alignment.BottomEnd)
                             .background(colors.tertiaryTone65)
                     )
                 }
@@ -920,18 +921,7 @@ private fun PodAuraThemeCard(
                             color = colors.primaryTone50,
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .padding(2.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(15.dp)
-                            )
-                    )
-                }
+                )
             }
         }
     }
