@@ -1,0 +1,176 @@
+package com.nobody.repoi.ui.settings.panes
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Smartphone
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.settings.SettingsAccountSecurityUiState
+import com.nobody.repoi.ui.settings.bindings
+import com.nobody.repoi.ui.settings.components.SettingItem
+import com.nobody.repoi.ui.settings.components.SettingItemGroup
+
+private fun accountBindingIcon(title: String): ImageVector = when (title) {
+    "登录密码" -> Icons.Outlined.Key
+    "手机" -> Icons.Outlined.Smartphone
+    "邮箱" -> Icons.Outlined.Email
+    "微信" -> Icons.Outlined.Link
+    else -> Icons.Outlined.AccountCircle
+}
+
+/**
+ * 账号与安全详情 Pane：承载个人信息入口、账号安全与第三方绑定状态、退出登录等。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsAccountPane(
+    showBackButton: Boolean,
+    onBack: () -> Unit,
+    isLoggedIn: Boolean,
+    accountState: SettingsAccountSecurityUiState,
+    onOpenProfile: () -> Unit,
+    onRefreshAccount: () -> Unit,
+    onRequestLogout: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = "账号与安全",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                navigationIcon = {
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            state = rememberLazyListState(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item(key = "profile", contentType = "row") {
+                SettingItemGroup(title = "基本信息") {
+                    SettingItem(
+                        icon = Icons.Outlined.Person,
+                        title = "个人信息",
+                        subtitle = "头像昵称与个人主页",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
+                        onClick = onOpenProfile
+                    )
+                }
+            }
+
+            item(key = "bindings", contentType = "segment") {
+                SettingItemGroup(title = "账号安全与绑定") {
+                    if (accountState.isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    } else if (accountState.loadFailed) {
+                        SettingItem(
+                            icon = Icons.Outlined.ErrorOutline,
+                            title = "账号状态加载失败",
+                            subtitle = "点击重试",
+                            titleColor = MaterialTheme.colorScheme.error,
+                            onClick = onRefreshAccount
+                        )
+                    } else {
+                        val bindings = accountState.bindings()
+                        bindings.forEach { binding ->
+                            SettingItem(
+                                icon = accountBindingIcon(binding.title),
+                                title = binding.title,
+                                subtitle = binding.statusText
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isLoggedIn) {
+                item(key = "logout", contentType = "logout") {
+                    SettingItemGroup {
+                        SettingItem(
+                            title = "退出当前账号",
+                            icon = Icons.AutoMirrored.Outlined.Logout,
+                            iconTint = MaterialTheme.colorScheme.error,
+                            titleColor = MaterialTheme.colorScheme.error,
+                            onClick = onRequestLogout
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
