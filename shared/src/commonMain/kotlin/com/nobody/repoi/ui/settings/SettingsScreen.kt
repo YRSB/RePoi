@@ -23,22 +23,21 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -64,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,10 +92,9 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private enum class SettingsGroup(val title: String, val icon: ImageVector) {
-    Appearance("外观", Icons.Filled.Palette),
-    Content("内容", Icons.Filled.Shield),
-    General("通用", Icons.Filled.Tune),
-    Account("账号", Icons.Filled.Person)
+    Appearance("外观与主题", Icons.Filled.Palette),
+    Content("浏览与内容", Icons.Filled.Shield),
+    Account("账号与安全", Icons.Filled.Person)
 }
 
 private fun formatBytes(bytes: Long): String {
@@ -108,6 +107,7 @@ private fun formatBytes(bytes: Long): String {
     return "%.2f GB".format(mb / 1024.0)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
@@ -148,6 +148,12 @@ fun SettingsScreen(
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
 
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    LaunchedEffect(narrowGroup, selectedGroup) {
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
+    }
 
     LaunchedEffect(cacheState.actionMessage) {
         cacheState.actionMessage?.let {
@@ -287,18 +293,19 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            CenterAlignedTopAppBar(
+            val currentTitle = if (!wide && narrowGroup.isNotEmpty()) {
+                runCatching { SettingsGroup.valueOf(narrowGroup).title }.getOrDefault("系统设置")
+            } else {
+                "系统设置"
+            }
+            LargeTopAppBar(
                 title = {
-                    val currentTitle = if (!wide && narrowGroup.isNotEmpty()) {
-                        runCatching { SettingsGroup.valueOf(narrowGroup).title + "设置" }.getOrDefault("系统设置")
-                    } else {
-                        "系统设置"
-                    }
                     Text(
                         text = currentTitle,
-                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -315,8 +322,10 @@ fun SettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
         }
@@ -330,10 +339,14 @@ fun SettingsScreen(
                 SettingsGroupList(
                     selectedGroup = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance),
                     isLoggedIn = profileState.isLoggedIn,
+                    cacheState = cacheState,
                     onSelectGroup = {
                         selectedGroup = it.name
                         narrowGroup = it.name
                     },
+                    onRequestClearCache = { showClearCacheConfirmDialog = true },
+                    onExportLog = onExportLog,
+                    onRequestAbout = { showAboutDialog = true },
                     onRequestLogout = { showLogoutConfirmDialog = true },
                     modifier = Modifier.fillMaxHeight().weight(0.38f)
                 )
@@ -348,7 +361,6 @@ fun SettingsScreen(
                         amoled = amoled,
                         isExHobbyEnabled = isExHobbyEnabled,
                         shieldState = shieldState,
-                        cacheState = cacheState,
                         privacyState = privacyState,
                         accountState = accountState,
                         onThemeModeChange = onThemeModeChange,
@@ -360,9 +372,6 @@ fun SettingsScreen(
                         onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                         onOpenShieldList = onOpenShieldList,
                         onOpenBlocklist = onOpenBlocklist,
-                        onRequestClearCache = { showClearCacheConfirmDialog = true },
-                        onExportLog = onExportLog,
-                        onRequestAbout = { showAboutDialog = true },
                         onOpenProfile = {
                             val id = profileState.profile?.id ?: 0L
                             if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") }
@@ -384,7 +393,6 @@ fun SettingsScreen(
                     amoled = amoled,
                     isExHobbyEnabled = isExHobbyEnabled,
                     shieldState = shieldState,
-                    cacheState = cacheState,
                     privacyState = privacyState,
                     accountState = accountState,
                     onThemeModeChange = onThemeModeChange,
@@ -396,9 +404,6 @@ fun SettingsScreen(
                     onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
                     onOpenShieldList = onOpenShieldList,
                     onOpenBlocklist = onOpenBlocklist,
-                    onRequestClearCache = { showClearCacheConfirmDialog = true },
-                    onExportLog = onExportLog,
-                    onRequestAbout = { showAboutDialog = true },
                     onOpenProfile = {
                         val id = profileState.profile?.id ?: 0L
                         if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") }
@@ -411,10 +416,14 @@ fun SettingsScreen(
                 SettingsGroupList(
                     selectedGroup = null,
                     isLoggedIn = profileState.isLoggedIn,
+                    cacheState = cacheState,
                     onSelectGroup = {
                         selectedGroup = it.name
                         narrowGroup = it.name
                     },
+                    onRequestClearCache = { showClearCacheConfirmDialog = true },
+                    onExportLog = onExportLog,
+                    onRequestAbout = { showAboutDialog = true },
                     onRequestLogout = { showLogoutConfirmDialog = true },
                     modifier = Modifier.padding(innerPadding)
                 )
@@ -427,7 +436,11 @@ fun SettingsScreen(
 private fun SettingsGroupList(
     selectedGroup: SettingsGroup?,
     isLoggedIn: Boolean,
+    cacheState: SettingsCacheUiState,
     onSelectGroup: (SettingsGroup) -> Unit,
+    onRequestClearCache: () -> Unit,
+    onExportLog: () -> Unit,
+    onRequestAbout: () -> Unit,
     onRequestLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -438,42 +451,97 @@ private fun SettingsGroupList(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(groups.size, key = { groups[it].name }, contentType = { "group" }) { index ->
-            val group = groups[index]
-            val selected = selectedGroup == group
-            SegmentedListItem(
-                selected = selected,
-                onClick = { onSelectGroup(group) },
-                shapes = ListItemDefaults.segmentedShapes(index = index, count = groups.size),
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                leadingContent = {
-                    Icon(
-                        imageVector = group.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                },
-                content = {
-                    Text(
-                        text = group.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+        item(key = "header-preferences", contentType = "header") {
+            Text(
+                text = "偏好设置",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
             )
         }
+        item(key = "segment-preferences", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                groups.forEachIndexed { index, group ->
+                    val selected = selectedGroup == group
+                    SegmentedListItem(
+                        selected = selected,
+                        onClick = { onSelectGroup(group) },
+                        shapes = ListItemDefaults.segmentedShapes(index = index, count = groups.size),
+                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        leadingContent = {
+                            Icon(
+                                imageVector = group.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
+                        content = {
+                            Text(
+                                text = group.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        item(key = "header-general", contentType = "header") {
+            Text(
+                text = "系统与通用",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+            )
+        }
+        item(key = "segment-general", contentType = "segment") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                SettingsMenuItem(
+                    icon = Icons.Filled.CleaningServices,
+                    title = "清理图片缓存",
+                    subtitle = if (cacheState.isLoading) "正在统计…" else if (cacheState.isClearing) "正在清理…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
+                    index = 0,
+                    count = 3,
+                    onClick = onRequestClearCache
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Share,
+                    title = "导出应用日志",
+                    subtitle = "打包近期运行日志并分享便于排查问题",
+                    index = 1,
+                    count = 3,
+                    onClick = onExportLog
+                )
+                SettingsMenuItem(
+                    icon = Icons.Filled.Info,
+                    title = "关于 RePoi",
+                    subtitle = "版本 ${AppInfo.versionName}",
+                    index = 2,
+                    count = 3,
+                    onClick = onRequestAbout
+                )
+            }
+        }
+
         if (isLoggedIn) {
             item(key = "logout", contentType = "logout") {
                 ElevatedCard(
@@ -482,7 +550,7 @@ private fun SettingsGroupList(
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -511,7 +579,6 @@ private fun SettingsDetailPane(
     amoled: Boolean,
     isExHobbyEnabled: Boolean,
     shieldState: SettingsShieldUiState,
-    cacheState: SettingsCacheUiState,
     privacyState: SettingsPrivacyUiState,
     accountState: SettingsAccountSecurityUiState,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -523,9 +590,6 @@ private fun SettingsDetailPane(
     onPrivacyOptionChange: (String, Int) -> Unit,
     onOpenShieldList: () -> Unit,
     onOpenBlocklist: () -> Unit,
-    onRequestClearCache: () -> Unit,
-    onExportLog: () -> Unit,
-    onRequestAbout: () -> Unit,
     onOpenProfile: () -> Unit,
     onRefreshAccount: () -> Unit,
     onRequestLogout: () -> Unit,
@@ -553,13 +617,6 @@ private fun SettingsDetailPane(
                 onOpenShieldList = onOpenShieldList,
                 onOpenBlocklist = onOpenBlocklist,
                 onPrivacyOptionChange = onPrivacyOptionChange,
-                modifier = Modifier.fillMaxSize()
-            )
-            SettingsGroup.General -> SettingsGeneralContent(
-                cacheState = cacheState,
-                onRequestClearCache = onRequestClearCache,
-                onExportLog = onExportLog,
-                onRequestAbout = onRequestAbout,
                 modifier = Modifier.fillMaxSize()
             )
             SettingsGroup.Account -> SettingsAccountContent(
@@ -917,55 +974,6 @@ private fun privacyTitle(key: String): String = when (key) {
     PrivacySettingKeys.PRIVACY_POSTS -> "讨论板个人主页"
     PrivacySettingKeys.STRANGER_MESSAGE -> "陌生人私信设置"
     else -> "隐私设置"
-}
-
-@Composable
-private fun SettingsGeneralContent(
-    cacheState: SettingsCacheUiState,
-    onRequestClearCache: () -> Unit,
-    onExportLog: () -> Unit,
-    onRequestAbout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-    ) {
-        item(key = "cache", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.CleaningServices,
-                title = "清理图片缓存",
-                subtitle = if (cacheState.isLoading) "正在统计…" else if (cacheState.isClearing) "正在清理…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
-                index = 0,
-                count = 3,
-                onClick = onRequestClearCache
-            )
-        }
-        item(key = "export", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Share,
-                title = "导出应用日志",
-                subtitle = "打包近期运行日志并分享便于排查问题",
-                index = 1,
-                count = 3,
-                onClick = onExportLog
-            )
-        }
-        item(key = "about", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Info,
-                title = "关于 RePoi",
-                subtitle = "版本 ${AppInfo.versionName}",
-                index = 2,
-                count = 3,
-                onClick = onRequestAbout
-            )
-        }
-    }
 }
 
 @Composable
@@ -1368,11 +1376,15 @@ private fun SettingsSwitchItem(
 @Composable
 private fun SettingsContentPreview() {
     PoiShelfTheme {
-        SettingsGeneralContent(
+        SettingsGroupList(
+            selectedGroup = SettingsGroup.Appearance,
+            isLoggedIn = true,
             cacheState = SettingsCacheUiState(sizeBytes = 12_582_912L, isLoading = false),
+            onSelectGroup = {},
             onRequestClearCache = {},
             onExportLog = {},
-            onRequestAbout = {}
+            onRequestAbout = {},
+            onRequestLogout = {}
         )
     }
 }
