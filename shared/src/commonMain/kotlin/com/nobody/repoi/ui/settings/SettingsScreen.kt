@@ -109,6 +109,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.ThemeManager
+import com.nobody.repoi.data.local.AllPaletteStyles
+import com.nobody.repoi.data.local.AllSpecVersions
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.orAvailable
@@ -829,27 +831,12 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "color-spec-group", contentType = "segment") {
-            val paletteStyles = listOf(
-                PaletteStyle.TonalSpot,
-                PaletteStyle.Neutral,
-                PaletteStyle.Vibrant,
-                PaletteStyle.Expressive,
-                PaletteStyle.Rainbow,
-                PaletteStyle.FruitSalad,
-                PaletteStyle.Monochrome,
-                PaletteStyle.Fidelity,
-                PaletteStyle.Content
-            )
-            val specVersions = listOf(
-                ColorSpec.SpecVersion.SPEC_2025,
-                ColorSpec.SpecVersion.SPEC_2021
-            )
             SettingItemGroup {
                 SettingDropdownItem(
                     icon = Icons.Outlined.Style,
                     title = "色彩风格",
                     selectedValue = paletteStyle,
-                    values = paletteStyles,
+                    values = AllPaletteStyles,
                     valueLabel = { it.name },
                     onValueChange = onPaletteStyleChange
                 )
@@ -857,7 +844,7 @@ private fun SettingsAppearanceContent(
                     icon = Icons.Outlined.Tune,
                     title = "色彩标准",
                     selectedValue = specVersion,
-                    values = specVersions,
+                    values = AllSpecVersions,
                     valueLabel = { it.name },
                     onValueChange = onSpecVersionChange
                 )

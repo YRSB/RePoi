@@ -115,12 +115,12 @@ class ThemeManager(
     }
 
     val paletteStyleFlow: Flow<PaletteStyle> = dataStore.data.map { prefs ->
-        prefs[PALETTE_STYLE_KEY]?.let { name -> PaletteStyle.entries.firstOrNull { it.name == name } }
+        parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
             ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
     }
 
     val specVersionFlow: Flow<ColorSpec.SpecVersion> = dataStore.data.map { prefs ->
-        prefs[SPEC_VERSION_KEY]?.let { name -> ColorSpec.SpecVersion.entries.firstOrNull { it.name == name } }
+        parseSpecVersion(prefs[SPEC_VERSION_KEY])
             ?: ColorSpec.SpecVersion.SPEC_2025
     }
 
@@ -146,10 +146,10 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
-                val initialStyle = prefs[PALETTE_STYLE_KEY]?.let { name -> PaletteStyle.entries.firstOrNull { it.name == name } }
+                val initialStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
                     ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
                 paletteStyle = initialStyle
-                val initialSpecVersion = prefs[SPEC_VERSION_KEY]?.let { name -> ColorSpec.SpecVersion.entries.firstOrNull { it.name == name } }
+                val initialSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
                     ?: ColorSpec.SpecVersion.SPEC_2025
                 specVersion = initialSpecVersion
             }
@@ -249,3 +249,26 @@ private fun defaultThemeSeed(): ThemeSeed =
 
 fun ThemeSeed.orAvailable(): ThemeSeed =
     if (this == ThemeSeed.Dynamic && !isDynamicSeedAvailable) ThemeSeed.Pink else this
+
+val AllPaletteStyles: List<PaletteStyle> = listOf(
+    PaletteStyle.TonalSpot,
+    PaletteStyle.Neutral,
+    PaletteStyle.Vibrant,
+    PaletteStyle.Expressive,
+    PaletteStyle.Rainbow,
+    PaletteStyle.FruitSalad,
+    PaletteStyle.Monochrome,
+    PaletteStyle.Fidelity,
+    PaletteStyle.Content
+)
+
+val AllSpecVersions: List<ColorSpec.SpecVersion> = listOf(
+    ColorSpec.SpecVersion.SPEC_2025,
+    ColorSpec.SpecVersion.SPEC_2021
+)
+
+fun parsePaletteStyle(name: String?): PaletteStyle? =
+    AllPaletteStyles.firstOrNull { it.name == name }
+
+fun parseSpecVersion(name: String?): ColorSpec.SpecVersion? =
+    AllSpecVersions.firstOrNull { it.name == name }
