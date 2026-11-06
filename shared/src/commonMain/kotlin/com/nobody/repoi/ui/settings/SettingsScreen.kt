@@ -68,6 +68,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
@@ -82,7 +83,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -245,10 +245,18 @@ fun SettingsScreen(
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
 
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val narrowScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val wideLeftScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val wideRightScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    LaunchedEffect(narrowGroup, selectedGroup) {
-        scrollBehavior.state.contentOffset = 0f
+    LaunchedEffect(narrowGroup) {
+        narrowScrollBehavior.state.heightOffset = 0f
+        narrowScrollBehavior.state.contentOffset = 0f
+    }
+
+    LaunchedEffect(selectedGroup) {
+        wideRightScrollBehavior.state.heightOffset = 0f
+        wideRightScrollBehavior.state.contentOffset = 0f
     }
 
     LaunchedEffect(cacheState.actionMessage) {
@@ -388,53 +396,43 @@ fun SettingsScreen(
         narrowGroup = ""
     }
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            val currentTitle = if (!wide && narrowGroup.isNotEmpty()) {
-                runCatching { SettingsGroup.valueOf(narrowGroup).title }.getOrDefault("系统设置")
-            } else {
-                "系统设置"
-            }
-            TopAppBar(
-                title = {
-                    Text(
-                        text = currentTitle,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (!wide && narrowGroup.isNotEmpty()) narrowGroup = ""
-                        else onBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            )
-        }
-    ) { innerPadding ->
-        if (wide) {
-            Row(
+    if (wide) {
+        val currentSelectedGroup = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance)
+        Row(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
+                    .fillMaxHeight()
+                    .weight(0.38f)
+                    .nestedScroll(wideLeftScrollBehavior.nestedScrollConnection),
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                topBar = {
+                    LargeTopAppBar(
+                        title = {
+                            Text(
+                                text = "系统设置",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "返回",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        },
+                        scrollBehavior = wideLeftScrollBehavior,
+                        colors = TopAppBarDefaults.largeTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    )
+                }
+            ) { leftPadding ->
                 SettingsGroupList(
-                    selectedGroup = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance),
+                    selectedGroup = currentSelectedGroup,
                     isLoggedIn = profileState.isLoggedIn,
                     cacheState = cacheState,
                     onSelectGroup = {
@@ -446,10 +444,41 @@ fun SettingsScreen(
                     onExportLog = onExportLog,
                     onRequestAbout = { showAboutDialog = true },
                     onRequestLogout = { showLogoutConfirmDialog = true },
-                    modifier = Modifier.fillMaxHeight().weight(0.38f)
+                    modifier = Modifier.padding(leftPadding)
                 )
-                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Box(modifier = Modifier.fillMaxHeight().weight(0.62f)) {
+            }
+            VerticalDivider(
+                modifier = Modifier.fillMaxHeight(),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.62f)
+                    .nestedScroll(wideRightScrollBehavior.nestedScrollConnection),
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                topBar = {
+                    LargeTopAppBar(
+                        title = {
+                            Text(
+                                text = currentSelectedGroup.title,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        scrollBehavior = wideRightScrollBehavior,
+                        colors = TopAppBarDefaults.largeTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    )
+                }
+            ) { rightPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(rightPadding)
+                ) {
                     SettingsDetailPane(
                         group = runCatching { SettingsGroup.valueOf(selectedGroup) }.getOrDefault(SettingsGroup.Appearance),
                         isLoggedIn = profileState.isLoggedIn,
@@ -485,7 +514,47 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+    } else {
+        val currentTitle = if (narrowGroup.isNotEmpty()) {
+            runCatching { SettingsGroup.valueOf(narrowGroup).title }.getOrDefault("系统设置")
         } else {
+            "系统设置"
+        }
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(narrowScrollBehavior.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            topBar = {
+                LargeTopAppBar(
+                    title = {
+                        Text(
+                            text = currentTitle,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (narrowGroup.isNotEmpty()) narrowGroup = ""
+                            else onBack()
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    scrollBehavior = narrowScrollBehavior,
+                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            }
+        ) { innerPadding ->
             val narrowSelected = narrowGroup.takeIf { it.isNotEmpty() }?.let { runCatching { SettingsGroup.valueOf(it) }.getOrNull() }
             if (narrowSelected != null) {
                 SettingsDetailPane(
