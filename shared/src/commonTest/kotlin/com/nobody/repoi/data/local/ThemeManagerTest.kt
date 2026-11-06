@@ -80,6 +80,30 @@ class ThemeManagerTest {
     }
 
     @Test
+    fun setExpressiveColor_updatesMemoryFlowAndInitialValue() = runTest {
+        val manager = manager()
+        manager.expressiveColorFlow.first()
+        manager.setExpressiveColor(true)
+
+        assertTrue(manager.expressiveColor)
+        assertTrue(manager.getInitialExpressiveColor())
+        assertTrue(manager.expressiveColorFlow.first())
+    }
+
+    @Test
+    fun themeSeed_toColors_returnsExpectedPalette() {
+        val (lotusPrimary, lotusSecondary, lotusTertiary) = ThemeSeed.Lotus.toColors()
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF006EBE), lotusPrimary)
+        assertEquals(null, lotusSecondary)
+        assertEquals(null, lotusTertiary)
+
+        val (triPrimary, triSecondary, triTertiary) = ThemeSeed.Tricolor.toColors()
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFEAD4CE), triPrimary)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF7D859D), triSecondary)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFEC9CA8), triTertiary)
+    }
+
+    @Test
     fun unknownSeedName_fallsBackToDefault() = runTest {
         val dataStore = TestDataStore.themePrefs()
         dataStore.edit { prefs -> prefs[stringPreferencesKey("app_theme_seed")] = "NotASeed" }

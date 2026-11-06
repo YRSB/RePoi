@@ -78,6 +78,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,6 +101,12 @@ import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.data.local.orAvailable
+import com.nobody.repoi.data.local.toColors
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.ktx.toneColor
+import com.materialkolor.palettes.TonalPalette
 import com.nobody.repoi.platform.AppInfo
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.PoiShelfBackHandler
@@ -133,56 +140,9 @@ private fun formatBytes(bytes: Long): String {
     return "%.2f GB".format(mb / 1024.0)
 }
 
-private data class SeedPaletteColors(
-    val primary: Color,
-    val secondary: Color,
-    val tertiary: Color
-)
 
-private fun getSeedPalette(seed: ThemeSeed): SeedPaletteColors {
-    return when (seed) {
-        ThemeSeed.Pink -> SeedPaletteColors(
-            primary = Color(0xFFFF4D8D),
-            secondary = Color(0xFFFFB2D1),
-            tertiary = Color(0xFFFF80AA)
-        )
-        ThemeSeed.Coral -> SeedPaletteColors(
-            primary = Color(0xFFFF4D4F),
-            secondary = Color(0xFFFFCCC7),
-            tertiary = Color(0xFFFFA39E)
-        )
-        ThemeSeed.Amber -> SeedPaletteColors(
-            primary = Color(0xFFFA8C16),
-            secondary = Color(0xFFFFE7BA),
-            tertiary = Color(0xFFFFC069)
-        )
-        ThemeSeed.Lotus -> SeedPaletteColors(
-            primary = Color(0xFF1890FF),
-            secondary = Color(0xFFBAE7FF),
-            tertiary = Color(0xFF69C0FF)
-        )
-        ThemeSeed.Mint -> SeedPaletteColors(
-            primary = Color(0xFF12B76A),
-            secondary = Color(0xFFA6F4C5),
-            tertiary = Color(0xFF38C793)
-        )
-        ThemeSeed.Grape -> SeedPaletteColors(
-            primary = Color(0xFF7A5AF8),
-            secondary = Color(0xFFD9D6FE),
-            tertiary = Color(0xFF9B8AFB)
-        )
-        ThemeSeed.Tricolor -> SeedPaletteColors(
-            primary = Color(0xFFFF6B9D),
-            secondary = Color(0xFF2EC4B6),
-            tertiary = Color(0xFFFFD166)
-        )
-        ThemeSeed.Dynamic -> SeedPaletteColors(
-            primary = Color(0xFF0061A4),
-            secondary = Color(0xFFD1E4FF),
-            tertiary = Color(0xFF535F70)
-        )
-    }
-}
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,6 +164,7 @@ fun SettingsScreen(
     val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
     val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
     val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
+    val expressiveColor by themeManager.expressiveColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialExpressiveColor())
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
@@ -217,6 +178,7 @@ fun SettingsScreen(
     val onDynamicColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setDynamicColor(enabled) } }
     val onThemeSeedChange: (ThemeSeed) -> Unit = { seed -> scope.launch { themeManager.setThemeSeed(seed) } }
     val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
+    val onExpressiveColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setExpressiveColor(enabled) } }
 
     var selectedGroup by rememberSaveable { mutableStateOf(SettingsGroup.Appearance.name) }
     var narrowGroup by rememberSaveable { mutableStateOf("") }
@@ -436,6 +398,7 @@ fun SettingsScreen(
                         dynamicColor = dynamicColor,
                         themeSeed = themeSeed,
                         amoled = amoled,
+                        expressiveColor = expressiveColor,
                         isExHobbyEnabled = isExHobbyEnabled,
                         shieldState = shieldState,
                         privacyState = privacyState,
@@ -444,6 +407,7 @@ fun SettingsScreen(
                         onDynamicColorChange = onDynamicColorChange,
                         onThemeSeedChange = onThemeSeedChange,
                         onAmoledChange = onAmoledChange,
+                        onExpressiveColorChange = onExpressiveColorChange,
                         onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                         onNsfwChange = { shieldViewModel.setNsfwVisible(it) },
                         onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
@@ -468,6 +432,7 @@ fun SettingsScreen(
                     dynamicColor = dynamicColor,
                     themeSeed = themeSeed,
                     amoled = amoled,
+                    expressiveColor = expressiveColor,
                     isExHobbyEnabled = isExHobbyEnabled,
                     shieldState = shieldState,
                     privacyState = privacyState,
@@ -476,6 +441,7 @@ fun SettingsScreen(
                     onDynamicColorChange = onDynamicColorChange,
                     onThemeSeedChange = onThemeSeedChange,
                     onAmoledChange = onAmoledChange,
+                    onExpressiveColorChange = onExpressiveColorChange,
                     onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
                     onNsfwChange = { shieldViewModel.setNsfwVisible(it) },
                     onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) },
@@ -662,6 +628,8 @@ private fun SettingsDetailPane(
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
+    expressiveColor: Boolean,
+    onExpressiveColorChange: (Boolean) -> Unit,
     onExHobbyEnabledChange: (Boolean) -> Unit,
     onNsfwChange: (Boolean) -> Unit,
     onPrivacyOptionChange: (String, Int) -> Unit,
@@ -683,6 +651,8 @@ private fun SettingsDetailPane(
                 onDynamicColorChange = onDynamicColorChange,
                 onThemeSeedChange = onThemeSeedChange,
                 onAmoledChange = onAmoledChange,
+                expressiveColor = expressiveColor,
+                onExpressiveColorChange = onExpressiveColorChange,
                 modifier = Modifier.fillMaxSize()
             )
             SettingsGroup.Content -> SettingsContentContent(
@@ -719,9 +689,48 @@ private fun SettingsAppearanceContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeSeedChange: (ThemeSeed) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
+    expressiveColor: Boolean,
+    onExpressiveColorChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val seeds = listOf(ThemeSeed.Dynamic) + ThemeSeed.entries.filter { it != ThemeSeed.Dynamic }
+    val seeds = listOf(
+        ThemeSeed.Dynamic,
+        ThemeSeed.Lotus,
+        ThemeSeed.Coral,
+        ThemeSeed.Amber,
+        ThemeSeed.Pink,
+        ThemeSeed.Mint,
+        ThemeSeed.Grape,
+        ThemeSeed.Tricolor
+    )
+    val dynamicColors = MaterialTheme.colorScheme
+    val palettes: Map<ThemeSeed, List<TonalPalette>> = remember(expressiveColor, dynamicColors) {
+        seeds.associateWith { seed ->
+            if (seed == ThemeSeed.Dynamic) {
+                listOf(
+                    TonalPalette.from(dynamicColors.primary),
+                    TonalPalette.from(dynamicColors.secondary),
+                    TonalPalette.from(dynamicColors.tertiary)
+                )
+            } else {
+                val (primary, secondary, tertiary) = seed.toColors()
+                val scheme = dynamicColorScheme(
+                    seedColor = primary!!,
+                    isDark = false,
+                    isAmoled = false,
+                    secondary = secondary,
+                    tertiary = tertiary,
+                    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
+                    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
+                )
+                listOf(
+                    TonalPalette.from(scheme.primary),
+                    TonalPalette.from(scheme.secondary),
+                    TonalPalette.from(scheme.tertiary)
+                )
+            }
+        }
+    }
 
     LazyColumn(
         state = rememberLazyListState(),
@@ -779,10 +788,15 @@ private fun SettingsAppearanceContent(
                     } else {
                         seed == themeSeed.orAvailable()
                     }
+                    val accents = palettes[seed] ?: listOf(
+                        TonalPalette.from(dynamicColors.primary),
+                        TonalPalette.from(dynamicColors.secondary),
+                        TonalPalette.from(dynamicColors.tertiary)
+                    )
                     PodAuraThemeCard(
                         seed = seed,
+                        accents = accents,
                         isSelected = isSelected,
-                        isDynamicActive = dynamicColor,
                         onClick = {
                             if (seed == ThemeSeed.Dynamic) {
                                 onDynamicColorChange(true)
@@ -798,7 +812,8 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "switches", contentType = "segment") {
-            val count = if (supportsDynamicColor) 2 else 1
+            val count = if (supportsDynamicColor) 3 else 2
+            var itemIndex = 0
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
@@ -809,24 +824,33 @@ private fun SettingsAppearanceContent(
                         title = "动态主题",
                         subtitle = "将壁纸颜色应用于主题",
                         checked = dynamicColor,
-                        index = 0,
+                        index = itemIndex++,
                         count = count,
                         onCheckedChange = { enabled ->
                             onDynamicColorChange(enabled)
                             if (enabled) {
                                 onThemeSeedChange(ThemeSeed.Dynamic)
                             } else if (themeSeed == ThemeSeed.Dynamic) {
-                                onThemeSeedChange(ThemeSeed.Coral)
+                                onThemeSeedChange(ThemeSeed.Lotus)
                             }
                         }
                     )
                 }
                 SettingsSwitchItem(
+                    icon = Icons.Filled.Palette,
+                    title = "富有表现力的颜色",
+                    subtitle = "增强色彩对比与层次表现力",
+                    checked = expressiveColor,
+                    index = itemIndex++,
+                    count = count,
+                    onCheckedChange = onExpressiveColorChange
+                )
+                SettingsSwitchItem(
                     icon = Icons.Filled.NightsStay,
                     title = "Amoled 深色",
                     subtitle = "深色模式下使用纯黑背景省电护眼",
                     checked = amoled,
-                    index = if (supportsDynamicColor) 1 else 0,
+                    index = itemIndex++,
                     count = count,
                     onCheckedChange = onAmoledChange
                 )
@@ -839,21 +863,10 @@ private fun SettingsAppearanceContent(
 @Composable
 private fun PodAuraThemeCard(
     seed: ThemeSeed,
+    accents: List<TonalPalette>,
     isSelected: Boolean,
-    isDynamicActive: Boolean,
     onClick: () -> Unit
 ) {
-    val dynamicColors = MaterialTheme.colorScheme
-    val palette = if (seed == ThemeSeed.Dynamic && isDynamicActive) {
-        SeedPaletteColors(
-            primary = dynamicColors.primary,
-            secondary = dynamicColors.secondaryContainer,
-            tertiary = dynamicColors.tertiaryContainer
-        )
-    } else {
-        getSeedPalette(seed)
-    }
-
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = {
@@ -878,29 +891,21 @@ private fun PodAuraThemeCard(
                 Surface(
                     modifier = Modifier.size(50.dp),
                     shape = CircleShape,
-                    color = palette.primary
+                    color = accents[0].toneColor(36)
                 ) {
-                    if (seed == ThemeSeed.Tricolor) {
-                        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawArc(color = palette.primary, startAngle = 270f, sweepAngle = 120f, useCenter = true)
-                            drawArc(color = palette.secondary, startAngle = 30f, sweepAngle = 120f, useCenter = true)
-                            drawArc(color = palette.tertiary, startAngle = 150f, sweepAngle = 120f, useCenter = true)
-                        }
-                    } else {
-                        Box {
-                            Surface(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .offset((-25).dp, 25.dp),
-                                color = palette.secondary
-                            ) {}
-                            Surface(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .offset(25.dp, 25.dp),
-                                color = palette.tertiary
-                            ) {}
-                        }
+                    Box {
+                        Surface(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .offset((-25).dp, 25.dp),
+                            color = accents[1].toneColor(80)
+                        ) {}
+                        Surface(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .offset(25.dp, 25.dp),
+                            color = accents[2].toneColor(65)
+                        ) {}
                     }
                 }
             }
@@ -915,7 +920,7 @@ private fun PodAuraThemeCard(
                         .fillMaxSize()
                         .border(
                             width = 2.dp,
-                            color = palette.primary,
+                            color = accents[0].toneColor(50),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .padding(2.dp)

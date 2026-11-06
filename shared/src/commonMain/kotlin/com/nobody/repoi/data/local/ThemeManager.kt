@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.local
 
+import androidx.compose.ui.graphics.Color
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -20,14 +21,25 @@ import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 enum class ThemeSeed(val title: String, val argb: Long?) {
-    Dynamic("动态壁纸取色", null),
-    Pink("樱粉", 0xFFFF4D8D),
-    Coral("珊瑚红", 0xFFFF4D4F),
-    Amber("琥珀金", 0xFFFA8C16),
-    Lotus("青莲", 0xFF1890FF),
-    Mint("薄荷", 0xFF12B76A),
-    Grape("紫藤", 0xFF7A5AF8),
-    Tricolor("真寻三色", 0xFF2EC4B6)
+    Dynamic("动态主题", null),
+    Pink("粉色", 0xFFFF7AA3),
+    Coral("红色", 0xFFB90037),
+    Amber("黄色", 0xFFFABE03),
+    Lotus("蓝色", 0xFF006EBE),
+    Mint("绿色", 0xFF3F975B),
+    Grape("紫色", 0xFF7E6195),
+    Tricolor("真寻三色", 0xFFEAD4CE)
+}
+
+fun ThemeSeed.toColors(): Triple<Color?, Color?, Color?> = when (this) {
+    ThemeSeed.Dynamic -> Triple(null, null, null)
+    ThemeSeed.Lotus -> Triple(Color(0xFF006EBE), null, null)
+    ThemeSeed.Coral -> Triple(Color(0xFFB90037), null, null)
+    ThemeSeed.Amber -> Triple(Color(0xFFFABE03), null, null)
+    ThemeSeed.Pink -> Triple(Color(0xFFFF7AA3), null, null)
+    ThemeSeed.Mint -> Triple(Color(0xFF3F975B), null, null)
+    ThemeSeed.Grape -> Triple(Color(0xFF7E6195), null, null)
+    ThemeSeed.Tricolor -> Triple(Color(0xFFEAD4CE), Color(0xFF7D859D), Color(0xFFEC9CA8))
 }
 
 enum class ThemeMode(val title: String) {
@@ -46,6 +58,7 @@ class ThemeManager(
     private val dynamicColorRef = AtomicBoolean(supportsDynamicColor)
     private val themeSeedRef = AtomicReference(defaultThemeSeed())
     private val amoledRef = AtomicBoolean(false)
+    private val expressiveColorRef = AtomicBoolean(false)
 
     var themeMode: ThemeMode
         get() = themeModeRef.load()
@@ -62,6 +75,10 @@ class ThemeManager(
     var amoled: Boolean
         get() = amoledRef.load()
         private set(value) { amoledRef.store(value) }
+
+    var expressiveColor: Boolean
+        get() = expressiveColorRef.load()
+        private set(value) { expressiveColorRef.store(value) }
 
     val themeModeFlow: Flow<ThemeMode> = dataStore.data.map { prefs ->
         when (prefs[THEME_MODE_KEY]) {
@@ -84,6 +101,10 @@ class ThemeManager(
         prefs[AMOLED_KEY] ?: false
     }
 
+    val expressiveColorFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[EXPRESSIVE_COLOR_KEY] ?: false
+    }
+
     init {
         runCatching {
             scope.launch {
@@ -104,6 +125,9 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
+                prefs[EXPRESSIVE_COLOR_KEY]?.let {
+                    expressiveColor = it
+                }
             }
         }
     }
@@ -115,6 +139,8 @@ class ThemeManager(
     fun getInitialThemeSeed(): ThemeSeed = themeSeed
 
     fun getInitialAmoled(): Boolean = amoled
+
+    fun getInitialExpressiveColor(): Boolean = expressiveColor
 
     suspend fun setThemeMode(mode: ThemeMode) {
         themeMode = mode
@@ -144,11 +170,19 @@ class ThemeManager(
         }
     }
 
+    suspend fun setExpressiveColor(enabled: Boolean) {
+        expressiveColor = enabled
+        dataStore.edit { prefs ->
+            prefs[EXPRESSIVE_COLOR_KEY] = enabled
+        }
+    }
+
     companion object {
         private val THEME_MODE_KEY = stringPreferencesKey("app_theme_mode")
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("app_dynamic_color")
         private val THEME_SEED_KEY = stringPreferencesKey("app_theme_seed")
         private val AMOLED_KEY = booleanPreferencesKey("app_amoled")
+        private val EXPRESSIVE_COLOR_KEY = booleanPreferencesKey("app_expressive_color")
     }
 }
 

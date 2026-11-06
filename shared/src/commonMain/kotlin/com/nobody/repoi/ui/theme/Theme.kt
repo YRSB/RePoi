@@ -9,6 +9,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.nobody.repoi.platform.dynamicPoiShelfColorScheme
+import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.toColors
 
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
@@ -81,10 +83,24 @@ fun PoiShelfTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     seedArgb: Long? = null,
+    themeSeed: ThemeSeed? = null,
     amoled: Boolean = false,
+    expressiveColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val seedScheme = seedArgb?.let { seedColorScheme(it, darkTheme, amoled) }
+    val activeSeed = themeSeed ?: seedArgb?.let { argb -> ThemeSeed.entries.firstOrNull { it.argb == argb } }
+    val (seedPrimary, seedSecondary, seedTertiary) = activeSeed?.toColors()
+        ?: Triple(seedArgb?.let { Color(it) }, null, null)
+    val seedScheme = seedPrimary?.let {
+        seedColorScheme(
+            seedColor = it,
+            darkTheme = darkTheme,
+            amoled = amoled,
+            secondary = seedSecondary,
+            tertiary = seedTertiary,
+            expressiveColor = expressiveColor
+        )
+    }
     val dynamicScheme = if (seedScheme == null && dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null
     val baseScheme = seedScheme ?: dynamicScheme ?: if (darkTheme) DarkColorScheme else LightColorScheme
     val colorScheme = if (amoled && darkTheme) {
