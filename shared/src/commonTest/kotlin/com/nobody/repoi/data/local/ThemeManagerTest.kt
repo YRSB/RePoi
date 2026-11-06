@@ -83,6 +83,7 @@ class ThemeManagerTest {
 
     @Test
     fun setDynamicColor_falseWhenDynamic_fallsBackToLotusAtomically() = runTest {
+        if (!isDynamicSeedAvailable) return@runTest
         val manager = manager()
         manager.setThemeSeed(ThemeSeed.Dynamic)
         assertTrue(manager.dynamicColorFlow.first())
