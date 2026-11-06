@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Collections
@@ -41,13 +42,19 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Domain
 import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -64,10 +71,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -127,6 +131,8 @@ import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.settings.components.ButtonGroupOption
+import com.nobody.repoi.ui.settings.components.SettingButtonGroup
 import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
@@ -693,30 +699,17 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "mode-segmented", contentType = "mode") {
-            val modes = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
+            val themeOptions = listOf(
+                ButtonGroupOption(ThemeMode.LIGHT, "浅色", Icons.Outlined.LightMode),
+                ButtonGroupOption(ThemeMode.DARK, "深色", Icons.Outlined.DarkMode),
+                ButtonGroupOption(ThemeMode.SYSTEM, "跟随系统", Icons.Outlined.BrightnessAuto)
+            )
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    modes.forEachIndexed { index, mode ->
-                        SegmentedButton(
-                            selected = themeMode == mode,
-                            onClick = { onThemeModeChange(mode) },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                            label = {
-                                Text(
-                                    text = when (mode) {
-                                        ThemeMode.LIGHT -> "浅色"
-                                        ThemeMode.DARK -> "深色"
-                                        ThemeMode.SYSTEM -> "跟随系统"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (themeMode == mode) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
-                }
+                SettingButtonGroup(
+                    options = themeOptions,
+                    selected = themeMode,
+                    onSelect = onThemeModeChange
+                )
             }
         }
 
@@ -1142,6 +1135,14 @@ private fun privacyTitle(key: String): String = when (key) {
     else -> "隐私设置"
 }
 
+private fun accountBindingIcon(title: String): ImageVector = when (title) {
+    "登录密码" -> Icons.Outlined.Key
+    "手机" -> Icons.Outlined.Smartphone
+    "邮箱" -> Icons.Outlined.Email
+    "微信" -> Icons.Outlined.Link
+    else -> Icons.Outlined.AccountCircle
+}
+
 @Composable
 private fun SettingsAccountContent(
     isLoggedIn: Boolean,
@@ -1190,7 +1191,7 @@ private fun SettingsAccountContent(
                     }
                 } else if (state.loadFailed) {
                     SettingItem(
-                        icon = Icons.Outlined.AccountCircle,
+                        icon = Icons.Outlined.ErrorOutline,
                         title = "账号状态加载失败",
                         subtitle = "点击重试",
                         titleColor = MaterialTheme.colorScheme.error,
@@ -1200,7 +1201,7 @@ private fun SettingsAccountContent(
                     val bindings = state.bindings()
                     bindings.forEach { binding ->
                         SettingItem(
-                            icon = Icons.Outlined.AccountCircle,
+                            icon = accountBindingIcon(binding.title),
                             title = binding.title,
                             subtitle = binding.statusText
                         )

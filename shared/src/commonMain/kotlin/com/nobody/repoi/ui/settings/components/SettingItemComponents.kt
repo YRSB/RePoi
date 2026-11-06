@@ -1,17 +1,23 @@
 package com.nobody.repoi.ui.settings.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
@@ -21,14 +27,22 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -272,4 +286,87 @@ fun SettingSwitchItem(
             )
         }
     )
+}
+
+/**
+ * [SettingButtonGroup] 的选项定义。
+ */
+@Immutable
+data class ButtonGroupOption<T>(
+    val value: T,
+    val label: String,
+    val icon: ImageVector? = null
+)
+
+/**
+ * Material 3 Expressive 连结式单选按钮组（ButtonGroup）。
+ *
+ * 采用连结型 [ToggleButton] 与 [ButtonGroupDefaults]，替换传统的 [androidx.compose.material3.SingleChoiceSegmentedButtonRow]：
+ * 1. 选项平分宽度并形成平滑连结圆角，所有选项一目了然；
+ * 2. 选中项填充主题色 Container 并更圆润饱满，支持可选 Leading Icon 图标指引；
+ * 3. 完美兼容 Material 3 Expressive 视觉与触控规范。
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun <T> SettingButtonGroup(
+    options: List<ButtonGroupOption<T>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        options.forEachIndexed { index, option ->
+            val checked = option.value == selected
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { if (!checked) onSelect(option.value) },
+                enabled = enabled,
+                colors = if (checked) {
+                    ToggleButtonDefaults.toggleButtonColors(
+                        disabledContainerColor = colorScheme.onSurface.copy(alpha = 0.32f),
+                        disabledContentColor = colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                } else {
+                    ToggleButtonDefaults.toggleButtonColors()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics {
+                        role = Role.RadioButton
+                        this.selected = checked
+                    },
+                shapes = when {
+                    options.size == 1 -> ToggleButtonDefaults.shapesFor(40.dp)
+                    index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    index == options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                option.icon?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    text = option.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
 }
