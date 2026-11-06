@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.savedstate.serialization.SavedStateConfiguration
@@ -117,11 +118,17 @@ fun SettingsScreen(
         calculatePaneScaffoldDirective(windowAdaptiveInfo)
             .copy(horizontalPartitionSpacerSize = 0.dp)
     }
-    val listDetailStrategy = rememberListDetailSceneStrategy<SettingsSubNavKey>(directive = directive)
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
 
     val savedStateConfiguration = remember {
         SavedStateConfiguration {
             serializersModule = SerializersModule {
+                polymorphic(NavKey::class) {
+                    subclass(SettingsListNavKey::class)
+                    subclass(SettingsAppearanceNavKey::class)
+                    subclass(SettingsContentNavKey::class)
+                    subclass(SettingsAccountNavKey::class)
+                }
                 polymorphic(SettingsSubNavKey::class) {
                     subclass(SettingsListNavKey::class)
                     subclass(SettingsAppearanceNavKey::class)
@@ -132,7 +139,7 @@ fun SettingsScreen(
         }
     }
 
-    val backStack = rememberNavBackStack(savedStateConfiguration, SettingsListNavKey)
+    val backStack = rememberNavBackStack<NavKey>(savedStateConfiguration, SettingsListNavKey)
     remember(backStack) {
         if (isWide && backStack.size == 1) {
             backStack.add(SettingsAppearanceNavKey)
@@ -308,7 +315,7 @@ fun SettingsScreen(
         }
     }
 
-    val entryProvider = entryProvider<SettingsSubNavKey> {
+    val entryProvider = entryProvider<NavKey> {
         entry<SettingsListNavKey>(
             metadata = ListDetailSceneStrategy.listPane(
                 detailPlaceholder = {

@@ -52,7 +52,7 @@ enum class SettingsGroup(
     Account("账号与安全", "当前账号状态、个人主页与手账同步", Icons.Outlined.ManageAccounts, SettingsAccountNavKey);
 
     companion object {
-        fun fromNavKey(key: SettingsSubNavKey?): SettingsGroup? = when (key) {
+        fun fromNavKey(key: NavKey?): SettingsGroup? = when (key) {
             is SettingsAppearanceNavKey -> Appearance
             is SettingsContentNavKey -> Content
             is SettingsAccountNavKey -> Account
