@@ -30,7 +30,7 @@ permissions:
   contents: read
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072M"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6144M -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
 
 jobs:
   test:
@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Gradle environment
         uses: ./.github/actions/gradle-setup
@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
@@ -73,7 +73,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Gradle environment
         uses: ./.github/actions/gradle-setup
@@ -82,7 +82,7 @@ jobs:
         run: ./gradlew :androidApp:assembleDebug --stacktrace
 
       - name: Upload Android APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: android-debug-apk
           path: androidApp/build/outputs/apk/debug/*.apk
@@ -103,10 +103,24 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
+
+      # Windows: 禁用 Windows Defender 实时监控与 I/O 扫描，显著提升小文件 I/O 与打包吞吐率
+      - name: Disable Windows Defender
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          try {
+            Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true
+            Write-Host "Windows Defender 实时防护与 I/O 检查已禁用"
+          } catch {
+            Write-Warning "禁用 Windows Defender 失败：$($_.Exception.Message)"
+          }
 
       - name: Set up Gradle environment
         uses: ./.github/actions/gradle-setup
+        with:
+          setup-android: false
 
       # Linux: 打包 Linux 桌面发行版 (.deb)
       - name: Package Linux desktop distribution
@@ -121,7 +135,7 @@ jobs:
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace
 
       - name: Upload desktop distribution
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: desktopApp/build/compose/binaries/main/
