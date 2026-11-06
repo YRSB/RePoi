@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,24 +13,35 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Colorize
+import androidx.compose.material.icons.filled.Domain
+import androidx.compose.material.icons.filled.DynamicFeed
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +54,10 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -105,6 +120,57 @@ private fun formatBytes(bytes: Long): String {
     val mb = kb / 1024.0
     if (mb < 1024) return "%.1f MB".format(mb)
     return "%.2f GB".format(mb / 1024.0)
+}
+
+private data class SeedPaletteColors(
+    val primary: Color,
+    val secondary: Color,
+    val tertiary: Color
+)
+
+private fun getSeedPalette(seed: ThemeSeed): SeedPaletteColors {
+    return when (seed) {
+        ThemeSeed.Pink -> SeedPaletteColors(
+            primary = Color(0xFFFF4D8D),
+            secondary = Color(0xFFFF85A2),
+            tertiary = Color(0xFFFFB2D1)
+        )
+        ThemeSeed.Coral -> SeedPaletteColors(
+            primary = Color(0xFFFF4D4F),
+            secondary = Color(0xFFFFA39E),
+            tertiary = Color(0xFFFFCCC7)
+        )
+        ThemeSeed.Amber -> SeedPaletteColors(
+            primary = Color(0xFFFA8C16),
+            secondary = Color(0xFFFFC069),
+            tertiary = Color(0xFFFFE7BA)
+        )
+        ThemeSeed.Lotus -> SeedPaletteColors(
+            primary = Color(0xFF1890FF),
+            secondary = Color(0xFF69C0FF),
+            tertiary = Color(0xFFBAE7FF)
+        )
+        ThemeSeed.Mint -> SeedPaletteColors(
+            primary = Color(0xFF12B76A),
+            secondary = Color(0xFF38C793),
+            tertiary = Color(0xFFA6F4C5)
+        )
+        ThemeSeed.Grape -> SeedPaletteColors(
+            primary = Color(0xFF7A5AF8),
+            secondary = Color(0xFF9B8AFB),
+            tertiary = Color(0xFFD9D6FE)
+        )
+        ThemeSeed.Tricolor -> SeedPaletteColors(
+            primary = Color(0xFFFF6B9D),
+            secondary = Color(0xFF2EC4B6),
+            tertiary = Color(0xFFFFD166)
+        )
+        ThemeSeed.Dynamic -> SeedPaletteColors(
+            primary = Color(0xFF0061A4),
+            secondary = Color(0xFF535F70),
+            tertiary = Color(0xFF6B5778)
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -631,6 +697,7 @@ private fun SettingsDetailPane(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsAppearanceContent(
     themeMode: ThemeMode,
@@ -643,28 +710,82 @@ private fun SettingsAppearanceContent(
     onAmoledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val seeds = ThemeSeed.entries.filter { it == ThemeSeed.Dynamic && isDynamicSeedAvailable || it != ThemeSeed.Dynamic }
+    val seeds = listOf(ThemeSeed.Dynamic) + ThemeSeed.entries.filter { it != ThemeSeed.Dynamic }
+
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item(key = "seeds", contentType = "seeds") {
-            ThemeSeedRow(
-                selected = themeSeed.orAvailable(),
-                seeds = seeds,
-                onSelect = onThemeSeedChange
+        item(key = "header-theme", contentType = "header") {
+            Text(
+                text = "主题",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
-        item(key = "mode", contentType = "row") {
-            ThemeModeRow(
-                current = themeMode,
-                onSelect = onThemeModeChange
-            )
+
+        item(key = "mode-segmented", contentType = "mode") {
+            val modes = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                modes.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = themeMode == mode,
+                        onClick = { onThemeModeChange(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                        label = {
+                            Text(
+                                text = when (mode) {
+                                    ThemeMode.LIGHT -> "浅色"
+                                    ThemeMode.DARK -> "深色"
+                                    ThemeMode.SYSTEM -> "跟随系统"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (themeMode == mode) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
         }
+
+        item(key = "seeds-flow", contentType = "seeds") {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp)
+            ) {
+                items(seeds, key = { it.name }, contentType = { "seed" }) { seed ->
+                    val isSelected = if (dynamicColor) {
+                        seed == ThemeSeed.Dynamic
+                    } else {
+                        seed == themeSeed.orAvailable()
+                    }
+                    PodAuraThemeCard(
+                        seed = seed,
+                        isSelected = isSelected,
+                        isDynamicActive = dynamicColor,
+                        onClick = {
+                            if (seed == ThemeSeed.Dynamic) {
+                                onDynamicColorChange(true)
+                                onThemeSeedChange(ThemeSeed.Dynamic)
+                            } else {
+                                onDynamicColorChange(false)
+                                onThemeSeedChange(seed)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
         item(key = "switches", contentType = "segment") {
             val count = if (supportsDynamicColor) 2 else 1
             Column(
@@ -673,24 +794,89 @@ private fun SettingsAppearanceContent(
             ) {
                 if (supportsDynamicColor) {
                     SettingsSwitchItem(
-                        icon = Icons.Filled.Palette,
-                        title = "动态壁纸取色",
-                        subtitle = "Android 12 及以上机型跟随系统壁纸调色板",
+                        icon = Icons.Filled.Colorize,
+                        title = "动态主题",
+                        subtitle = "将壁纸颜色应用于主题",
                         checked = dynamicColor,
                         index = 0,
                         count = count,
-                        onCheckedChange = onDynamicColorChange
+                        onCheckedChange = { enabled ->
+                            onDynamicColorChange(enabled)
+                            if (enabled) {
+                                onThemeSeedChange(ThemeSeed.Dynamic)
+                            } else if (themeSeed == ThemeSeed.Dynamic) {
+                                onThemeSeedChange(ThemeSeed.Coral)
+                            }
+                        }
                     )
                 }
                 SettingsSwitchItem(
                     icon = Icons.Filled.NightsStay,
-                    title = "AMOLED 纯黑",
+                    title = "Amoled 深色",
                     subtitle = "深色模式下使用纯黑背景省电护眼",
                     checked = amoled,
                     index = if (supportsDynamicColor) 1 else 0,
                     count = count,
                     onCheckedChange = onAmoledChange
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PodAuraThemeCard(
+    seed: ThemeSeed,
+    isSelected: Boolean,
+    isDynamicActive: Boolean,
+    onClick: () -> Unit
+) {
+    val dynamicColors = MaterialTheme.colorScheme
+    val palette = if (seed == ThemeSeed.Dynamic && isDynamicActive) {
+        SeedPaletteColors(
+            primary = dynamicColors.primary,
+            secondary = dynamicColors.secondary,
+            tertiary = dynamicColors.tertiary
+        )
+    } else {
+        getSeedPalette(seed)
+    }
+
+    val border = if (isSelected) {
+        androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+    } else {
+        null
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(68.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .then(
+                if (border != null) Modifier.border(border, RoundedCornerShape(18.dp))
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(6.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(44.dp)) {
+                    if (seed == ThemeSeed.Tricolor) {
+                        drawArc(color = palette.primary, startAngle = 270f, sweepAngle = 120f, useCenter = true)
+                        drawArc(color = palette.secondary, startAngle = 30f, sweepAngle = 120f, useCenter = true)
+                        drawArc(color = palette.tertiary, startAngle = 150f, sweepAngle = 120f, useCenter = true)
+                    } else {
+                        drawArc(color = palette.primary, startAngle = 180f, sweepAngle = 180f, useCenter = true)
+                        drawArc(color = palette.secondary, startAngle = 90f, sweepAngle = 90f, useCenter = true)
+                        drawArc(color = palette.tertiary, startAngle = 0f, sweepAngle = 90f, useCenter = true)
+                    }
+                }
             }
         }
     }
@@ -827,7 +1013,7 @@ private fun SettingsContentContent(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
                 SettingsMenuItem(
-                    icon = Icons.Filled.Block,
+                    icon = Icons.Filled.VisibilityOff,
                     title = "屏蔽列表",
                     subtitle = "用户 / 厂商 / 条目",
                     index = 0,
@@ -835,7 +1021,7 @@ private fun SettingsContentContent(
                     onClick = onOpenShieldList
                 )
                 SettingsMenuItem(
-                    icon = Icons.Filled.Block,
+                    icon = Icons.Filled.PersonOff,
                     title = "黑名单",
                     subtitle = "被屏蔽的用户将无法向您发送私信",
                     index = 1,
@@ -864,7 +1050,7 @@ private fun SettingsContentContent(
                     verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
                 ) {
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.Category,
                         title = "周边条目(手办、动漫、模型、布偶、娃娃)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
                         index = 0,
@@ -872,7 +1058,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
                     )
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.PhotoLibrary,
                         title = "收藏内容(相册、图片、文章)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
                         index = 1,
@@ -880,7 +1066,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
                     )
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.BarChart,
                         title = "收藏统计(历史消费、入手数量、待补款等)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
                         index = 2,
@@ -888,7 +1074,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
                     )
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.Domain,
                         title = "其他内容(系列、厂商、角色、人物、作品)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
                         index = 3,
@@ -914,7 +1100,7 @@ private fun SettingsContentContent(
                     verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
                 ) {
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.DynamicFeed,
                         title = "个人主页动态",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
                         index = 0,
@@ -922,7 +1108,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
                     )
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.People,
                         title = "关注、粉丝",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
                         index = 1,
@@ -930,7 +1116,7 @@ private fun SettingsContentContent(
                         onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
                     )
                     SettingsMenuItem(
-                        icon = Icons.Filled.Shield,
+                        icon = Icons.Filled.Forum,
                         title = "讨论板个人主页",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
                         index = 2,
@@ -952,7 +1138,7 @@ private fun SettingsContentContent(
         item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
             if (!privacyState.isLoading) {
                 SettingsMenuItem(
-                    icon = Icons.Filled.Shield,
+                    icon = Icons.Filled.MarkEmailRead,
                     title = "陌生人私信设置",
                     subtitle = strangerOptions.getOrElse(privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
                     index = 0,
@@ -1101,147 +1287,6 @@ private fun SettingsAccountContent(
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ThemeSeedRow(
-    selected: ThemeSeed,
-    seeds: List<ThemeSeed>,
-    onSelect: (ThemeSeed) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = "种子色板",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            androidx.compose.foundation.layout.FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                seeds.forEach { seed ->
-                    ThemeSeedDot(
-                        seed = seed,
-                        selected = seed == selected,
-                        onClick = { onSelect(seed) }
-                    )
-                }
-            }
-            Text(
-                text = selected.title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun ThemeSeedDot(
-    seed: ThemeSeed,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        val dotColor = seed.argb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-        val border = if (selected) {
-            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        } else {
-            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        }
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(48.dp)
-                .border(border, androidx.compose.foundation.shape.CircleShape)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .clickable(onClick = onClick)
-                .padding(4.dp)
-        ) {
-            androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
-                drawCircle(color = dotColor)
-            }
-            if (seed == ThemeSeed.Tricolor) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
-                    drawArc(color = Color(0xFFFF6B9D), startAngle = 270f, sweepAngle = 120f, useCenter = true)
-                    drawArc(color = Color(0xFF2EC4B6), startAngle = 30f, sweepAngle = 120f, useCenter = true)
-                    drawArc(color = Color(0xFFFFD166), startAngle = 150f, sweepAngle = 120f, useCenter = true)
-                }
-            }
-            if (selected) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
-                    drawCircle(color = Color.Black.copy(alpha = 0.25f))
-                }
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        Text(
-            text = seed.title,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ThemeModeRow(
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "深色模式",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            ThemeMode.entries.forEach { mode ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(ExpressiveTokens.MediumCardShape)
-                        .clickable { onSelect(mode) }
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RadioButton(selected = mode == current, onClick = { onSelect(mode) })
-                    Text(
-                        text = mode.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (mode == current) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
                 }
             }
         }
