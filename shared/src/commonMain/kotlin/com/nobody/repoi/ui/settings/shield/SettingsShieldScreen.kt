@@ -123,7 +123,7 @@ private fun ShieldSwitchCard(
     SegmentedListItem(
         onClick = { if (enabled) onCheckedChange(!checked) },
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surface),
         enabled = enabled,
         leadingContent = {
             Icon(
@@ -184,7 +184,7 @@ private fun ShieldMenuCard(
     SegmentedListItem(
         onClick = onClick,
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surface),
         leadingContent = {
             Icon(
                 imageVector = icon,
@@ -270,6 +270,7 @@ fun SettingsShieldListContent(
     }
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 title = {
@@ -288,7 +289,7 @@ fun SettingsShieldListContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
         }
@@ -319,7 +320,7 @@ fun SettingsShieldListContent(
                 onClick = { listViewModel.retry() },
                 shape = ExpressiveTokens.CardShape,
                 colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             ) {
@@ -371,7 +372,7 @@ fun SettingsShieldListContent(
                     ElevatedCard(
                         shape = ExpressiveTokens.CardShape,
                         colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {

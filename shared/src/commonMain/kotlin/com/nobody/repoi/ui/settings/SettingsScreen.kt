@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Category
@@ -124,11 +125,14 @@ import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.settings.components.SettingItem
+import com.nobody.repoi.ui.settings.components.SettingItemGroup
+import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 
-private enum class SettingsGroup(val title: String, val icon: ImageVector) {
-    Appearance("外观与主题", Icons.Filled.Palette),
-    Content("浏览与内容", Icons.Filled.Shield),
-    Account("账号与安全", Icons.Filled.Person)
+private enum class SettingsGroup(val title: String, val description: String, val icon: ImageVector) {
+    Appearance("外观与主题", "主题颜色、深色模式与壁纸取色", Icons.Filled.Palette),
+    Content("浏览与内容", "屏蔽过滤、R18 限制与隐私可见性", Icons.Filled.Shield),
+    Account("账号与安全", "当前账号状态、个人主页与手账同步", Icons.Filled.Person)
 }
 
 private fun formatBytes(bytes: Long): String {
@@ -336,6 +340,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             val currentTitle = if (!wide && narrowGroup.isNotEmpty()) {
                 runCatching { SettingsGroup.valueOf(narrowGroup).title }.getOrDefault("系统设置")
@@ -364,8 +369,8 @@ fun SettingsScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )
             )
         }
@@ -492,95 +497,42 @@ private fun SettingsGroupList(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(key = "header-preferences", contentType = "header") {
-            Text(
-                text = "偏好设置",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-            )
-        }
         item(key = "segment-preferences", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                groups.forEachIndexed { index, group ->
+            SettingItemGroup(title = "偏好设置") {
+                groups.forEach { group ->
                     val selected = selectedGroup == group
-                    SegmentedListItem(
-                        selected = selected,
-                        onClick = { onSelectGroup(group) },
-                        shapes = ListItemDefaults.segmentedShapes(index = index, count = groups.size),
-                        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                        leadingContent = {
-                            Icon(
-                                imageVector = group.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                        },
-                        content = {
-                            Text(
-                                text = group.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                    SettingItem(
+                        title = group.title,
+                        subtitle = group.description,
+                        icon = group.icon,
+                        containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+                        onClick = { onSelectGroup(group) }
                     )
                 }
             }
         }
 
-        item(key = "header-general", contentType = "header") {
-            Text(
-                text = "系统与通用",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-            )
-        }
         item(key = "segment-general", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                SettingsMenuItem(
-                    icon = Icons.Filled.CleaningServices,
+            SettingItemGroup(title = "系统与通用") {
+                SettingItem(
                     title = "清理图片缓存",
                     subtitle = if (cacheState.isLoading) "正在统计…" else if (cacheState.isClearing) "正在清理…" else "已占用 ${formatBytes(cacheState.sizeBytes)}",
-                    index = 0,
-                    count = 3,
+                    icon = Icons.Filled.CleaningServices,
                     onClick = onRequestClearCache
                 )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Share,
+                SettingItem(
                     title = "导出应用日志",
                     subtitle = "打包近期运行日志并分享便于排查问题",
-                    index = 1,
-                    count = 3,
+                    icon = Icons.Filled.Share,
                     onClick = onExportLog
                 )
-                SettingsMenuItem(
-                    icon = Icons.Filled.Info,
+                SettingItem(
                     title = "关于 RePoi",
                     subtitle = "版本 ${AppInfo.versionName}",
-                    index = 2,
-                    count = 3,
+                    icon = Icons.Filled.Info,
                     onClick = onRequestAbout
                 )
             }
@@ -588,25 +540,14 @@ private fun SettingsGroupList(
 
         if (isLoggedIn) {
             item(key = "logout", contentType = "logout") {
-                ElevatedCard(
-                    onClick = onRequestLogout,
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "退出当前账号",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                SettingItemGroup {
+                    SettingItem(
+                        title = "退出当前账号",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = onRequestLogout
+                    )
                 }
             }
         }
@@ -736,9 +677,7 @@ private fun SettingsAppearanceContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item(key = "header-theme", contentType = "header") {
@@ -747,32 +686,34 @@ private fun SettingsAppearanceContent(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
 
         item(key = "mode-segmented", contentType = "mode") {
             val modes = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                modes.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        selected = themeMode == mode,
-                        onClick = { onThemeModeChange(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                        label = {
-                            Text(
-                                text = when (mode) {
-                                    ThemeMode.LIGHT -> "浅色"
-                                    ThemeMode.DARK -> "深色"
-                                    ThemeMode.SYSTEM -> "跟随系统"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (themeMode == mode) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    modes.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = themeMode == mode,
+                            onClick = { onThemeModeChange(mode) },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                            label = {
+                                Text(
+                                    text = when (mode) {
+                                        ThemeMode.LIGHT -> "浅色"
+                                        ThemeMode.DARK -> "深色"
+                                        ThemeMode.SYSTEM -> "跟随系统"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (themeMode == mode) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -781,7 +722,7 @@ private fun SettingsAppearanceContent(
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 2.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
                 items(seeds, key = { it.name }, contentType = { "seed" }) { seed ->
                     val isSelected = if (dynamicColor) {
@@ -805,39 +746,28 @@ private fun SettingsAppearanceContent(
         }
 
         item(key = "switches", contentType = "segment") {
-            val count = if (supportsDynamicColor) 3 else 2
-            var itemIndex = 0
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
+            SettingItemGroup {
                 if (supportsDynamicColor) {
-                    SettingsSwitchItem(
+                    SettingSwitchItem(
                         icon = Icons.Filled.Colorize,
                         title = "动态主题",
                         subtitle = "将壁纸颜色应用于主题",
                         checked = dynamicColor,
-                        index = itemIndex++,
-                        count = count,
                         onCheckedChange = onDynamicColorChange
                     )
                 }
-                SettingsSwitchItem(
+                SettingSwitchItem(
                     icon = Icons.Filled.Palette,
                     title = "富有表现力的颜色",
                     subtitle = "增强色彩对比与层次表现力",
                     checked = expressiveColor,
-                    index = itemIndex++,
-                    count = count,
                     onCheckedChange = onExpressiveColorChange
                 )
-                SettingsSwitchItem(
+                SettingSwitchItem(
                     icon = Icons.Filled.NightsStay,
                     title = "Amoled 深色",
                     subtitle = "深色模式下使用纯黑背景省电护眼",
                     checked = amoled,
-                    index = itemIndex++,
-                    count = count,
                     onCheckedChange = onAmoledChange
                 )
             }
@@ -1004,191 +934,195 @@ private fun SettingsContentContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(key = "header-content", contentType = "header") {
-            Text(
-                text = "内容与扩展",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = "segment-content", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                SettingsSwitchItem(
+            SettingItemGroup(title = "内容与扩展") {
+                SettingSwitchItem(
                     icon = Icons.Filled.Visibility,
                     title = "R18 内容",
                     subtitle = if (shieldState.isLoading) "正在读取…" else if (shieldState.nsfwVisible) "显示" else "不显示",
                     checked = shieldState.nsfwVisible,
-                    index = 0,
-                    count = 2,
                     onCheckedChange = { onNsfwChange(!shieldState.nsfwVisible) }
                 )
-                SettingsSwitchItem(
+                SettingSwitchItem(
                     icon = Icons.Filled.PhotoLibrary,
                     title = "ExHobby 扩展图库",
                     subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
                     checked = isExHobbyEnabled,
-                    index = 1,
-                    count = 2,
                     onCheckedChange = onExHobbyEnabledChange
                 )
             }
         }
 
-        item(key = "header-shield", contentType = "header") {
-            Text(
-                text = "名单管理",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = "segment-shield", contentType = "segment") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-            ) {
-                SettingsMenuItem(
+            SettingItemGroup(title = "名单管理") {
+                SettingItem(
                     icon = Icons.Filled.VisibilityOff,
                     title = "屏蔽列表",
                     subtitle = "用户 / 厂商 / 条目",
-                    index = 0,
-                    count = 2,
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    },
                     onClick = onOpenShieldList
                 )
-                SettingsMenuItem(
+                SettingItem(
                     icon = Icons.Filled.PersonOff,
                     title = "黑名单",
                     subtitle = "被屏蔽的用户将无法向您发送私信",
-                    index = 1,
-                    count = 2,
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    },
                     onClick = onOpenBlocklist
                 )
             }
         }
 
-        item(key = "header-collect", contentType = "header") {
-            Text(
-                text = "收藏信息可见性",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = "segment-collect", contentType = "segment") {
-            if (privacyState.isLoading) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-                ) {
-                    SettingsMenuItem(
+            SettingItemGroup(title = "收藏信息可见性") {
+                if (privacyState.isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    SettingItem(
                         icon = Icons.Filled.Category,
                         title = "周边条目(手办、动漫、模型、布偶、娃娃)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0) { visibilityOptions[0] },
-                        index = 0,
-                        count = 4,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
                     )
-                    SettingsMenuItem(
+                    SettingItem(
                         icon = Icons.Filled.PhotoLibrary,
                         title = "收藏内容(相册、图片、文章)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0) { visibilityOptions[0] },
-                        index = 1,
-                        count = 4,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
                     )
-                    SettingsMenuItem(
+                    SettingItem(
                         icon = Icons.Filled.BarChart,
                         title = "收藏统计(历史消费、入手数量、待补款等)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0) { visibilityOptions[0] },
-                        index = 2,
-                        count = 4,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
                     )
-                    SettingsMenuItem(
+                    SettingItem(
                         icon = Icons.Filled.Domain,
                         title = "其他内容(系列、厂商、角色、人物、作品)",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0) { visibilityOptions[0] },
-                        index = 3,
-                        count = 4,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
                     )
                 }
             }
         }
 
-        item(key = "header-other", contentType = "header") {
-            Text(
-                text = "动态与社交可见性",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = "segment-other", contentType = "segment") {
             if (!privacyState.isLoading) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-                ) {
-                    SettingsMenuItem(
+                SettingItemGroup(title = "动态与社交可见性") {
+                    SettingItem(
                         icon = Icons.Filled.DynamicFeed,
                         title = "个人主页动态",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0) { visibilityOptions[0] },
-                        index = 0,
-                        count = 3,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
                     )
-                    SettingsMenuItem(
+                    SettingItem(
                         icon = Icons.Filled.People,
                         title = "关注、粉丝",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0) { visibilityOptions[0] },
-                        index = 1,
-                        count = 3,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
                     )
-                    SettingsMenuItem(
+                    SettingItem(
                         icon = Icons.Filled.Forum,
                         title = "讨论板个人主页",
                         subtitle = visibilityOptions.getOrElse(privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0) { visibilityOptions[0] },
-                        index = 2,
-                        count = 3,
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
                     )
                 }
             }
         }
 
-        item(key = "header-message", contentType = "header") {
-            Text(
-                text = "私信设置",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
             if (!privacyState.isLoading) {
-                SettingsMenuItem(
-                    icon = Icons.Filled.MarkEmailRead,
-                    title = "陌生人私信设置",
-                    subtitle = strangerOptions.getOrElse(privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
-                    index = 0,
-                    count = 1,
-                    onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
-                )
+                SettingItemGroup(title = "私信设置") {
+                    SettingItem(
+                        icon = Icons.Filled.MarkEmailRead,
+                        title = "陌生人私信设置",
+                        subtitle = strangerOptions.getOrElse(privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0) { strangerOptions[0] },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        },
+                        onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
+                    )
+                }
             }
         }
     }
@@ -1218,92 +1152,55 @@ private fun SettingsAccountContent(
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp
-        ),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(key = "header-profile", contentType = "header") {
-            Text(
-                text = "基本信息",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
         item(key = "profile", contentType = "row") {
-            SettingsMenuItem(
-                icon = Icons.Filled.Person,
-                title = "个人信息",
-                subtitle = "头像昵称与个人主页",
-                index = 0,
-                count = 1,
-                onClick = onOpenProfile
-            )
+            SettingItemGroup(title = "基本信息") {
+                SettingItem(
+                    icon = Icons.Filled.Person,
+                    title = "个人信息",
+                    subtitle = "头像昵称与个人主页",
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    },
+                    onClick = onOpenProfile
+                )
+            }
         }
 
-        item(key = "header-security", contentType = "header") {
-            Text(
-                text = "账号安全与绑定",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-
-        if (state.isLoading) {
-            item(key = "loading", contentType = "status") {
-                ElevatedCard(
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+        item(key = "bindings", contentType = "segment") {
+            SettingItemGroup(title = "账号安全与绑定") {
+                if (state.isLoading) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(vertical = 20.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     }
-                }
-            }
-        } else if (state.loadFailed) {
-            item(key = "failed", contentType = "status") {
-                ElevatedCard(
-                    onClick = onRefreshAccount,
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "账号状态加载失败，点击重试",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        } else {
-            val bindings = state.bindings()
-            item(key = "bindings", contentType = "segment") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-                ) {
-                    bindings.forEachIndexed { index, binding ->
-                        SettingsMenuItem(
+                } else if (state.loadFailed) {
+                    SettingItem(
+                        icon = Icons.Filled.AccountCircle,
+                        title = "账号状态加载失败",
+                        subtitle = "点击重试",
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = onRefreshAccount
+                    )
+                } else {
+                    val bindings = state.bindings()
+                    bindings.forEach { binding ->
+                        SettingItem(
                             icon = Icons.Filled.AccountCircle,
                             title = binding.title,
-                            subtitle = binding.statusText,
-                            index = index,
-                            count = bindings.size
+                            subtitle = binding.statusText
                         )
                     }
                 }
@@ -1312,153 +1209,18 @@ private fun SettingsAccountContent(
 
         if (isLoggedIn) {
             item(key = "logout", contentType = "logout") {
-                ElevatedCard(
-                    onClick = onRequestLogout,
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "退出当前账号",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                SettingItemGroup {
+                    SettingItem(
+                        title = "退出当前账号",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = onRequestLogout
+                    )
                 }
             }
         }
     }
-}
-
-@Composable
-private fun SettingsMenuItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    index: Int,
-    count: Int,
-    onClick: (() -> Unit)? = null
-) {
-    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
-    val label: @Composable () -> Unit = {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-    val supporting: @Composable () -> Unit = {
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    val leading: @Composable () -> Unit = {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-    }
-    val trailing: @Composable () -> Unit = {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.outline
-        )
-    }
-    val click = onClick
-    if (click != null) {
-        SegmentedListItem(
-            onClick = click,
-            shapes = shapes,
-            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            leadingContent = leading,
-            trailingContent = trailing,
-            supportingContent = supporting,
-            content = label
-        )
-    } else {
-        SegmentedListItem(
-            onClick = {},
-            shapes = shapes,
-            enabled = false,
-            colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            leadingContent = leading,
-            supportingContent = supporting,
-            content = label
-        )
-    }
-}
-
-@Composable
-private fun SettingsSwitchItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    index: Int,
-    count: Int,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    SegmentedListItem(
-        onClick = { onCheckedChange(!checked) },
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = null,
-                thumbContent = {
-                    if (checked) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(SwitchDefaults.IconSize)
-                        )
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        content = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    )
 }
 
 @FormFactorPreviews
