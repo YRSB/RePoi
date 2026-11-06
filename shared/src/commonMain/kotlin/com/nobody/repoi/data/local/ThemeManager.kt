@@ -150,18 +150,34 @@ class ThemeManager(
     }
 
     suspend fun setDynamicColor(enabled: Boolean) {
+
+        val targetSeed = if (enabled) {
+            ThemeSeed.Dynamic
+        } else if (themeSeed == ThemeSeed.Dynamic) {
+            ThemeSeed.Lotus
+        } else {
+            themeSeed
+        }
         dynamicColor = enabled
+        themeSeed = targetSeed
         dataStore.edit { prefs ->
             prefs[DYNAMIC_COLOR_KEY] = enabled
+            prefs[THEME_SEED_KEY] = targetSeed.name
         }
     }
 
     suspend fun setThemeSeed(seed: ThemeSeed) {
-        themeSeed = seed
+        val targetDynamic = (seed == ThemeSeed.Dynamic)
+        val targetSeed = seed.orAvailable()
+        themeSeed = targetSeed
+        dynamicColor = targetDynamic
         dataStore.edit { prefs ->
-            prefs[THEME_SEED_KEY] = seed.name
+            prefs[THEME_SEED_KEY] = targetSeed.name
+            prefs[DYNAMIC_COLOR_KEY] = targetDynamic
         }
     }
+
+    suspend fun selectTheme(seed: ThemeSeed) = setThemeSeed(seed)
 
     suspend fun setAmoled(enabled: Boolean) {
         amoled = enabled

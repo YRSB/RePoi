@@ -57,7 +57,11 @@ fun RePoiApp() {
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val effectiveSeed = if (themeSeed == ThemeSeed.Dynamic) null else themeSeed.orAvailable()
+    val effectiveSeed = when {
+        themeSeed != ThemeSeed.Dynamic -> themeSeed.orAvailable()
+        !dynamicColor -> ThemeSeed.Lotus
+        else -> null
+    }
 
     PoiShelfTheme(
         darkTheme = darkTheme,

@@ -69,6 +69,32 @@ class ThemeManagerTest {
     }
 
     @Test
+    fun selectTheme_static_updatesSeedAndDynamicColorAtomically() = runTest {
+        val manager = manager()
+        manager.setDynamicColor(true)
+        assertTrue(manager.dynamicColorFlow.first())
+
+        manager.selectTheme(ThemeSeed.Lotus)
+        assertEquals(ThemeSeed.Lotus, manager.themeSeed)
+        assertFalse(manager.dynamicColor)
+        assertEquals(ThemeSeed.Lotus, manager.themeSeedFlow.first())
+        assertFalse(manager.dynamicColorFlow.first())
+    }
+
+    @Test
+    fun setDynamicColor_falseWhenDynamic_fallsBackToLotusAtomically() = runTest {
+        val manager = manager()
+        manager.setThemeSeed(ThemeSeed.Dynamic)
+        assertTrue(manager.dynamicColorFlow.first())
+
+        manager.setDynamicColor(false)
+        assertFalse(manager.dynamicColor)
+        assertEquals(ThemeSeed.Lotus, manager.themeSeed)
+        assertFalse(manager.dynamicColorFlow.first())
+        assertEquals(ThemeSeed.Lotus, manager.themeSeedFlow.first())
+    }
+
+    @Test
     fun setAmoled_updatesMemoryFlowAndInitialValue() = runTest {
         val manager = manager()
         manager.amoledFlow.first()

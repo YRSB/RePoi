@@ -798,15 +798,7 @@ private fun SettingsAppearanceContent(
                         seed = seed,
                         accents = accents,
                         isSelected = isSelected,
-                        onClick = {
-                            if (seed == ThemeSeed.Dynamic) {
-                                onDynamicColorChange(true)
-                                onThemeSeedChange(ThemeSeed.Dynamic)
-                            } else {
-                                onDynamicColorChange(false)
-                                onThemeSeedChange(seed)
-                            }
-                        }
+                        onClick = { onThemeSeedChange(seed) }
                     )
                 }
             }
@@ -827,14 +819,7 @@ private fun SettingsAppearanceContent(
                         checked = dynamicColor,
                         index = itemIndex++,
                         count = count,
-                        onCheckedChange = { enabled ->
-                            onDynamicColorChange(enabled)
-                            if (enabled) {
-                                onThemeSeedChange(ThemeSeed.Dynamic)
-                            } else if (themeSeed == ThemeSeed.Dynamic) {
-                                onThemeSeedChange(ThemeSeed.Lotus)
-                            }
-                        }
+                        onCheckedChange = onDynamicColorChange
                     )
                 }
                 SettingsSwitchItem(
