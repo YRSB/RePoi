@@ -2,15 +2,23 @@
 #
 # Runs on pushes to main, pull requests, and manual triggers:
 # - test job (Linux): runs shared unit tests (JVM) and Android host tests
-# - android job (Linux, depends on test): assembles the Android debug APK
-# - desktop job (Linux + Windows matrix, depends on test): packages the desktop app
+# - android job (Linux): assembles the Android debug APK
+# - desktop job (Linux + Windows matrix): packages the desktop app
 #   for each OS (.deb on Linux, .msi on Windows)
 name: CI
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
   workflow_dispatch:
 
 # Cancel superseded runs on PR refs, preserve full runs on main.
@@ -22,7 +30,7 @@ permissions:
   contents: read
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096M -Dorg.gradle.daemon=false"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072M"
 
 jobs:
   test:
@@ -61,7 +69,6 @@ jobs:
 
   android:
     name: Build Android APK
-    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -83,7 +90,6 @@ jobs:
 
   desktop:
     name: Package Desktop (${{ matrix.os }})
-    needs: test
     strategy:
       fail-fast: false
       matrix:
