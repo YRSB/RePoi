@@ -337,7 +337,6 @@ fun SettingsListPane(
                         )
                         SettingItem(
                             title = "导出应用日志",
-                            subtitle = "打包近期运行日志并分享便于排查问题",
                             icon = Icons.Outlined.Article,
                             onClick = onExportLog
                         )

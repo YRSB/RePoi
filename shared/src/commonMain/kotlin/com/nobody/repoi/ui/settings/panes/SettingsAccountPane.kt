@@ -114,7 +114,7 @@ fun SettingsAccountPane(
                 EmptyState(
                     icon = Icons.Outlined.Lock,
                     title = "登录后管理账号与安全",
-                    description = "查看已绑定的手机、邮箱与微信，并同步手账数据",
+                    description = "查看已绑定的手机、邮箱与微信",
                     actionLabel = "立即登录",
                     actionIcon = Icons.AutoMirrored.Outlined.Login,
                     onAction = onNavigateToLogin

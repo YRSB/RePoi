@@ -217,8 +217,8 @@ fun SettingsContentPane(
                     )
                     SettingSwitchItem(
                         icon = Icons.Outlined.Collections,
-                        title = "ExHobby 扩展图库",
-                        subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
+                        title = "ExHobby",
+                        subtitle = "在手办与相册详情页中显示来自ExHobby的图片",
                         checked = isExHobbyEnabled,
                         enabled = true,
                         onCheckedChange = onExHobbyEnabledChange
@@ -264,9 +264,6 @@ fun SettingsContentPane(
             item(key = "segment-collect", contentType = "segment") {
                 SettingItemGroup(
                     title = "收藏信息可见性",
-                    footer = if (!isLoggedIn) {
-                        { Text("同步自 Hpoi 云端，需登录后配置", style = MaterialTheme.typography.bodySmall) }
-                    } else null
                 ) {
                     if (privacyState.isLoading && isLoggedIn) {
                         Box(
@@ -362,9 +359,6 @@ fun SettingsContentPane(
                 if (!privacyState.isLoading || !isLoggedIn) {
                     SettingItemGroup(
                         title = "动态与社交可见性",
-                        footer = if (!isLoggedIn) {
-                            { Text("同步自 Hpoi 云端，需登录后配置", style = MaterialTheme.typography.bodySmall) }
-                        } else null
                     ) {
                         SettingItem(
                             icon = Icons.Outlined.DynamicFeed,
@@ -430,10 +424,7 @@ fun SettingsContentPane(
             item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
                 if (!privacyState.isLoading || !isLoggedIn) {
                     SettingItemGroup(
-                        title = "私信设置",
-                        footer = if (!isLoggedIn) {
-                            { Text("同步自 Hpoi 云端，需登录后配置", style = MaterialTheme.typography.bodySmall) }
-                        } else null
+                        title = "私信设置"
                     ) {
                         SettingItem(
                             icon = Icons.Outlined.Chat,
