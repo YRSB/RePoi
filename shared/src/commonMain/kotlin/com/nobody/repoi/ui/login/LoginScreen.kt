@@ -269,9 +269,9 @@ fun LoginContent(
                     targetState = uiState.loginMode,
                     transitionSpec = {
                         val slideDirection = if (targetState == LoginMode.TOKEN) 1 else -1
-                        (slideInHorizontally { width -> slideDirection * width / 3 } + fadeIn()) togetherWith
-                            (slideOutHorizontally { width -> -slideDirection * width / 3 } + fadeOut())
-                                .using(SizeTransform(clip = false))
+                        val enter = slideInHorizontally { width -> slideDirection * width / 3 } + fadeIn()
+                        val exit = slideOutHorizontally { width -> -slideDirection * width / 3 } + fadeOut()
+                        (enter togetherWith exit).using(SizeTransform(clip = false))
                     },
                     label = "LoginModeAnimatedContent",
                     modifier = Modifier
