@@ -2,10 +2,20 @@ package com.nobody.repoi.di
 
 import coil3.ImageLoader
 import coil3.PlatformContext
+import coil3.memory.MemoryCache
 import com.nobody.repoi.platform.poiShelfAppContext
 
 /** Coil 上下文（android）：应用 Context（即 `PlatformContext`）。 */
 actual fun platformCoilContext(): PlatformContext = poiShelfAppContext()
+
+/**
+ * 内存缓存（android）：沿用 Coil 的可用内存百分比（低 RAM 设备自动收敛），
+ * 避免固定上限在 128~256 MiB 堆设备上抢占过多内存。
+ */
+actual fun createCoilMemoryCache(context: PlatformContext): MemoryCache =
+    MemoryCache.Builder()
+        .maxSizePercent(context)
+        .build()
 
 /**
  * 平台图片组件（android）：`coil-gif` 未引入本模块依赖，保持空实现；

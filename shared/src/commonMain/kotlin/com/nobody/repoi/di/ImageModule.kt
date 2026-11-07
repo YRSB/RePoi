@@ -49,9 +49,7 @@ val imageModule = module {
             add(SvgDecoder.Factory())
             add(KtorNetworkFetcherFactory(httpClient = get<HttpClient>(named("coil"))))
         }.memoryCache {
-            MemoryCache.Builder()
-                .maxSizeBytes(192 * 1024 * 1024L)
-                .build()
+            createCoilMemoryCache(platformCoilContext())
         }.logger(object : CoilLogger {
             override var minLevel: CoilLogger.Level = CoilLogger.Level.Info
 
@@ -72,11 +70,35 @@ val imageModule = module {
             poiShelfPlatformComponents()
         }.diskCache(diskCacheInstance)
         .build()
+        .also(CoilImageLoaderHolder::register)
+    }
+}
+
+/**
+ * 内存缓存持有者：`ImageLoader` 构建完成后登记，供平台内存修剪回调读取。
+ *
+ * 契约：修剪方只能读取本持有者，禁止经 Koin `get/getOrNull` 取 `ImageLoader`——
+ * 后者会按需实例化单例，冷启动退后台时会在主线程触发磁盘缓存初始化（`runBlocking` IO）。
+ */
+internal object CoilImageLoaderHolder {
+    @kotlin.concurrent.Volatile
+    var imageLoader: ImageLoader? = null
+        private set
+
+    fun register(loader: ImageLoader) {
+        imageLoader = loader
     }
 }
 
 /** Coil `PlatformContext`：android = 应用 Context，jvm = `PlatformContext.INSTANCE`。 */
 expect fun platformCoilContext(): PlatformContext
+
+/**
+ * 平台内存缓存策略：
+ * - Android：沿用 Coil 的可用内存百分比（低 RAM 设备自动收敛），不设固定大值；
+ * - Desktop：固定上限并按堆上限收敛，阻断 4K 图集把堆吃满。
+ */
+expect fun createCoilMemoryCache(context: PlatformContext): MemoryCache
 
 /** 平台图片组件扩展点（android/gif、jvm/no-op；gif 解码器未引入本模块时为空）。 */
 expect fun ImageLoader.Builder.poiShelfPlatformComponents()
