@@ -15,6 +15,7 @@ internal val DefaultJson = Json {
     isLenient = true
 }
 
+@kotlin.concurrent.Volatile
 private var cachedFaceTexts: List<FaceTextItem>? = null
 
 fun parseFaceTexts(raw: String): List<FaceTextItem> =

@@ -73,7 +73,9 @@ class ImageViewerStateHolder internal constructor(
     var imageUrls by mutableStateOf(initialImages)
         internal set
 
-    var currentIndex by mutableIntStateOf(initialIndex)
+    var currentIndex by mutableIntStateOf(
+        if (initialImages.isEmpty()) 0 else initialIndex.coerceIn(0, initialImages.size - 1)
+    )
         internal set
 
     var onLoadMoreCallback by mutableStateOf<(() -> Unit)?>(null)
@@ -95,6 +97,7 @@ class ImageViewerStateHolder internal constructor(
         val validImages = images.filter { it.isNotBlank() }
         if (validImages.isNotEmpty() && validImages != imageUrls) {
             imageUrls = validImages
+            currentIndex = currentIndex.coerceIn(0, validImages.size - 1)
         }
     }
 
@@ -121,7 +124,8 @@ class ImageViewerStateHolder internal constructor(
                     val newIndex = (current - actualStart).coerceIn(0, (sublist.size - 1).coerceAtLeast(0))
                     sublist to newIndex
                 } else {
-                    urls to current
+                    val safeIndex = if (urls.isEmpty()) 0 else current.coerceIn(0, urls.size - 1)
+                    urls to safeIndex
                 }
                 listOf(ArrayList(savedUrls), savedIndex)
             },
@@ -129,7 +133,8 @@ class ImageViewerStateHolder internal constructor(
                 @Suppress("UNCHECKED_CAST")
                 val images = list[0] as List<String>
                 val index = list[1] as Int
-                ImageViewerStateHolder(initialImages = images, initialIndex = index)
+                val safeIndex = if (images.isEmpty()) 0 else index.coerceIn(0, images.size - 1)
+                ImageViewerStateHolder(initialImages = images, initialIndex = safeIndex)
             }
         )
     }

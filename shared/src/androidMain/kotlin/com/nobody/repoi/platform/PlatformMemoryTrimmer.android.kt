@@ -12,7 +12,9 @@ import org.koin.core.context.GlobalContext
  */
 object PlatformMemoryTrimmer {
     fun onTrimMemory(level: Int) {
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+            level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
+        ) {
             clearImageCaches()
         }
     }

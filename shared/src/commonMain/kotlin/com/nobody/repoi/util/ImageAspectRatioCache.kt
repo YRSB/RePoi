@@ -42,11 +42,14 @@ object ImageAspectRatioCache {
     }
 
     fun clear() {
-        if (guard.tryLock()) {
-            try {
-                cache.clear()
-            } finally {
-                guard.unlock()
+        repeat(50) {
+            if (guard.tryLock()) {
+                try {
+                    cache.clear()
+                    return
+                } finally {
+                    guard.unlock()
+                }
             }
         }
     }

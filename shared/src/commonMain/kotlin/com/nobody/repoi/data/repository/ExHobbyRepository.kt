@@ -45,7 +45,7 @@ class ExHobbyRepository(
                 type = "all"
             )
             cacheMutex.withLock {
-                if (pageCache.size >= MAX_CACHE_PAGES) {
+                if (!pageCache.containsKey(cacheKey) && pageCache.size >= MAX_CACHE_PAGES) {
                     val oldestKey = pageCache.keys.firstOrNull()
                     if (oldestKey != null) {
                         pageCache.remove(oldestKey)
