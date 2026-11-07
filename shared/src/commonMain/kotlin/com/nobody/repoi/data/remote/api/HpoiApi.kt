@@ -558,6 +558,18 @@ class HpoiApi(
             setBody(FormDataContent(Parameters.Empty))
         }.decodeRefAware(json)
 
+    /**
+     * Token 登录验权直达通道：候选令牌经请求体 `utoken` 显式透传，不依赖全局注入。
+     *
+     * 背景：`CommonParamsPlugin` 按发包时内存镜像合并公共参数，候选令牌热切换存在竞态；
+     * 此处按调用方传入值写入 `utoken` 字段（`merge` 保留调用方同名参数不覆盖），
+     * 验权语义与批量并发隔离，行为与 `getUserSelf` 一致。
+     */
+    suspend fun getUserSelfWithToken(candidateToken: String): CommonResponse<UserSelfPayload> =
+        client.post("api/user/self") {
+            setBody(formOf("utoken" to candidateToken))
+        }.decodeRefAware(json)
+
     suspend fun getFellowCount(userNodeId: Long): CommonResponse<FellowCountPayload> =
         client.post("api/user/fellow/count") {
             setBody(formOf("userNodeId" to userNodeId))

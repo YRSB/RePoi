@@ -127,4 +127,90 @@ class LoginViewModelTest {
         viewModel.togglePasswordVisibility()
         assertFalse(viewModel.uiState.value.passwordVisible)
     }
+
+    @Test
+    fun tokenLogin_blankToken_showsErrorWithoutRequest() = runTest(testDispatcher) {
+        val (mock, _, viewModel) = setup()
+        viewModel.onTokenChange("  \n ")
+
+        viewModel.loginWithToken {}
+        advanceUntilIdle()
+
+        assertEquals("请输入登录令牌", viewModel.uiState.value.errorMessage)
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun tokenLogin_success_persistsTokenAndInvokesCallback() = runTest(testDispatcher) {
+        val (mock, _, viewModel) = setup()
+        mock.enqueue(mock.ok("""{"user":{"id":88888,"nickname":"资深胶佬","userName":"collector888"}}"""))
+        var successCalled = false
+        viewModel.onTokenChange(" candidate-token ")
+
+        viewModel.loginWithToken { successCalled = true }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isSuccess)
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertTrue(successCalled)
+        assertEquals(1, mock.requestCount)
+        assertEquals("candidate-token", mock.takeRequest().formEntries()["utoken"])
+    }
+
+    @Test
+    fun tokenLogin_invalidToken4001_showsFriendlyErrorAndRetainsInput() = runTest(testDispatcher) {
+        val (mock, _, viewModel) = setup()
+        mock.enqueue(mock.failure(4001, "登录凭证已过期"))
+        var successCalled = false
+        viewModel.onTokenChange("expired-token")
+
+        viewModel.loginWithToken { successCalled = true }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSuccess)
+        assertFalse(state.isLoading)
+        assertEquals("登录令牌已失效，请重新获取", state.errorMessage)
+        assertEquals("expired-token", state.token)
+        assertFalse(successCalled)
+    }
+
+    @Test
+    fun tokenLogin_serverError_showsServerMessageAndRetainsInput() = runTest(testDispatcher) {
+        val (mock, _, viewModel) = setup()
+        mock.enqueue(
+            status = io.ktor.http.HttpStatusCode.ServiceUnavailable,
+            body = mock.failure(503, "服务暂不可用")
+        )
+        var successCalled = false
+        viewModel.onTokenChange("candidate-token")
+
+        viewModel.loginWithToken { successCalled = true }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSuccess)
+        assertFalse(state.isLoading)
+        assertEquals("服务暂不可用", state.errorMessage)
+        assertEquals("candidate-token", state.token)
+        assertFalse(successCalled)
+    }
+
+    @Test
+    fun modeSwitch_preservesEnteredValues() = runTest(testDispatcher) {
+        val (_, _, viewModel) = setup()
+        viewModel.onAccountChange("user")
+        viewModel.onTokenChange("candidate-token")
+
+        viewModel.onModeChange(LoginMode.TOKEN)
+        assertEquals("user", viewModel.uiState.value.account)
+        assertEquals("candidate-token", viewModel.uiState.value.token)
+
+        viewModel.onModeChange(LoginMode.ACCOUNT)
+        assertEquals("user", viewModel.uiState.value.account)
+        assertEquals("candidate-token", viewModel.uiState.value.token)
+    }
 }

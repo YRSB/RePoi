@@ -1002,4 +1002,61 @@ class UserRepositoryTest {
         val req2 = mock.takeRequest()
         assertEquals("77777", req2.formEntries()["userId"])
     }
+
+    @Test
+    fun loginWithToken_blankToken_failsWithoutRequest() = runTest {
+        val (mock, tokenManager, repository) = setup(token = "")
+        val beforeToken = tokenManager.currentToken
+        val beforeProfile = repository.currentUserProfile.value
+
+        val result = repository.loginWithToken("   \n ")
+
+        assertTrue(result.isFailure)
+        assertEquals("请输入登录令牌", result.exceptionOrNull()?.message)
+        assertEquals(0, mock.requestCount)
+        assertEquals(beforeToken, tokenManager.currentToken)
+        assertEquals(beforeProfile, repository.currentUserProfile.value)
+    }
+
+    @Test
+    fun loginWithToken_success_persistsTokenAndProfile() = runTest {
+        val (mock, tokenManager, repository) = setup(token = "")
+        mock.enqueue(mock.ok("""{"user":{"id":88888,"nickname":"资深胶佬","userName":"collector888"}}"""))
+
+        val result = repository.loginWithToken("candidate-token")
+
+        assertTrue(result.isSuccess)
+        assertEquals(88888L, result.getOrThrow().id)
+        assertEquals("candidate-token", tokenManager.currentToken)
+        assertEquals(88888L, repository.currentUserProfile.value?.id)
+        val request = mock.takeRequest()
+        assertEquals("/api/user/self", request.path)
+        assertEquals("candidate-token", request.formEntries()["utoken"])
+    }
+
+    @Test
+    fun loginWithToken_expiredToken4001_reportsFriendlyErrorAndRollsBack() = runTest {
+        val (mock, tokenManager, repository) = setup(token = "")
+        mock.enqueue(mock.failure(4001, "登录凭证已过期"))
+
+        val result = repository.loginWithToken("expired-token")
+
+        assertTrue(result.isFailure)
+        assertEquals("登录令牌已失效，请重新获取", result.exceptionOrNull()?.message)
+        assertEquals("", tokenManager.currentToken)
+        assertNull(repository.currentUserProfile.value)
+    }
+
+    @Test
+    fun loginWithToken_serverError_reportsServerMessageWithoutPersisting() = runTest {
+        val (mock, tokenManager, repository) = setup(token = "")
+        mock.enqueue(status = io.ktor.http.HttpStatusCode.ServiceUnavailable, body = mock.failure(503, "服务暂不可用"))
+
+        val result = repository.loginWithToken("candidate-token")
+
+        assertTrue(result.isFailure)
+        assertEquals("服务暂不可用", result.exceptionOrNull()?.message)
+        assertEquals("", tokenManager.currentToken)
+        assertNull(repository.currentUserProfile.value)
+    }
 }

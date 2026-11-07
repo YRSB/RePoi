@@ -27,6 +27,7 @@ class SettingsRepository(
 ) {
     val tokenFlow: Flow<String> get() = tokenManager.tokenFlow
     val isLoggedIn: Boolean get() = tokenManager.currentToken.isNotBlank()
+    val activeToken: String get() = tokenManager.currentToken
 
     suspend fun addMask(itemNodeId: Long): Result<Unit> = runCatching {
         val response = api.addMask(itemNodeId = itemNodeId)

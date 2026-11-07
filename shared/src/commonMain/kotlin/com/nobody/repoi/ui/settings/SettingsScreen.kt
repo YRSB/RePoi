@@ -394,6 +394,7 @@ fun SettingsScreen(
                 onBack = localOnBack,
                 isLoggedIn = profileState.isLoggedIn,
                 accountState = accountState,
+                activeToken = accountViewModel.activeToken,
                 onOpenProfile = {
                     val id = profileState.profile?.id ?: 0L
                     if (id > 0L) {
@@ -403,6 +404,9 @@ fun SettingsScreen(
                     }
                 },
                 onRefreshAccount = { accountViewModel.refresh() },
+                onOpenExportDialog = { accountViewModel.openExportDialog() },
+                onDismissExportDialog = { accountViewModel.dismissExportDialog() },
+                onToggleExportTokenVisibility = { accountViewModel.toggleExportTokenVisibility() },
                 onRequestLogout = { showLogoutConfirmDialog = true },
                 onNavigateToLogin = onNavigateToLogin
             )
