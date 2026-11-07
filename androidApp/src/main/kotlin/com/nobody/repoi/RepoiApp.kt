@@ -2,7 +2,6 @@ package com.nobody.repoi
 
 import android.app.Application
 import com.nobody.repoi.di.initKoin
-import com.nobody.repoi.platform.PlatformMemoryTrimmer
 import com.nobody.repoi.platform.initPoiShelfPlatformContext
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -20,15 +19,5 @@ class RepoiApp : Application() {
             androidLogger()
             androidContext(this@RepoiApp)
         }
-    }
-
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        PlatformMemoryTrimmer.onTrimMemory(level)
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        PlatformMemoryTrimmer.onLowMemory()
     }
 }
