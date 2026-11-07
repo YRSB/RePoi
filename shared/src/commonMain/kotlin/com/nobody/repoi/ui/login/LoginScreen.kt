@@ -150,14 +150,7 @@ fun LoginContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         CenterAlignedTopAppBar(
-            title = {
-                Text(
-                    text = "登录 Hpoi",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
+            title = {},
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -168,7 +161,7 @@ fun LoginContent(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.background
             )
         )
 

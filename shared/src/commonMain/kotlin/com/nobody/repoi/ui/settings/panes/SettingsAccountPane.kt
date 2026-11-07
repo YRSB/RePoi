@@ -61,7 +61,7 @@ import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import kotlinx.coroutines.launch
 
 private fun accountBindingIcon(title: String): ImageVector = when (title) {
-    "登录密码" -> Icons.Outlined.Key
+    "登录密码" -> Icons.Outlined.Lock
     "手机" -> Icons.Outlined.Smartphone
     "邮箱" -> Icons.Outlined.Email
     "微信" -> Icons.Outlined.Link
@@ -198,7 +198,7 @@ fun SettingsAccountPane(
                                 )
                             }
                             SettingItem(
-                                icon = Icons.Outlined.Link,
+                                icon = Icons.Outlined.Key,
                                 title = "导出登录 Token",
                                 subtitle = "复制当前会话令牌到其他设备",
                                 trailingContent = {
