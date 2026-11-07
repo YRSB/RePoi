@@ -34,7 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 周边页细分子分类候选集合。
@@ -100,7 +100,7 @@ internal fun CollectFilterBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = ExpressiveTokens.DialogShape,
+        shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
@@ -162,7 +162,7 @@ internal fun CollectFilterBottomSheet(
                                         )
                                     }
                                 } else null,
-                                shape = ExpressiveTokens.ChipShape
+                                shape = MaterialTheme.shapes.small
                             )
                         }
                     }
@@ -204,7 +204,7 @@ internal fun CollectFilterBottomSheet(
                                         )
                                     }
                                 } else null,
-                                shape = ExpressiveTokens.ChipShape
+                                shape = MaterialTheme.shapes.small
                             )
                         }
                     }
@@ -226,7 +226,7 @@ internal fun CollectFilterBottomSheet(
                         onConfirm(pendingSubCategoryId, pendingTag)
                         onDismiss()
                     },
-                    shape = ExpressiveTokens.ButtonShape,
+                    shape = CircleShape,
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)
                 ) {
                     Text(text = "确定")

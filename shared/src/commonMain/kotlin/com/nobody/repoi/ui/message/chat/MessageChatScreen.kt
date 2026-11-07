@@ -80,7 +80,6 @@ import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.common.plainTextClipEntry
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.MessageChatNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitMode
@@ -90,6 +89,7 @@ import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.theme.largeCard
 
 /**
  * 1v1 私信聊天主界面：左右气泡流、表情选择、图片发送与轮询。
@@ -343,7 +343,7 @@ private fun ChatCommodityCard(
                 val targetId = dataMap.resaleId ?: 0L
                 if (targetId > 0L) onNavigateToHobby(targetId)
             },
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
         )
@@ -359,7 +359,7 @@ private fun ChatCommodityCard(
                     contentDescription = dataMap.title,
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(ExpressiveTokens.ExtraSmallShape),
+                        .clip(MaterialTheme.shapes.extraSmall),
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -606,7 +606,7 @@ private fun ChatBottomInputBar(
                         .weight(1f)
                         .heightIn(min = 40.dp, max = 110.dp),
                     placeholder = { Text("发送私信...", fontSize = 14.sp) },
-                    shape = ExpressiveTokens.LargeCardShape,
+                    shape = MaterialTheme.shapes.largeCard,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -652,7 +652,7 @@ private fun ChatBottomInputBar(
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
-                                    .clip(ExpressiveTokens.SmallCardShape)
+                                    .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
                                     .clickable { onSelectEmoji(emoji) },
                                 contentAlignment = Alignment.Center

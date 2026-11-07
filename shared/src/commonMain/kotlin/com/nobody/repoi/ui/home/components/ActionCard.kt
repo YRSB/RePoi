@@ -60,7 +60,6 @@ import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.RelateItem
 import com.nobody.repoi.data.remote.model.UserProfileSummary
 import com.nobody.repoi.ui.common.LevelPill
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import com.nobody.repoi.util.AppLogger
@@ -130,12 +129,12 @@ fun ActionCard(
     ElevatedCard(
         onClick = { onItemClick?.invoke(actionItem) },
         enabled = onItemClick != null,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -152,7 +151,7 @@ fun ActionCard(
                     modifier = Modifier
                         .width(96.dp)
                         .aspectRatio(effectiveRatio)
-                        .clip(ExpressiveTokens.SmallCardShape)
+                        .clip(MaterialTheme.shapes.small)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable(enabled = onImageClick != null && allRawUrls.isNotEmpty()) {
                             onImageClick?.invoke(allRawUrls, 0)
@@ -256,7 +255,7 @@ fun ActionCard(
                                         .weight(1f, fill = false)
                                         .sizeIn(maxWidth = 72.dp, maxHeight = 72.dp)
                                         .aspectRatio(1f)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                         .clickable {
                                             onImageClick?.invoke(allRawUrls, clickIndex)
@@ -369,7 +368,7 @@ private fun OfficialNoticeHeader(
 @Composable
 private fun OfficialBulletBadge() {
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Row(
@@ -452,7 +451,7 @@ private fun ActionStatusBadge(actionItem: ActionItem) {
     }
 
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = style.containerColor
     ) {
         Text(
@@ -507,7 +506,7 @@ private fun ParamChip(
     iconTint: Color = MaterialTheme.colorScheme.primary
 ) {
     Surface(
-        shape = ExpressiveTokens.ChipShape,
+        shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(

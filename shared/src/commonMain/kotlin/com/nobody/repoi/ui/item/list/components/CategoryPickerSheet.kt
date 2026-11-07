@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 周边分类与子分类一体化双栏级联选择底板：
@@ -169,7 +169,7 @@ fun CategoryPickerSheet(
                                     Box(
                                         modifier = Modifier
                                             .size(width = 3.dp, height = 14.dp)
-                                            .clip(ExpressiveTokens.PillShape)
+                                            .clip(CircleShape)
                                             .background(MaterialTheme.colorScheme.primary)
                                     )
                                 } else {
@@ -252,7 +252,7 @@ private fun CategorySubItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

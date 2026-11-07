@@ -48,7 +48,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ZoneItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -275,7 +274,7 @@ private fun ZoneItemCard(
     ) {
         Surface(
             modifier = Modifier.size(60.dp),
-            shape = ExpressiveTokens.MediumCardShape,
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
@@ -286,7 +285,7 @@ private fun ZoneItemCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(ExpressiveTokens.MediumCardShape)
+                        .clip(MaterialTheme.shapes.medium)
                 )
             } else {
                 Box(

@@ -27,7 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 周边列表富语义空状态组件
@@ -74,7 +74,7 @@ fun HobbyEmptyPlaceholder(
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedButton(
                     onClick = onResetFilters,
-                    shape = ExpressiveTokens.PillShape
+                    shape = CircleShape
                 ) {
                     Text(
                         text = "重置筛选条件",

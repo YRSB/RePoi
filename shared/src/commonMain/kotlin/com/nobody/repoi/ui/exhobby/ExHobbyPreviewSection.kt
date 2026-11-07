@@ -39,7 +39,6 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 
@@ -100,7 +99,7 @@ fun ExHobbyPreviewSection(
                 Card(
                     onClick = { onPicClick(index) },
                     modifier = Modifier.height(160.dp),
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
@@ -156,7 +155,7 @@ private fun ExHobbyMoreTile(
     Surface(
         onClick = onMoreClick,
         modifier = modifier,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(

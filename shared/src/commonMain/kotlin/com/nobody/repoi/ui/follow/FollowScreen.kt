@@ -91,7 +91,6 @@ import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.util.FeedActionDispatcher
@@ -450,7 +449,7 @@ fun FollowScreen(
                             selected = uiState.selectedFilter == key,
                             onClick = { viewModel.selectFilter(key) },
                             label = { Text(text = label) },
-                            shape = ExpressiveTokens.ChipShape
+                            shape = MaterialTheme.shapes.small
                         )
                     }
                 }

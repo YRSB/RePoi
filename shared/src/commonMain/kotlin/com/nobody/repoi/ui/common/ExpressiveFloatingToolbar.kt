@@ -27,8 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveElevation
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * Material 3 Expressive 悬浮操作栏（Floating Toolbar）适配层。
@@ -58,9 +57,9 @@ fun ExpressiveFloatingToolbar(
         colors = colors,
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
         scrollBehavior = scrollBehavior,
-        shape = ExpressiveTokens.PillShape,
-        expandedShadowElevation = ExpressiveElevation.Level3,
-        collapsedShadowElevation = ExpressiveElevation.Level3
+        shape = CircleShape,
+        expandedShadowElevation = 6.dp,
+        collapsedShadowElevation = 6.dp
     ) {
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -81,7 +80,7 @@ fun ExpressiveFloatingToolbar(
  * 4. 图标 + 文字且主操作 → 官方 `FilledTonalButton`。
  *
  * 规范对齐：
- * - 形状沿用设计系统 `ExpressiveTokens.PillShape`（官方按钮默认外形同为全圆角）；
+ * - 形状沿用设计系统 `CircleShape`（官方按钮默认外形同为全圆角）；
  * - 图文并存时图标 `contentDescription` 设为 null，避免 TalkBack 重复朗读；
  * - 文字接入 `MaterialTheme.typography.labelLarge`，支持全局无障碍字阶缩放；
  * - 图标尺寸按官方按钮规范：图文按钮 18dp，纯图标按钮 24dp。
@@ -126,7 +125,7 @@ fun ExpressiveToolbarButton(
             FilledTonalButton(
                 onClick = onClick,
                 modifier = modifier,
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = containerColor,
                     contentColor = contentColor
@@ -139,7 +138,7 @@ fun ExpressiveToolbarButton(
             TextButton(
                 onClick = onClick,
                 modifier = modifier,
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {

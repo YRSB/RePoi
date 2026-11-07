@@ -71,9 +71,9 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.Card
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.Card
 
 internal fun levelTier(level: Int): Int = when {
     level <= 0 -> 0
@@ -196,7 +196,7 @@ fun AlbumRankListScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Surface(
-                                        shape = ExpressiveTokens.PillShape,
+                                        shape = CircleShape,
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -281,7 +281,7 @@ fun AlbumRankListScreen(
 
 @Composable
 private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ExpressiveCard(
+    Card(
         onClick = onClick,
         modifier = modifier
     ) {
@@ -302,7 +302,7 @@ private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifie
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(width = 72.dp, height = 96.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
             )
         } else {
             AlbumTextCover(
@@ -415,7 +415,7 @@ private fun LevelBadge(level: Int) {
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
-        shape = ExpressiveTokens.ExtraSmallShape,
+        shape = MaterialTheme.shapes.extraSmall,
         color = containerColor
     ) {
         Text(
@@ -447,7 +447,7 @@ private fun RankListSkeleton(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     rowItems.forEach { _ ->
-                        ExpressiveCard(
+                        Card(
                             modifier = Modifier.weight(1f)
                         ) {
                             Row(
@@ -466,7 +466,7 @@ private fun RankListSkeleton(
                                 Box(
                                     modifier = Modifier
                                         .size(width = 72.dp, height = 96.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .shimmerBackground()
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
@@ -475,7 +475,7 @@ private fun RankListSkeleton(
                                         modifier = Modifier
                                             .fillMaxWidth(0.7f)
                                             .height(16.dp)
-                                            .clip(ExpressiveTokens.ExtraSmallShape)
+                                            .clip(MaterialTheme.shapes.extraSmall)
                                             .shimmerBackground()
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -483,7 +483,7 @@ private fun RankListSkeleton(
                                         modifier = Modifier
                                             .fillMaxWidth(0.4f)
                                             .height(12.dp)
-                                            .clip(ExpressiveTokens.ExtraSmallShape)
+                                            .clip(MaterialTheme.shapes.extraSmall)
                                             .shimmerBackground()
                                     )
                                 }
@@ -556,7 +556,7 @@ private fun RankListError(errorMessage: String, onRetry: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onRetry,
-                shape = ExpressiveTokens.ButtonShape
+                shape = CircleShape
             ) {
                 Text(text = "重试")
             }

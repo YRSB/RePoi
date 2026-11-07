@@ -66,7 +66,6 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.resale.components.rememberExternalLinkOpener
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 
 /**
@@ -113,7 +112,7 @@ fun ResaleDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier
-                                .clip(ExpressiveTokens.SmallCardShape)
+                                .clip(MaterialTheme.shapes.small)
                                 .clickable {
                                     if (user.userId > 0L) {
                                         onNavigateToUser(user.userId)
@@ -158,7 +157,7 @@ fun ResaleDetailScreen(
                             // 等级胶囊 (如 Lv.3)
                             if (user.level > 0) {
                                 Surface(
-                                    shape = ExpressiveTokens.ExtraSmallShape,
+                                    shape = MaterialTheme.shapes.extraSmall,
                                     color = MaterialTheme.colorScheme.primaryContainer
                                 ) {
                                     Text(
@@ -373,11 +372,11 @@ fun ResaleDetailScreen(
                         if (detail.userPics.isNotEmpty()) {
                             itemsIndexed(detail.userPics) { index, picUrl ->
                                 Surface(
-                                    shape = ExpressiveTokens.CardShape,
+                                    shape = MaterialTheme.shapes.large,
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(ExpressiveTokens.CardShape)
+                                        .clip(MaterialTheme.shapes.large)
                                         .clickable {
                                             imageViewer.show(detail.userPics, index)
                                         }
@@ -425,12 +424,12 @@ private fun ResaleLinkedHobbyCard(
 ) {
     ElevatedCard(
         onClick = onClick,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = androidx.compose.material3.CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -445,7 +444,7 @@ private fun ResaleLinkedHobbyCard(
             Box(
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
@@ -521,7 +520,7 @@ private fun ResaleDetailBottomBar(
             // 聊一聊按钮
             Button(
                 onClick = onContactClick,
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.onSurface,
                     contentColor = MaterialTheme.colorScheme.surface
@@ -550,7 +549,7 @@ private fun ResaleDetailBottomBar(
                 val link = detail.link.orEmpty()
                 Button(
                     onClick = { onExternalLinkClick(link) },
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary

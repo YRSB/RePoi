@@ -78,7 +78,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -414,9 +413,9 @@ private fun CategoryGridItem(
 ) {
     Card(
         modifier = modifier
-            .clip(ExpressiveTokens.CardShape)
+            .clip(MaterialTheme.shapes.large)
             .clickable(onClick = onClick),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )

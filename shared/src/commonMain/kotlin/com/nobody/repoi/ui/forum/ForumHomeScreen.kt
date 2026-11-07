@@ -88,11 +88,11 @@ import com.nobody.repoi.ui.forum.components.ForumErrorPlaceholder
 import com.nobody.repoi.ui.forum.components.ForumHeaderCard
 import com.nobody.repoi.ui.forum.components.ForumPaginationFooter
 import com.nobody.repoi.ui.home.components.ShimmerHost
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZonePostCardSkeleton
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 讨论板主页（对标原版 ForumHomeActivity）。
@@ -406,7 +406,7 @@ private fun ForumSearchRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
@@ -418,7 +418,7 @@ private fun ForumSearchRow(
             Box {
                 Row(
                     modifier = Modifier
-                        .clip(ExpressiveTokens.PillShape)
+                        .clip(CircleShape)
                         .clickable { typeMenuExpanded = true }
                         .padding(start = 12.dp, end = 2.dp, top = 12.dp, bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically

@@ -139,7 +139,7 @@
 - **形状规范 (Shapes)**：
   - **原生组件零传参**：官方组件（`Card`, `ElevatedCard`, `Button`, `Dialog` 等）默认自动消费 `MaterialTheme.shapes`，严禁在调用点重复传递显式默认 shape。
   - **自定义裁剪与修饰符**：通用圆角统一通过 `MaterialTheme.shapes.*`（如 `small`, `medium`, `large`）或官方推荐扩展属性（如 `MaterialTheme.shapes.bottomSheet`, `MaterialTheme.shapes.largeCard`）访问，**严禁硬编码** `RoundedCornerShape(X.dp)`。
-  - **废弃静态单例**：已废弃旧版全局单例 `ExpressiveTokens.*Shape`（见 `ADR-0004`），现有代码逐步迁移至 `MaterialTheme.shapes`。
+  - **全面使用官方原生控件**：已彻底移除旧版全局单例 `ExpressiveTokens` 与包装控件（如 `ExpressiveElevatedCard`、`ExpressiveCard`，见 `ADR-0004`），所有卡片与表面容器一律直接使用官方原生组件（`ElevatedCard`、`Card` 等），杜绝中间人二次抽象。
 - **暗黑主题感知**：通过 `LocalIsDarkTheme.current` 感知当前暗黑模式状态。
 
 ### 6. CDN 图片变体工具 (`CdnUrlUtils`)

@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.widthIn
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 // ── 多选模式底部操作条 ──────────────────────────────────────
 
@@ -88,7 +88,7 @@ internal fun SelectionBottomBar(
  * - 容器透明，避免在悬浮栏内叠加第二个容器色；
  * - 危险操作用 `error` 前景色，不使用 prominent 容器；
  * - 禁用态保持 38% 前景色；
- * - 形状沿用设计系统 `ExpressiveTokens.PillShape`。
+ * - 形状沿用设计系统 `CircleShape`。
  */
 @Composable
 private fun SelectionActionButton(
@@ -105,7 +105,7 @@ private fun SelectionActionButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         colors = ButtonDefaults.textButtonColors(
             contentColor = contentColor,
             disabledContentColor = disabledContentColor

@@ -70,10 +70,10 @@ import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterAlbumListNavParam
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 角色专属相关相册列表页面。
@@ -247,10 +247,10 @@ private fun CharacterAlbumStaggeredCard(
         mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -288,7 +288,7 @@ private fun CharacterAlbumStaggeredCard(
                 if (praiseCount > 0L) {
                     Surface(
                         color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                        shape = ExpressiveTokens.ExtraSmallShape,
+                        shape = MaterialTheme.shapes.extraSmall,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
@@ -394,7 +394,7 @@ private fun CharacterAlbumListSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height((180 + (index % 3) * 50).dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )
         }
@@ -434,7 +434,7 @@ private fun CharacterAlbumListError(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onRetry,
-                shape = ExpressiveTokens.ButtonShape
+                shape = CircleShape
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,

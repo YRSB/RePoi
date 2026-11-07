@@ -71,12 +71,12 @@ import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 手办专属相关相册列表页面。
@@ -312,10 +312,10 @@ private fun HobbyAlbumStaggeredCard(
         mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column {
@@ -323,7 +323,7 @@ private fun HobbyAlbumStaggeredCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(aspectRatio)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
                 if (isNoCover) {
@@ -451,9 +451,9 @@ private fun HobbyAlbumListSkeleton(
                 1 -> 1.2f
                 else -> 0.9f
             }
-            ExpressiveElevatedCard(
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = ExpressiveTokens.SmallCardShape,
+                shape = MaterialTheme.shapes.small,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Column {
@@ -471,7 +471,7 @@ private fun HobbyAlbumListSkeleton(
                             modifier = Modifier
                                 .fillMaxWidth(0.85f)
                                 .height(14.dp)
-                                .clip(ExpressiveTokens.ExtraSmallShape)
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .shimmerBackground()
                         )
                         Row(
@@ -492,14 +492,14 @@ private fun HobbyAlbumListSkeleton(
                                 Box(
                                     modifier = Modifier
                                         .size(width = 40.dp, height = 10.dp)
-                                        .clip(ExpressiveTokens.ExtraSmallShape)
+                                        .clip(MaterialTheme.shapes.extraSmall)
                                         .shimmerBackground()
                                 )
                             }
                             Box(
                                 modifier = Modifier
                                     .size(width = 24.dp, height = 10.dp)
-                                    .clip(ExpressiveTokens.ExtraSmallShape)
+                                    .clip(MaterialTheme.shapes.extraSmall)
                                     .shimmerBackground()
                             )
                         }

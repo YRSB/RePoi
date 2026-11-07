@@ -42,7 +42,7 @@ import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 // ── 相册子页（key=70000）────────────────────────────────────
 
@@ -195,7 +195,7 @@ internal fun AlbumCollectSubPage(
                                 item(span = StaggeredGridItemSpan.FullLine, contentType = "album_feed_footer") {
                                     Surface(
                                         onClick = onLoadNextPage,
-                                        shape = ExpressiveTokens.ButtonShape,
+                                        shape = CircleShape,
                                         color = MaterialTheme.colorScheme.errorContainer,
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -255,7 +255,7 @@ internal fun AlbumCollectSubPage(
     if (showCancelConfirm) {
         AlertDialog(
             onDismissRequest = { showCancelConfirm = false },
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("取消收藏确认") },
             text = {
                 Text(

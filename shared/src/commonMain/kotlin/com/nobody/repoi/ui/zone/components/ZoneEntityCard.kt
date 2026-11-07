@@ -32,9 +32,9 @@ import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 专区通用实体卡片（厂商、系列、作品、角色、人物）
@@ -51,10 +51,10 @@ fun ZoneEntityCard(
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
     val isNoCover = CdnUrlUtils.isNoCover(item.cover)
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -68,7 +68,7 @@ fun ZoneEntityCard(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
@@ -122,9 +122,9 @@ fun ZoneEntityCard(
 fun ZoneEntityCardSkeleton(
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -137,7 +137,7 @@ fun ZoneEntityCardSkeleton(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )
 
@@ -149,7 +149,7 @@ fun ZoneEntityCardSkeleton(
                     modifier = Modifier
                         .fillMaxWidth(0.6f)
                         .size(16.dp)
-                        .clip(ExpressiveTokens.ExtraSmallShape)
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .shimmerBackground()
                 )
 
@@ -157,7 +157,7 @@ fun ZoneEntityCardSkeleton(
                     modifier = Modifier
                         .fillMaxWidth(0.35f)
                         .size(12.dp)
-                        .clip(ExpressiveTokens.ExtraSmallShape)
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .shimmerBackground()
                 )
             }

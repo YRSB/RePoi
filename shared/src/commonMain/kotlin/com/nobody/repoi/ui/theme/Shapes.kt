@@ -1,9 +1,11 @@
 package com.nobody.repoi.ui.theme
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.ElevatedCard
 
 /**
  * RePoi Material 3 Expressive (M3E) 统一形状系统契约。
@@ -43,3 +45,11 @@ val Shapes.sideSheet: Shape
 /** 顶部导航栏滚动收起圆角 (20.dp 底部单侧圆角) */
 val Shapes.topBarScrolled: Shape
     get() = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
+
+/** 药丸形状 (Full Shape) */
+val Shapes.pill: Shape
+    get() = CircleShape
+
+/** 完整圆形 / 药丸形状 (Full Shape) */
+val Shapes.full: Shape
+    get() = CircleShape

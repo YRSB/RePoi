@@ -44,7 +44,6 @@ import com.nobody.repoi.ui.common.comment.CommentFooter
 import com.nobody.repoi.ui.common.comment.CommentItemCard
 import com.nobody.repoi.ui.common.comment.CommentReplyDialog
 import com.nobody.repoi.ui.common.comment.CommentReplyRow
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -105,7 +104,7 @@ fun CommentDetailScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = ExpressiveTokens.ElevationLevel1
+            tonalElevation = 1.dp
         ) {
             Column(
                 modifier = Modifier

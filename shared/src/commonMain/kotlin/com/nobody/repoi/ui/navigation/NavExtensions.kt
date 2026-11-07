@@ -175,4 +175,3 @@ fun RePoiNavigator.navigateToMessageChat(targetUserId: Long, targetUserName: Str
     currentBackStack.navigateToMessageChat(targetUserId, targetUserName, targetUserHeader)
 fun RePoiNavigator.navigateToSettingsShieldList() = currentBackStack.navigateToSettingsShieldList()
 fun RePoiNavigator.navigateToMessageBlock() = currentBackStack.navigateToMessageBlock()
-

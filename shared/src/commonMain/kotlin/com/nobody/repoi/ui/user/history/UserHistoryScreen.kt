@@ -95,7 +95,6 @@ import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlinx.coroutines.launch
@@ -626,7 +625,7 @@ private fun HobbyHistoryGridCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f)
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(
                 onClick = onClick,
@@ -714,12 +713,12 @@ private fun AlbumHistoryWaterfallCard(
 
     ElevatedCard(
         onClick = onClick,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier
             .fillMaxWidth()

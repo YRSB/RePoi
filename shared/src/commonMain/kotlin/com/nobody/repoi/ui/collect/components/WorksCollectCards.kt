@@ -30,9 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 // ── 作品收藏卡片（对标原版 UserCollectWorksAdapter + item_collect_works.xml）──
 
@@ -108,10 +108,10 @@ internal fun WorksCollectCard(
     }
     val stateText = worksStateProgressText(item.state, item.current)
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -182,7 +182,7 @@ private fun WorksPosterImage(
         modifier = modifier
             .width(WorksPosterWidth.dp)
             .height(WorksPosterHeight.dp)
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
     ) {

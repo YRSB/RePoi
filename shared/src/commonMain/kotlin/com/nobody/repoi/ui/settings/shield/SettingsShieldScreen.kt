@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -319,7 +318,7 @@ fun SettingsShieldListContent(
         } else if (state.loadFailed) {
             ElevatedCard(
                 onClick = { listViewModel.retry() },
-                shape = ExpressiveTokens.CardShape,
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -371,7 +370,7 @@ fun SettingsShieldListContent(
                 }
                 items(state.items, key = { "${state.tab.name}-${it.id}" }, contentType = { "mask" }) { item ->
                     ElevatedCard(
-                        shape = ExpressiveTokens.CardShape,
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.elevatedCardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
@@ -394,7 +393,7 @@ fun SettingsShieldListContent(
                                 }
                             },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.fillMaxWidth().clip(ExpressiveTokens.CardShape)
+                            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
                         )
                     }
                 }

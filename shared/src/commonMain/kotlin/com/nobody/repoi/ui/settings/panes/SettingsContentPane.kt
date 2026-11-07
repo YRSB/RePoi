@@ -57,7 +57,6 @@ import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.settings.shield.SettingsShieldUiState
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 private fun privacyTitle(key: String): String = when (key) {
     PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
@@ -102,7 +101,7 @@ fun SettingsContentPane(
         val current = privacyState.values[editing] ?: 0
         Dialog(onDismissRequest = { editingKey = null }) {
             Surface(
-                shape = ExpressiveTokens.CardShape,
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -125,7 +124,7 @@ fun SettingsContentPane(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clip(MaterialTheme.shapes.medium)
                                 .clickable {
                                     editingKey = null
                                     onPrivacyOptionChange(editing, index)

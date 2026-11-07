@@ -21,7 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 @Composable
 fun FakeSearchField(
@@ -33,13 +33,13 @@ fun FakeSearchField(
     Box(
         modifier = modifier
             .height(56.dp)
-            .clip(ExpressiveTokens.PillShape)
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(ExpressiveTokens.PillShape)
+                .clip(CircleShape)
                 .clickable(
                     role = Role.Button,
                     onClickLabel = "前往全局搜索",

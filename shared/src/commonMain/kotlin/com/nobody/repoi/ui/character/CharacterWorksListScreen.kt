@@ -71,10 +71,10 @@ import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterWorksListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 角色专属登场作品列表页面。
@@ -312,7 +312,7 @@ private fun CharacterWorksListItemCard(
 ) {
     val coverUrl = CdnUrlUtils.getCoverUrl(work.wCover)
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -322,7 +322,7 @@ private fun CharacterWorksListItemCard(
             // 作品主信息区域（点击直达作品详情）
             Surface(
                 onClick = onWorkClick,
-                shape = ExpressiveTokens.CardShape,
+                shape = MaterialTheme.shapes.large,
                 color = Color.Transparent
             ) {
                 Row(
@@ -335,7 +335,7 @@ private fun CharacterWorksListItemCard(
                         modifier = Modifier
                             .width(84.dp)
                             .height(112.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .background(
                                 if (isDark) Color.White.copy(alpha = 0.08f)
                                 else Color.Black.copy(alpha = 0.05f)
@@ -368,7 +368,7 @@ private fun CharacterWorksListItemCard(
                         // 角色在作品中的定位徽章
                         work.characterRoleText?.let { role ->
                             Surface(
-                                shape = ExpressiveTokens.SmallCardShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
@@ -466,7 +466,7 @@ private fun PerformerPill(
 
     Surface(
         onClick = onClick,
-        shape = ExpressiveTokens.ButtonShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
     ) {
@@ -531,7 +531,7 @@ private fun CharacterWorksSkeletonList(
         userScrollEnabled = false
     ) {
         items(6) {
-            ExpressiveElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -544,7 +544,7 @@ private fun CharacterWorksSkeletonList(
                             modifier = Modifier
                                 .width(84.dp)
                                 .height(112.dp)
-                                .clip(ExpressiveTokens.CardShape)
+                                .clip(MaterialTheme.shapes.large)
                                 .shimmerBackground()
                         )
                         Column(
@@ -555,21 +555,21 @@ private fun CharacterWorksSkeletonList(
                                 modifier = Modifier
                                     .fillMaxWidth(0.8f)
                                     .height(18.dp)
-                                    .clip(ExpressiveTokens.SmallCardShape)
+                                    .clip(MaterialTheme.shapes.small)
                                     .shimmerBackground()
                             )
                             Box(
                                 modifier = Modifier
                                     .width(72.dp)
                                     .height(14.dp)
-                                    .clip(ExpressiveTokens.SmallCardShape)
+                                    .clip(MaterialTheme.shapes.small)
                                     .shimmerBackground()
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(0.6f)
                                     .height(12.dp)
-                                    .clip(ExpressiveTokens.SmallCardShape)
+                                    .clip(MaterialTheme.shapes.small)
                                     .shimmerBackground()
                             )
                         }
@@ -578,7 +578,7 @@ private fun CharacterWorksSkeletonList(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
                             .height(28.dp)
-                            .clip(ExpressiveTokens.ButtonShape)
+                            .clip(CircleShape)
                             .shimmerBackground()
                     )
                 }

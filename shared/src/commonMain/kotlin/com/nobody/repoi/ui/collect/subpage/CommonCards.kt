@@ -31,9 +31,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 // ── 通用 4 页（厂商/系列/角色/人物）卡片 ─────────────────────
 
@@ -80,7 +80,7 @@ internal fun CommonCollectThumbnail(
     Box(
         modifier = modifier
             .size(size)
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
     ) {
@@ -118,10 +118,10 @@ internal fun CommonCollectListCard(
 ) {
     val coverUrl = remember(item.actualCover) { commonCollectCoverUrl(item, isListView = true) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -167,10 +167,10 @@ internal fun CommonCollectGridCard(
     val coverUrl = remember(item.actualCover) { commonCollectCoverUrl(item, isListView = false) }
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Box(

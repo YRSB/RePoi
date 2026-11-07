@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.plainTextClipEntry
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.launch
 
 /**
@@ -265,7 +264,7 @@ fun FilterDropdownChip(
                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
-        shape = ExpressiveTokens.ChipShape,
+        shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,

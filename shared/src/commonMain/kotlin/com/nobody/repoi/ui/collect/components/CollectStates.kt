@@ -32,7 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 // ── 通用状态组件 ──────────────────────────────────────────
 // 骨架屏已下线：8 个子页首屏统一用 LoadingCollectView（居中加载指示器）
@@ -80,7 +80,7 @@ internal fun LazyGridScope.renderPagingFooter(
                     )
                     Button(
                         onClick = onRetryPaging,
-                        shape = ExpressiveTokens.ButtonShape,
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
@@ -203,7 +203,7 @@ internal fun ErrorCollectView(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onRetry,
-            shape = ExpressiveTokens.ButtonShape,
+            shape = CircleShape,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text(text = "重试")

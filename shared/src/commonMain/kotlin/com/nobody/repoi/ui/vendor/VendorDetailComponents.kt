@@ -87,10 +87,11 @@ import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevation
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.ui.theme.largeCard
+import com.nobody.repoi.ui.theme.bottomSheet
+import androidx.compose.material3.ElevatedCard
 
 
 
@@ -115,7 +116,7 @@ internal fun VendorHeaderSection(
     val detailText = company?.detailPlainText.orEmpty()
     val score = company?.hobbyRating ?: 0.0
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -180,7 +181,7 @@ internal fun VendorHeaderSection(
                         // 1. 评分简化为单个胶囊，放置在“xx款周边”前
                         if (score > 0.0) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Row(
@@ -207,7 +208,7 @@ internal fun VendorHeaderSection(
                         // 2. 周边款数胶囊
                         if (company != null && company.hobbyCount > 0) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
@@ -224,7 +225,7 @@ internal fun VendorHeaderSection(
                         val region = company?.region
                         if (!region.isNullOrBlank()) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
@@ -242,7 +243,7 @@ internal fun VendorHeaderSection(
             // 中部：厂商简介（点击可查看厂商详情抽屉）
             if (detailText.isNotBlank()) {
                 Surface(
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -290,7 +291,7 @@ internal fun VendorActionSection(
     onViewMore: () -> Unit,
     onImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -360,7 +361,7 @@ internal fun VendorTagsSection(
     onMyImpressionClick: () -> Unit,
     isDark: Boolean
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -397,7 +398,7 @@ internal fun VendorTagsSection(
             ) {
                 // 点击可增加印象的快捷胶囊
                 Surface(
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.clickable(onClick = onMyImpressionClick)
                 ) {
@@ -414,7 +415,7 @@ internal fun VendorTagsSection(
                     val label = tag.displayTag
                     if (label.isNotBlank()) {
                         Surface(
-                            shape = ExpressiveTokens.PillShape,
+                            shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Text(
@@ -443,7 +444,7 @@ internal fun VendorProductsSection(
     onViewMore: () -> Unit,
     isDark: Boolean
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -483,7 +484,7 @@ internal fun VendorProductsSection(
                                     modifier = Modifier
                                         .weight(1f)
                                         .aspectRatio(0.85f)
-                                        .clip(ExpressiveTokens.MediumCardShape)
+                                        .clip(MaterialTheme.shapes.medium)
                                         .shimmerBackground()
                                 )
                             }
@@ -515,7 +516,7 @@ internal fun VendorProductsSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(0.8f),
-                        shape = ExpressiveTokens.MediumCardShape,
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         onClick = { onProductClick(item) }
                     ) {
@@ -546,7 +547,7 @@ internal fun VendorSeriesSection(
     onViewMore: () -> Unit,
     isDark: Boolean
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -581,7 +582,7 @@ internal fun VendorSeriesSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(80.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -603,7 +604,7 @@ internal fun VendorSeriesSection(
                     seriesList.forEach { series ->
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onSeriesClick(series) }
                         ) {
@@ -616,7 +617,7 @@ internal fun VendorSeriesSection(
                                 Box(
                                     modifier = Modifier
                                         .size(56.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (!series.cover.isNullOrBlank()) {
@@ -728,7 +729,7 @@ internal fun VendorDetailSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
-                    .clip(ExpressiveTokens.LargeCardShape)
+                    .clip(MaterialTheme.shapes.largeCard)
                     .shimmerBackground()
             )
 
@@ -737,7 +738,7 @@ internal fun VendorDetailSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .clip(ExpressiveTokens.LargeCardShape)
+                    .clip(MaterialTheme.shapes.largeCard)
                     .shimmerBackground()
             )
 
@@ -746,7 +747,7 @@ internal fun VendorDetailSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp)
-                    .clip(ExpressiveTokens.LargeCardShape)
+                    .clip(MaterialTheme.shapes.largeCard)
                     .shimmerBackground()
             )
         }
@@ -783,7 +784,7 @@ internal fun VendorErrorState(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        ExpressiveElevatedCard(
+        ElevatedCard(
             modifier = Modifier.padding(24.dp)
         ) {
             Column(
@@ -806,14 +807,14 @@ internal fun VendorErrorState(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = onBack,
-                        shape = ExpressiveTokens.ButtonShape
+                        shape = CircleShape
                     ) {
                         Text("返回")
                     }
 
                     Button(
                         onClick = onRetry,
-                        shape = ExpressiveTokens.ButtonShape,
+                        shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -855,7 +856,7 @@ internal fun VendorImpressionBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = ExpressiveTokens.BottomSheetShape,
+        shape = MaterialTheme.shapes.bottomSheet,
         modifier = modifier
     ) {
         Column(
@@ -895,7 +896,7 @@ internal fun VendorImpressionBottomSheet(
                     Button(
                         onClick = onSubmit,
                         enabled = !isLoading,
-                        shape = ExpressiveTokens.PillShape,
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text("提交", fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -932,7 +933,7 @@ internal fun VendorImpressionBottomSheet(
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        ExpressiveElevatedCard(
+                        ElevatedCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -986,7 +987,7 @@ internal fun VendorImpressionBottomSheet(
                             normalTags.forEach { tag ->
                                 val isSelected = selectedNormalTagIds.contains(tag.id)
                                 Surface(
-                                    shape = ExpressiveTokens.PillShape,
+                                    shape = CircleShape,
                                     color = if (isSelected) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
@@ -1072,7 +1073,7 @@ internal fun VendorInfoBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = ExpressiveTokens.BottomSheetShape,
+        shape = MaterialTheme.shapes.bottomSheet,
         modifier = modifier
     ) {
         Column(
@@ -1107,7 +1108,7 @@ internal fun VendorInfoBottomSheet(
             }
 
             // 属性表格卡片
-            ExpressiveElevatedCard(
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -1228,7 +1229,7 @@ internal fun VendorInfoBottomSheet(
                     )
 
                     Surface(
-                        shape = ExpressiveTokens.MediumCardShape,
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -1295,4 +1296,3 @@ private fun VendorInfoRow(
         }
     }
 }
-

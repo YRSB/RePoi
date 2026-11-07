@@ -45,10 +45,10 @@ import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.data.remote.model.SearchResultItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.SearchUserItem
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 手办/周边搜索结果横向卡片（MD3 Expressive 规范）
@@ -64,10 +64,10 @@ fun HobbySearchCard(
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -80,7 +80,7 @@ fun HobbySearchCard(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
@@ -174,10 +174,10 @@ fun AlbumStaggeredCard(
         mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
     }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -323,10 +323,10 @@ fun GeneralSearchCard(
     val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
@@ -339,7 +339,7 @@ fun GeneralSearchCard(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
@@ -399,10 +399,10 @@ fun SearchUserCard(
 ) {
     val headUrl = CdnUrlUtils.getHeadUrl(user.header)
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(

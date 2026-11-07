@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.BlockItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -250,7 +249,7 @@ private fun BlockItemRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -302,7 +301,7 @@ private fun BlockItemRow(
 
             OutlinedButton(
                 onClick = onUnblock,
-                shape = ExpressiveTokens.ButtonShape,
+                shape = CircleShape,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.error

@@ -33,7 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.remote.model.HobbyTimelineItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.theme.largeCard
 
 /**
  * 手办详情页单流中的发售情报时间轴内联折叠卡片。
@@ -75,7 +76,7 @@ fun HobbyTimelineSection(
             if (canExpand) {
                 Row(
                     modifier = Modifier
-                        .clip(ExpressiveTokens.PillShape)
+                        .clip(CircleShape)
                         .clickable { isExpanded = !isExpanded }
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -96,7 +97,7 @@ fun HobbyTimelineSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(),
-            shape = ExpressiveTokens.LargeCardShape,
+            shape = MaterialTheme.shapes.largeCard,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             )
@@ -151,7 +152,7 @@ private fun TimelineItemContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Surface(
-                shape = ExpressiveTokens.ChipShape,
+                shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Text(
@@ -218,17 +219,17 @@ private fun TimelineNodeItem(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(MaterialTheme.colorScheme.primary, ExpressiveTokens.PillShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                         .padding(2.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow, ExpressiveTokens.PillShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, CircleShape)
                         .padding(2.dp)
-                        .background(MaterialTheme.colorScheme.primary, ExpressiveTokens.PillShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(MaterialTheme.colorScheme.outline, ExpressiveTokens.PillShape)
+                        .background(MaterialTheme.colorScheme.outline, CircleShape)
                 )
             }
 
@@ -251,7 +252,7 @@ private fun TimelineNodeItem(
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = if (isLast) 0.dp else 10.dp),
-            shape = ExpressiveTokens.MediumCardShape,
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             )

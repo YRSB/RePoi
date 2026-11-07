@@ -90,10 +90,11 @@ import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevation
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.ui.theme.largeCard
+import com.nobody.repoi.ui.theme.bottomSheet
+import androidx.compose.material3.ElevatedCard
 
 
 
@@ -113,7 +114,7 @@ internal fun SeriesHeaderSection(
     val subName = series.subName
     val introText = series.detailPlainText
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -175,7 +176,7 @@ internal fun SeriesHeaderSection(
                     ) {
                         if (series.hobbyCount > 0) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
@@ -190,7 +191,7 @@ internal fun SeriesHeaderSection(
 
                         if (series.collect > 0) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
@@ -209,7 +210,7 @@ internal fun SeriesHeaderSection(
             // 中部：系列简介（默认全展开，点击可查看系列详情抽屉）
             if (introText.isNotBlank()) {
                 Surface(
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -258,7 +259,7 @@ internal fun SeriesHobbysSection(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -285,7 +286,7 @@ internal fun SeriesHobbysSection(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { onViewMore() }
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     )
@@ -318,7 +319,7 @@ internal fun SeriesHobbysSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(0.8f),
-                        shape = ExpressiveTokens.MediumCardShape,
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         onClick = { onHobbyClick(item) }
                     ) {
@@ -351,7 +352,7 @@ internal fun SeriesSubSeriesSection(
 ) {
     if (!isLoading && subSeriesList.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -371,7 +372,7 @@ internal fun SeriesSubSeriesSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -380,7 +381,7 @@ internal fun SeriesSubSeriesSection(
                     subSeriesList.forEach { item ->
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onSubSeriesClick(item) }
                         ) {
@@ -392,7 +393,7 @@ internal fun SeriesSubSeriesSection(
                                 Box(
                                     modifier = Modifier
                                         .size(52.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (!item.cover.isNullOrBlank()) {
@@ -455,7 +456,7 @@ internal fun SeriesRelateSeriesSection(
 ) {
     if (!isLoading && relateSeriesList.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -475,7 +476,7 @@ internal fun SeriesRelateSeriesSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -489,7 +490,7 @@ internal fun SeriesRelateSeriesSection(
                 ) {
                     relateSeriesList.forEach { item ->
                         Surface(
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onRelateSeriesClick(item) }
                         ) {
@@ -503,7 +504,7 @@ internal fun SeriesRelateSeriesSection(
                                 Box(
                                     modifier = Modifier
                                         .size(72.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (!item.cover.isNullOrBlank()) {
@@ -560,7 +561,7 @@ internal fun SeriesAlbumsSection(
     val displayAlbums = remember(albums) { albums.take(8) }
     val hasMore = albums.size > 8
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -589,7 +590,7 @@ internal fun SeriesAlbumsSection(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { onViewMore() }
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     )
@@ -612,7 +613,7 @@ internal fun SeriesAlbumsSection(
                                 modifier = Modifier
                                     .height(160.dp)
                                     .width(shimmerWidth)
-                                    .clip(ExpressiveTokens.MediumCardShape)
+                                    .clip(MaterialTheme.shapes.medium)
                                     .shimmerBackground()
                             )
                         }
@@ -663,7 +664,7 @@ private fun SeriesAlbumCard(
     Card(
         onClick = onClick,
         modifier = modifier.height(160.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -711,7 +712,7 @@ private fun SeriesAlbumCard(
             if (praiseCount > 0L) {
                 Surface(
                     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
@@ -751,7 +752,7 @@ private fun SeriesAlbumMoreTile(
     Surface(
         onClick = onMoreClick,
         modifier = modifier,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
@@ -791,7 +792,7 @@ internal fun SeriesGoodsSection(
 ) {
     if (!isLoading && goodsList.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -811,7 +812,7 @@ internal fun SeriesGoodsSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(110.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -825,7 +826,7 @@ internal fun SeriesGoodsSection(
                 ) {
                     goodsList.forEach { goods ->
                         Surface(
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onGoodsClick(goods) }
                         ) {
@@ -839,7 +840,7 @@ internal fun SeriesGoodsSection(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(100.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (!goods.cover.isNullOrBlank()) {
@@ -968,7 +969,7 @@ internal fun SeriesDetailSkeleton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(140.dp)
-                .clip(ExpressiveTokens.LargeCardShape)
+                .clip(MaterialTheme.shapes.largeCard)
                 .shimmerBackground()
         )
 
@@ -977,7 +978,7 @@ internal fun SeriesDetailSkeleton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(280.dp)
-                .clip(ExpressiveTokens.LargeCardShape)
+                .clip(MaterialTheme.shapes.largeCard)
                 .shimmerBackground()
         )
     }
@@ -996,7 +997,7 @@ private fun SeriesGridSkeleton() {
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(0.8f)
-                            .clip(ExpressiveTokens.MediumCardShape)
+                            .clip(MaterialTheme.shapes.medium)
                             .shimmerBackground()
                     )
                 }
@@ -1018,7 +1019,7 @@ internal fun SeriesErrorState(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        ExpressiveElevatedCard(
+        ElevatedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -1038,7 +1039,7 @@ internal fun SeriesErrorState(
                 )
                 Button(
                     onClick = onRetry,
-                    shape = ExpressiveTokens.ButtonShape,
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -1071,7 +1072,7 @@ internal fun SeriesInfoBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        shape = ExpressiveTokens.BottomSheetShape
+        shape = MaterialTheme.shapes.bottomSheet
     ) {
         Column(
             modifier = Modifier
@@ -1104,7 +1105,7 @@ internal fun SeriesInfoBottomSheet(
 
             // 属性列表容器
             Surface(
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1223,7 +1224,7 @@ internal fun SeriesInfoBottomSheet(
                     )
 
                     Surface(
-                        shape = ExpressiveTokens.MediumCardShape,
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -1290,4 +1291,3 @@ private fun SeriesInfoRow(
         }
     }
 }
-
