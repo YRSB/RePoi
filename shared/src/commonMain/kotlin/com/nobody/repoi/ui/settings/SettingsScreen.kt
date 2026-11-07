@@ -1,161 +1,194 @@
 package com.nobody.repoi.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.runtime.rememberCoroutineScope
-import com.nobody.repoi.platform.AppInfo
-import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.platform.shareLogFile
-import com.nobody.repoi.platform.supportsDynamicColor
-import com.nobody.repoi.util.AppLogger
-import kotlinx.coroutines.launch
-import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Card
-import androidx.compose.material3.RadioButton
-import androidx.compose.material.icons.filled.Close
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.savedstate.serialization.SavedStateConfiguration
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.platform.AppInfo
+import com.nobody.repoi.platform.LocalAppMessages
+import com.nobody.repoi.platform.shareLogFile
+import com.nobody.repoi.ui.navigation.RePoiNavDisplay
 import com.nobody.repoi.ui.profile.ProfileViewModel
-import com.nobody.repoi.ui.theme.ExpressiveTokens
-import com.nobody.repoi.ui.theme.FormFactorPreviews
-import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.ui.theme.PoiShelfTheme
+import com.nobody.repoi.ui.settings.navigation.SettingsAccountNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsAppearanceNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsContentNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsGroup
+import com.nobody.repoi.ui.settings.navigation.SettingsListNavKey
+import com.nobody.repoi.ui.settings.navigation.SettingsSubNavSerializersModule
+import com.nobody.repoi.ui.settings.panes.SettingsAccountPane
+import com.nobody.repoi.ui.settings.panes.SettingsAppearancePane
+import com.nobody.repoi.ui.settings.panes.SettingsContentPane
+import com.nobody.repoi.ui.settings.panes.SettingsListPane
+import com.nobody.repoi.ui.settings.panes.formatBytes
+import com.nobody.repoi.ui.settings.shield.SettingsShieldViewModel
+import com.nobody.repoi.util.AppLogger
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * 设置中心顶层容器：基于 Navigation 3 原生自适应体系（rememberListDetailSceneStrategy）实现
+ * 双端一致的自适应折叠、原生大顶栏与预测性返回。
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean = true,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit = {},
-    onOpenDebug: () -> Unit,
     onBack: () -> Unit,
+    onOpenUserInfo: (Long) -> Unit,
+    onOpenShieldList: () -> Unit = {},
+    onOpenBlocklist: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
+    themeManager: ThemeManager = koinInject(),
     profileViewModel: ProfileViewModel = koinViewModel(),
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel = koinViewModel(),
+    cacheViewModel: SettingsCacheViewModel = koinViewModel(),
+    privacyViewModel: SettingsPrivacyViewModel = koinViewModel(),
+    accountViewModel: SettingsAccountViewModel = koinViewModel(),
+    shieldViewModel: SettingsShieldViewModel = koinViewModel(),
+    modifier: Modifier = Modifier,
 ) {
-    val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
+    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
+    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
+    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
+    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
+    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
+    val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
+    val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()
+    val accountState by accountViewModel.uiState.collectAsStateWithLifecycle()
+    val shieldState by shieldViewModel.uiState.collectAsStateWithLifecycle()
+
     val appMessages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
 
-    SettingsContent(
-        themeMode = themeMode,
-        dynamicColor = dynamicColor,
-        isLoggedIn = uiState.isLoggedIn,
-        isExHobbyEnabled = isExHobbyEnabled,
-        onThemeModeChange = onThemeModeChange,
-        onDynamicColorChange = onDynamicColorChange,
-        onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
-        onOpenDebug = onOpenDebug,
-        onExportLog = {
-            scope.launch {
-                try {
-                    val (fileName, bytes) = AppLogger.exportLogBytes()
-                    shareLogFile(fileName, bytes.decodeToString())
-                } catch (e: Exception) {
-                    AppLogger.w("设置", "日志导出失败：${e.message}")
-                    appMessages.show("日志导出失败请重试")
-                }
-            }
-        },
-        onLogout = {
-            profileViewModel.logout()
-            onBack()
-        },
-        onBack = onBack
-    )
-}
+    val onThemeModeChange: (ThemeMode) -> Unit = { mode -> scope.launch { themeManager.setThemeMode(mode) } }
+    val onDynamicColorChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setDynamicColor(enabled) } }
+    val onThemeSeedChange: (ThemeSeed) -> Unit = { seed -> scope.launch { themeManager.setThemeSeed(seed) } }
+    val onAmoledChange: (Boolean) -> Unit = { enabled -> scope.launch { themeManager.setAmoled(enabled) } }
+    val onPaletteStyleChange: (PaletteStyle) -> Unit = { style -> scope.launch { themeManager.setPaletteStyle(style) } }
+    val onSpecVersionChange: (ColorSpec.SpecVersion) -> Unit = { version -> scope.launch { themeManager.setSpecVersion(version) } }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsContent(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean = true,
-    isLoggedIn: Boolean = false,
-    isExHobbyEnabled: Boolean = true,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit = {},
-    onExHobbyEnabledChange: (Boolean) -> Unit = {},
-    onOpenDebug: () -> Unit,
-    onExportLog: () -> Unit = {},
-    onLogout: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isDark = LocalIsDarkTheme.current
-    val scrollState = rememberScrollState()
-
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var showClearCacheConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
 
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            currentMode = themeMode,
-            onSelectMode = { selectedMode ->
-                onThemeModeChange(selectedMode)
-                showThemeDialog = false
-            },
-            onDismissRequest = { showThemeDialog = false }
-        )
+    val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
+    val isWide = windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val directive = remember(windowAdaptiveInfo) {
+        calculatePaneScaffoldDirective(windowAdaptiveInfo)
+            .copy(horizontalPartitionSpacerSize = 0.dp)
+    }
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
+
+    val savedStateConfiguration = remember {
+        SavedStateConfiguration {
+            serializersModule = SettingsSubNavSerializersModule
+        }
+    }
+
+    val initialKeys: Array<NavKey> = if (isWide) {
+        arrayOf(SettingsListNavKey, SettingsAppearanceNavKey)
+    } else {
+        arrayOf(SettingsListNavKey)
+    }
+    val backStack = rememberNavBackStack(savedStateConfiguration, *initialKeys)
+
+    LaunchedEffect(isWide) {
+        if (isWide && backStack.size == 1 && backStack.firstOrNull() is SettingsListNavKey) {
+            backStack.add(SettingsAppearanceNavKey)
+        }
+    }
+
+    LaunchedEffect(cacheState.actionMessage) {
+        cacheState.actionMessage?.let {
+            appMessages.show(it)
+            cacheViewModel.consumeMessage()
+        }
+    }
+
+    LaunchedEffect(shieldState.errorMessage) {
+        shieldState.errorMessage?.let {
+            appMessages.show(it)
+            shieldViewModel.clearErrorMessage()
+        }
+    }
+
+    LaunchedEffect(privacyState.errorMessage) {
+        privacyState.errorMessage?.let {
+            appMessages.show(it)
+            privacyViewModel.consumeMessage()
+        }
+    }
+
+    val onSelectGroup: (SettingsGroup) -> Unit = { group ->
+        val targetKey = group.navKey
+        if (isWide) {
+            if (backStack.lastOrNull() != targetKey) {
+                if (backStack.size > 1) {
+                    backStack.removeLastOrNull()
+                }
+                backStack.add(targetKey)
+            }
+        } else {
+            if (backStack.lastOrNull() != targetKey) {
+                backStack.add(targetKey)
+            }
+        }
+    }
+
+    val localOnBack: () -> Unit = {
+        if (isWide) {
+            onBack()
+        } else {
+            if (backStack.size > 1) {
+                backStack.removeLastOrNull()
+            } else {
+                onBack()
+            }
+        }
+    }
+
+    val currentDetailKey = backStack.lastOrNull()
+    val selectedGroup = if (isWide) {
+        SettingsGroup.fromNavKey(currentDetailKey)
+    } else {
+        null
     }
 
     if (showLogoutConfirmDialog) {
@@ -178,7 +211,8 @@ fun SettingsContent(
                 TextButton(
                     onClick = {
                         showLogoutConfirmDialog = false
-                        onLogout()
+                        profileViewModel.logout()
+                        onBack()
                     }
                 ) {
                     Text("退出", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
@@ -192,465 +226,194 @@ fun SettingsContent(
         )
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            // 顶栏导航
-            CenterAlignedTopAppBar(
-                title = {
+    if (showClearCacheConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheConfirmDialog = false },
+            title = {
+                Text(
+                    text = "清理图片缓存",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "确定要清理全部图片缓存吗？当前已占用 ${formatBytes(cacheState.sizeBytes)}，清理后图片需要重新加载。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCacheConfirmDialog = false
+                        cacheViewModel.clearCache()
+                    }
+                ) {
+                    Text("清理", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheConfirmDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = {
+                Text(
+                    text = "关于 RePoi",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "系统设置",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        text = "RePoi 跨平台客户端",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "版本：${AppInfo.versionName}",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+                    Text(
+                        text = "基于 Kotlin Multiplatform 开发的 Hpoi 手办维基跨平台客户端，支持 Android 与 Windows Desktop 端。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text("确定", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    val onExportLog: () -> Unit = {
+        scope.launch {
+            try {
+                val (fileName, bytes) = AppLogger.exportLogBytes()
+                shareLogFile(fileName, bytes.decodeToString())
+            } catch (e: Exception) {
+                AppLogger.w("设置", "日志导出失败：${e.message}")
+                appMessages.show("日志导出失败请重试")
+            }
         }
-    ) { innerPadding ->
-        // 设置内容列表（大屏 680dp 居中约束）
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding())),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            val contentModifier = if (maxWidth > 680.dp) Modifier.width(680.dp) else Modifier.fillMaxWidth()
-            Column(
-                modifier = contentModifier
-                    .fillMaxHeight()
-                    .verticalScroll(scrollState)
-                    .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
-                    .padding(
-                        start = 16.dp,
-                        top = 12.dp,
-                        end = 16.dp,
-                        bottom = 24.dp + innerPadding.calculateBottomPadding()
-                    ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-            // 分组 1：外观与个性化
-            Text(
-                text = "外观与个性化",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
+    }
 
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsMenuItem(
-                        icon = if (isDark) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
-                        title = "外观与主题风格",
-                        subtitle = themeMode.title,
-                        onClick = { showThemeDialog = true }
-                    )
-
-                    if (supportsDynamicColor) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-                        SettingsSwitchItem(
-                            icon = Icons.Filled.Palette,
-                            title = "动态壁纸取色 (Dynamic Color)",
-                            subtitle = "启用 Material You 风格跟随系统壁纸调色板",
-                            checked = dynamicColor,
-                            onCheckedChange = onDynamicColorChange
-                        )
-                    }
-                }
-            }
-
-            // 分组 2：内容与第三方扩展
-            Text(
-                text = "内容与第三方扩展",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsSwitchItem(
-                        icon = Icons.Filled.PhotoLibrary,
-                        title = "ExHobby 扩展图库",
-                        subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
-                        checked = isExHobbyEnabled,
-                        onCheckedChange = onExHobbyEnabledChange
-                    )
-                }
-            }
-
-            // 分组 3：开发者与关于
-            Text(
-                text = "开发者与关于",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ElevatedCard(
-                shape = ExpressiveTokens.CardShape,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsMenuItem(
-                        icon = Icons.Filled.BugReport,
-                        title = "API 调试控制台",
-                        subtitle = "测试 Hpoi 各接口数据与网络层",
-                        onClick = onOpenDebug
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsMenuItem(
-                        icon = Icons.Filled.Share,
-                        title = "导出应用日志",
-                        subtitle = "打包近期运行日志并分享便于排查问题",
-                        onClick = onExportLog
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsMenuItem(
-                        icon = Icons.Filled.Info,
-                        title = "关于 PoiShelf",
-                        subtitle = "版本 ${AppInfo.versionName} (Material 3 Expressive 版)"
-                    )
-                }
-            }
-
-            // 分组 3：账号操作（仅已登录时显示）
-            if (isLoggedIn) {
-                Text(
-                    text = "账号管理",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-
-                ElevatedCard(
-                    onClick = { showLogoutConfirmDialog = true },
-                    shape = ExpressiveTokens.CardShape,
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+    val entryProvider = entryProvider<NavKey> {
+        entry<SettingsListNavKey>(
+            metadata = ListDetailSceneStrategy.listPane(
+                detailPlaceholder = {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "退出当前账号",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
+                            text = "请从左侧选择设置项",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
-            }
-        }
-    }
-}
-}
-
-@Composable
-private fun SettingsMenuItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: (() -> Unit)? = null
-) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
             )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
-        trailingContent = {
-            Text(
-                text = "›",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
-    )
-}
-
-@Composable
-private fun SettingsSwitchItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-    )
-}
-
-@FormFactorPreviews
-@Composable
-private fun SettingsContentPreview() {
-    PoiShelfTheme {
-        SettingsContent(
-            themeMode = ThemeMode.SYSTEM,
-            dynamicColor = true,
-            onThemeModeChange = {},
-            onDynamicColorChange = {},
-            onOpenDebug = {},
-            onLogout = {},
-            onBack = {}
-        )
-    }
-}
-
-/**
- * 主题切换对话框
- */
-@Composable
-fun ThemeSelectionDialog(
-    currentMode: ThemeMode,
-    onSelectMode: (ThemeMode) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = ExpressiveTokens.DialogShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = ExpressiveTokens.DialogElevation
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "外观与主题风格",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+            SettingsListPane(
+                isWide = isWide,
+                selectedGroup = selectedGroup,
+                isLoggedIn = profileState.isLoggedIn,
+                profileState = profileState,
+                cacheState = cacheState,
+                onBack = onBack,
+                onSelectGroup = onSelectGroup,
+                onOpenUserInfo = onOpenUserInfo,
+                onNavigateToLogin = onNavigateToLogin,
+                onUpdateCacheLimit = { cacheViewModel.updateMaxSizeBytes(it) },
+                onRequestClearCache = { showClearCacheConfirmDialog = true },
+                onExportLog = onExportLog,
+                onRequestAbout = { showAboutDialog = true },
+                onRequestLogout = { showLogoutConfirmDialog = true }
+            )
+        }
 
-                    IconButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "关闭",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+        entry<SettingsAppearanceNavKey>(
+            metadata = ListDetailSceneStrategy.detailPane()
+        ) {
+            SettingsAppearancePane(
+                showBackButton = !isWide,
+                onBack = localOnBack,
+                themeMode = themeMode,
+                dynamicColor = dynamicColor,
+                themeSeed = themeSeed,
+                amoled = amoled,
+                paletteStyle = paletteStyle,
+                onPaletteStyleChange = onPaletteStyleChange,
+                specVersion = specVersion,
+                onSpecVersionChange = onSpecVersionChange,
+                onThemeModeChange = onThemeModeChange,
+                onDynamicColorChange = onDynamicColorChange,
+                onThemeSeedChange = onThemeSeedChange,
+                onAmoledChange = onAmoledChange
+            )
+        }
+
+        entry<SettingsContentNavKey>(
+            metadata = ListDetailSceneStrategy.detailPane()
+        ) {
+            SettingsContentPane(
+                showBackButton = !isWide,
+                onBack = localOnBack,
+                isLoggedIn = profileState.isLoggedIn,
+                shieldState = shieldState,
+                isExHobbyEnabled = isExHobbyEnabled,
+                privacyState = privacyState,
+                onNsfwChange = { shieldViewModel.setNsfwVisible(it) },
+                onExHobbyEnabledChange = { settingsViewModel.setExHobbyEnabled(it) },
+                onOpenShieldList = onOpenShieldList,
+                onOpenBlocklist = onOpenBlocklist,
+                onPrivacyOptionChange = { key, value -> privacyViewModel.setOption(key, value) }
+            )
+        }
+
+        entry<SettingsAccountNavKey>(
+            metadata = ListDetailSceneStrategy.detailPane()
+        ) {
+            SettingsAccountPane(
+                showBackButton = !isWide,
+                onBack = localOnBack,
+                isLoggedIn = profileState.isLoggedIn,
+                accountState = accountState,
+                onOpenProfile = {
+                    val id = profileState.profile?.id ?: 0L
+                    if (id > 0L) {
+                        onOpenUserInfo(id)
+                    } else if (!profileState.isLoggedIn) {
+                        onNavigateToLogin()
                     }
-                }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.SYSTEM,
-                        title = "跟随系统",
-                        subtitle = "自动根据 Android 系统模式切换",
-                        isSelected = currentMode == ThemeMode.SYSTEM,
-                        icon = Icons.Filled.Smartphone,
-                        onClick = { onSelectMode(ThemeMode.SYSTEM) }
-                    )
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.LIGHT,
-                        title = "浅色模式",
-                        subtitle = "明亮清爽，经典珊瑚红",
-                        isSelected = currentMode == ThemeMode.LIGHT,
-                        icon = Icons.Filled.WbSunny,
-                        onClick = { onSelectMode(ThemeMode.LIGHT) }
-                    )
-                    ThemeModeOptionItem(
-                        mode = ThemeMode.DARK,
-                        title = "深色模式",
-                        subtitle = "暗色优雅，夜间舒适沉浸",
-                        isSelected = currentMode == ThemeMode.DARK,
-                        icon = Icons.Filled.NightsStay,
-                        onClick = { onSelectMode(ThemeMode.DARK) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ThemeModeOptionItem(
-    mode: ThemeMode,
-    title: String,
-    subtitle: String,
-    isSelected: Boolean,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                    color = contentColor
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp
-                )
-            }
-            RadioButton(
-                selected = isSelected,
-                onClick = null
+                },
+                onRefreshAccount = { accountViewModel.refresh() },
+                onRequestLogout = { showLogoutConfirmDialog = true },
+                onNavigateToLogin = onNavigateToLogin
             )
         }
     }
+
+    RePoiNavDisplay(
+        backStack = backStack,
+        onBack = localOnBack,
+        sceneStrategies = listOf(listDetailStrategy),
+        entryProvider = entryProvider,
+        modifier = modifier.fillMaxSize()
+    )
 }

@@ -16,6 +16,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 - **Domain**（业务模型、实体命名契约与领域术语）：查阅 [docs/domain.md](docs/domain.md)
 - **ADR**（架构演进决策与选型归档）：查阅 [docs/adr/](docs/adr/)
 - **Tracker**（GitHub Issue 与任务分流管理）：查阅 [docs/issue-tracker.md](docs/issue-tracker.md) 与 [docs/triage-labels.md](docs/triage-labels.md)
+- **Testing**（单测调度器三件套与 CI 取证回路）：查阅 [docs/testing.md](docs/testing.md)
 
 ---
 

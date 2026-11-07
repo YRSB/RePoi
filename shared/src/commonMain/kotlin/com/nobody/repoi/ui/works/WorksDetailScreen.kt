@@ -103,11 +103,11 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.theme.largeCard
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -398,7 +398,7 @@ internal fun WorksHeaderSection(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -407,7 +407,7 @@ internal fun WorksHeaderSection(
             ) {
                 val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(works.cover ?: initialCover)
                 Box(
-                    modifier = Modifier.width(96.dp).aspectRatio(9f / 13f).clip(ExpressiveTokens.MediumCardShape)
+                    modifier = Modifier.width(96.dp).aspectRatio(9f / 13f).clip(MaterialTheme.shapes.medium)
                         .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                         .clickable(onClick = onCoverClick)
                 ) {
@@ -502,7 +502,7 @@ internal fun WorksSeriesSection(
     onSeriesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onSeriesClick).padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -510,7 +510,7 @@ internal fun WorksSeriesSection(
         ) {
             val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(seriesRef.cover)
             Box(
-                modifier = Modifier.size(48.dp).clip(ExpressiveTokens.SmallCardShape)
+                modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
                 if (coverUrl.isNotBlank()) {
@@ -557,7 +557,7 @@ internal fun WorksCharactersSection(
     modifier: Modifier = Modifier
 ) {
     if (!isLoading && characters.isEmpty()) return
-    ExpressiveElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -587,7 +587,7 @@ internal fun WorksCharactersSection(
                         val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(character.cCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onCharacterClick(character) }
                         ) {
@@ -597,7 +597,7 @@ internal fun WorksCharactersSection(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Box(
-                                    modifier = Modifier.size(48.dp).clip(ExpressiveTokens.SmallCardShape)
+                                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (coverUrl.isNotBlank()) {
@@ -660,7 +660,7 @@ internal fun WorksHobbysSection(
     modifier: Modifier = Modifier
 ) {
     if (!isLoading && hobbys.isEmpty()) return
-    ExpressiveElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -694,7 +694,7 @@ internal fun WorksHobbysSection(
                     val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
                     Box(
                         modifier = Modifier.fillMaxWidth().aspectRatio(9f / 13f)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             .clickable { onHobbyClick(item) }
                     ) {
@@ -722,7 +722,7 @@ internal fun WorksAlbumsSection(
     modifier: Modifier = Modifier
 ) {
     if (!isLoading && albums.isEmpty()) return
-    ExpressiveElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 text = "相关相册",
@@ -739,7 +739,7 @@ internal fun WorksAlbumsSection(
                 ) {
                     albums.take(10).forEach { album ->
                         Column(
-                            modifier = Modifier.width(120.dp).clip(ExpressiveTokens.CardShape)
+                            modifier = Modifier.width(120.dp).clip(MaterialTheme.shapes.large)
                                 .clickable { onAlbumClick(album) },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -752,14 +752,14 @@ internal fun WorksAlbumsSection(
                             }
                             Box(
                                 modifier = Modifier.fillMaxWidth().aspectRatio(aspectRatio)
-                                    .clip(ExpressiveTokens.CardShape)
+                                    .clip(MaterialTheme.shapes.large)
                                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             ) {
                                 if (isNoCover) {
                                     AlbumTextCover(
                                         title = album.displayName.ifBlank { "未知相册" },
                                         modifier = Modifier.fillMaxSize(),
-                                        shape = ExpressiveTokens.CardShape
+                                        shape = MaterialTheme.shapes.large
                                     )
                                 } else if (coverUrl.isNotBlank()) {
                                     AsyncImage(
@@ -814,7 +814,7 @@ internal fun WorksErrorState(message: String, onRetry: () -> Unit, isDark: Boole
         contentAlignment = Alignment.Center
     ) {
         ElevatedCard(
-            shape = ExpressiveTokens.LargeCardShape,
+            shape = MaterialTheme.shapes.largeCard,
             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(

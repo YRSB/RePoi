@@ -66,7 +66,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -82,7 +82,6 @@ import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
@@ -91,6 +90,7 @@ import kotlinx.datetime.todayIn
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import androidx.compose.material3.ElevatedCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -361,7 +361,7 @@ private fun ItemCategoryTabBar(
                         fontWeight = FontWeight.Medium
                     )
                 },
-                shape = ExpressiveTokens.ChipShape,
+                shape = MaterialTheme.shapes.small,
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -466,9 +466,9 @@ private fun RowScope.QuickEntranceItem(
     onClick: () -> Unit
 ) {
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .weight(1f)
             .height(cardHeight)
@@ -558,7 +558,7 @@ private fun PreviewSectionGrid(
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(ExpressiveTokens.SmallCardShape)
+                        .clip(MaterialTheme.shapes.small)
                         .background(iconTint.copy(alpha = 0.16f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -622,7 +622,7 @@ private fun PreviewItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )

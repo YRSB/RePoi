@@ -6,11 +6,16 @@ import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
+import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.platform.cacheDirPath
 import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.CorruptCacheRecoveryInterceptor
 import io.ktor.client.HttpClient
 import okio.Path.Companion.toPath
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -23,12 +28,21 @@ import org.koin.dsl.module
  *（PodAura `PodAuraImage` 同形；gif/video 解码器不在本模块依赖内，android 实际为空实现）。
  */
 val imageModule = module {
-    single<ImageLoader> {
-        val diskCacheInstance = DiskCache.Builder()
+    single<DiskCache> {
+        val viewPrefs = get<ViewPreferencesManager>()
+        val maxBytes = runCatching {
+            runBlocking(Dispatchers.IO) {
+                viewPrefs.imageCacheMaxBytesFlow.first()
+            }
+        }.getOrDefault(viewPrefs.imageCacheMaxBytes)
+        DiskCache.Builder()
             .directory(cacheDirPath().toPath().resolve("image_cache"))
-            .maxSizeBytes(250L * 1024L * 1024L)
+            .maxSizeBytes(maxBytes)
             .build()
+    }
 
+    single<ImageLoader> {
+        val diskCacheInstance = get<DiskCache>()
         ImageLoader.Builder(platformCoilContext()).components {
             add(CorruptCacheRecoveryInterceptor(diskCacheInstance))
             add(SvgDecoder.Factory())

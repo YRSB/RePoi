@@ -41,7 +41,6 @@ import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.platform.DateTimeFormats
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlin.time.Clock
@@ -57,12 +56,12 @@ fun AlbumFeedCard(
 ) {
     ElevatedCard(
         onClick = { onClick(item) },
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -186,7 +185,7 @@ private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifie
 @Composable
 private fun PraiseBadge(count: Long, modifier: Modifier = Modifier) {
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f),
         modifier = modifier
     ) {

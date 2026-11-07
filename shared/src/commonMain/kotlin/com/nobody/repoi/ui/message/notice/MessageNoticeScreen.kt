@@ -69,7 +69,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.PushMessageItem
 import com.nobody.repoi.ui.navigation.MessageNoticeNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -438,7 +437,7 @@ private fun NoticeItemRow(
                 if (!quote.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Card(
-                        shape = ExpressiveTokens.CardShape,
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),

@@ -8,7 +8,6 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import com.nobody.repoi.data.local.ThemeMode
 
 /**
  * 全局导航根容器：单根栈 `[MainNavKey, 二级页...]` 的页面分发。
@@ -23,11 +22,6 @@ fun AppNavDisplay(
     tabEntries: State<List<NavEntry<NavKey>>>,
     snackbarHostState: SnackbarHostState,
     showSnackbarHost: Boolean,
-    themeMode: ThemeMode,
-    dynamicColor: Boolean,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
-    onOpenDebugScreen: () -> Unit,
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -49,12 +43,8 @@ fun AppNavDisplay(
         messageEntries(navigator, onBack)
         interactionEntries(navigator, onBack)
         systemEntries(
+            navigator = navigator,
             onBack = onBack,
-            themeMode = themeMode,
-            dynamicColor = dynamicColor,
-            onThemeModeChange = onThemeModeChange,
-            onDynamicColorChange = onDynamicColorChange,
-            onOpenDebugScreen = onOpenDebugScreen,
             onLoginSuccess = onLoginSuccess
         )
     }

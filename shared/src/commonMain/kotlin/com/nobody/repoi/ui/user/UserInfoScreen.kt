@@ -125,8 +125,7 @@ import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
@@ -805,7 +804,7 @@ private fun UserProfileHeader(
             // 圆形大头像（略微上移形成悬挂层次）
             Surface(
                 shape = CircleShape,
-                shadowElevation = ExpressiveTokens.ElevationLevel2,
+                shadowElevation = 3.dp,
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .size(72.dp)
@@ -895,7 +894,7 @@ private fun UserProfileHeader(
                     )
                     OutlinedButton(
                         onClick = { onNavigateToChat(profile.id, profile.displayName, profile.header) },
-                        shape = ExpressiveTokens.PillShape,
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
@@ -1014,7 +1013,7 @@ private fun UserSocialStatColumn(
 ) {
     Column(
         modifier = modifier
-            .clip(ExpressiveTokens.ButtonShape)
+            .clip(CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -1046,7 +1045,7 @@ private fun UserFollowButton(
     if (isFollowed) {
         OutlinedButton(
             onClick = onClick,
-            shape = ExpressiveTokens.PillShape,
+            shape = CircleShape,
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
             modifier = modifier.height(32.dp)
         ) {
@@ -1068,7 +1067,7 @@ private fun UserFollowButton(
     } else {
         Button(
             onClick = onClick,
-            shape = ExpressiveTokens.PillShape,
+            shape = CircleShape,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
@@ -1099,7 +1098,7 @@ private fun UserSimilarityBadge(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
@@ -1141,8 +1140,8 @@ private fun UserOrderStatsCard(
     val preorderCount = uiState.orderStatic?.count?.preorder ?: profile.preorderCount
     val buyCount = uiState.orderStatic?.count?.buy ?: profile.buyCount
 
-    ExpressiveElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+    ElevatedCard(
+        shape = MaterialTheme.shapes.large,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
@@ -1206,7 +1205,7 @@ private fun UserOrderStatsCard(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .clip(ExpressiveTokens.ButtonShape)
+                    .clip(CircleShape)
                     .clickable(onClick = onShowMoneyDialog)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
@@ -1245,7 +1244,7 @@ private fun OrderStatColumn(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(ExpressiveTokens.ButtonShape)
+            .clip(CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
@@ -1328,7 +1327,7 @@ private fun UserAlbumSubChips(
                 selected = selectedSubTab == index,
                 onClick = { onSelectSubTab(index) },
                 label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
-                shape = ExpressiveTokens.PillShape
+                shape = CircleShape
             )
         }
     }
@@ -1374,8 +1373,8 @@ private fun BasicProfileSection(
     onCopyUid: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+    ElevatedCard(
+        shape = MaterialTheme.shapes.large,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
@@ -1544,7 +1543,7 @@ private fun YearlyMoneyBreakdownDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Surface(
-                    shape = ExpressiveTokens.CardShape,
+                    shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1689,7 +1688,7 @@ private fun EditProfileBottomSheet(
                             selected = sex == valCode,
                             onClick = { sex = valCode },
                             label = { Text(text) },
-                            shape = ExpressiveTokens.PillShape
+                            shape = CircleShape
                         )
                     }
                 }
@@ -1718,7 +1717,7 @@ private fun EditProfileBottomSheet(
                     onSave(nickname, sign, intro, sex, birthday, city)
                 },
                 enabled = !isSaving,
-                shape = ExpressiveTokens.ButtonShape,
+                shape = CircleShape,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isSaving) {

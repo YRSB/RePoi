@@ -83,7 +83,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.common.comment.commentSectionItems
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.HpoiLinkDispatcher
@@ -319,12 +318,12 @@ fun PostDetailScreen(
                 // ── 2. 主楼卡片：作者头部、标题与正文 ──
                 item(key = "post_main_card") {
                     ElevatedCard(
-                        shape = ExpressiveTokens.CardShape,
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.elevatedCardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         elevation = CardDefaults.elevatedCardElevation(
-                            defaultElevation = ExpressiveTokens.ElevationDefault
+                            defaultElevation = 1.dp
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -380,7 +379,7 @@ fun PostDetailScreen(
                                         detail.forum?.name?.let { forumName ->
                                             if (forumName.isNotBlank()) {
                                                 Surface(
-                                                    shape = ExpressiveTokens.PillShape,
+                                                    shape = CircleShape,
                                                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                                                 ) {
                                                     Text(
@@ -529,7 +528,7 @@ fun PostDetailScreen(
                         ) {
                             detail.zoneIds.forEach { zoneId ->
                                 Surface(
-                                    shape = ExpressiveTokens.PillShape,
+                                    shape = CircleShape,
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     modifier = Modifier.clickable {
                                         onNavigateToZone?.invoke(zoneId)
@@ -623,12 +622,12 @@ private fun PostRelateHobbyCard(
 ) {
     ElevatedCard(
         onClick = onClick,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationLevel1
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -644,7 +643,7 @@ private fun PostRelateHobbyCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(ExpressiveTokens.MediumCardShape)
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             )
 
@@ -655,7 +654,7 @@ private fun PostRelateHobbyCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Surface(
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
@@ -685,7 +684,7 @@ private fun PostRelateHobbyCard(
 @Composable
 private fun PostDetailSkeleton(modifier: Modifier = Modifier) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -709,13 +708,13 @@ private fun PostDetailSkeleton(modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier
                             .size(width = 120.dp, height = 14.dp)
-                            .clip(ExpressiveTokens.PillShape)
+                            .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     )
                     Box(
                         modifier = Modifier
                             .size(width = 80.dp, height = 10.dp)
-                            .clip(ExpressiveTokens.PillShape)
+                            .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     )
                 }
@@ -725,7 +724,7 @@ private fun PostDetailSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(20.dp)
-                    .clip(ExpressiveTokens.PillShape)
+                    .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             )
 
@@ -733,7 +732,7 @@ private fun PostDetailSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .clip(ExpressiveTokens.MediumCardShape)
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             )
         }
@@ -750,7 +749,7 @@ private fun PostErrorCard(
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
         ),
@@ -789,13 +788,13 @@ private fun PostPicCard(
 ) {
     val thumbUrl = remember(picPath) { CdnUrlUtils.getPostsUrl(picPath) }
     Card(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = modifier
             .fillMaxWidth()
-            .clip(ExpressiveTokens.CardShape)
+            .clip(MaterialTheme.shapes.large)
             .clickable(onClick = onClick)
     ) {
         AsyncImage(

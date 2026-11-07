@@ -5,5 +5,7 @@ import androidx.compose.runtime.Composable
 
 actual val supportsDynamicColor: Boolean = false
 
+actual val isDynamicSeedAvailable: Boolean = false
+
 @Composable
 actual fun dynamicPoiShelfColorScheme(darkTheme: Boolean): ColorScheme? = null

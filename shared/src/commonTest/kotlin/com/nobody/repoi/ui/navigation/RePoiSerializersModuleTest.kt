@@ -105,9 +105,10 @@ class RePoiSerializersModuleTest {
             ),
             ExHobbyListNavKey(itemId = 7001L, title = "ExHobby", id = "fixed-id-exhobby-list"),
 
-            // 10. 设置与鉴权路由 (2)
+            // 10. 设置与鉴权路由 (3)
             LoginNavKey,
             SettingsNavKey,
+            SettingsShieldListNavKey(id = "fixed-id-settings-shield-list"),
 
             // 11. 消息中心与通知路由 (4)
             MessageCenterNavKey(id = "fixed-id-message-center"),
@@ -116,7 +117,7 @@ class RePoiSerializersModuleTest {
             MessageBlockNavKey(id = "fixed-id-message-block")
         )
 
-        assertEquals(46, testRoutes.size, "测试必须全量覆盖全部 46 个 AppNavKey")
+        assertEquals(47, testRoutes.size, "测试必须全量覆盖全部 47 个 AppNavKey")
 
         for (originalKey in testRoutes) {
             val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)

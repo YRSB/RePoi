@@ -31,3 +31,9 @@ _ci_apk/
 # 签名凭证配置（本地/CI 私钥与属性不进版本库，debug.keystore 除外）
 signing.properties
 *.jks
+
+
+# Agent / Skills 锁定文件
+skills-lock.json
+
+/Zhihu-Hyperion/

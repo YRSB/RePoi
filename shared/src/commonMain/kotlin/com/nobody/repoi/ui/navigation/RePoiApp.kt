@@ -11,7 +11,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,12 +24,13 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
+import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.platform.LocalAppMessages
+import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberImageViewerState
 import com.nobody.repoi.ui.theme.PoiShelfTheme
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -46,43 +46,41 @@ fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
-    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = true)
-    val scope = rememberCoroutineScope()
-    val onThemeModeChange: (ThemeMode) -> Unit = { mode ->
-        scope.launch { themeManager.setThemeMode(mode) }
-    }
-    val onDynamicColorChange: (Boolean) -> Unit = { enabled ->
-        scope.launch { themeManager.setDynamicColor(enabled) }
-    }
+    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
+    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
+    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
+    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
+    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
+    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
 
     val darkTheme = when (themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
+    val effectiveSeed = when {
+        themeSeed != ThemeSeed.Dynamic -> themeSeed.orAvailable()
+        !dynamicColor -> ThemeSeed.Lotus
+        else -> null
+    }
 
-    PoiShelfTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
-        RePoiNavHost(
-            themeMode = themeMode,
-            dynamicColor = dynamicColor,
-            onThemeModeChange = onThemeModeChange,
-            onDynamicColorChange = onDynamicColorChange
-        )
+    PoiShelfTheme(
+        darkTheme = darkTheme,
+        dynamicColor = dynamicColor,
+        themeSeed = effectiveSeed,
+        amoled = amoled,
+        paletteStyle = paletteStyle,
+        specVersion = specVersion
+    ) {
+        RePoiNavHost()
     }
 }
 
 @Composable
-private fun RePoiNavHost(
-    themeMode: ThemeMode,
-    dynamicColor: Boolean,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit
-) {
+private fun RePoiNavHost() {
     val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
-    val rootScope = rememberCoroutineScope()
 
     val savedStateConfiguration = remember {
         SavedStateConfiguration { serializersModule = RePoiSerializersModule }
@@ -122,13 +120,6 @@ private fun RePoiNavHost(
                 tabEntries = tabEntries,
                 snackbarHostState = rootSnackbarHostState,
                 showSnackbarHost = atMainRoot,
-                themeMode = themeMode,
-                dynamicColor = dynamicColor,
-                onThemeModeChange = onThemeModeChange,
-                onDynamicColorChange = onDynamicColorChange,
-                onOpenDebugScreen = {
-                    rootScope.launch { appMessages.show("API 调试控制台在此版本中不可用") }
-                },
                 onLoginSuccess = {
                     while (rootBackStack.size > 1) rootBackStack.removeLastOrNull()
                     navigator.selectTab(AppDestinations.PROFILE)

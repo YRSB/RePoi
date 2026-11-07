@@ -45,10 +45,10 @@ import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.collect.MediaOrderOption
 import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CardDefaults
 
 // ── 收藏相册页卡片 ──────────────────────────────────────────
 
@@ -82,15 +82,15 @@ internal fun CollectAlbumCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(
-        // 卡片本体不带 onClick，点击统一由 combinedClickable 接管，避免双重点击区
-        onClick = null,
-        shape = ExpressiveTokens.MediumCardShape,
-        containerColor = if (isSelected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+    ElevatedCard(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
+        ),
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -281,7 +281,7 @@ private fun CollectPraiseBadge(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f),
         modifier = modifier
     ) {

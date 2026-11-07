@@ -72,10 +72,10 @@ import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.navigation.PictureListNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 通用图片列表/全集页面。
@@ -261,7 +261,7 @@ private fun PictureGridCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -342,7 +342,7 @@ private fun PictureListFooter(
                     )
                     Button(
                         onClick = onRetry,
-                        shape = ExpressiveTokens.ButtonShape,
+                        shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -390,7 +390,7 @@ private fun PictureListSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height((180 + (index % 3) * 50).dp)
-                    .clip(ExpressiveTokens.MediumCardShape)
+                    .clip(MaterialTheme.shapes.medium)
                     .shimmerBackground()
             )
         }
@@ -430,7 +430,7 @@ private fun PictureListError(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onRetry,
-                shape = ExpressiveTokens.ButtonShape
+                shape = CircleShape
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,

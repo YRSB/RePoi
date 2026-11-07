@@ -34,7 +34,6 @@ import com.nobody.repoi.ui.common.comment.CommentFeedState
 import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.FeedActionDispatcher
 
@@ -334,7 +333,7 @@ fun VendorDetailScreen(
                     Text("取消")
                 }
             },
-            shape = ExpressiveTokens.DialogShape
+            shape = MaterialTheme.shapes.extraLarge
         )
     }
 

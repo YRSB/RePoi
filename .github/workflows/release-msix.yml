@@ -19,10 +19,22 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
+
+      - name: Disable Windows Defender
+        shell: pwsh
+        run: |
+          try {
+            Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true
+            Write-Host "Windows Defender 实时防护与 I/O 检查已禁用"
+          } catch {
+            Write-Warning "禁用 Windows Defender 失败：$($_.Exception.Message)"
+          }
 
       - name: Set up Gradle environment
         uses: ./.github/actions/gradle-setup
+        with:
+          setup-android: false
 
       - name: Package Windows MSIX
         shell: bash
@@ -40,7 +52,7 @@ jobs:
           done
 
       - name: Upload MSIX artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-msix-windows
           path: desktopApp/build/com.nobody.repoi.msix

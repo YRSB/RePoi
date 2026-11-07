@@ -74,7 +74,6 @@ import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import org.koin.compose.viewmodel.koinViewModel
@@ -260,7 +259,7 @@ private fun ExHobbyGridCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -391,7 +390,7 @@ private fun ExHobbyListSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dummyHeights[index % dummyHeights.size]),
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest
             ) {
                 Box(

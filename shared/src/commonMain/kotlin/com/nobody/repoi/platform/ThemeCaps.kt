@@ -5,5 +5,7 @@ import androidx.compose.runtime.Composable
 
 expect val supportsDynamicColor: Boolean
 
+expect val isDynamicSeedAvailable: Boolean
+
 @Composable
 expect fun dynamicPoiShelfColorScheme(darkTheme: Boolean): ColorScheme?

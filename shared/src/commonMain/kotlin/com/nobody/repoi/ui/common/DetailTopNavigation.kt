@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.topBarScrolled
 
 /**
  * 详情页统一顶部导航栏：
@@ -50,7 +50,7 @@ fun DetailTopNavigation(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = if (isScrolled) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
-        shape = if (isScrolled) ExpressiveTokens.TopBarScrolledShape else RectangleShape,
+        shape = if (isScrolled) MaterialTheme.shapes.topBarScrolled else RectangleShape,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {

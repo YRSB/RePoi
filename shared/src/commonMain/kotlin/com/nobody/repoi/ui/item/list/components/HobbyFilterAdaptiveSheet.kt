@@ -45,7 +45,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import com.nobody.repoi.ui.item.list.FilterLabels
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.common.ModalSideSheet
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * M3 注意：高级多维筛选参数数据类唯一定义归属 M2
@@ -223,7 +223,7 @@ private fun HobbyFilterSheetContent(
                     onReset()
                 },
                 modifier = Modifier.weight(1f),
-                shape = ExpressiveTokens.PillShape
+                shape = CircleShape
             ) {
                 Text(
                     text = "重置",
@@ -244,7 +244,7 @@ private fun HobbyFilterSheetContent(
                     )
                 },
                 modifier = Modifier.weight(1f),
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(
@@ -308,7 +308,7 @@ private fun <T> FlowFilterSection(
                             )
                         }
                     } else null,
-                    shape = ExpressiveTokens.ChipShape,
+                    shape = MaterialTheme.shapes.small,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant,

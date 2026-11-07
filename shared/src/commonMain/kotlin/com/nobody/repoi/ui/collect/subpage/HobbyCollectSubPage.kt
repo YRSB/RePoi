@@ -75,7 +75,6 @@ import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.launch
 
 /** 周边页滚动保存键的内容维度，生产与测试共用 */
@@ -538,7 +537,7 @@ internal fun HobbyCollectSubPage(
                     Text(text = "再想想")
                 }
             },
-            shape = ExpressiveTokens.DialogShape
+            shape = MaterialTheme.shapes.extraLarge
         )
     }
 }
@@ -584,7 +583,7 @@ private fun HobbyStateDropdown(
                         .graphicsLayer { rotationZ = arrowRotation }
                 )
             },
-            shape = ExpressiveTokens.ChipShape,
+            shape = MaterialTheme.shapes.small,
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -597,7 +596,7 @@ private fun HobbyStateDropdown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            shape = ExpressiveTokens.MediumCardShape,
+            shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             CollectStateOption.ALL_STATES.forEach { stateKey ->
@@ -675,7 +674,7 @@ private fun HobbySortControl(
                         .graphicsLayer { rotationZ = arrowRotation }
                 )
             },
-            shape = ExpressiveTokens.ChipShape,
+            shape = MaterialTheme.shapes.small,
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 selectedLabelColor = MaterialTheme.colorScheme.onSurface
@@ -686,7 +685,7 @@ private fun HobbySortControl(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            shape = ExpressiveTokens.MediumCardShape,
+            shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             options.forEach { (key, label) ->
@@ -789,7 +788,7 @@ private fun BatchErrorBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        shape = ExpressiveTokens.ExtraSmallShape,
+        shape = MaterialTheme.shapes.extraSmall,
         color = MaterialTheme.colorScheme.errorContainer
     ) {
         Row(

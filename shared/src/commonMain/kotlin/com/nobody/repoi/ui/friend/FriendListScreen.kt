@@ -63,7 +63,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.LevelPill
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 
 /**
@@ -224,7 +223,7 @@ fun FriendListScreen(
                                     )
                                     Button(
                                         onClick = { viewModel.refresh() },
-                                        shape = ExpressiveTokens.ButtonShape
+                                        shape = CircleShape
                                     ) {
                                         Text("重试")
                                     }
@@ -341,12 +340,12 @@ private fun UserFollowItemCard(
 ) {
     ElevatedCard(
         onClick = onUserClick,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -428,7 +427,7 @@ private fun FollowCapsuleButton(
     if (isFollowed) {
         OutlinedButton(
             onClick = onClick,
-            shape = ExpressiveTokens.ButtonShape,
+            shape = CircleShape,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
             modifier = modifier.heightIn(min = 32.dp)
         ) {
@@ -450,7 +449,7 @@ private fun FollowCapsuleButton(
     } else {
         Button(
             onClick = onClick,
-            shape = ExpressiveTokens.ButtonShape,
+            shape = CircleShape,
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
             modifier = modifier.heightIn(min = 32.dp)
         ) {
@@ -483,12 +482,12 @@ private fun PraiseItemCard(
 
     ElevatedCard(
         onClick = { if (targetItemId > 0L) onItemClick(targetItemId, if (isAlbum) "album" else relate?.itemType) },
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -550,7 +549,7 @@ private fun PraiseItemCard(
             // 被点赞的手办条目内嵌信息
             if (relate != null) {
                 Surface(
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -569,7 +568,7 @@ private fun PraiseItemCard(
                             contentDescription = "条目封面",
                             modifier = Modifier
                                 .size(56.dp)
-                                .clip(ExpressiveTokens.SmallCardShape)
+                                .clip(MaterialTheme.shapes.small)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentScale = ContentScale.Crop
                         )

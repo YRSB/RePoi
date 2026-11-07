@@ -6,12 +6,15 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.MockEngineConfig
+import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
@@ -25,6 +28,8 @@ import kotlinx.serialization.json.Json
  *   `encodedPath` / `queryParameter` / `formEntries` / `bodyContains` 断言面，
  *   与原 MockWebServer `RecordedRequest` 用法一一对应。
  * - 响应解码走真实 [HpoiApi.decodeRefAware]（无需 ContentNegotiation 插件）。
+ * - `api(dispatcher)`：引擎默认跑真实线程（`Dispatchers.IO`），`runTest` 的虚拟时间推不动，
+ *   ViewModel 测试必须传入 `testDispatcher`，否则请求零发出且间歇性挂起；纯仓储测试可省略。
  */
 class MockApi {
 
@@ -35,6 +40,9 @@ class MockApi {
     private val routes = mutableListOf<Pair<String, Queued>>()
     private val predicateRoutes = mutableListOf<
         Triple<(path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean, (path: String, form: Map<String, String>, query: Map<String, String>) -> String, HttpStatusCode>
+        >()
+    private val suspendPredicateRoutes = mutableListOf<
+        Triple<(path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean, suspend (path: String, form: Map<String, String>, query: Map<String, String>) -> String, HttpStatusCode>
         >()
 
     val json: Json = Json {
@@ -56,6 +64,15 @@ class MockApi {
      * 若 routes 非空且命中，按命中响应；否则回落 FIFO 队列。
      */
     fun route(pathFragment: String, body: String, status: HttpStatusCode = HttpStatusCode.OK) {
+        routes.add(pathFragment to Queued(status, body))
+    }
+
+    /**
+     * 替换同路径片段路由：首条命中的旧响应会被移除，测试中途切换服务端行为用此方法。
+     * 直接二次 `route` 不生效（`firstOrNull` 永远命中首条）。
+     */
+    fun replaceRoute(pathFragment: String, body: String, status: HttpStatusCode = HttpStatusCode.OK) {
+        routes.removeAll { (fragment, _) -> fragment == pathFragment }
         routes.add(pathFragment to Queued(status, body))
     }
 
@@ -90,20 +107,36 @@ class MockApi {
         )
     }
 
+    /**
+     * 挂起谓词路由：body 可 `await()` 门控，确定性复现慢响应后到竞态。
+     * 同步 `routeWhen` 内用 `runBlocking` 等门会堵死测试调度线程导致 hang，严禁。
+     * 优先级高于同步谓词路由与 path 路由。
+     */
+    fun routeWhenSuspend(
+        predicate: (path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean,
+        body: suspend (path: String, form: Map<String, String>, query: Map<String, String>) -> String,
+        status: HttpStatusCode = HttpStatusCode.OK,
+    ) {
+        suspendPredicateRoutes.add(Triple(predicate, body, status))
+    }
+
     fun ok(data: String): String =
         """{"success":true,"code":200,"msg":"ok","data":$data}"""
 
     fun failure(code: Int, msg: String): String =
         """{"success":false,"code":$code,"msg":"$msg","data":null}"""
 
-    fun api(): HpoiApi {
-        val mock = MockEngine { request ->
+    fun api(dispatcher: CoroutineDispatcher? = null): HpoiApi {
+        val handler: MockRequestHandler = { request ->
             requests.update { it + request }
             val path = request.url.encodedPath
             val form = formOf(request)
             val query = request.url.parameters.entries().associate { (key, values) -> key to (values.firstOrNull().orEmpty()) }
+            val suspended = suspendPredicateRoutes.firstOrNull { (predicate, _, _) -> predicate(path, form, query) }
             val predicated = predicateRoutes.firstOrNull { (predicate, _, _) -> predicate(path, form, query) }
-            val next = if (predicated != null) {
+            val next = if (suspended != null) {
+                Queued(suspended.third, suspended.second(path, form, query))
+            } else if (predicated != null) {
                 Queued(predicated.third, predicated.second(path, form, query))
             } else {
                 val routed = routes.firstOrNull { (fragment, _) -> path.contains(fragment) }?.second
@@ -116,6 +149,14 @@ class MockApi {
                 status = next.status,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
+        }
+        val mock = if (dispatcher == null) {
+            MockEngine(handler)
+        } else {
+            MockEngine(MockEngineConfig().apply {
+                this.dispatcher = dispatcher
+                requestHandlers.add(handler)
+            })
         }
         return HpoiApi(HttpClient(mock) {
             expectSuccess = false

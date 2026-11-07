@@ -38,6 +38,7 @@
 ### 1. 路由规则与拓扑
 - **路由基类**：所有路由统一继承 `AppNavKey : NavKey`（声明于 `ui/navigation/NavRoutes.kt`），由 `ui/navigation/AppNavDisplay.kt` 承载映射。
 - **全局单根栈**：应用只有一条根栈 `[MainNavKey, 二级页...]`（`RePoiNavigator.rootBackStack`）。`MainNavKey` 承载主界面（`ui/navigation/MainScreen.kt`：自适应导航套件 + 5 个 Tab 首屏），二级页平铺压栈并整屏覆盖主界面；返回完全交由 Nav3 原生出栈，栈底 `MainNavKey` 永不出栈，主界面按返回直接退出 Activity。
+- **自适应双窗格局部子栈豁免**：对于系统设置等自适应双窗格页面（`SettingsNavKey`），外部保持单一二级页入根栈不变，模块内部允许维护私有局部子栈（继承自 `NavKey` 的 `SettingsSubNavKey`），通过 `rememberListDetailSceneStrategy` 驱动双窗格分栏与窄屏压栈出栈，实现模块内部自治，避免细碎子路由污染全局导航拓扑与序列化注册（见 `ADR-0003`）。
 - **Tab 切换**：仅变更 `RePoiNavigationState.currentDestination`，不触碰根栈，也不修改任何 Tab 栈内容。
 - **实例隔离**：
   - 顶层 Tab 使用无参 `data object`。
@@ -134,8 +135,11 @@
 - **卡片宽高比**：手办卡片比例采用黄金比例 `aspectRatio(9f / 13f)`。
 
 ### 5. 主题令牌与外观
-- **设计系统**：全应用统一采用 `MaterialExpressiveTheme`。
-- **形状令牌**：界面所有圆角统一定义自 `ExpressiveTokens.*Shape` 设计系统令牌。
+- **设计系统**：全应用统一采用 `MaterialExpressiveTheme`，通过根主题将 `colorScheme`、`typography` 与 `shapes = ExpressiveShapes` 单向注入组件树。
+- **形状规范 (Shapes)**：
+  - **原生组件零传参**：官方组件（`Card`, `ElevatedCard`, `Button`, `Dialog` 等）默认自动消费 `MaterialTheme.shapes`，严禁在调用点重复传递显式默认 shape。
+  - **自定义裁剪与修饰符**：通用圆角统一通过 `MaterialTheme.shapes.*`（如 `small`, `medium`, `large`）或官方推荐扩展属性（如 `MaterialTheme.shapes.bottomSheet`, `MaterialTheme.shapes.largeCard`）访问，**严禁硬编码** `RoundedCornerShape(X.dp)`。
+  - **全面使用官方原生控件**：已彻底移除旧版全局单例 `ExpressiveTokens` 与包装控件（如 `ExpressiveElevatedCard`、`ExpressiveCard`，见 `ADR-0004`），所有卡片与表面容器一律直接使用官方原生组件（`ElevatedCard`、`Card` 等），杜绝中间人二次抽象。
 - **暗黑主题感知**：通过 `LocalIsDarkTheme.current` 感知当前暗黑模式状态。
 
 ### 6. CDN 图片变体工具 (`CdnUrlUtils`)

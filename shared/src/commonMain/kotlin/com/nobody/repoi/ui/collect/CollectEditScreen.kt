@@ -88,7 +88,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
@@ -337,7 +336,7 @@ fun CollectEditScreen(
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 3,
                             maxLines = 6,
-                            shape = ExpressiveTokens.CardShape
+                            shape = MaterialTheme.shapes.large
                         )
                     }
                 }
@@ -353,7 +352,7 @@ fun CollectEditScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
-                            shape = ExpressiveTokens.PillShape,
+                            shape = CircleShape,
                             enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.isLoading && !uiState.loadFailed
                         ) {
                             if (uiState.isSaving) {
@@ -377,7 +376,7 @@ fun CollectEditScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
                                 ),
@@ -504,7 +503,7 @@ fun CollectEditScreen(
     if (uiState.showDeleteTagDialog && uiState.tagToDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissDeleteTagDialog() },
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("删除标签") },
             text = { Text("确定要删除标签「${uiState.tagToDelete}」吗？") },
             confirmButton = {
@@ -538,7 +537,7 @@ private fun CollectItemHeader(
 ) {
     CollectCardSection(
         modifier = modifier,
-        tonalElevation = ExpressiveTokens.ElevationLevel1
+        tonalElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -552,7 +551,7 @@ private fun CollectItemHeader(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(width = 56.dp, height = 76.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             )
 
@@ -573,7 +572,7 @@ private fun CollectItemHeader(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Surface(
-                        shape = ExpressiveTokens.ExtraSmallShape,
+                        shape = MaterialTheme.shapes.extraSmall,
                         color = if (isAlreadyCollected) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
@@ -621,9 +620,9 @@ private fun CollectStateGrid(
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(ExpressiveTokens.MediumCardShape)
+                    .clip(MaterialTheme.shapes.medium)
                     .clickable { onSelectState(stateKey) },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 color = if (isSelected) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
@@ -791,7 +790,7 @@ private fun CollectOrderDetailsSection(
             OutlinedCard(
                 onClick = onOrderTimeClick,
                 modifier = Modifier.fillMaxWidth(),
-                shape = ExpressiveTokens.MediumCardShape
+                shape = MaterialTheme.shapes.medium
             ) {
                 Row(
                     modifier = Modifier
@@ -835,7 +834,7 @@ private fun CollectOrderDetailsSection(
                     placeholder = { Text("0.00") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     singleLine = true
                 )
 
@@ -854,7 +853,7 @@ private fun CollectOrderDetailsSection(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
                         // KMP CMP 1.12.1：menuAnchor() 无 AnchorType 参数（material3 旧 ExposedDropdownMenu API 已更名）。
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        shape = ExpressiveTokens.MediumCardShape,
+                        shape = MaterialTheme.shapes.medium,
                         singleLine = true
                     )
                     // KMP CMP 1.12.1：旧 ExposedDropdownMenu 更名为 DropdownMenu（同 Box 作用域 API）。
@@ -882,7 +881,7 @@ private fun CollectOrderDetailsSection(
                 label = { Text(channelLabel) },
                 placeholder = { Text(if (isPreorder) "如：官方旗舰店、AmiAmi、淘宝" else "如：现货现拍、漫展收物、闲鱼") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 singleLine = true
             )
 
@@ -946,7 +945,7 @@ private fun CollectOrderDetailsSection(
                                 selected = isSelected,
                                 onClick = { onOrderFormChange(formId) },
                                 label = { Text(formLabel, fontSize = 12.sp) },
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1026,7 +1025,7 @@ private fun CollectTagsSection(
                                         .clickable { onRemoveTag(tag) }
                                 )
                             },
-                            shape = ExpressiveTokens.ChipShape,
+                            shape = MaterialTheme.shapes.small,
                             colors = InputChipDefaults.inputChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -1069,7 +1068,7 @@ private fun CollectTagsSection(
                                 }
                             } else null,
                             enabled = !alreadyAdded,
-                            shape = ExpressiveTokens.ChipShape
+                            shape = MaterialTheme.shapes.small
                         )
                     }
                 }
@@ -1087,7 +1086,7 @@ private fun CollectCardSection(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = tonalElevation
     ) {

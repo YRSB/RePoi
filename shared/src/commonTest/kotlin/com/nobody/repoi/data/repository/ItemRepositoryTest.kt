@@ -69,8 +69,13 @@ class ItemRepositoryTest {
     @Test
     fun getItemHomePreview_partialFailureKeepsSuccessfulSection() = runTest {
         val (mock, repository) = setup()
-        mock.enqueue(hobbyListJson("预订手办"))
-        mock.enqueue(mock.failure(500, "error"))
+        mock.routeWhen(
+            predicate = { path, form -> path.contains("api/hobby/query-v2") },
+            body = { _, form ->
+                if (form.containsKey("releaseEnd")) mock.failure(500, "error")
+                else hobbyListJson("预订手办")
+            }
+        )
 
         val result = repository.getItemHomePreview(10000)
 

@@ -295,3 +295,11 @@ data class MessageChatNavKey(
 data class MessageBlockNavKey(
     val id: String = newNavId()
 ) : AppNavKey
+
+/**
+ * 屏蔽设置三 Tab 列表页路由。
+ */
+@Serializable
+data class SettingsShieldListNavKey(
+    val id: String = newNavId()
+) : AppNavKey

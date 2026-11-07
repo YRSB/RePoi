@@ -76,8 +76,9 @@ import com.nobody.repoi.ui.search.ElementsSubCategory
 import com.nobody.repoi.ui.search.HobbySortOption
 import com.nobody.repoi.ui.search.SearchTab
 import com.nobody.repoi.ui.search.HobbyAllCategory
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.theme.sideSheet
 
 /** 侧边抽屉动画时长常量（毫秒） */
 private const val SIDE_SHEET_ANIMATION_DURATION_MS = 260
@@ -156,7 +157,7 @@ fun <T> FilterChipSection(
                             )
                         }
                     } else null,
-                    shape = ExpressiveTokens.ChipShape
+                    shape = MaterialTheme.shapes.small
                 )
             }
         }
@@ -270,7 +271,7 @@ fun ModalSideSheet(
                 }
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = ExpressiveTokens.SideSheetShape
+                    shape = MaterialTheme.shapes.sideSheet
                 )
         ) {
             Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
@@ -534,7 +535,7 @@ fun FilterSheetActions(
     ) {
         FilledTonalButton(
             onClick = onReset,
-            shape = ExpressiveTokens.ButtonShape,
+            shape = CircleShape,
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
@@ -544,7 +545,7 @@ fun FilterSheetActions(
 
         Button(
             onClick = onDismiss,
-            shape = ExpressiveTokens.ButtonShape,
+            shape = CircleShape,
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
@@ -553,5 +554,4 @@ fun FilterSheetActions(
         }
     }
 }
-
 

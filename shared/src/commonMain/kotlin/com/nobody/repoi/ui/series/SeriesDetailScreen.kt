@@ -37,7 +37,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -382,7 +381,7 @@ fun SeriesDetailScreen(
                     Text("取消")
                 }
             },
-            shape = ExpressiveTokens.DialogShape
+            shape = MaterialTheme.shapes.extraLarge
         )
     }
 }
