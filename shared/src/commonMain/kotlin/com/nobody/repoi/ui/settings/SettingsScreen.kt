@@ -48,7 +48,6 @@ import com.nobody.repoi.ui.settings.navigation.SettingsAppearanceNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsContentNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsGroup
 import com.nobody.repoi.ui.settings.navigation.SettingsListNavKey
-import com.nobody.repoi.ui.settings.navigation.SettingsSubNavKey
 import com.nobody.repoi.ui.settings.navigation.SettingsSubNavSerializersModule
 import com.nobody.repoi.ui.settings.panes.SettingsAccountPane
 import com.nobody.repoi.ui.settings.panes.SettingsAppearancePane
