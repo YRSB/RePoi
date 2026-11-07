@@ -147,13 +147,15 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
-                parsePaletteStyle(prefs[PALETTE_STYLE_KEY])?.let {
-                    paletteStyle = it
-                } ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) {
+                val savedStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
+                if (savedStyle != null) {
+                    paletteStyle = savedStyle
+                } else if (prefs[EXPRESSIVE_COLOR_KEY] == true) {
                     paletteStyle = PaletteStyle.Expressive
                 }
-                parseSpecVersion(prefs[SPEC_VERSION_KEY])?.let {
-                    specVersion = it
+                val savedSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
+                if (savedSpecVersion != null) {
+                    specVersion = savedSpecVersion
                 }
             }
         }
