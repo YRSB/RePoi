@@ -62,6 +62,36 @@ class ImageViewerStateHolderTest {
     }
 
     @Test
+    fun updateImages_appendToTail_keepsCurrentIndex() {
+        val holder = ImageViewerStateHolder()
+        holder.show(listOf("a", "b", "c"), initialIndex = 1)
+
+        holder.updateImages(listOf("a", "b", "c", "d", "e"))
+
+        assertEquals(1, holder.currentIndex)
+        assertEquals("b", holder.imageUrls[holder.currentIndex])
+    }
+
+    @Test
+    fun updateImages_afterRestoredWindow_reanchorsByUrl() {
+        val images = (0..99).map { "url_$it" }
+        val seeded = ImageViewerStateHolder()
+        seeded.show(images, initialIndex = 50)
+        val saved = ImageViewerStateHolder.Saver.run { testSaverScope.save(seeded) }
+        val restored = ImageViewerStateHolder.Saver.restore(saved!!)
+
+        assertTrue(restored != null)
+        // 恢复后只有 50 项窗口，index=25 是相对值
+        assertEquals(25, restored.currentIndex)
+
+        restored.updateImages(images)
+
+        // 必须按 URL 重锚回全量列表的绝对下标，否则会跳到另一张图
+        assertEquals(50, restored.currentIndex)
+        assertEquals("url_50", restored.imageUrls[restored.currentIndex])
+    }
+
+    @Test
     fun saver_listWithinLimit_savesAndRestoresExact() {
         val images = (1..20).map { "https://example.com/img_$it.jpg" }
         val holder = ImageViewerStateHolder()

@@ -92,12 +92,24 @@ class ImageViewerStateHolder internal constructor(
         onLoadMoreCallback = onLoadMore
     }
 
+    /**
+     * 动态同步图片列表。
+     *
+     * 以「当前图片 URL」为锚点重新定位：进程重建后 [Saver] 只恢复以当前图为中心的 50 项窗口，
+     * 此时窗口下标是相对值，直接 clamp 会把全量列表中的另一张图当成当前图。
+     * 若新列表在同一位置仍是同一张图（续拉追加的常规路径），保持原下标不变。
+     */
     override fun updateImages(images: List<String>) {
         if (!isVisible) return
         val validImages = images.filter { it.isNotBlank() }
-        if (validImages.isNotEmpty() && validImages != imageUrls) {
-            imageUrls = validImages
-            currentIndex = currentIndex.coerceIn(0, validImages.size - 1)
+        if (validImages.isEmpty() || validImages == imageUrls) return
+        val anchorUrl = imageUrls.getOrNull(currentIndex)
+        imageUrls = validImages
+        currentIndex = when {
+            anchorUrl == null -> 0
+            validImages.getOrNull(currentIndex) == anchorUrl -> currentIndex
+            else -> validImages.indexOf(anchorUrl).takeIf { it >= 0 }
+                ?: currentIndex.coerceIn(0, validImages.size - 1)
         }
     }
 
