@@ -147,12 +147,14 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
-                val initialStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
-                    ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
-                paletteStyle = initialStyle
-                val initialSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
-                    ?: ColorSpec.SpecVersion.SPEC_2025
-                specVersion = initialSpecVersion
+                parsePaletteStyle(prefs[PALETTE_STYLE_KEY])?.let {
+                    paletteStyle = it
+                } ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) {
+                    paletteStyle = PaletteStyle.Expressive
+                }
+                parseSpecVersion(prefs[SPEC_VERSION_KEY])?.let {
+                    specVersion = it
+                }
             }
         }
         scope.launch(Dispatchers.Default) {
