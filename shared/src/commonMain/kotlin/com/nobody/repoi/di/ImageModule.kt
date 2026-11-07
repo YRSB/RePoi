@@ -12,6 +12,10 @@ import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.CorruptCacheRecoveryInterceptor
 import io.ktor.client.HttpClient
 import okio.Path.Companion.toPath
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -26,9 +30,14 @@ import org.koin.dsl.module
 val imageModule = module {
     single<DiskCache> {
         val viewPrefs = get<ViewPreferencesManager>()
+        val maxBytes = runCatching {
+            runBlocking(Dispatchers.IO) {
+                viewPrefs.imageCacheMaxBytesFlow.first()
+            }
+        }.getOrDefault(viewPrefs.imageCacheMaxBytes)
         DiskCache.Builder()
             .directory(cacheDirPath().toPath().resolve("image_cache"))
-            .maxSizeBytes(viewPrefs.imageCacheMaxBytes)
+            .maxSizeBytes(maxBytes)
             .build()
     }
 

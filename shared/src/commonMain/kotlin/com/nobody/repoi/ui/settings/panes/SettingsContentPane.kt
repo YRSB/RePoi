@@ -212,7 +212,7 @@ fun SettingsContentPane(
                             "不显示"
                         },
                         checked = shieldState.nsfwVisible && isLoggedIn,
-                        enabled = isLoggedIn,
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         onCheckedChange = onNsfwChange
                     )
                     SettingSwitchItem(
@@ -232,7 +232,7 @@ fun SettingsContentPane(
                         icon = Icons.Outlined.Block,
                         title = "屏蔽列表",
                         subtitle = if (isLoggedIn) "用户 / 厂商 / 条目" else "需登录后管理",
-                        enabled = isLoggedIn,
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -247,7 +247,7 @@ fun SettingsContentPane(
                         icon = Icons.Outlined.PersonOff,
                         title = "黑名单",
                         subtitle = if (isLoggedIn) "被屏蔽的用户将无法向您发送私信" else "需登录后管理",
-                        enabled = isLoggedIn,
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -281,7 +281,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -300,7 +300,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -319,7 +319,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -338,7 +338,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -366,7 +366,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -385,7 +385,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -404,7 +404,7 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0
                             ) { visibilityOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -432,7 +432,7 @@ fun SettingsContentPane(
                             subtitle = strangerOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0
                             ) { strangerOptions[0] },
-                            enabled = isLoggedIn,
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,

@@ -150,6 +150,13 @@ fun SettingsScreen(
         }
     }
 
+    LaunchedEffect(privacyState.errorMessage) {
+        privacyState.errorMessage?.let {
+            appMessages.show(it)
+            privacyViewModel.consumeMessage()
+        }
+    }
+
     val onSelectGroup: (SettingsGroup) -> Unit = { group ->
         val targetKey = group.navKey
         if (isWide) {
@@ -390,7 +397,11 @@ fun SettingsScreen(
                 accountState = accountState,
                 onOpenProfile = {
                     val id = profileState.profile?.id ?: 0L
-                    if (id > 0L) onOpenUserInfo(id) else onNavigateToLogin()
+                    if (id > 0L) {
+                        onOpenUserInfo(id)
+                    } else if (!profileState.isLoggedIn) {
+                        onNavigateToLogin()
+                    }
                 },
                 onRefreshAccount = { accountViewModel.refresh() },
                 onRequestLogout = { showLogoutConfirmDialog = true },

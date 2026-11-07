@@ -99,11 +99,7 @@ fun PoiShelfTheme(
     } else {
         PaletteStyle.TonalSpot
     }
-    val effectiveSpec = if (expressiveColor && specVersion == ColorSpec.SpecVersion.SPEC_2025 && paletteStyle == PaletteStyle.TonalSpot) {
-        ColorSpec.SpecVersion.SPEC_2025
-    } else {
-        specVersion
-    }
+    val effectiveSpec = specVersion
     val activeSeed = themeSeed ?: seedArgb?.let { argb -> ThemeSeed.entries.firstOrNull { it.argb == argb } }
     val (seedPrimary, seedSecondary, seedTertiary) = activeSeed?.toColors()
         ?: Triple(seedArgb?.let { Color(it) }, null, null)

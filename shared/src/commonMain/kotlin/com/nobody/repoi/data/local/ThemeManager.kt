@@ -203,7 +203,7 @@ class ThemeManager(
     }
 
     suspend fun setThemeSeed(seed: ThemeSeed) {
-        val targetDynamic = (seed == ThemeSeed.Dynamic)
+        val targetDynamic = (seed == ThemeSeed.Dynamic && supportsDynamicColor)
         val targetSeed = seed.orAvailable()
         themeSeed = targetSeed
         dynamicColor = targetDynamic

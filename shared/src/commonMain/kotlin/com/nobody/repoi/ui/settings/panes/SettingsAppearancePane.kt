@@ -94,16 +94,28 @@ fun SettingsAppearancePane(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val seeds = remember {
-        listOf(
-            ThemeSeed.Dynamic,
-            ThemeSeed.Lotus,
-            ThemeSeed.Coral,
-            ThemeSeed.Amber,
-            ThemeSeed.Pink,
-            ThemeSeed.Mint,
-            ThemeSeed.Grape,
-            ThemeSeed.Tricolor
-        )
+        if (supportsDynamicColor) {
+            listOf(
+                ThemeSeed.Dynamic,
+                ThemeSeed.Lotus,
+                ThemeSeed.Coral,
+                ThemeSeed.Amber,
+                ThemeSeed.Pink,
+                ThemeSeed.Mint,
+                ThemeSeed.Grape,
+                ThemeSeed.Tricolor
+            )
+        } else {
+            listOf(
+                ThemeSeed.Lotus,
+                ThemeSeed.Coral,
+                ThemeSeed.Amber,
+                ThemeSeed.Pink,
+                ThemeSeed.Mint,
+                ThemeSeed.Grape,
+                ThemeSeed.Tricolor
+            )
+        }
     }
     val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
     val dynamicCardColors = remember(systemDynamicScheme, paletteStyle, specVersion) {
