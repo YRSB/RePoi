@@ -127,6 +127,7 @@ fun PoiShelfTheme(
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             typography = Typography,
+            shapes = ExpressiveShapes,
             content = content
         )
     }

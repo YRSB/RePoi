@@ -15,6 +15,7 @@
 | [ADR-0001](0001-kmp-migration-architecture.md) | PoiShelf 迁移至 KMP 跨平台架构与技术栈对齐 | **跨平台/架构迁移**：单 shared 模块、Koin、Ktor、Coil 3、Multiplatform DataStore | 已采纳 (Accepted) - 2026-10-30 |
 | [ADR-0002](0002-settings-theme-material-kolor.md) | 设置页主题 7 维取色系统与 material-kolor 演进选型 | **主题/取色系统**：7 维主题、色板预热无锁缓存、三色几何色卡、消除非动态深灰底色 | 已采纳并演进更新 (Accepted & Amended) - 2026-11-06 |
 | [ADR-0003](0003-settings-structure-migration.md) | 设置页自适应双窗格架构、原生大顶栏与迁移清单 | **设置页/自适应双窗格/拓扑**：宽窄屏断点、双独立顶栏、原生 LargeTopAppBar 常规字重、三大业务分组 | 已采纳并演进更新 (Accepted & Amended) - 2026-11-06 |
+| [ADR-0004](0004-m3e-theme-shapes-convergence.md) | Material 3 Expressive 设计系统收敛与终结 ExpressiveTokens 反模式 | **主题/设计系统/形状**：收敛至 MaterialTheme.shapes、原生组件零传参、非对称圆角扩展属性、废弃静态单例 | 已采纳 (Accepted) - 2026-11-07 |
 
 ---
 
