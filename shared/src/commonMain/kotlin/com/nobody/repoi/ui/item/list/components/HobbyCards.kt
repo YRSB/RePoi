@@ -39,13 +39,12 @@ import coil3.compose.AsyncImage
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 /**
  * 周边网格封面卡片（自适应多列网格）
- * 基于 Material 3 ExpressiveElevatedCard 规范
+ * 基于 Material 3 ElevatedCard 规范
  */
 @Composable
 fun HobbyGridCard(
@@ -59,13 +58,12 @@ fun HobbyGridCard(
     val bottomScrim = remember { Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))) }
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = ExpressiveTokens.SmallCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (!loadFailed) {
@@ -96,7 +94,7 @@ fun HobbyGridCard(
             val hitsText = item.displayHitsText
             if (hitsText.isNotBlank()) {
                 Surface(
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     color = Color.Black.copy(alpha = 0.65f),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -140,7 +138,7 @@ fun HobbyGridCard(
 
 /**
  * 周边单列图文详情卡片（适配 Hpoi 官方列表项布局 item_hobby_list.xml）
- * 基于 Material 3 ExpressiveElevatedCard 规范
+ * 基于 Material 3 ElevatedCard 规范
  */
 @Composable
 fun HobbyListCard(
@@ -153,11 +151,10 @@ fun HobbyListCard(
     val thumbImageRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -170,7 +167,7 @@ fun HobbyListCard(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
@@ -266,7 +263,7 @@ fun HpoiInfoBadgeItem(
         // 标签小徽章：固定 36.dp 宽，ExtraSmallShape 圆角，surfaceContainerHigh 浅阶容器
         Surface(
             modifier = Modifier.width(36.dp),
-            shape = ExpressiveTokens.ExtraSmallShape,
+            shape = MaterialTheme.shapes.extraSmall,
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Text(
@@ -299,7 +296,7 @@ fun HpoiInfoBadgeItem(
 @Composable
 private fun SkeletonBox(
     modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = ExpressiveTokens.ExtraSmallShape
+    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.extraSmall
 ) {
     Box(
         modifier = modifier
@@ -313,16 +310,15 @@ private fun SkeletonBox(
  */
 @Composable
 fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = ExpressiveTokens.SmallCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         SkeletonBox(
             modifier = Modifier.fillMaxSize(),
-            shape = ExpressiveTokens.SmallCardShape
+            shape = MaterialTheme.shapes.small
         )
     }
 }
@@ -332,10 +328,9 @@ fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
  */
 @Composable
 fun HobbyListCardSkeleton(modifier: Modifier = Modifier) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -347,7 +342,7 @@ fun HobbyListCardSkeleton(modifier: Modifier = Modifier) {
             // 封面占位
             SkeletonBox(
                 modifier = Modifier.size(68.dp),
-                shape = ExpressiveTokens.SmallCardShape
+                shape = MaterialTheme.shapes.small
             )
 
             // 右侧信息占位

@@ -52,10 +52,10 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.foundation.shape.CircleShape
 
 @Composable
 fun LoginScreen(
@@ -238,7 +238,7 @@ fun LoginContent(
                         onLoginClick()
                     },
                     enabled = canSubmit,
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)

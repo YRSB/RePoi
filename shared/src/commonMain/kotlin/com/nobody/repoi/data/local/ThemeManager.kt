@@ -147,12 +147,16 @@ class ThemeManager(
                 prefs[AMOLED_KEY]?.let {
                     amoled = it
                 }
-                val initialStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
-                    ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
-                paletteStyle = initialStyle
-                val initialSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
-                    ?: ColorSpec.SpecVersion.SPEC_2025
-                specVersion = initialSpecVersion
+                val savedStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
+                if (savedStyle != null) {
+                    paletteStyle = savedStyle
+                } else if (prefs[EXPRESSIVE_COLOR_KEY] == true) {
+                    paletteStyle = PaletteStyle.Expressive
+                }
+                val savedSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
+                if (savedSpecVersion != null) {
+                    specVersion = savedSpecVersion
+                }
             }
         }
         scope.launch(Dispatchers.Default) {
@@ -199,7 +203,7 @@ class ThemeManager(
     }
 
     suspend fun setThemeSeed(seed: ThemeSeed) {
-        val targetDynamic = (seed == ThemeSeed.Dynamic)
+        val targetDynamic = (seed == ThemeSeed.Dynamic && supportsDynamicColor)
         val targetSeed = seed.orAvailable()
         themeSeed = targetSeed
         dynamicColor = targetDynamic

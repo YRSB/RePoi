@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.remote.model.ForumItem
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
  * 版块订阅卡（对标原版 item_forum_subscribe）。
@@ -56,12 +55,12 @@ fun PlateSubscribeCard(
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -89,7 +88,7 @@ fun PlateSubscribeCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
-                                .clip(ExpressiveTokens.ExtraSmallShape)
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(MaterialTheme.colorScheme.error)
                                 .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
@@ -151,7 +150,7 @@ fun PlateSubscribeCard(
                     OutlinedButton(
                         onClick = onToggleFocus,
                         enabled = canFollow && !isMutating,
-                        shape = ExpressiveTokens.ChipShape,
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.height(34.dp)
                     ) {
                         if (isMutating) {
@@ -202,12 +201,12 @@ fun PlateSubscribeCard(
 @Composable
 fun PlateSubscribeCardSkeleton(modifier: Modifier = Modifier) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -224,14 +223,14 @@ fun PlateSubscribeCardSkeleton(modifier: Modifier = Modifier) {
                 Box(
                     modifier = Modifier
                         .size(width = 110.dp, height = 18.dp)
-                        .clip(ExpressiveTokens.ExtraSmallShape)
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .shimmerBackground()
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(14.dp)
-                        .clip(ExpressiveTokens.ExtraSmallShape)
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .shimmerBackground()
                 )
             }
@@ -239,7 +238,7 @@ fun PlateSubscribeCardSkeleton(modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .size(width = 76.dp, height = 34.dp)
-                    .clip(ExpressiveTokens.ChipShape)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )
         }

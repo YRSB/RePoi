@@ -45,10 +45,9 @@ import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.PriceFormatter
+import androidx.compose.material3.ElevatedCard
 
 // ── 周边卡片字段映射矩阵 ────────────────────────────────────
 
@@ -289,8 +288,7 @@ internal fun HobbyCollectGridCard(
         }
     }
 
-    ExpressiveElevatedCard(
-        onClick = null,
+    ElevatedCard(
         modifier = modifier
             .combinedClickable(
                 onClick = onClick,
@@ -298,8 +296,7 @@ internal fun HobbyCollectGridCard(
             )
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = ExpressiveTokens.SmallCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
         Box(modifier = Modifier.fillMaxSize()) {
@@ -332,7 +329,7 @@ internal fun HobbyCollectGridCard(
             // 右上角状态自适应徽章
             if (badgeContent.isNotBlank()) {
                 Surface(
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     color = Color.Black.copy(alpha = 0.55f),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -400,16 +397,14 @@ internal fun HobbyCollectListCard(
     val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrlOrDefault(item.actualCover) }
     val thumbImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "thumb")
 
-    ExpressiveElevatedCard(
-        onClick = null,
+    ElevatedCard(
         modifier = modifier
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick.takeIf { isSelectionEnabled } ?: {}
             )
             .fillMaxWidth(),
-        shape = ExpressiveTokens.MediumCardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -425,7 +420,7 @@ internal fun HobbyCollectListCard(
             Box(
                 modifier = Modifier
                     .size(68.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {

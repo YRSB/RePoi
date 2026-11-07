@@ -65,7 +65,6 @@ import com.nobody.repoi.ui.settings.components.SettingDropdownItem
 import com.nobody.repoi.ui.settings.components.SettingGroupTitle
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.ThemeCardColors
 import com.nobody.repoi.ui.theme.getOrCreateThemeCardColors
 import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
@@ -95,16 +94,28 @@ fun SettingsAppearancePane(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val seeds = remember {
-        listOf(
-            ThemeSeed.Dynamic,
-            ThemeSeed.Lotus,
-            ThemeSeed.Coral,
-            ThemeSeed.Amber,
-            ThemeSeed.Pink,
-            ThemeSeed.Mint,
-            ThemeSeed.Grape,
-            ThemeSeed.Tricolor
-        )
+        if (supportsDynamicColor) {
+            listOf(
+                ThemeSeed.Dynamic,
+                ThemeSeed.Lotus,
+                ThemeSeed.Coral,
+                ThemeSeed.Amber,
+                ThemeSeed.Pink,
+                ThemeSeed.Mint,
+                ThemeSeed.Grape,
+                ThemeSeed.Tricolor
+            )
+        } else {
+            listOf(
+                ThemeSeed.Lotus,
+                ThemeSeed.Coral,
+                ThemeSeed.Amber,
+                ThemeSeed.Pink,
+                ThemeSeed.Mint,
+                ThemeSeed.Grape,
+                ThemeSeed.Tricolor
+            )
+        }
     }
     val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
     val dynamicCardColors = remember(systemDynamicScheme, paletteStyle, specVersion) {
@@ -273,7 +284,7 @@ private fun PodAuraThemeCard(
         Box(
             modifier = Modifier
                 .size(74.dp)
-                .clip(ExpressiveTokens.CardShape)
+                .clip(MaterialTheme.shapes.large)
                 .clickable(onClick = onClick)
         ) {
             Box(
@@ -314,12 +325,11 @@ private fun PodAuraThemeCard(
                         .border(
                             width = 2.dp,
                             color = colors.primaryTone50,
-                            shape = ExpressiveTokens.CardShape
+                            shape = MaterialTheme.shapes.large
                         )
                 )
             }
         }
     }
 }
-
 

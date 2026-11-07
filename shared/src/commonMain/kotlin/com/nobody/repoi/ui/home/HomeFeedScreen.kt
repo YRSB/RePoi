@@ -111,7 +111,6 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.search.SearchNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.FeedActionDispatcher
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -296,11 +295,11 @@ fun HomeFeedScreen(
 
                 uiState.errorMessage != null && uiState.items.isEmpty() -> {
                     ElevatedCard(
-                        shape = ExpressiveTokens.CardShape,
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.elevatedCardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(top = totalHeaderHeight)
@@ -325,11 +324,11 @@ fun HomeFeedScreen(
 
                 uiState.items.isEmpty() -> {
                     ElevatedCard(
-                        shape = ExpressiveTokens.CardShape,
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.elevatedCardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = ExpressiveTokens.ElevationDefault),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(top = totalHeaderHeight)
@@ -486,7 +485,7 @@ fun HomeFeedScreen(
                         selected = uiState.selectedSubType == key,
                         onClick = { viewModel.selectSubType(key) },
                         label = { Text(label) },
-                        shape = ExpressiveTokens.ChipShape
+                        shape = MaterialTheme.shapes.small
                     )
                 }
             }

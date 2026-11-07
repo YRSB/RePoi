@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import com.nobody.repoi.ui.theme.bottomSheet
 
 /**
  * 专区右下角「+」悬浮按钮唤起的发布操作底部弹窗
@@ -51,7 +51,7 @@ fun ZonePublishSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = ExpressiveTokens.BottomSheetShape,
+        shape = MaterialTheme.shapes.bottomSheet,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier
     ) {
@@ -115,7 +115,7 @@ private fun PublishActionItem(
 ) {
     Surface(
         onClick = onClick,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier.fillMaxWidth()
     ) {
@@ -127,7 +127,7 @@ private fun PublishActionItem(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Surface(
-                shape = ExpressiveTokens.SmallCardShape,
+                shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(44.dp)
             ) {

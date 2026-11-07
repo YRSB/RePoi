@@ -48,7 +48,6 @@ import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlin.math.abs
@@ -79,12 +78,12 @@ fun ZonePostCard(
 ) {
     ElevatedCard(
         onClick = { onPostClick(post) },
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -152,7 +151,7 @@ fun ZonePostCard(
                 // 右上角所属板块/论坛标签
                 if (!post.forumName.isNullOrBlank()) {
                     Surface(
-                        shape = ExpressiveTokens.ExtraSmallShape,
+                        shape = MaterialTheme.shapes.extraSmall,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
                     ) {
                         Text(
@@ -207,7 +206,7 @@ fun ZonePostCard(
                     Box(
                         modifier = Modifier
                             .size(width = targetWidth, height = targetHeight)
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .clickable {
                                 onImageClick(allRawUrls, 0)
@@ -239,7 +238,7 @@ fun ZonePostCard(
                                 modifier = Modifier
                                     .size(104.dp)
                                     .aspectRatio(1f)
-                                    .clip(ExpressiveTokens.SmallCardShape)
+                                    .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .clickable {
                                         onImageClick(allRawUrls, index)
@@ -364,12 +363,12 @@ private fun PostThumbImage(
 @Composable
 fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -397,13 +396,13 @@ fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier
                             .size(width = 80.dp, height = 14.dp)
-                            .clip(ExpressiveTokens.ExtraSmallShape)
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .shimmerBackground()
                     )
                     Box(
                         modifier = Modifier
                             .size(width = 120.dp, height = 10.dp)
-                            .clip(ExpressiveTokens.ExtraSmallShape)
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .shimmerBackground()
                     )
                 }
@@ -413,7 +412,7 @@ fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(18.dp)
-                    .clip(ExpressiveTokens.ExtraSmallShape)
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerBackground()
             )
 
@@ -421,14 +420,14 @@ fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(14.dp)
-                    .clip(ExpressiveTokens.ExtraSmallShape)
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerBackground()
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
                     .height(14.dp)
-                    .clip(ExpressiveTokens.ExtraSmallShape)
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerBackground()
             )
 
@@ -440,7 +439,7 @@ fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier
                             .size(104.dp)
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .shimmerBackground()
                     )
                 }

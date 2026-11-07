@@ -49,7 +49,7 @@ import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.WorksCollectCard
 import com.nobody.repoi.ui.collect.components.worksDetailItemId
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 // ── 作品子页（从通用 4 页拆出，独立实现） ──────────────────
 
@@ -157,7 +157,7 @@ internal fun WorksCollectSubPage(
                 modifier = Modifier
                     .padding(end = if (isSelf) 4.dp else 12.dp)
                     .minimumInteractiveComponentSize()
-                    .clip(ExpressiveTokens.PillShape)
+                    .clip(CircleShape)
                     .clickable { onSwitchOrderAsc(!worksOrderAsc) }
                     .semantics { role = Role.Button }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -255,7 +255,7 @@ internal fun WorksCollectSubPage(
 
                                     subPageData.errorMessage != null -> Surface(
                                         onClick = onLoadNextPage,
-                                        shape = ExpressiveTokens.ButtonShape,
+                                        shape = CircleShape,
                                         color = MaterialTheme.colorScheme.errorContainer
                                     ) {
                                         Text(

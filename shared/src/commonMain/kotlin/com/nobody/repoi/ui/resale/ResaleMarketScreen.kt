@@ -61,7 +61,6 @@ import com.nobody.repoi.ui.resale.components.FilterDropdownChip
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleRegionPickerSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 import com.nobody.repoi.ui.zone.components.ZoneResaleCardSkeleton
 
@@ -433,7 +432,7 @@ private fun ResaleDropdownFilterBar(
             DropdownMenu(
                 expanded = typeMenuOpen,
                 onDismissRequest = { typeMenuOpen = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 DropdownMenuItem(
@@ -507,7 +506,7 @@ private fun ResaleDropdownFilterBar(
             DropdownMenu(
                 expanded = categoryMenuOpen,
                 onDismissRequest = { categoryMenuOpen = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 categories.forEach { (catId, name) ->
@@ -552,7 +551,7 @@ private fun ResaleDropdownFilterBar(
             DropdownMenu(
                 expanded = purityMenuOpen,
                 onDismissRequest = { purityMenuOpen = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 purities.forEach { (purityId, name) ->

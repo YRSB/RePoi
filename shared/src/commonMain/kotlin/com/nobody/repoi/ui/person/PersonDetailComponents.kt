@@ -60,10 +60,8 @@ import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.remote.model.PersonWorksItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevation
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.material3.ElevatedCard
 
 // ─────────────────────────────────────────────────────────────
 
@@ -97,7 +95,7 @@ internal fun PersonHeaderSection(
 
     val intro = person?.detailPlainText.orEmpty()
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -169,7 +167,7 @@ internal fun PersonHeaderSection(
                         val sexText = person?.sexText
                         if (!sexText.isNullOrBlank() && sexText != "未知") {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
@@ -184,7 +182,7 @@ internal fun PersonHeaderSection(
                         val bDay = person?.birthdayText
                         if (!bDay.isNullOrBlank() && bDay != "未知") {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
@@ -216,7 +214,7 @@ internal fun PersonHeaderSection(
             // 社交平台外链胶囊（推特等）
             if (!twitterUrl.isNullOrBlank()) {
                 Surface(
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.clickable {
                         try {
@@ -283,7 +281,7 @@ internal fun PersonHobbiesSection(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -325,7 +323,7 @@ internal fun PersonHobbiesSection(
                                     modifier = Modifier
                                         .weight(1f)
                                         .aspectRatio(0.8f)
-                                        .clip(ExpressiveTokens.MediumCardShape)
+                                        .clip(MaterialTheme.shapes.medium)
                                         .shimmerBackground()
                                 )
                             }
@@ -356,13 +354,12 @@ internal fun PersonHobbiesSection(
                     val item = entry.h
                     val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
 
-                    ExpressiveElevatedCard(
+                    ElevatedCard(
                         onClick = { onHobbyClick(entry) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(9f / 13f),
-                        shape = ExpressiveTokens.SmallCardShape,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (coverUrl.isNotBlank()) {
@@ -378,7 +375,7 @@ internal fun PersonHobbiesSection(
                             val job = entry.jobName.firstOrNull()
                             if (!job.isNullOrBlank()) {
                                 Surface(
-                                    shape = ExpressiveTokens.ExtraSmallShape,
+                                    shape = MaterialTheme.shapes.extraSmall,
                                     color = Color.Black.copy(alpha = 0.65f),
                                     modifier = Modifier
                                         .align(Alignment.TopStart)
@@ -436,7 +433,7 @@ internal fun PersonWorksSection(
 ) {
     if (!isLoading && works.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -472,7 +469,7 @@ internal fun PersonWorksSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -484,7 +481,7 @@ internal fun PersonWorksSection(
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onWorkClick(item) }
                         ) {
@@ -496,7 +493,7 @@ internal fun PersonWorksSection(
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (coverUrl.isNotBlank()) {
@@ -561,7 +558,7 @@ internal fun PersonCharactersSection(
 ) {
     if (!isLoading && characters.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -597,7 +594,7 @@ internal fun PersonCharactersSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .clip(ExpressiveTokens.CardShape)
+                            .clip(MaterialTheme.shapes.large)
                             .shimmerBackground()
                     )
                 }
@@ -609,7 +606,7 @@ internal fun PersonCharactersSection(
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onCharacterClick(item) }
                         ) {
@@ -621,7 +618,7 @@ internal fun PersonCharactersSection(
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .clip(ExpressiveTokens.SmallCardShape)
+                                        .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
                                     if (coverUrl.isNotBlank()) {
@@ -772,7 +769,7 @@ internal fun PersonDetailSkeleton(
             modifier = Modifier
                 .width(140.dp)
                 .height(22.dp)
-                .clip(ExpressiveTokens.SmallCardShape)
+                .clip(MaterialTheme.shapes.small)
                 .shimmerBackground()
                 .align(Alignment.CenterHorizontally)
         )
@@ -784,7 +781,7 @@ internal fun PersonDetailSkeleton(
                     .fillMaxWidth()
                     .height(120.dp)
                     .padding(horizontal = 14.dp, vertical = 6.dp)
-                    .clip(ExpressiveTokens.CardShape)
+                    .clip(MaterialTheme.shapes.large)
                     .shimmerBackground()
             )
         }

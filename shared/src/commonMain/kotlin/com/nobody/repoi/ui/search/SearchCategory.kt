@@ -97,4 +97,3 @@ fun isFilterActive(
     SearchTab.WORKS_ELEMENT -> elementsCategory != ElementsSubCategory.ALL || attribute != 0
     else -> false
 }
-

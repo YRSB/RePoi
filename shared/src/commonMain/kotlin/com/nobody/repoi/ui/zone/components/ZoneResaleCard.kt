@@ -55,7 +55,6 @@ import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 
@@ -94,12 +93,12 @@ fun ZoneResaleCard(
 
     ElevatedCard(
         onClick = onClick,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -115,7 +114,7 @@ fun ZoneResaleCard(
                 modifier = Modifier
                     .width(96.dp)
                     .aspectRatio(effectiveRatio)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
@@ -226,7 +225,7 @@ fun ZoneResaleCard(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Surface(
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = if (item.isBuy) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
@@ -280,7 +279,7 @@ fun ZoneResaleCard(
                     ) {
                         // 价格胶囊（高亮强调）
                         Surface(
-                            shape = ExpressiveTokens.ChipShape,
+                            shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Row(
@@ -309,7 +308,7 @@ fun ZoneResaleCard(
                         val purityText = item.purityStr?.trim()?.ifBlank { null }
                         if (purityText != null) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
@@ -339,7 +338,7 @@ fun ZoneResaleCard(
                         val location = item.location?.trim()?.ifBlank { null }
                         if (location != null) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
@@ -466,12 +465,12 @@ fun ZoneResaleCardSkeleton(
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -487,7 +486,7 @@ fun ZoneResaleCardSkeleton(
                 modifier = Modifier
                     .width(96.dp)
                     .height(130.dp)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )
 
@@ -525,7 +524,7 @@ fun ZoneResaleCardSkeleton(
                                 modifier = Modifier
                                     .width(70.dp)
                                     .height(14.dp)
-                                    .clip(ExpressiveTokens.ExtraSmallShape)
+                                    .clip(MaterialTheme.shapes.extraSmall)
                                     .shimmerBackground()
                             )
                         }
@@ -534,7 +533,7 @@ fun ZoneResaleCardSkeleton(
                             modifier = Modifier
                                 .width(60.dp)
                                 .height(14.dp)
-                                .clip(ExpressiveTokens.PillShape)
+                                .clip(CircleShape)
                                 .shimmerBackground()
                         )
                     }
@@ -546,14 +545,14 @@ fun ZoneResaleCardSkeleton(
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                             .height(14.dp)
-                            .clip(ExpressiveTokens.ExtraSmallShape)
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .shimmerBackground()
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.6f)
                             .height(14.dp)
-                            .clip(ExpressiveTokens.ExtraSmallShape)
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .shimmerBackground()
                     )
 
@@ -566,14 +565,14 @@ fun ZoneResaleCardSkeleton(
                             modifier = Modifier
                                 .width(60.dp)
                                 .height(22.dp)
-                                .clip(ExpressiveTokens.ChipShape)
+                                .clip(MaterialTheme.shapes.small)
                                 .shimmerBackground()
                         )
                         Box(
                             modifier = Modifier
                                 .width(50.dp)
                                 .height(22.dp)
-                                .clip(ExpressiveTokens.ChipShape)
+                                .clip(MaterialTheme.shapes.small)
                                 .shimmerBackground()
                         )
                     }
@@ -589,7 +588,7 @@ fun ZoneResaleCardSkeleton(
                         modifier = Modifier
                             .width(100.dp)
                             .height(12.dp)
-                            .clip(ExpressiveTokens.ExtraSmallShape)
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .shimmerBackground()
                     )
                     Box(

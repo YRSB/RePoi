@@ -44,7 +44,7 @@ data object SettingsAccountNavKey : SettingsSubNavKey
 /**
  * 设置页内部子栈多态序列化模块（供 SavedStateConfiguration 持久化与单测使用）。
  */
-val SettingsSubNavSerializersModule: kotlinx.serialization.modules.SerializersModule = kotlinx.serialization.modules.SerializersModule {
+val SettingsSubNavSerializersModule: SerializersModule = SerializersModule {
     polymorphic(NavKey::class) {
         subclass(SettingsListNavKey::class)
         subclass(SettingsAppearanceNavKey::class)

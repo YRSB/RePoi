@@ -96,8 +96,8 @@ import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlin.math.roundToInt
+import com.nobody.repoi.ui.theme.largeCard
 
 // ── 大图画廊 ────────────────────────────────────────────────
 
@@ -304,7 +304,7 @@ fun PictureGalleryScreen(
         // 4. 超长图保护提示（P2）
         if (uiState.isLongImage) {
             Surface(
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 color = Color.Black.copy(alpha = 0.6f),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -328,7 +328,7 @@ fun PictureGalleryScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = Color.Black.copy(alpha = 0.7f)
                 ) {
                     Row(
@@ -357,7 +357,7 @@ fun PictureGalleryScreen(
         ModalBottomSheet(
             onDismissRequest = { showActionSheet = false },
             sheetState = sheetState,
-            shape = ExpressiveTokens.LargeCardShape
+            shape = MaterialTheme.shapes.largeCard
         ) {
             GalleryActionSheet(
                 showListEntry = onOpenPictureList != null,
@@ -469,7 +469,7 @@ private fun GalleryActionBar(
                     )
                     if (collectCount > 0) {
                         Surface(
-                            shape = ExpressiveTokens.PillShape,
+                            shape = CircleShape,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
@@ -767,7 +767,7 @@ private fun RelateItemChip(
 ) {
     Surface(
         onClick = onClick,
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = Color.White.copy(alpha = 0.16f),
         modifier = Modifier.heightIn(min = 36.dp)
     ) {
@@ -780,7 +780,7 @@ private fun RelateItemChip(
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.75f),
                 modifier = Modifier
-                    .clip(ExpressiveTokens.ExtraSmallShape)
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(Color.White.copy(alpha = 0.14f))
                     .padding(horizontal = 6.dp, vertical = 1.dp)
             )
@@ -881,7 +881,7 @@ private fun GallerySheetRow(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = Color.Transparent,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -921,7 +921,7 @@ private fun ReportReasonDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = ExpressiveTokens.DialogShape,
+        shape = MaterialTheme.shapes.extraLarge,
         title = { Text("举报图片") },
         text = {
             Column {
@@ -935,7 +935,7 @@ private fun ReportReasonDialog(
                     value = reason,
                     onValueChange = { reason = it },
                     placeholder = { Text("例如：含有不适宜内容") },
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -945,7 +945,7 @@ private fun ReportReasonDialog(
             Button(
                 onClick = { onSubmit(reason.trim()) },
                 enabled = reason.isNotBlank(),
-                shape = ExpressiveTokens.ButtonShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("提交")

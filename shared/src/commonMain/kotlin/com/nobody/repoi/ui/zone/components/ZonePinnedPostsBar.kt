@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.PostItem
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
  * 专区讨论置顶贴条目展示栏。
@@ -60,12 +59,12 @@ fun ZonePinnedPostsBar(
     val hasMore = pinnedPosts.size > 2
 
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -144,7 +143,7 @@ private fun PinnedPostRow(
         // “置顶” M3 Primary Tonal 徽章
         Box(
             modifier = Modifier
-                .clip(ExpressiveTokens.ExtraSmallShape)
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(MaterialTheme.colorScheme.primaryContainer)
                 .padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
@@ -173,7 +172,7 @@ private fun PinnedPostRow(
         if (showToggle) {
             Box(
                 modifier = Modifier
-                    .clip(ExpressiveTokens.ExtraSmallShape)
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .clickable { onToggle() }
                     .padding(4.dp),
                 contentAlignment = Alignment.Center

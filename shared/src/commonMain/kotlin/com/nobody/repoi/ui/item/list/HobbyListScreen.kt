@@ -103,13 +103,13 @@ import com.nobody.repoi.ui.item.list.components.HobbyGridCardSkeleton
 import com.nobody.repoi.ui.item.list.components.HobbyListCard
 import com.nobody.repoi.ui.item.list.components.HobbyListCardSkeleton
 import com.nobody.repoi.ui.item.list.components.HobbyLoadingMoreFooter
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlin.math.roundToInt
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * KMP 当前年份（`Calendar.getInstance().get(YEAR)` 替代）。
@@ -342,7 +342,7 @@ fun HobbyListScreen(
                             )
                             Button(
                                 onClick = { viewModel.refresh() },
-                                shape = ExpressiveTokens.PillShape
+                                shape = CircleShape
                             ) {
                                 Text("重试")
                             }
@@ -603,7 +603,7 @@ private fun HobbyListTopBar(
                             .fillMaxWidth()
                             .height(40.dp)
                             .padding(end = 4.dp),
-                        shape = ExpressiveTokens.PillShape,
+                        shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(
@@ -702,7 +702,7 @@ private fun HobbyListTopBar(
                     // 搜索激活模式：搜索提交按钮
                     TextButton(
                         onClick = onSearch,
-                        shape = ExpressiveTokens.PillShape
+                        shape = CircleShape
                     ) {
                         Text(
                             text = "搜索",
@@ -820,7 +820,7 @@ private fun QuickFilterBar(
             DropdownMenu(
                 expanded = showOrderMenu,
                 onDismissRequest = { showOrderMenu = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 orderOptions.forEach { (orderKey, label) ->
@@ -866,7 +866,7 @@ private fun QuickFilterBar(
             DropdownMenu(
                 expanded = showYearMenu,
                 onDismissRequest = { showYearMenu = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 yearOptions.forEach { (year, label) ->
@@ -893,7 +893,7 @@ private fun QuickFilterBar(
             DropdownMenu(
                 expanded = showMonthMenu,
                 onDismissRequest = { showMonthMenu = false },
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 monthOptions.forEach { (month, label) ->
@@ -948,7 +948,7 @@ private fun FilterDropdownChip(
                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
-        shape = ExpressiveTokens.ChipShape,
+        shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,

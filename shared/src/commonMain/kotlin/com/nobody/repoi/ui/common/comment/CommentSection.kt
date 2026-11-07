@@ -112,7 +112,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.CommentItem
@@ -122,7 +121,6 @@ import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.util.canAddSticker
 import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.CommentFeedEntry
@@ -130,6 +128,7 @@ import com.nobody.repoi.util.buildCommentFeedEntries
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.util.FaceTextItem
 import com.nobody.repoi.util.loadFaceTexts
+import com.nobody.repoi.ui.theme.bottomSheet
 
 /**
  * M3 注意：评论区内容过滤与展示模式唯一定义归属 M2
@@ -289,7 +288,7 @@ fun CommentSectionHeader(
 
         Row(
             modifier = Modifier
-                .clip(ExpressiveTokens.PillShape)
+                .clip(CircleShape)
                 .clickable { onModeChange(nextMode) }
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -512,7 +511,7 @@ fun CommentItemCard(
                     ) {
                         if (interaction.onReplySubmit != null) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = Color.Transparent,
                                 modifier = Modifier.clickable { openReplyDialog(null) }
                             ) {
@@ -537,7 +536,7 @@ fun CommentItemCard(
                         }
                         if (canDelete) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = Color.Transparent,
                                 modifier = Modifier.clickable { openDeleteDialog() }
                             ) {
@@ -569,7 +568,7 @@ fun CommentItemCard(
                     val displayReplies = replies.take(CommentMutations.REPLY_PREVIEW_LIMIT)
 
                     Surface(
-                        shape = ExpressiveTokens.SmallCardShape,
+                        shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -807,7 +806,7 @@ fun CommentReplyRow(
                     ) {
                         if (canDelete) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = Color.Transparent,
                                 modifier = Modifier.clickable { showDeleteConfirm = true }
                             ) {
@@ -821,7 +820,7 @@ fun CommentReplyRow(
                         }
                         if (onReplyClick != null) {
                             Surface(
-                                shape = ExpressiveTokens.ChipShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = Color.Transparent,
                                 modifier = Modifier.clickable { onReplyClick(reply) }
                             ) {
@@ -914,7 +913,7 @@ private fun CommentDeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isDeleting) onDismiss() },
-        shape = ExpressiveTokens.DialogShape,
+        shape = MaterialTheme.shapes.extraLarge,
         title = { Text(text = title) },
         text = { Text(text = text) },
         confirmButton = {
@@ -1040,9 +1039,9 @@ fun CommentReplyDialog(
                     ) {
                         // 消费卡片内部空白区域点击，防止误触发外层遮罩关闭
                     },
-                shape = ExpressiveTokens.BottomSheetShape,
+                shape = MaterialTheme.shapes.bottomSheet,
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = ExpressiveTokens.ElevationLevel1
+                tonalElevation = 1.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -1269,7 +1268,7 @@ fun CommentReplyDialog(
                             }
                         }
                     },
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = if (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
                     enabled = !isSubmitting,
                     modifier = Modifier.height(36.dp)
@@ -1462,7 +1461,7 @@ private fun CommentsLoadingSkeleton(
         repeat(2) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
@@ -1477,12 +1476,12 @@ private fun CommentsLoadingSkeleton(
                     ) {
                         Box(modifier = Modifier.size(32.dp).clip(CircleShape).shimmerBackground())
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Box(modifier = Modifier.width(80.dp).height(14.dp).clip(ExpressiveTokens.ExtraSmallShape).shimmerBackground())
-                            Box(modifier = Modifier.width(50.dp).height(10.dp).clip(ExpressiveTokens.ExtraSmallShape).shimmerBackground())
+                            Box(modifier = Modifier.width(80.dp).height(14.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
+                            Box(modifier = Modifier.width(50.dp).height(10.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
                         }
                     }
-                    Box(modifier = Modifier.fillMaxWidth(0.9f).height(16.dp).clip(ExpressiveTokens.ExtraSmallShape).shimmerBackground())
-                    Box(modifier = Modifier.fillMaxWidth(0.6f).height(16.dp).clip(ExpressiveTokens.ExtraSmallShape).shimmerBackground())
+                    Box(modifier = Modifier.fillMaxWidth(0.9f).height(16.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
+                    Box(modifier = Modifier.fillMaxWidth(0.6f).height(16.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
                 }
             }
         }
@@ -1666,7 +1665,7 @@ fun CommentFeedPane(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = ExpressiveTokens.ElevationLevel1
+                tonalElevation = 1.dp
             ) {
                 Box(
                     modifier = Modifier

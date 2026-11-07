@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.AppLogger
 
 /**
@@ -115,12 +114,12 @@ fun Modifier.shimmerBackground(): Modifier {
 fun ActionCardSkeleton(modifier: Modifier = Modifier) {
     // 本卡片为纯占位无自身过渡，由上层骨架容器统一提供共享微光时钟
     ElevatedCard(
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -138,7 +137,7 @@ fun ActionCardSkeleton(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .width(96.dp)
                     .aspectRatio(1.0f)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )
 
@@ -281,5 +280,4 @@ fun ActionCardSkeleton(modifier: Modifier = Modifier) {
     }
 }
 }
-
 

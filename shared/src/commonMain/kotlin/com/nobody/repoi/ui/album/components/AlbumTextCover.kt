@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
  * 相册纯文本封面组件 (titleCover)。
@@ -29,7 +28,7 @@ import com.nobody.repoi.ui.theme.ExpressiveTokens
 fun AlbumTextCover(
     title: String,
     modifier: Modifier = Modifier,
-    shape: Shape = ExpressiveTokens.SmallCardShape,
+    shape: Shape = MaterialTheme.shapes.small,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     textStyle: TextStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),

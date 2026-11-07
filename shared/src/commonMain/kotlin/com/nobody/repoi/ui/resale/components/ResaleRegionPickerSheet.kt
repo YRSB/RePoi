@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.ResaleProvince
 import com.nobody.repoi.data.local.ResaleRegionData
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 二手交易地区双栏级联选择底板（100% 对齐条目页 CategoryPickerSheet 与 Hpoi 原版体系）
@@ -161,7 +161,7 @@ fun ResaleRegionPickerSheet(
                                     Box(
                                         modifier = Modifier
                                             .size(width = 3.dp, height = 14.dp)
-                                            .clip(ExpressiveTokens.PillShape)
+                                            .clip(CircleShape)
                                             .background(MaterialTheme.colorScheme.primary)
                                     )
                                 } else {
@@ -261,7 +261,7 @@ private fun RegionSubItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

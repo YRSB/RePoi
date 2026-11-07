@@ -70,8 +70,8 @@ import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.subpage.UserCollectPicCard
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -238,7 +238,7 @@ fun UserCreationScreen(
                             item.relateItemTitle?.let { title ->
                                 Surface(
                                     color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f),
-                                    shape = ExpressiveTokens.ChipShape,
+                                    shape = MaterialTheme.shapes.small,
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
                                         .padding(6.dp)
@@ -389,7 +389,7 @@ private fun CreationOrderBar(
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
                 },
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer

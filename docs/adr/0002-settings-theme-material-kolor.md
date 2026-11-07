@@ -18,7 +18,7 @@ RePoi 需对齐 PodAura 取色系统并适配 MaterialKolor 6.0+。在初始 4 �
 - **主题配色种子 (ThemeSeed)**：8 项预置（`Dynamic`, `Pink`, `Coral`, `Amber`, `Lotus`, `Mint`, `Grape`, `Tricolor` 真寻三色）。
 - **动态取色 (DynamicColor)**：Android 12+ 动态壁纸 Monet 取色，低版本与桌面端平滑降级。
 - **纯黑模式 (Amoled)**：深色模式下背景设为绝对纯黑 (`Color.Black`)，保护 OLED 屏幕并省电。
-- **色彩风格变体 (PaletteStyle)**：支持 `TonalSpot`, `Content`, `Expressive`, `Vibrant`, `Fidelity`, `FruitSalad`, `Rainbow` 等 10 种枚举。
+- **色彩风格变体 (PaletteStyle)**：支持 `TonalSpot`, `Neutral`, `Vibrant`, `Expressive`, `Rainbow`, `FruitSalad`, `Monochrome`, `Fidelity`, `Content` 共 9 种枚举。
 - **色彩标准规范 (ColorSpec.SpecVersion)**：默认 `SPEC_2025`，提供 `SPEC_2021` 兼容选项。
 - **色彩表现力增强 (ExpressiveColor)**：适配 Material 3 Expressive 高饱和高动态色系。
 
@@ -28,7 +28,7 @@ RePoi 需对齐 PodAura 取色系统并适配 MaterialKolor 6.0+。在初始 4 �
 - 在 `ThemeManager` 初始化时于后台协程调用 `warmUpThemeCardColors()`，提前完成静态预置种子的派生演算，消除进入设置页与快速切色时的掉帧卡顿。
 
 ### 3. 色卡几何与色彩容器层级契约
-- **三色圆盘分割**：上部半圆为 `primary`（占 50%），左下 1/4 圆为 `secondary`（占 25%），右下 1/4 圆为 `tertiaryContainer`（占 25%）；选中项外围呈现 2dp 主色描边环；
+- **三色圆盘分割**：上部半圆为 `primaryTone36`（占 50%），左下 1/4 圆为 `secondaryTone80`（占 25%），右下 1/4 圆为 `tertiaryTone65`（占 25%）；选中项外围呈现 2dp 主色描边环；
 - **容器底色严禁使用前景色**：色卡圆角卡片底色固定使用 `MaterialTheme.colorScheme.surfaceContainerLow`，在所有静态与动态主题下恒定提供清爽通透的浅色容器背景，彻底根除深灰底色 bug。
 
 ### 4. 同步快照与状态竞态保护

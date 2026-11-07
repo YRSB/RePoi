@@ -13,12 +13,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.settings.SettingsAccountSecurityUiState
 import com.nobody.repoi.ui.settings.bindings
 import com.nobody.repoi.ui.settings.components.SettingItem
@@ -51,6 +54,8 @@ private fun accountBindingIcon(title: String): ImageVector = when (title) {
 
 /**
  * 账号与安全详情 Pane：承载个人信息入口、账号安全与第三方绑定状态、退出登录等。
+ *
+ * 遵循 Zhihu-Hyperion 的 EmptyState 范式：未登录时展示居中 EmptyState 占位卡片与「立即登录」按钮。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +67,7 @@ fun SettingsAccountPane(
     onOpenProfile: () -> Unit,
     onRefreshAccount: () -> Unit,
     onRequestLogout: () -> Unit,
+    onNavigateToLogin: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -98,67 +104,83 @@ fun SettingsAccountPane(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            state = rememberLazyListState(),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item(key = "profile", contentType = "row") {
-                SettingItemGroup(title = "基本信息") {
-                    SettingItem(
-                        icon = Icons.Outlined.Person,
-                        title = "个人信息",
-                        subtitle = "头像昵称与个人主页",
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                        },
-                        onClick = onOpenProfile
-                    )
-                }
+        if (!isLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyState(
+                    icon = Icons.Outlined.Lock,
+                    title = "登录后管理账号与安全",
+                    description = "查看已绑定的手机、邮箱与微信",
+                    actionLabel = "立即登录",
+                    actionIcon = Icons.AutoMirrored.Outlined.Login,
+                    onAction = onNavigateToLogin
+                )
             }
-
-            item(key = "bindings", contentType = "segment") {
-                SettingItemGroup(title = "账号安全与绑定") {
-                    if (accountState.isLoading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(vertical = 20.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    } else if (accountState.loadFailed) {
+        } else {
+            LazyColumn(
+                state = rememberLazyListState(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item(key = "profile", contentType = "row") {
+                    SettingItemGroup(title = "基本信息") {
                         SettingItem(
-                            icon = Icons.Outlined.ErrorOutline,
-                            title = "账号状态加载失败",
-                            subtitle = "点击重试",
-                            titleColor = MaterialTheme.colorScheme.error,
-                            onClick = onRefreshAccount
+                            icon = Icons.Outlined.Person,
+                            title = "个人信息",
+                            subtitle = "头像昵称与个人主页",
+                            trailingContent = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            },
+                            onClick = onOpenProfile
                         )
-                    } else {
-                        val bindings = accountState.bindings()
-                        bindings.forEach { binding ->
+                    }
+                }
+
+                item(key = "bindings", contentType = "segment") {
+                    SettingItemGroup(title = "账号安全与绑定") {
+                        if (accountState.isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(vertical = 20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
+                        } else if (accountState.loadFailed) {
                             SettingItem(
-                                icon = accountBindingIcon(binding.title),
-                                title = binding.title,
-                                subtitle = binding.statusText
+                                icon = Icons.Outlined.ErrorOutline,
+                                title = "账号状态加载失败",
+                                subtitle = "点击重试",
+                                titleColor = MaterialTheme.colorScheme.error,
+                                onClick = onRefreshAccount
                             )
+                        } else {
+                            val bindings = accountState.bindings()
+                            bindings.forEach { binding ->
+                                SettingItem(
+                                    icon = accountBindingIcon(binding.title),
+                                    title = binding.title,
+                                    subtitle = binding.statusText
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            if (isLoggedIn) {
                 item(key = "logout", contentType = "logout") {
                     SettingItemGroup {
                         SettingItem(

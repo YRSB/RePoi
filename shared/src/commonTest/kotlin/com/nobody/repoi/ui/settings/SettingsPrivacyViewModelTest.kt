@@ -36,12 +36,13 @@ class SettingsPrivacyViewModelTest {
 
     private fun viewModel(
         mysqlBody: String = """{"userState":{"setting_collect_hobby":1,"setting_collect_album":0,"setting_collect_statistics":2,"setting_collect_other":1,"setting_privacy_friend":0}}""",
-        riakBody: String = """{"userState":{"setting_own_action":2,"setting_privacy_posts":1,"setting_stranger_message":0}}"""
+        riakBody: String = """{"userState":{"setting_own_action":2,"setting_privacy_posts":1,"setting_stranger_message":0}}""",
+        token: String = "utoken-test"
     ): Triple<MockApi, SettingsRepository, SettingsPrivacyViewModel> {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok(mysqlBody))
         mock.route("api/setting/riak/get", mock.ok(riakBody))
-        val repository = SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
+        val repository = SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
         return Triple(mock, repository, SettingsPrivacyViewModel(repository))
     }
 
@@ -61,6 +62,40 @@ class SettingsPrivacyViewModelTest {
         assertEquals(2, state.values["setting_own_action"])
         assertEquals(1, state.values["setting_privacy_posts"])
         assertEquals(0, state.values["setting_stranger_message"])
+    }
+
+    @Test
+    fun unauthenticated_skipsNetworkAndDefaultsEmpty() = runTest(testDispatcher) {
+        val (mock, _, vm) = viewModel(token = "")
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertTrue(state.values.isEmpty())
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun tokenChanges_triggersRefreshAndReset() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
+        mock.route("api/setting/riak/get", mock.ok("""{"userState":{"setting_own_action":2}}"""))
+        val tokenManager = FakeTokenManager("")
+        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val vm = SettingsPrivacyViewModel(repo)
+        advanceUntilIdle()
+        assertEquals(0, mock.requestCount)
+
+        tokenManager.currentToken = "new-token"
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.values["setting_collect_hobby"])
+        assertEquals(2, vm.uiState.value.values["setting_own_action"])
+
+        tokenManager.clearToken()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.values.isEmpty())
+        assertFalse(vm.uiState.value.isLoading)
     }
 
     @Test
@@ -179,4 +214,3 @@ class SettingsPrivacyViewModelTest {
         assertTrue(vm.uiState.value.savingKeys.isEmpty())
     }
 }
-

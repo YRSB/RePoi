@@ -108,7 +108,6 @@ import com.nobody.repoi.platform.LocalAppMessages
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.ThumbUp
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
@@ -130,7 +129,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
@@ -622,7 +620,7 @@ private fun HobbyHeaderOfficialSection(
                     modifier = Modifier
                         .width(135.dp)
                         .aspectRatio(9f / 13f)
-                        .clip(ExpressiveTokens.CardShape)
+                        .clip(MaterialTheme.shapes.large)
                         .background(
                             if (isDark) Color.White.copy(alpha = 0.06f)
                             else Color.Black.copy(alpha = 0.04f)
@@ -635,7 +633,7 @@ private fun HobbyHeaderOfficialSection(
                                     if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.06f)
                                 )
                             ),
-                            shape = ExpressiveTokens.CardShape
+                            shape = MaterialTheme.shapes.large
                         )
                         .clickable(onClick = onCoverClick)
                 ) {
@@ -884,7 +882,7 @@ private fun HobbyHeaderOfficialSection(
                             Card(
                                 onClick = { onPicClick(index) },
                                 modifier = Modifier.size(130.dp),
-                                shape = ExpressiveTokens.MediumCardShape,
+                                shape = MaterialTheme.shapes.medium,
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 )
@@ -922,7 +920,7 @@ private fun OfficialPicsMoreTile(
     Surface(
         onClick = onMoreClick,
         modifier = Modifier.size(130.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
@@ -983,7 +981,7 @@ private fun HobbySpecsSection(
         // 规格信息主卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = ExpressiveTokens.MediumCardShape,
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             )
@@ -1066,7 +1064,7 @@ private fun HobbySpecsSection(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = ExpressiveTokens.MediumCardShape,
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
@@ -1227,7 +1225,7 @@ private fun SpecEntryRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .noRippleClickable {
                                 if (isNavigatableEntry && onEntryClick != null) {
                                     onEntryClick(entry)
@@ -1311,7 +1309,7 @@ private fun HeaderBadgeCapsule(
     isPrimary: Boolean = false
 ) {
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = if (isPrimary) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.45f else 0.85f)
         } else {
@@ -1400,7 +1398,7 @@ private fun HobbyRelatedHobbyCard(
     Card(
         onClick = onClick,
         modifier = Modifier.width(136.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1414,7 +1412,7 @@ private fun HobbyRelatedHobbyCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(9f / 13f)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2)),
                 contentAlignment = Alignment.Center
             ) {
@@ -1449,7 +1447,7 @@ private fun HobbyRelatedHobbyCard(
                             .padding(4.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
-                                shape = ExpressiveTokens.PillShape
+                                shape = CircleShape
                             )
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
@@ -1563,7 +1561,7 @@ private fun HobbyUserAlbumsSection(
                             modifier = Modifier
                                 .height(160.dp)
                                 .width(shimmerWidth)
-                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clip(MaterialTheme.shapes.medium)
                                 .shimmerBackground()
                         )
                     }
@@ -1608,7 +1606,7 @@ private fun HobbyAlbumMoreTile(
     Surface(
         onClick = onMoreClick,
         modifier = modifier,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
@@ -1651,7 +1649,7 @@ private fun HobbyUserAlbumCard(
     Card(
         onClick = onClick,
         modifier = modifier.height(160.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1692,7 +1690,7 @@ private fun HobbyUserAlbumCard(
             if (praiseCount > 0L) {
                 Surface(
                     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
@@ -1840,7 +1838,7 @@ private fun DetailErrorState(
 
             Button(
                 onClick = onRetry,
-                shape = ExpressiveTokens.ButtonShape
+                shape = CircleShape
             ) {
                 Text("点击重新加载")
             }

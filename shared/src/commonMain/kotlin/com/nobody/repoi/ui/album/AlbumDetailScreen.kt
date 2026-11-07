@@ -116,9 +116,7 @@ import com.nobody.repoi.data.remote.model.RelatedAlbumItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.common.DetailTopNavigation
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableFloatStateOf
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import com.nobody.repoi.ui.common.ExpressiveToolbarButton
@@ -134,13 +132,13 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import androidx.compose.ui.platform.LocalUriHandler
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.HpoiLinkDispatcher
 import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.theme.largeCard
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -429,7 +427,7 @@ fun AlbumDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(placeholderHeights[index])
-                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clip(MaterialTheme.shapes.medium)
                                 .shimmerBackground()
                         )
                     }
@@ -440,7 +438,7 @@ fun AlbumDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 12.dp),
-                            shape = ExpressiveTokens.MediumCardShape,
+                            shape = MaterialTheme.shapes.medium,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             )
@@ -610,7 +608,7 @@ private fun AlbumHeaderCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.LargeCardShape,
+        shape = MaterialTheme.shapes.largeCard,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -738,7 +736,7 @@ private fun AlbumHeaderCard(
                 ) {
                     tags.forEach { tag ->
                         Surface(
-                            shape = ExpressiveTokens.ChipShape,
+                            shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Text(
@@ -780,7 +778,7 @@ private fun AlbumHeaderCard(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
                     Column(
@@ -841,7 +839,7 @@ private fun AlbumPictureItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onImageClick(index) },
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -967,7 +965,7 @@ private fun RelatedHobbyCard(
     Card(
         onClick = onClick,
         modifier = Modifier.size(120.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1070,7 +1068,7 @@ private fun RelatedAlbumCard(
     Card(
         onClick = onClick,
         modifier = modifier.height(160.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1111,7 +1109,7 @@ private fun RelatedAlbumCard(
             if (praiseCount > 0L) {
                 Surface(
                     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
@@ -1237,7 +1235,7 @@ private fun AlbumDetailSkeleton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(180.dp)
-                .clip(ExpressiveTokens.LargeCardShape)
+                .clip(MaterialTheme.shapes.largeCard)
                 .shimmerBackground()
         )
 
@@ -1247,7 +1245,7 @@ private fun AlbumDetailSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(260.dp)
-                    .clip(ExpressiveTokens.MediumCardShape)
+                    .clip(MaterialTheme.shapes.medium)
                     .shimmerBackground()
             )
         }
@@ -1266,7 +1264,7 @@ private fun AlbumErrorState(
     ) {
         ElevatedCard(
             modifier = Modifier.padding(24.dp),
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             )
@@ -1291,14 +1289,14 @@ private fun AlbumErrorState(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = onBack,
-                        shape = ExpressiveTokens.ButtonShape
+                        shape = CircleShape
                     ) {
                         Text("返回")
                     }
 
                     Button(
                         onClick = onRetry,
-                        shape = ExpressiveTokens.ButtonShape
+                        shape = CircleShape
                     ) {
                         Text("重试")
                     }
@@ -1307,4 +1305,3 @@ private fun AlbumErrorState(
         }
     }
 }
-

@@ -65,8 +65,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * 作品收藏编辑页（原版 `net.hpoi.ui.collect.CollectWorksActivity`）。
@@ -309,7 +309,7 @@ fun WorksCollectEditScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 3,
                                 maxLines = 6,
-                                shape = ExpressiveTokens.CardShape
+                                shape = MaterialTheme.shapes.large
                             )
                         }
                     }
@@ -326,7 +326,7 @@ fun WorksCollectEditScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
-                            shape = ExpressiveTokens.PillShape,
+                            shape = CircleShape,
                             enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.isLoading && !uiState.loadFailed
                         ) {
                             if (uiState.isSaving) {
@@ -350,7 +350,7 @@ fun WorksCollectEditScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
                                 ),
@@ -380,7 +380,7 @@ fun WorksCollectEditScreen(
         var inputTag by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { viewModel.setAddTagDialogVisible(false) },
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("添加标签") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -422,7 +422,7 @@ fun WorksCollectEditScreen(
     if (uiState.tagToDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRemoveTag() },
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("删除标签") },
             text = { Text("确定要删除标签「${uiState.tagToDelete}」吗？") },
             confirmButton = {
@@ -452,7 +452,7 @@ fun WorksCollectEditScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("是否取消收藏") },
             text = { Text("是否取消收藏后将移出收藏中心取消收藏") },
             confirmButton = {
@@ -482,7 +482,7 @@ private fun WorksCollectEditSection(
 ) {
     OutlinedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape
+        shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.fillMaxWidth()) { content() }
     }
@@ -505,7 +505,7 @@ private fun WorksCollectEditHeader(
         Box(
             modifier = Modifier
                 .size(60.dp)
-                .clip(ExpressiveTokens.SmallCardShape)
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center
         ) {
@@ -596,7 +596,7 @@ private fun WorksCollectTagsSection(
                                         .clickable { onRemoveTag(tag) }
                                 )
                             },
-                            shape = ExpressiveTokens.ChipShape,
+                            shape = MaterialTheme.shapes.small,
                             colors = InputChipDefaults.inputChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -627,7 +627,7 @@ private fun WorksCollectTagsSection(
                         SuggestionChip(
                             onClick = { onSelectOfficialTag(tag) },
                             label = { Text(tag, fontSize = 12.sp) },
-                            shape = ExpressiveTokens.ChipShape
+                            shape = MaterialTheme.shapes.small
                         )
                     }
                 }

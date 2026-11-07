@@ -27,6 +27,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.nobody.repoi.ui.settings.panes.formatBytes
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsCacheViewModelTest {
@@ -169,5 +170,15 @@ class SettingsCacheViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1024L * 1024L * 1024L, viewModel.uiState.value.maxSizeBytes)
+    }
+
+    @Test
+    fun formatBytes_formatsUnitsCorrectly() {
+        assertEquals("未知", formatBytes(-1))
+        assertEquals("500 B", formatBytes(500))
+        assertEquals("1.5 KB", formatBytes(1536))
+        assertEquals("10.0 MB", formatBytes(10L * 1024L * 1024L))
+        assertEquals("500.0 MB", formatBytes(500L * 1024L * 1024L))
+        assertEquals("1.50 GB", formatBytes((1.5 * 1024 * 1024 * 1024).toLong()))
     }
 }

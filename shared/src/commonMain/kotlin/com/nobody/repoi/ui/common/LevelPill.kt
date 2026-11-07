@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nobody.repoi.ui.theme.ExpressiveTokens
+import androidx.compose.foundation.shape.CircleShape
 
 // 用户等级徽章（与动态页一致：按等级分档配色，10 级以上展示 MASTER）。
 @Composable
@@ -25,7 +25,7 @@ fun LevelPill(
         else -> Triple("Lv.$level", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Surface(
-        shape = ExpressiveTokens.PillShape,
+        shape = CircleShape,
         color = containerColor,
         modifier = modifier
     ) {

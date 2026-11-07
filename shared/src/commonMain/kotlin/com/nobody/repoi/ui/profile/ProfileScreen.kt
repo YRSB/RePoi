@@ -105,7 +105,6 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.user.creation.UserCreationCategory
 import com.nobody.repoi.util.CdnUrlUtils
@@ -577,7 +576,7 @@ private fun ProfileImmersiveHeader(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         modifier = Modifier
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { onNavigateToUserInfo(profile.id) },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -606,7 +605,7 @@ private fun ProfileImmersiveHeader(
                     ) {
                         // 等级胶囊
                         Surface(
-                            shape = ExpressiveTokens.SmallCardShape,
+                            shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(vertical = 1.dp)
                         ) {
@@ -658,7 +657,7 @@ private fun ProfileImmersiveHeader(
 
                 // 签到胶囊按钮
                 Surface(
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = if (isSignedInToday) Color.White.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable(enabled = !isSignedInToday && !isCheckingIn) {
                         onCheckInClick()
@@ -733,7 +732,7 @@ private fun SocialStatColumn(
 ) {
     Column(
         modifier = modifier
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .clickable { onClick() }
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -767,7 +766,7 @@ private fun ProfileQuickActionGrid(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -905,7 +904,7 @@ private fun QuickActionButton(
 ) {
     Column(
         modifier = modifier
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -954,7 +953,7 @@ private fun PreorderShowcaseCard(
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -1051,7 +1050,7 @@ private fun BuyShowcaseCard(
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -1135,7 +1134,7 @@ private fun IntegratedStatColumn(
 ) {
     Column(
         modifier = modifier
-            .clip(ExpressiveTokens.SmallCardShape)
+            .clip(MaterialTheme.shapes.small)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(vertical = 4.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -1172,7 +1171,7 @@ private fun ProfileAlbumShowcaseCard(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -1196,7 +1195,7 @@ private fun ProfileAlbumShowcaseCard(
 
                 FilledTonalButton(
                     onClick = onPublishClick,
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     modifier = Modifier.height(32.dp)
                 ) {
@@ -1278,7 +1277,7 @@ private fun ProfileAlbumCard(
     Card(
         onClick = onClick,
         modifier = Modifier.size(80.dp),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1309,7 +1308,7 @@ private fun ProfileAlbumCard(
 
             // 点赞数角标
             Surface(
-                shape = ExpressiveTokens.SmallCardShape,
+                shape = MaterialTheme.shapes.small,
                 color = Color.Black.copy(alpha = 0.6f),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -1368,7 +1367,7 @@ private fun ProfileResaleCard(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -1420,7 +1419,7 @@ private fun ProfileResaleCard(
 
                 FilledTonalButton(
                     onClick = onPublishClick,
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     modifier = Modifier.height(32.dp)
                 ) {
@@ -1468,7 +1467,7 @@ private fun CollectFigureCard(
     Card(
         onClick = onClick,
         modifier = Modifier.size(72.dp),
-        shape = ExpressiveTokens.SmallCardShape,
+        shape = MaterialTheme.shapes.small,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -1726,7 +1725,7 @@ private fun UnauthenticatedImmersiveHeader(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         modifier = Modifier
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { onLoginClick() },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1755,7 +1754,7 @@ private fun UnauthenticatedImmersiveHeader(
                 }
 
                 Surface(
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { onLoginClick() }
                 ) {
@@ -1830,7 +1829,7 @@ private fun ProfileSkeletonLoading(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(180.dp),
-            shape = ExpressiveTokens.CardShape,
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             )
@@ -1853,7 +1852,7 @@ private fun ProfileSkeletonLoading(
                         modifier = Modifier
                             .width(120.dp)
                             .height(20.dp)
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .shimmerBackground()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1861,7 +1860,7 @@ private fun ProfileSkeletonLoading(
                         modifier = Modifier
                             .width(180.dp)
                             .height(14.dp)
-                            .clip(ExpressiveTokens.SmallCardShape)
+                            .clip(MaterialTheme.shapes.small)
                             .shimmerBackground()
                     )
                 }
@@ -1873,7 +1872,7 @@ private fun ProfileSkeletonLoading(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp),
-                shape = ExpressiveTokens.CardShape,
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
@@ -1900,7 +1899,7 @@ private fun ProfileErrorCard(
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
@@ -1927,7 +1926,7 @@ private fun ProfileErrorCard(
             Spacer(modifier = Modifier.height(14.dp))
             Button(
                 onClick = onRetry,
-                shape = ExpressiveTokens.PillShape,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -1962,9 +1961,9 @@ fun SupplementedMoneyDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
-            shape = ExpressiveTokens.DialogShape,
+            shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = ExpressiveTokens.DialogElevation
+            tonalElevation = 6.dp
         ) {
             Column(
                 modifier = Modifier
@@ -2033,7 +2032,7 @@ fun SupplementedMoneyDialog(
 
                 // 统计折合总额卡片
                 Surface(
-                    shape = ExpressiveTokens.MediumCardShape,
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -2088,7 +2087,7 @@ fun SupplementedMoneyDialog(
                     } else {
                         currentGroups.forEach { group ->
                             Surface(
-                                shape = ExpressiveTokens.SmallCardShape,
+                                shape = MaterialTheme.shapes.small,
                                 color = MaterialTheme.colorScheme.surfaceContainer,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -2148,7 +2147,7 @@ fun SupplementedMoneyDialog(
                 // 底部确定按钮
                 Button(
                     onClick = onDismissRequest,
-                    shape = ExpressiveTokens.PillShape,
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(text = "知道了", fontWeight = FontWeight.Bold)

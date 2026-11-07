@@ -136,7 +136,6 @@ import com.nobody.repoi.ui.item.list.components.HobbyListCardSkeleton
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
@@ -747,7 +746,7 @@ fun ZoneDetailScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height((180 + (index % 3) * 30).dp)
-                                            .clip(ExpressiveTokens.MediumCardShape)
+                                            .clip(MaterialTheme.shapes.medium)
                                             .shimmerBackground()
                                     )
                                 }
@@ -1082,7 +1081,7 @@ fun ZoneDetailScreen(
                                     selected = isSelected,
                                     onClick = { viewModel.selectAlbumOrder(key) },
                                     label = { Text(label) },
-                                    shape = ExpressiveTokens.ChipShape
+                                    shape = MaterialTheme.shapes.small
                                 )
                             }
                         }
@@ -1102,7 +1101,7 @@ fun ZoneDetailScreen(
                                     selected = isSelected,
                                     onClick = { viewModel.selectPostsOrder(key) },
                                     label = { Text(label) },
-                                    shape = ExpressiveTokens.ChipShape
+                                    shape = MaterialTheme.shapes.small
                                 )
                             }
                         }
@@ -1143,7 +1142,7 @@ fun ZoneDetailScreen(
                                 DropdownMenu(
                                     expanded = showOrderMenu,
                                     onDismissRequest = { showOrderMenu = false },
-                                    shape = ExpressiveTokens.MediumCardShape,
+                                    shape = MaterialTheme.shapes.medium,
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ) {
                                     orderOptions.forEach { (orderKey, label) ->
@@ -1190,7 +1189,7 @@ fun ZoneDetailScreen(
                                 DropdownMenu(
                                     expanded = showYearMenu,
                                     onDismissRequest = { showYearMenu = false },
-                                    shape = ExpressiveTokens.MediumCardShape,
+                                    shape = MaterialTheme.shapes.medium,
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ) {
                                     yearOptions.forEach { (year, label) ->
@@ -1218,7 +1217,7 @@ fun ZoneDetailScreen(
                                 DropdownMenu(
                                     expanded = showMonthMenu,
                                     onDismissRequest = { showMonthMenu = false },
-                                    shape = ExpressiveTokens.MediumCardShape,
+                                    shape = MaterialTheme.shapes.medium,
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ) {
                                     monthOptions.forEach { (month, label) ->
@@ -1251,7 +1250,7 @@ fun ZoneDetailScreen(
                                     selected = isSelected,
                                     onClick = { viewModel.setResaleType(typeKey) },
                                     label = { Text(label) },
-                                    shape = ExpressiveTokens.ChipShape
+                                    shape = MaterialTheme.shapes.small
                                 )
                             }
 
@@ -1263,7 +1262,7 @@ fun ZoneDetailScreen(
                                     selected = isSelected,
                                     onClick = { viewModel.setResalePurity(purityKey) },
                                     label = { Text(label) },
-                                    shape = ExpressiveTokens.ChipShape
+                                    shape = MaterialTheme.shapes.small
                                 )
                             }
                         }
@@ -1283,7 +1282,7 @@ fun ZoneDetailScreen(
                                     selected = isSelected,
                                     onClick = { viewModel.selectSubType(key) },
                                     label = { Text(label) },
-                                    shape = ExpressiveTokens.ChipShape
+                                    shape = MaterialTheme.shapes.small
                                 )
                             }
                         }
@@ -1337,7 +1336,7 @@ fun ZoneDetailScreen(
                         ) {
                             Surface(
                                 modifier = Modifier.weight(1f),
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
@@ -1440,7 +1439,7 @@ fun ZoneDetailScreen(
                         ) {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = ExpressiveTokens.PillShape,
+                                shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
@@ -1634,7 +1633,7 @@ private fun FilterDropdownChip(
                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
-        shape = ExpressiveTokens.ChipShape,
+        shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,

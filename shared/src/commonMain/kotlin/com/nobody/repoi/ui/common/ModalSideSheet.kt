@@ -35,8 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import kotlinx.coroutines.delay
+import com.nobody.repoi.ui.theme.sideSheet
 
 /**
  * Material Design 3 Modal Side Sheet 组件：
@@ -152,7 +152,7 @@ fun ModalSideSheet(
                 }
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = ExpressiveTokens.SideSheetShape
+                    shape = MaterialTheme.shapes.sideSheet
                 )
         ) {
             Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {

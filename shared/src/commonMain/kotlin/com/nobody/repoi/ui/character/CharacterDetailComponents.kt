@@ -83,10 +83,9 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ExpressiveElevatedCard
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.material3.ElevatedCard
 
 // ─────────────────────────────────────────────────────────────
 // 区块 0：角色档案综合头部 (CharacterHeaderSection)
@@ -113,7 +112,7 @@ internal fun CharacterHeaderSection(
     val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(cover)
     val intro = character?.detailPlainText.orEmpty()
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -133,7 +132,7 @@ internal fun CharacterHeaderSection(
                     modifier = Modifier
                         .width(105.dp)
                         .aspectRatio(9f / 13f)
-                        .clip(ExpressiveTokens.MediumCardShape)
+                        .clip(MaterialTheme.shapes.medium)
                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                         .clickable(onClick = onCoverClick)
                 ) {
@@ -180,7 +179,7 @@ internal fun CharacterHeaderSection(
                         character?.let { c ->
                             if (c.sex != 0) {
                                 Surface(
-                                    shape = ExpressiveTokens.SmallCardShape,
+                                    shape = MaterialTheme.shapes.small,
                                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
                                 ) {
                                     Text(
@@ -193,7 +192,7 @@ internal fun CharacterHeaderSection(
                             }
                             if (!c.birthday.isNullOrBlank()) {
                                 Surface(
-                                    shape = ExpressiveTokens.SmallCardShape,
+                                    shape = MaterialTheme.shapes.small,
                                     color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
                                 ) {
                                     Text(
@@ -245,7 +244,7 @@ internal fun CharacterHeaderSection(
                         AssistChip(
                             onClick = { onTagClick(zone.displayName) },
                             label = { Text(text = zone.displayName, fontSize = 12.sp) },
-                            shape = ExpressiveTokens.ButtonShape,
+                            shape = CircleShape,
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                             )
@@ -304,7 +303,7 @@ internal fun CharacterWorksSection(
 ) {
     if (!isLoading && works.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -342,7 +341,7 @@ internal fun CharacterWorksSection(
                         val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(work.wCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = ExpressiveTokens.CardShape,
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onWorkClick(work) }
                         ) {
@@ -355,7 +354,7 @@ internal fun CharacterWorksSection(
                                     Box(
                                         modifier = Modifier
                                             .size(52.dp)
-                                            .clip(ExpressiveTokens.SmallCardShape)
+                                            .clip(MaterialTheme.shapes.small)
                                             .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                     ) {
                                         if (coverUrl.isNotBlank()) {
@@ -453,7 +452,7 @@ private fun PerformerPill(
     val avatarUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(performer.pCover)
     Surface(
         onClick = onClick,
-        shape = ExpressiveTokens.ButtonShape,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
     ) {
@@ -502,7 +501,7 @@ internal fun CharacterHobbysSection(
 ) {
     if (!isLoading && hobbys.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -562,7 +561,7 @@ private fun CharacterHobbyCard(
     val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(hobby.cover)
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         onClick = onClick
     ) {
@@ -571,7 +570,7 @@ private fun CharacterHobbyCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(9f / 13f)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
             ) {
                 if (coverUrl.isNotBlank()) {
@@ -625,7 +624,7 @@ internal fun CharacterAlbumsSection(
     val displayAlbums = remember(albums) { albums.take(8) }
     val hasMore = albums.size > 8
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -658,7 +657,7 @@ internal fun CharacterAlbumsSection(
                                 modifier = Modifier
                                     .height(160.dp)
                                     .width(shimmerWidth)
-                                    .clip(ExpressiveTokens.MediumCardShape)
+                                    .clip(MaterialTheme.shapes.medium)
                                     .shimmerBackground()
                             )
                         }
@@ -712,7 +711,7 @@ private fun CharacterAlbumCard(
     Card(
         onClick = onClick,
         modifier = modifier.height(160.dp),
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -753,7 +752,7 @@ private fun CharacterAlbumCard(
             if (praiseCount > 0L) {
                 Surface(
                     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                    shape = ExpressiveTokens.ExtraSmallShape,
+                    shape = MaterialTheme.shapes.extraSmall,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
@@ -793,7 +792,7 @@ private fun AlbumMoreTile(
     Surface(
         onClick = onMoreClick,
         modifier = modifier,
-        shape = ExpressiveTokens.MediumCardShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
@@ -832,7 +831,7 @@ internal fun CharacterRelevantSection(
 ) {
     if (!isLoading && characters.isEmpty()) return
 
-    ExpressiveElevatedCard(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -882,7 +881,7 @@ private fun CharacterRelevantCard(
     val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     Surface(
         modifier = modifier.width(108.dp),
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         onClick = onClick
     ) {
@@ -891,7 +890,7 @@ private fun CharacterRelevantCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .clip(ExpressiveTokens.SmallCardShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
             ) {
                 if (coverUrl.isNotBlank()) {
@@ -944,7 +943,7 @@ internal fun CharacterDetailSkeleton(
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
         }
-        ExpressiveElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -953,7 +952,7 @@ internal fun CharacterDetailSkeleton(
                     modifier = Modifier
                         .width(105.dp)
                         .aspectRatio(9f / 13f)
-                        .clip(ExpressiveTokens.MediumCardShape)
+                        .clip(MaterialTheme.shapes.medium)
                         .shimmerBackground()
                 )
                 Column(
@@ -1057,4 +1056,3 @@ internal fun CharacterFloatingActionBar(
         )
     }
 }
-

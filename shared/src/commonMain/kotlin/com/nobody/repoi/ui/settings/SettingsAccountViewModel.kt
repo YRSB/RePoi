@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SettingsAccountSecurityUiState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val passwordBound: Boolean = false,
     val phoneBound: Boolean = false,
     val emailBound: Boolean = false,
@@ -38,14 +38,28 @@ fun SettingsAccountSecurityUiState.bindings(): List<SettingsAccountBinding> = li
 class SettingsAccountViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(SettingsAccountSecurityUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsAccountSecurityUiState(isLoading = settingsRepository.isLoggedIn)
+    )
     val uiState: StateFlow<SettingsAccountSecurityUiState> = _uiState.asStateFlow()
 
     init {
-        refresh()
+        viewModelScope.launch {
+            settingsRepository.tokenFlow.collect { token ->
+                if (token.isNotBlank()) {
+                    refresh()
+                } else {
+                    _uiState.value = SettingsAccountSecurityUiState(isLoading = false)
+                }
+            }
+        }
     }
 
     fun refresh() {
+        if (!settingsRepository.isLoggedIn) {
+            _uiState.update { it.copy(isLoading = false, loadFailed = false) }
+            return
+        }
         _uiState.update { it.copy(isLoading = true, loadFailed = false) }
         viewModelScope.launch {
             val check: AccountCheckResult? = settingsRepository.checkAccount().getOrNull()

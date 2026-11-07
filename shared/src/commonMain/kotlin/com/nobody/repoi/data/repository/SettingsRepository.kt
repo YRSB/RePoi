@@ -5,6 +5,7 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AccountCheckResult
 import com.nobody.repoi.data.remote.model.MaskItem
 import com.nobody.repoi.data.remote.model.UserPrivacyPayload
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -24,6 +25,9 @@ class SettingsRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager
 ) {
+    val tokenFlow: Flow<String> get() = tokenManager.tokenFlow
+    val isLoggedIn: Boolean get() = tokenManager.currentToken.isNotBlank()
+
     suspend fun addMask(itemNodeId: Long): Result<Unit> = runCatching {
         val response = api.addMask(itemNodeId = itemNodeId)
         response.unwrapUnit(tokenManager, "屏蔽失败")

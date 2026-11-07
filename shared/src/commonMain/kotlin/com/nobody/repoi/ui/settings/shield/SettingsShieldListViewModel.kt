@@ -19,7 +19,7 @@ enum class ShieldListTab(val title: String, val itemType: String) {
 data class SettingsShieldListUiState(
     val tab: ShieldListTab = ShieldListTab.User,
     val items: List<MaskItem> = emptyList(),
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val loadFailed: Boolean = false,
     val isUnblocking: Boolean = false,
     val unblockTarget: MaskItem? = null,
@@ -31,12 +31,22 @@ class SettingsShieldListViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsShieldListUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsShieldListUiState(isLoading = settingsRepository.isLoggedIn)
+    )
     val uiState: StateFlow<SettingsShieldListUiState> = _uiState.asStateFlow()
     private var loadSequence = 0L
 
     init {
-        loadTab(ShieldListTab.User)
+        viewModelScope.launch {
+            settingsRepository.tokenFlow.collect { token ->
+                if (token.isNotBlank()) {
+                    loadTab(_uiState.value.tab)
+                } else {
+                    _uiState.value = SettingsShieldListUiState(isLoading = false)
+                }
+            }
+        }
     }
 
     fun switchTab(tab: ShieldListTab) {
@@ -57,6 +67,7 @@ class SettingsShieldListViewModel(
     }
 
     fun blockItem(itemNodeId: Long) {
+        if (!settingsRepository.isLoggedIn) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBlocking = true, errorMessage = null) }
             settingsRepository.addMask(itemNodeId = itemNodeId)
@@ -75,8 +86,8 @@ class SettingsShieldListViewModel(
         }
     }
 
-
     fun executeUnblock() {
+        if (!settingsRepository.isLoggedIn) return
         val target = _uiState.value.unblockTarget ?: return
         val originTab = _uiState.value.tab
         viewModelScope.launch {
@@ -111,6 +122,10 @@ class SettingsShieldListViewModel(
     }
 
     private fun loadTab(tab: ShieldListTab) {
+        if (!settingsRepository.isLoggedIn) {
+            _uiState.update { it.copy(tab = tab, items = emptyList(), isLoading = false, loadFailed = false) }
+            return
+        }
         val sequence = ++loadSequence
         viewModelScope.launch {
             _uiState.update { it.copy(tab = tab, isLoading = true, loadFailed = false, errorMessage = null) }

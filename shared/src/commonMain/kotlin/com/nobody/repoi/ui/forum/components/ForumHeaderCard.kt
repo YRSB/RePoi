@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.ForumDetailData
 import com.nobody.repoi.ui.common.UserAvatar
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 /**
  * 讨论板 forum Tab 顶部版块头卡（对标原版 item_forum_detail）。
@@ -35,12 +34,12 @@ fun ForumHeaderCard(
 ) {
     ElevatedCard(
         onClick = onHeaderClick,
-        shape = ExpressiveTokens.CardShape,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = ExpressiveTokens.ElevationDefault
+            defaultElevation = 1.dp
         ),
         modifier = modifier.fillMaxWidth()
     ) {

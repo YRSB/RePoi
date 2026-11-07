@@ -57,7 +57,6 @@ import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.settings.shield.SettingsShieldUiState
-import com.nobody.repoi.ui.theme.ExpressiveTokens
 
 private fun privacyTitle(key: String): String = when (key) {
     PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
@@ -73,12 +72,16 @@ private fun privacyTitle(key: String): String = when (key) {
 
 /**
  * 浏览与内容详情 Pane：承载 R18 过滤、ExHobby 扩展图库、屏蔽与黑名单入口、隐私可见性配置。
+ *
+ * 遵循 Zhihu-Hyperion 范式：云端设置项在未登录时原生置灰禁用（enabled = false），
+ * 对应说明绑定在条目自身 subtitle 与分组 footer 描述中，杜绝弹窗拦截打扰。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContentPane(
     showBackButton: Boolean,
     onBack: () -> Unit,
+    isLoggedIn: Boolean,
     shieldState: SettingsShieldUiState,
     isExHobbyEnabled: Boolean,
     privacyState: SettingsPrivacyUiState,
@@ -102,7 +105,7 @@ fun SettingsContentPane(
         val current = privacyState.values[editing] ?: 0
         Dialog(onDismissRequest = { editingKey = null }) {
             Surface(
-                shape = ExpressiveTokens.CardShape,
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -125,7 +128,7 @@ fun SettingsContentPane(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(ExpressiveTokens.MediumCardShape)
+                                .clip(MaterialTheme.shapes.medium)
                                 .clickable {
                                     editingKey = null
                                     onPrivacyOptionChange(editing, index)
@@ -199,21 +202,25 @@ fun SettingsContentPane(
                     SettingSwitchItem(
                         icon = Icons.Outlined.Visibility,
                         title = "R18 内容",
-                        subtitle = if (shieldState.isLoading) {
+                        subtitle = if (!isLoggedIn) {
+                            "需登录后配置"
+                        } else if (shieldState.isLoading) {
                             "正在读取…"
                         } else if (shieldState.nsfwVisible) {
                             "显示"
                         } else {
                             "不显示"
                         },
-                        checked = shieldState.nsfwVisible,
+                        checked = shieldState.nsfwVisible && isLoggedIn,
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         onCheckedChange = onNsfwChange
                     )
                     SettingSwitchItem(
                         icon = Icons.Outlined.Collections,
-                        title = "ExHobby 扩展图库",
-                        subtitle = "在手办与相册详情页展示第三方扩展图集（含 R18 扩展内容）",
+                        title = "ExHobby",
+                        subtitle = "显示来自ExHobby的图片",
                         checked = isExHobbyEnabled,
+                        enabled = true,
                         onCheckedChange = onExHobbyEnabledChange
                     )
                 }
@@ -224,37 +231,41 @@ fun SettingsContentPane(
                     SettingItem(
                         icon = Icons.Outlined.Block,
                         title = "屏蔽列表",
-                        subtitle = "用户 / 厂商 / 条目",
+                        subtitle = if (isLoggedIn) "用户 / 厂商 / 条目" else "需登录后管理",
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
+                                tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                             )
                         },
-                        onClick = onOpenShieldList
+                        onClick = if (isLoggedIn) onOpenShieldList else null
                     )
                     SettingItem(
                         icon = Icons.Outlined.PersonOff,
                         title = "黑名单",
-                        subtitle = "被屏蔽的用户将无法向您发送私信",
+                        subtitle = if (isLoggedIn) "被屏蔽的用户将无法向您发送私信" else "需登录后管理",
+                        enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
+                                tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                             )
                         },
-                        onClick = onOpenBlocklist
+                        onClick = if (isLoggedIn) onOpenBlocklist else null
                     )
                 }
             }
 
             item(key = "segment-collect", contentType = "segment") {
-                SettingItemGroup(title = "收藏信息可见性") {
-                    if (privacyState.isLoading) {
+                SettingItemGroup(
+                    title = "收藏信息可见性",
+                ) {
+                    if (privacyState.isLoading && isLoggedIn) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -270,15 +281,18 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.COLLECT_HOBBY }
+                            } else null
                         )
                         SettingItem(
                             icon = Icons.Outlined.Bookmarks,
@@ -286,15 +300,18 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.COLLECT_ALBUM }
+                            } else null
                         )
                         SettingItem(
                             icon = Icons.Outlined.BarChart,
@@ -302,15 +319,18 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.COLLECT_STATISTICS }
+                            } else null
                         )
                         SettingItem(
                             icon = Icons.Outlined.Domain,
@@ -318,38 +338,46 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.COLLECT_OTHER }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.COLLECT_OTHER }
+                            } else null
                         )
                     }
                 }
             }
 
             item(key = "segment-other", contentType = "segment") {
-                if (!privacyState.isLoading) {
-                    SettingItemGroup(title = "动态与社交可见性") {
+                if (!privacyState.isLoading || !isLoggedIn) {
+                    SettingItemGroup(
+                        title = "动态与社交可见性",
+                    ) {
                         SettingItem(
                             icon = Icons.Outlined.DynamicFeed,
                             title = "个人主页动态",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.OWN_ACTION }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.OWN_ACTION }
+                            } else null
                         )
                         SettingItem(
                             icon = Icons.Outlined.Groups,
@@ -357,15 +385,18 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.PRIVACY_FRIEND }
+                            } else null
                         )
                         SettingItem(
                             icon = Icons.Outlined.Forum,
@@ -373,38 +404,46 @@ fun SettingsContentPane(
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0
                             ) { visibilityOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.PRIVACY_POSTS }
+                            } else null
                         )
                     }
                 }
             }
 
             item(key = PrivacySettingKeys.STRANGER_MESSAGE, contentType = "row") {
-                if (!privacyState.isLoading) {
-                    SettingItemGroup(title = "私信设置") {
+                if (!privacyState.isLoading || !isLoggedIn) {
+                    SettingItemGroup(
+                        title = "私信设置"
+                    ) {
                         SettingItem(
                             icon = Icons.Outlined.Chat,
                             title = "陌生人私信设置",
                             subtitle = strangerOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0
                             ) { strangerOptions[0] },
+                            enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.outline
+                                    tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
                                 )
                             },
-                            onClick = { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
+                            onClick = if (isLoggedIn) {
+                                { editingKey = PrivacySettingKeys.STRANGER_MESSAGE }
+                            } else null
                         )
                     }
                 }
