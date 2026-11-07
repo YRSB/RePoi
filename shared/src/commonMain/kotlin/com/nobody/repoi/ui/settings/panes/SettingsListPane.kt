@@ -244,7 +244,7 @@ fun SettingsListPane(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+
                                 FilledTonalButton(
                                     onClick = onNavigateToLogin,
                                     modifier = Modifier.fillMaxWidth()

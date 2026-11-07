@@ -218,7 +218,7 @@ fun SettingsContentPane(
                     SettingSwitchItem(
                         icon = Icons.Outlined.Collections,
                         title = "ExHobby",
-                        subtitle = "在手办与相册详情页中显示来自ExHobby的图片",
+                        subtitle = "显示来自ExHobby的图片",
                         checked = isExHobbyEnabled,
                         enabled = true,
                         onCheckedChange = onExHobbyEnabledChange
