@@ -27,6 +27,8 @@ import org.koin.dsl.module
  * 为业务 HttpClientConfig 配置统一的日志系统与 ContentNegotiation。
  *
  * 日志级别默认配置为 [LogLevel.INFO]，仅记录请求/响应关键行与异常信息，避免全量 JSON Body 刷屏导致内存堆积。
+ * 注意：[KtorLogFormatter] 的 BODY 截断/脱敏分支与各 `*HEADERS` 短路分支只在临时把级别调到
+ * [LogLevel.BODY] 排查问题时才会命中，默认生产路径不会产生这些日志事件。
  */
 private fun HttpClientConfig<*>.applyCommonLoggingAndNegotiation(json: Json) {
     install(Logging) {
@@ -130,5 +132,10 @@ val networkModule = module {
     single { com.nobody.repoi.data.remote.interceptor.CommonParamsInterceptor(tokenProvider = { get<TokenManager>().currentToken }) }
 }
 
-/** 跨平台共享底层网络引擎契约（Android/JVM 分别提供预配置的 OkHttpClient）。 */
+/**
+ * 跨平台共享底层网络引擎契约（Android/JVM 分别提供预配置的 OkHttpClient）。
+ *
+ * 由 Koin 单例持有：Ktor 以 `HttpClient(engine)` 构造时不接管引擎所有权（`manageEngine = false`），
+ * 任一命名 client 关闭都不会连带关闭该连接池与调度器。
+ */
 expect fun createSharedHttpClientEngine(): HttpClientEngine

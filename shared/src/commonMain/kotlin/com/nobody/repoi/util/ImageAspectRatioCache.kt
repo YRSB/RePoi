@@ -3,9 +3,10 @@ package com.nobody.repoi.util
 import kotlinx.coroutines.sync.Mutex
 
 /**
- * 线程安全且受容量限制的图片纵横比 FIFO/LRU 缓存器（url -> width / height）。
+ * 线程安全且受容量限制的图片纵横比缓存器（url -> width / height），按插入顺序 FIFO 淘汰。
  * 限制最大 500 项，防止内存无界泄露，供瀑布流组件复用并消除滚动时的高度反复跳变。
- * 采用标准 LinkedHashMap 实现，完全解耦 Android SDK，天然支持 JVM 单元测试。
+ * 采用标准 LinkedHashMap（`accessOrder = false`，读写都不刷新顺序）实现，完全解耦 Android SDK，
+ * 天然支持 JVM 单元测试；命中率要求高时收益低于 LRU，但插入序淘汰的链表操作更少且行为可预测。
  *
  * 同步机制：以 [Mutex.tryLock] 快速路径保护读写。
  * 竞争失败时返回 null（读操作降级重算）或丢弃（写操作幂等跳过），严禁无锁并发读写破坏内部链表指针。

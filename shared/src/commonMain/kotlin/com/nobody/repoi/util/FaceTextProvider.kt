@@ -1,19 +1,12 @@
 package com.nobody.repoi.util
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class FaceTextItem(
     val id: String = "",
     val content: String = ""
 )
-
-internal val DefaultJson = Json {
-    ignoreUnknownKeys = true
-    coerceInputValues = true
-    isLenient = true
-}
 
 @kotlin.concurrent.Volatile
 private var cachedFaceTexts: List<FaceTextItem>? = null
