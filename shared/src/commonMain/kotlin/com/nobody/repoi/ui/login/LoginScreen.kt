@@ -1,9 +1,16 @@
 package com.nobody.repoi.ui.login
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +41,10 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -162,21 +172,24 @@ fun LoginContent(
             )
         )
 
-        // 说明：此处 BoxWithConstraints 只在顶层执行一次约束读取（大屏 440dp 居中），
-        // 不在滚动列表内重复测量，无子组合爆炸风险，故保留；改用窗口断点反而丢失表单容器实测宽度。
+        // 采用顶部锚定（Alignment.TopCenter）而非全屏居中，彻底消除因不同登录模式高度差异引起的头部品牌区与切换栏位移跳动
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
-            val formModifier = if (maxWidth > 440.dp) Modifier.width(440.dp) else Modifier.fillMaxWidth()
+            val isWideScreen = maxWidth > 440.dp
+            val formModifier = if (isWideScreen) Modifier.width(440.dp) else Modifier.fillMaxWidth()
+            val topPadding = if (isWideScreen) 48.dp else 24.dp
+
             Column(
                 modifier = formModifier
                     .imePadding()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp, vertical = 20.dp)
+                    .padding(horizontal = 24.dp)
+                    .padding(top = topPadding, bottom = 24.dp)
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Top
             ) {
                 // 品牌视觉区：56dp Flower 异形容器 + 标题
                 Row(
@@ -222,7 +235,12 @@ fun LoginContent(
                         val checked = uiState.loginMode == mode
                         ToggleButton(
                             checked = checked,
-                            onCheckedChange = { if (!checked) onModeChange(mode) },
+                            onCheckedChange = {
+                                if (!checked) {
+                                    focusManager.clearFocus()
+                                    onModeChange(mode)
+                                }
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .semantics {
@@ -246,51 +264,94 @@ fun LoginContent(
                     }
                 }
 
-                Crossfade(
+                // 表单输入区：AnimatedContent 结合水平平移与高度平滑过渡，替换突兀的瞬切
+                AnimatedContent(
                     targetState = uiState.loginMode,
-                    label = "LoginModeCrossfade",
-                    modifier = Modifier.fillMaxWidth()
+                    transitionSpec = {
+                        val slideDirection = if (targetState == LoginMode.TOKEN) 1 else -1
+                        (slideInHorizontally { width -> slideDirection * width / 3 } + fadeIn()) togetherWith
+                            (slideOutHorizontally { width -> -slideDirection * width / 3 } + fadeOut())
+                                .using(SizeTransform(clip = false))
+                    },
+                    label = "LoginModeAnimatedContent",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .animateContentSize()
                 ) { mode ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        if (mode == LoginMode.ACCOUNT) {
-                            AccountLoginForm(
-                                uiState = uiState,
-                                onAccountChange = onAccountChange,
-                                onPasswordChange = onPasswordChange,
-                                onTogglePasswordVisibility = onTogglePasswordVisibility,
-                                onLoginClick = {
-                                    focusManager.clearFocus()
-                                    onLoginClick()
-                                }
-                            )
-                        } else {
-                            TokenLoginForm(
-                                uiState = uiState,
-                                onTokenChange = onTokenChange,
-                                onToggleTokenVisibility = onToggleTokenVisibility,
-                                onClearToken = onClearToken,
-                                onPasteToken = onPasteToken,
-                                onTokenLoginClick = {
-                                    focusManager.clearFocus()
-                                    onTokenLoginClick()
-                                }
+                    if (mode == LoginMode.ACCOUNT) {
+                        AccountLoginForm(
+                            uiState = uiState,
+                            onAccountChange = onAccountChange,
+                            onPasswordChange = onPasswordChange,
+                            onTogglePasswordVisibility = onTogglePasswordVisibility,
+                            onSubmit = {
+                                focusManager.clearFocus()
+                                onLoginClick()
+                            }
+                        )
+                    } else {
+                        TokenLoginForm(
+                            uiState = uiState,
+                            onTokenChange = onTokenChange,
+                            onToggleTokenVisibility = onToggleTokenVisibility,
+                            onClearToken = onClearToken,
+                            onPasteToken = onPasteToken,
+                            onSubmit = {
+                                focusManager.clearFocus()
+                                onTokenLoginClick()
+                            }
+                        )
+                    }
+                }
+
+                // 外层统一步局的提交按钮：避免双按钮重复构建，随表单高度平滑随动
+                val canSubmit = when (uiState.loginMode) {
+                    LoginMode.ACCOUNT -> uiState.account.isNotBlank() && uiState.password.isNotBlank() && !uiState.isLoading
+                    LoginMode.TOKEN -> uiState.token.isNotBlank() && !uiState.isLoading
+                }
+                val submitText = if (uiState.loginMode == LoginMode.ACCOUNT) "登录" else "验证并登录"
+
+                FilledTonalButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        if (uiState.loginMode == LoginMode.ACCOUNT) onLoginClick() else onTokenLoginClick()
+                    },
+                    enabled = canSubmit,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                        .height(52.dp)
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.5.dp
+                        )
+                    } else {
+                        AnimatedContent(
+                            targetState = submitText,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "LoginSubmitTextAnimatedContent"
+                        ) { text ->
+                            Text(
+                                text = text,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
 
-                // 错误提示条
+                // 错误提示条：使用高度展开与淡入，消除突变跳动
                 AnimatedVisibility(
                     visible = uiState.errorMessage != null,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
                 ) {
                     uiState.errorMessage?.let { errorMsg ->
                         Box(
@@ -320,10 +381,9 @@ private fun AccountLoginForm(
     onAccountChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onTogglePasswordVisibility: () -> Unit,
-    onLoginClick: () -> Unit,
+    onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val focusManager = LocalFocusManager.current
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -379,36 +439,9 @@ private fun AccountLoginForm(
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    onLoginClick()
-                }
+                onDone = { onSubmit() }
             )
         )
-
-        val canSubmit = uiState.account.isNotBlank() && uiState.password.isNotBlank() && !uiState.isLoading
-
-        FilledTonalButton(
-            onClick = onLoginClick,
-            enabled = canSubmit,
-            shape = CircleShape,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.5.dp
-                )
-            } else {
-                Text(
-                    text = "登录",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
     }
 }
 
@@ -419,10 +452,9 @@ private fun TokenLoginForm(
     onToggleTokenVisibility: () -> Unit,
     onClearToken: () -> Unit,
     onPasteToken: () -> Unit,
-    onTokenLoginClick: () -> Unit,
+    onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val focusManager = LocalFocusManager.current
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -474,34 +506,42 @@ private fun TokenLoginForm(
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    onTokenLoginClick()
-                }
+                onDone = { onSubmit() }
             )
         )
 
-        val canSubmit = uiState.token.isNotBlank() && !uiState.isLoading
-
-        FilledTonalButton(
-            onClick = onTokenLoginClick,
-            enabled = canSubmit,
-            shape = CircleShape,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
+        // Token 模式辅助说明卡片：帮助用户理解令牌来源，同时平衡两种模式的表单视觉高度
+        Card(
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.5.dp
+            Row(
+                modifier = Modifier.padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp).padding(top = 2.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-            } else {
-                Text(
-                    text = "验证并登录",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "什么是登录令牌 (utoken)？",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "utoken 为网页端登录后的 Cookie 凭据，适用于免密直登或绕过部分网络风控环境。可从浏览器开发工具或已登录客户端中获取并粘贴。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
