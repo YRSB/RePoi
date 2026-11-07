@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -485,7 +485,7 @@ fun SettingSliderItem(
                             .height(26.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(2.dp)
+                                shape = CircleShape
                             )
                     )
                 },
@@ -515,7 +515,7 @@ fun SettingSliderItem(
  * 遵循 Material 3 Expressive 规范：
  * 1. 采用 [SegmentedListItem] 排版，右侧展示当前选中项值；
  * 2. 点击整行在条目处呼出带有圆角的 [DropdownMenu]；
- * 3. 选中项采用高亮胶囊背景块 [RoundedCornerShape] 与前置对勾图标。
+ * 3. 选中项采用高亮胶囊背景块与前置对勾图标。
  */
 @Composable
 fun <T> SettingDropdownItem(
@@ -550,7 +550,7 @@ fun <T> SettingDropdownItem(
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.heightIn(max = 360.dp)
                 ) {
@@ -561,7 +561,7 @@ fun <T> SettingDropdownItem(
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(12.dp)
+                                    shape = MaterialTheme.shapes.medium
                                 )
                         } else {
                             Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
