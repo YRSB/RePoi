@@ -83,7 +83,6 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.material3.ElevatedCard

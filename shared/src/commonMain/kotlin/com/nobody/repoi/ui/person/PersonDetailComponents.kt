@@ -60,7 +60,6 @@ import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.remote.model.PersonWorksItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
@@ -360,8 +359,7 @@ internal fun PersonHobbiesSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(9f / 13f),
-                        shape = MaterialTheme.shapes.small,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (coverUrl.isNotBlank()) {

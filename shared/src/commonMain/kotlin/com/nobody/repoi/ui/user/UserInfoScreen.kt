@@ -125,7 +125,7 @@ import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
-import com.nobody.repoi.ui.theme.ElevatedCard
+import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch

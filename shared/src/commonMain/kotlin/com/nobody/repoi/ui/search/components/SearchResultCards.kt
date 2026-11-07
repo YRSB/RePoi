@@ -45,7 +45,6 @@ import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.data.remote.model.SearchResultItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.SearchUserItem
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.material3.ElevatedCard
@@ -67,8 +66,7 @@ fun HobbySearchCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -177,8 +175,7 @@ fun AlbumStaggeredCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 封面图片区（自适应比例瀑布流）
@@ -326,8 +323,7 @@ fun GeneralSearchCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -402,8 +398,7 @@ fun SearchUserCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

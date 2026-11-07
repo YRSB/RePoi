@@ -87,7 +87,6 @@ import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet

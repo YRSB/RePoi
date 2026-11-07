@@ -45,10 +45,10 @@ import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.collect.MediaOrderOption
 import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CardDefaults
 
 // ── 收藏相册页卡片 ──────────────────────────────────────────
 
@@ -83,14 +83,14 @@ internal fun CollectAlbumCard(
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
-        // 卡片本体不带 onClick，点击统一由 combinedClickable 接管，避免双重点击区
-        onClick = null,
         shape = MaterialTheme.shapes.medium,
-        containerColor = if (isSelected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
+        ),
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(

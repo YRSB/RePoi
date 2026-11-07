@@ -90,7 +90,6 @@ import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet

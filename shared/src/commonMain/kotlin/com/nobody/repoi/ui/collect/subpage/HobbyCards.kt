@@ -45,7 +45,6 @@ import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.PriceFormatter
 import androidx.compose.material3.ElevatedCard
@@ -290,7 +289,6 @@ internal fun HobbyCollectGridCard(
     }
 
     ElevatedCard(
-        onClick = null,
         modifier = modifier
             .combinedClickable(
                 onClick = onClick,
@@ -298,8 +296,7 @@ internal fun HobbyCollectGridCard(
             )
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
         Box(modifier = Modifier.fillMaxSize()) {
@@ -401,15 +398,13 @@ internal fun HobbyCollectListCard(
     val thumbImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "thumb")
 
     ElevatedCard(
-        onClick = null,
         modifier = modifier
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick.takeIf { isSelectionEnabled } ?: {}
             )
             .fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

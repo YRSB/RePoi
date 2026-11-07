@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
@@ -111,8 +110,7 @@ internal fun WorksCollectCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

@@ -71,7 +71,6 @@ import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterWorksListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard

@@ -39,7 +39,6 @@ import coil3.compose.AsyncImage
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
@@ -64,8 +63,7 @@ fun HobbyGridCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (!loadFailed) {
@@ -156,8 +154,7 @@ fun HobbyListCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -317,8 +314,7 @@ fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         SkeletonBox(
             modifier = Modifier.fillMaxSize(),
@@ -334,8 +330,7 @@ fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
 fun HobbyListCardSkeleton(modifier: Modifier = Modifier) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

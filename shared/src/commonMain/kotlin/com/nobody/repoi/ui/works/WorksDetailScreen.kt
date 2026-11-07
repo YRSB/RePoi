@@ -103,7 +103,7 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
-import com.nobody.repoi.ui.theme.ElevatedCard
+import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache

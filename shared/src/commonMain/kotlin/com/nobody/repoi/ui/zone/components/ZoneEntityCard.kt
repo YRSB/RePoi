@@ -32,7 +32,6 @@ import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
@@ -54,8 +53,7 @@ fun ZoneEntityCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -124,8 +122,7 @@ fun ZoneEntityCardSkeleton(
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

@@ -71,7 +71,6 @@ import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlinx.coroutines.launch
@@ -315,8 +314,7 @@ private fun HobbyAlbumStaggeredCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         Column {
             Box(
@@ -453,8 +451,7 @@ private fun HobbyAlbumListSkeleton(
             }
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                shape = MaterialTheme.shapes.small
             ) {
                 Column {
                     Box(

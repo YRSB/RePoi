@@ -71,7 +71,6 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.ui.theme.Card
 import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.Card
 

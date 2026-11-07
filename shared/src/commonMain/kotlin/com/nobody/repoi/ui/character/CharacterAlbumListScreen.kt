@@ -70,7 +70,6 @@ import com.nobody.repoi.ui.common.listImageKey
 import com.nobody.repoi.ui.common.rememberListImageRequest
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterAlbumListNavParam
-import com.nobody.repoi.ui.theme.ElevatedCard
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.material3.ElevatedCard
@@ -250,8 +249,7 @@ private fun CharacterAlbumStaggeredCard(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = MaterialTheme.shapes.small
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 封面图片区（自适应比例瀑布流）
