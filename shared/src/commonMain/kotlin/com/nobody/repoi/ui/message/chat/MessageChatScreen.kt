@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.ChatMessageItem
@@ -134,11 +135,10 @@ fun MessageChatScreen(
         viewModel.loadInitial(param)
     }
 
-    // 长轮询由 VM 内的 viewModelScope 驱动（3 秒间隔）；界面进入即启动、离开即停止。
-    // jetbrains-lifecycle 的 LocalLifecycleOwner 在桌面目标不可用，故用 DisposableEffect 兜底。
-    DisposableEffect(param) {
+    // 长轮询由 VM 内的 viewModelScope 驱动（3 秒间隔）；进入前台恢复即启动、退后台或离开即停止。
+    LifecycleResumeEffect(param) {
         viewModel.startPolling()
-        onDispose {
+        onPauseOrDispose {
             viewModel.stopPolling()
         }
     }
@@ -305,11 +305,11 @@ fun MessageChatScreen(
                         }
                     }
 
-                    // 消息气泡流
-                    val sortedMessages = uiState.messages.sortedBy { it.date }
+                    // 消息气泡流（VM 预先保证正序排列，LazyColumn 显式配置 key 与 contentType）
                     items(
-                        items = sortedMessages,
-                        key = { it.actualMessageId }
+                        items = uiState.messages,
+                        key = { it.actualMessageId },
+                        contentType = { if (it.fromId == uiState.targetUserId) "bubble_other" else "bubble_self" }
                     ) { message ->
                         val isSelf = message.fromId != uiState.targetUserId
                         ChatBubbleItem(

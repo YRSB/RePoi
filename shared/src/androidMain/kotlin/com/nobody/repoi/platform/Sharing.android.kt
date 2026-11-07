@@ -9,7 +9,7 @@ import androidx.core.app.ShareCompat
 @Composable
 actual fun rememberTextSharing(): TextSharing {
     val context = LocalContext.current
-    return remember {
+    return remember(context) {
         object : TextSharing {
             override fun share(text: String) {
                 val shareIntent = ShareCompat.IntentBuilder(context)

@@ -1,13 +1,8 @@
 package com.nobody.repoi.data.remote.model
 
+import com.nobody.repoi.util.DefaultJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-private val SeriesJson = Json {
-    ignoreUnknownKeys = true
-    isLenient = true
-}
 
 /**
  * 系列主体响应 (api/item/get-v2?itemId=...&itemType=series)
@@ -54,7 +49,7 @@ data class SeriesData(
         get() {
             val jsonStr = otherInfo ?: return emptyList()
             return try {
-                SeriesJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
+                DefaultJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
             } catch (_: Exception) {
                 emptyList()
             }

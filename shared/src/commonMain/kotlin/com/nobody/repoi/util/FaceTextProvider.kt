@@ -1,7 +1,6 @@
 package com.nobody.repoi.util
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class FaceTextItem(
@@ -9,10 +8,11 @@ data class FaceTextItem(
     val content: String = ""
 )
 
-private val faceTextJson = Json { ignoreUnknownKeys = true }
+@kotlin.concurrent.Volatile
+private var cachedFaceTexts: List<FaceTextItem>? = null
 
 fun parseFaceTexts(raw: String): List<FaceTextItem> =
-    runCatching { faceTextJson.decodeFromString<List<FaceTextItem>>(raw) }.getOrDefault(emptyList())
+    runCatching { DefaultJson.decodeFromString<List<FaceTextItem>>(raw) }.getOrDefault(emptyList())
 
 /**
  * CMP `files/face_text.json` 资源内容（android+jvm 共用，无需 expect）。
@@ -21,5 +21,14 @@ suspend fun loadFaceTextAsset(): String =
     repoi.shared.generated.resources.Res.readBytes("files/face_text.json")
         .decodeToString()
 
-suspend fun loadFaceTexts(): List<FaceTextItem> =
-    runCatching { parseFaceTexts(loadFaceTextAsset()) }.getOrDefault(emptyList())
+/**
+ * 加载表情列表：首次读取 CMP 资源并解析后常驻静态内存复用，避免每次展开键盘重复读流与反序列化。
+ */
+suspend fun loadFaceTexts(): List<FaceTextItem> {
+    cachedFaceTexts?.let { return it }
+    val parsed = runCatching { parseFaceTexts(loadFaceTextAsset()) }.getOrDefault(emptyList())
+    if (parsed.isNotEmpty()) {
+        cachedFaceTexts = parsed
+    }
+    return parsed
+}

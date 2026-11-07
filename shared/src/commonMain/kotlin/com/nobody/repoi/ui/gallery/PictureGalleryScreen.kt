@@ -213,6 +213,7 @@ fun PictureGalleryScreen(
             if (url.isNotBlank()) {
                 val request = ImageRequest.Builder(platformContext)
                     .data(url)
+                    .size(MAX_DECODE_WIDTH_PX, screenHeightPx)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .build()

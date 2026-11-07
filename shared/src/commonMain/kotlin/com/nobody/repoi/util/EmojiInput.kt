@@ -1,6 +1,5 @@
 package com.nobody.repoi.util
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -13,8 +12,6 @@ fun buildEmoticonParam(stickers: List<String>): String? =
         buildJsonArray { paths.forEach { add(JsonPrimitive(it)) } }.toString()
     }
 
-private val emoticonUrlsJson = Json { ignoreUnknownKeys = true }
-
 fun parseEmoticonUrls(emoticon: JsonElement?): List<String> {
     if (emoticon is JsonArray) {
         return emoticon.mapNotNull { (it as? JsonPrimitive)?.content?.trim()?.takeIf { raw -> raw.isNotEmpty() } }
@@ -23,7 +20,7 @@ fun parseEmoticonUrls(emoticon: JsonElement?): List<String> {
         val raw = emoticon.content.trim()
         if (raw.isEmpty()) return emptyList()
         if (raw.startsWith("[")) {
-            return runCatching { emoticonUrlsJson.decodeFromString<List<String>>(raw) }
+            return runCatching { DefaultJson.decodeFromString<List<String>>(raw) }
                 .getOrDefault(emptyList())
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }

@@ -73,7 +73,9 @@ class ImageViewerStateHolder internal constructor(
     var imageUrls by mutableStateOf(initialImages)
         internal set
 
-    var currentIndex by mutableIntStateOf(initialIndex)
+    var currentIndex by mutableIntStateOf(
+        if (initialImages.isEmpty()) 0 else initialIndex.coerceIn(0, initialImages.size - 1)
+    )
         internal set
 
     var onLoadMoreCallback by mutableStateOf<(() -> Unit)?>(null)
@@ -90,11 +92,24 @@ class ImageViewerStateHolder internal constructor(
         onLoadMoreCallback = onLoadMore
     }
 
+    /**
+     * 动态同步图片列表。
+     *
+     * 以「当前图片 URL」为锚点重新定位：进程重建后 [Saver] 只恢复以当前图为中心的 50 项窗口，
+     * 此时窗口下标是相对值，直接 clamp 会把全量列表中的另一张图当成当前图。
+     * 若新列表在同一位置仍是同一张图（续拉追加的常规路径），保持原下标不变。
+     */
     override fun updateImages(images: List<String>) {
         if (!isVisible) return
         val validImages = images.filter { it.isNotBlank() }
-        if (validImages.isNotEmpty() && validImages != imageUrls) {
-            imageUrls = validImages
+        if (validImages.isEmpty() || validImages == imageUrls) return
+        val anchorUrl = imageUrls.getOrNull(currentIndex)
+        imageUrls = validImages
+        currentIndex = when {
+            anchorUrl == null -> 0
+            validImages.getOrNull(currentIndex) == anchorUrl -> currentIndex
+            else -> validImages.indexOf(anchorUrl).takeIf { it >= 0 }
+                ?: currentIndex.coerceIn(0, validImages.size - 1)
         }
     }
 
@@ -105,15 +120,33 @@ class ImageViewerStateHolder internal constructor(
     }
 
     companion object {
+        private const val MAX_SAVED_IMAGES = 50
+
         val Saver: Saver<ImageViewerStateHolder, Any> = listSaver(
             save = { holder ->
-                listOf(ArrayList(holder.imageUrls), holder.currentIndex)
+                val urls = holder.imageUrls
+                val current = holder.currentIndex
+                val (savedUrls, savedIndex) = if (urls.size > MAX_SAVED_IMAGES) {
+                    // 仅截取以当前索引为中心的安全窗口（最多 50 项），防止 Binder TransactionTooLargeException
+                    val halfWindow = MAX_SAVED_IMAGES / 2
+                    val start = (current - halfWindow).coerceAtLeast(0)
+                    val end = (start + MAX_SAVED_IMAGES).coerceAtMost(urls.size)
+                    val actualStart = (end - MAX_SAVED_IMAGES).coerceAtLeast(0)
+                    val sublist = urls.subList(actualStart, end)
+                    val newIndex = (current - actualStart).coerceIn(0, (sublist.size - 1).coerceAtLeast(0))
+                    sublist to newIndex
+                } else {
+                    val safeIndex = if (urls.isEmpty()) 0 else current.coerceIn(0, urls.size - 1)
+                    urls to safeIndex
+                }
+                listOf(ArrayList(savedUrls), savedIndex)
             },
             restore = { list ->
                 @Suppress("UNCHECKED_CAST")
                 val images = list[0] as List<String>
                 val index = list[1] as Int
-                ImageViewerStateHolder(initialImages = images, initialIndex = index)
+                val safeIndex = if (images.isEmpty()) 0 else index.coerceIn(0, images.size - 1)
+                ImageViewerStateHolder(initialImages = images, initialIndex = safeIndex)
             }
         )
     }

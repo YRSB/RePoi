@@ -1,12 +1,7 @@
 package com.nobody.repoi.data.remote.model
 
+import com.nobody.repoi.util.DefaultJson
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-private val PersonJson = Json {
-    ignoreUnknownKeys = true
-    isLenient = true
-}
 
 /**
  * 人物主体响应 (api/person/get)
@@ -76,7 +71,7 @@ data class PersonData(
         get() {
             val jsonStr = otherInfo ?: return emptyList()
             return try {
-                PersonJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
+                DefaultJson.decodeFromString<List<CompanyOtherInfoItem>>(jsonStr)
             } catch (_: Exception) {
                 emptyList()
             }

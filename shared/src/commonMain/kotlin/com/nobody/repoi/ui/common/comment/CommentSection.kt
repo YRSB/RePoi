@@ -168,7 +168,7 @@ fun LazyListScope.commentSectionItems(
     )
     entries.forEach { entry ->
         when (entry) {
-            CommentFeedEntry.Header -> item(key = "comments_header") {
+            CommentFeedEntry.Header -> item(key = "comments_header", contentType = "comments_header") {
                 CommentSectionHeader(
                     title = title,
                     totalCommentCount = totalCommentCount,
@@ -177,10 +177,10 @@ fun LazyListScope.commentSectionItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton") {
+            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", contentType = "comments_skeleton") {
                 ShimmerHost { CommentsLoadingSkeleton(isDark = isDark) }
             }
-            is CommentFeedEntry.HotComment -> item(key = entry.key) {
+            is CommentFeedEntry.HotComment -> item(key = entry.key, contentType = "comment_card") {
                 CommentItemCard(
                     comment = entry.comment,
                     isHot = false,
@@ -189,16 +189,16 @@ fun LazyListScope.commentSectionItems(
                     showDivider = entry.showDivider
                 )
             }
-            CommentFeedEntry.LatestDivider -> item(key = "comments_divider_default") {
+            CommentFeedEntry.LatestDivider -> item(key = "comments_divider_default", contentType = "comments_divider") {
                 LatestDividerRow(isDark = isDark)
             }
-            is CommentFeedEntry.LatestComment -> item(key = entry.key) {
+            is CommentFeedEntry.LatestComment -> item(key = entry.key, contentType = "comment_card") {
                 CommentItemCard(comment = entry.comment, isHot = false, isDark = isDark, interaction = interaction)
             }
-            is CommentFeedEntry.Empty -> item(key = entry.key) {
+            is CommentFeedEntry.Empty -> item(key = entry.key, contentType = "comments_empty") {
                 EmptyCommentsCard(text = entry.text, isDark = isDark)
             }
-            is CommentFeedEntry.PagedFooter -> item(key = entry.key) {
+            is CommentFeedEntry.PagedFooter -> item(key = entry.key, contentType = "comments_footer") {
                 CommentFooter(
                     isLoadingMore = entry.isLoadingMore,
                     hasMore = entry.hasMore,
@@ -208,7 +208,7 @@ fun LazyListScope.commentSectionItems(
                     onRetry = onRetryLoadMore
                 )
             }
-            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer") {
+            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", contentType = "comments_hot_footer") {
                 HotFooterText(hotCount = entry.hotCount)
             }
         }
@@ -359,13 +359,25 @@ fun CommentItemCard(
     var showDeleteConfirm by remember(comment.id) { mutableStateOf(false) }
     var isDeleting by remember(comment.id) { mutableStateOf(false) }
     val deleteScope = rememberCoroutineScope()
-    val canDelete = interaction.onDeleteComment != null &&
+    val canDelete = (interaction.onDeleteComment != null || interaction.onRequestDeleteComment != null) &&
         isOwnUser(comment.user, interaction.currentUserId)
 
     fun openReplyDialog(target: CommentReplyItem?) {
+        if (interaction.onRequestReply != null) {
+            interaction.onRequestReply.invoke(comment, target)
+            return
+        }
         if (interaction.onReplySubmit == null) return
         replyTarget = target
         showReplyDialog = true
+    }
+
+    fun openDeleteDialog() {
+        if (interaction.onRequestDeleteComment != null) {
+            interaction.onRequestDeleteComment.invoke(comment)
+            return
+        }
+        showDeleteConfirm = true
     }
 
     if (showReplyDialog && interaction.onReplySubmit != null) {
@@ -526,7 +538,7 @@ fun CommentItemCard(
                             Surface(
                                 shape = MaterialTheme.shapes.small,
                                 color = Color.Transparent,
-                                modifier = Modifier.clickable { showDeleteConfirm = true }
+                                modifier = Modifier.clickable { openDeleteDialog() }
                             ) {
                                 Text(
                                     text = "删除",
@@ -1506,7 +1518,7 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
     )
     entries.forEach { entry ->
         when (entry) {
-            CommentFeedEntry.Header -> item(key = "comments_header", span = StaggeredGridItemSpan.FullLine) {
+            CommentFeedEntry.Header -> item(key = "comments_header", span = StaggeredGridItemSpan.FullLine, contentType = "comments_header") {
                 CommentSectionHeader(
                     title = title,
                     totalCommentCount = totalCommentCount,
@@ -1515,10 +1527,10 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", span = StaggeredGridItemSpan.FullLine) {
+            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", span = StaggeredGridItemSpan.FullLine, contentType = "comments_skeleton") {
                 ShimmerHost { CommentsLoadingSkeleton(isDark = isDark) }
             }
-            is CommentFeedEntry.HotComment -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine) {
+            is CommentFeedEntry.HotComment -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine, contentType = "comment_card") {
                 CommentItemCard(
                     comment = entry.comment,
                     isHot = false,
@@ -1527,16 +1539,16 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     showDivider = entry.showDivider
                 )
             }
-            CommentFeedEntry.LatestDivider -> item(key = "comments_divider_default", span = StaggeredGridItemSpan.FullLine) {
+            CommentFeedEntry.LatestDivider -> item(key = "comments_divider_default", span = StaggeredGridItemSpan.FullLine, contentType = "comments_divider") {
                 LatestDividerRow(isDark = isDark)
             }
-            is CommentFeedEntry.LatestComment -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine) {
+            is CommentFeedEntry.LatestComment -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine, contentType = "comment_card") {
                 CommentItemCard(comment = entry.comment, isHot = false, isDark = isDark, interaction = interaction)
             }
-            is CommentFeedEntry.Empty -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine) {
+            is CommentFeedEntry.Empty -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine, contentType = "comments_empty") {
                 EmptyCommentsCard(text = entry.text, isDark = isDark)
             }
-            is CommentFeedEntry.PagedFooter -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine) {
+            is CommentFeedEntry.PagedFooter -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine, contentType = "comments_footer") {
                 CommentFooter(
                     isLoadingMore = entry.isLoadingMore,
                     hasMore = entry.hasMore,
@@ -1546,7 +1558,7 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     onRetry = onRetryLoadMore
                 )
             }
-            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", span = StaggeredGridItemSpan.FullLine) {
+            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", span = StaggeredGridItemSpan.FullLine, contentType = "comments_hot_footer") {
                 HotFooterText(hotCount = entry.hotCount)
             }
         }
@@ -1588,7 +1600,27 @@ fun CommentFeedPane(
     threadOverlay: @Composable (() -> Unit)? = null
 ) {
     var showTopLevelCommentDialog by remember { mutableStateOf(false) }
+    var replyDialogTarget by remember { mutableStateOf<Pair<CommentItem, CommentReplyItem?>?>(null) }
+    var deleteCommentTarget by remember { mutableStateOf<CommentItem?>(null) }
+    var isDeletingComment by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // 只在执行能力存在时安装 request 回调：否则「删除/回复」入口会因 canDelete/openReplyDialog 的
+    // 非空判定而显示，但顶层弹窗被原始 interaction 的能力门禁拦住，形成点了没反应的死入口。
+    val effectiveInteraction = remember(interaction) {
+        interaction.copy(
+            onRequestReply = if (interaction.onReplySubmit != null) {
+                { comment: CommentItem, target: CommentReplyItem? ->
+                    replyDialogTarget = comment to target
+                }
+            } else null,
+            onRequestDeleteComment = if (interaction.onDeleteComment != null) {
+                { comment: CommentItem ->
+                    deleteCommentTarget = comment
+                }
+            } else null
+        )
+    }
 
     // 切换排序模式时自动回顶
     var isFirstComposition by remember { mutableStateOf(true) }
@@ -1688,7 +1720,7 @@ fun CommentFeedPane(
                         commentsError = commentsError,
                         onRetryLoadMore = onRetryLoadMore ?: onLoadMoreComments,
                         showHeader = false,
-                        interaction = interaction
+                        interaction = effectiveInteraction
                     )
                 }
             }
@@ -1729,6 +1761,51 @@ fun CommentFeedPane(
                 },
                 onLoadStickerPacks = interaction.onLoadStickerPacks
             )
+        }
+
+        // 5. 楼中楼回复弹窗（顶层提升托管，避免列表项反复重建）
+        replyDialogTarget?.let { (comment, target) ->
+            if (interaction.onReplySubmit != null) {
+                CommentReplyDialog(
+                    comment = comment,
+                    target = target,
+                    onDismiss = { replyDialogTarget = null },
+                    onSubmit = { content, stickers ->
+                        val ok = interaction.onReplySubmit.invoke(comment, target, content, stickers)
+                        if (ok) {
+                            replyDialogTarget = null
+                        }
+                        ok
+                    },
+                    onLoadStickerPacks = interaction.onLoadStickerPacks
+                )
+            }
+        }
+
+        // 6. 删除主评论确认弹窗（顶层提升托管）
+        deleteCommentTarget?.let { comment ->
+            if (interaction.onDeleteComment != null) {
+                CommentDeleteConfirmDialog(
+                    title = "删除评论",
+                    text = "删除后无法恢复，子评论将一并删除，确定删除吗？",
+                    isDeleting = isDeletingComment,
+                    onDismiss = { deleteCommentTarget = null },
+                    onConfirm = {
+                        coroutineScope.launch {
+                            isDeletingComment = true
+                            try {
+                                val ok = interaction.onDeleteComment.invoke(comment)
+                                // 只在弹窗仍指向同一评论时关闭，避免误关后续打开的另一条确认框
+                                if (ok && deleteCommentTarget?.id == comment.id) {
+                                    deleteCommentTarget = null
+                                }
+                            } finally {
+                                isDeletingComment = false
+                            }
+                        }
+                    }
+                )
+            }
         }
     }
 }

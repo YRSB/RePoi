@@ -15,6 +15,10 @@ import kotlinx.coroutines.sync.withLock
 class ExHobbyRepository(
     private val api: ExHobbyApi
 ) {
+    companion object {
+        const val MAX_CACHE_PAGES = 30
+    }
+
     // 内存缓存：key = (id to page)，Mutex 守卫（commonMain 无 ConcurrentHashMap）
     private val cacheMutex = Mutex()
     private val pageCache = mutableMapOf<Pair<Long, Int>, List<ExHobbyImageItem>>()
@@ -40,7 +44,15 @@ class ExHobbyRepository(
                 item = id,
                 type = "all"
             )
-            cacheMutex.withLock { pageCache[cacheKey] = list }
+            cacheMutex.withLock {
+                if (!pageCache.containsKey(cacheKey) && pageCache.size >= MAX_CACHE_PAGES) {
+                    val oldestKey = pageCache.keys.firstOrNull()
+                    if (oldestKey != null) {
+                        pageCache.remove(oldestKey)
+                    }
+                }
+                pageCache[cacheKey] = list
+            }
             list
         } catch (e: CancellationException) {
             throw e

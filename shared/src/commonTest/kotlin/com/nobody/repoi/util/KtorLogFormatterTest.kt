@@ -134,4 +134,19 @@ class KtorLogFormatterTest {
             KtorLogFormatter.format("BODY START\n{\"utoken\":\"secret123\",\"user\":\"u1\"}\nBODY END")
         )
     }
+
+    @Test
+    fun formatBody_keywordBodyStartInsideBody_extractedCorrectly() {
+        val raw = "BODY START\n{\"text\":\"BODY START tutorial\"}\nBODY END"
+        assertEquals("""[Body] {"text":"BODY START tutorial"}""", KtorLogFormatter.format(raw))
+    }
+
+    @Test
+    fun sanitizeToken_truncatedJsonTokenAtBoundary_maskedSafely() {
+        // 当超长报文在 3000 字符处截断时，如果 token 的结尾引号被截断，仍应安全脱敏
+        val raw = "BODY START\n" + "x".repeat(2980) + "{\"utoken\":\"secret12345\"}\nBODY END"
+        val formatted = KtorLogFormatter.format(raw)
+        assertTrue(formatted != null && !formatted.contains("secret"))
+        assertTrue(formatted != null && formatted.contains("\"utoken\":\"***"))
+    }
 }

@@ -18,7 +18,7 @@ import com.nobody.repoi.platform.installUncaughtExceptionHook
 object AppLogger {
 
     private const val LOGCAT_TAG = "PoiShelf"
-    private const val MAX_LINES = 3000
+    private const val MAX_LINES = 1200
     private const val DIR_NAME = "poishelf-logs"
     private const val KEEP_FILES = 5
 
@@ -42,15 +42,17 @@ object AppLogger {
     }
 
     fun e(scope: String, message: String, throwable: Throwable? = null) {
-        record("E", scope, message + (throwable?.let { " 异常=${it.message}" } ?: ""))
+        record("E", scope, message, throwable)
         logger.e(throwable) { "[$scope] $message" }
     }
 
-    private fun record(level: String, scope: String, message: String) {
-        val line = "${DateTimeFormats.logTimestamp()} $level/[$scope] $message"
-        // record 允许同步调用；用 tryLock 快速路径，失败则丢弃（日志不阻塞业务）。
+    private fun record(level: String, scope: String, message: String, throwable: Throwable? = null) {
+        // record 允许同步调用；用 tryLock 快速路径，失败则丢弃（日志不阻塞业务），
+        // 且仅在成功获取锁后才执行时间戳与字符串插值，竞争失败时不分配临时对象。
         if (bufferMutex.tryLock()) {
             try {
+                val suffix = throwable?.let { " 异常=${it.message}" } ?: ""
+                val line = "${DateTimeFormats.logTimestamp()} $level/[$scope] $message$suffix"
                 if (buffer.size >= MAX_LINES) buffer.removeFirst()
                 buffer.addLast(line)
             } finally {

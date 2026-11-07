@@ -28,5 +28,7 @@ data class CommentSectionInteraction(
     val onDeleteReply: (suspend (comment: CommentItem, reply: CommentReplyItem) -> Boolean)? = null,
     val onViewAllReplies: ((CommentItem) -> Unit)? = null,
     val onAddComment: (suspend (content: String, stickers: List<String>) -> Boolean)? = null,
-    val onLoadStickerPacks: (suspend () -> List<StickerPackData>)? = null
+    val onLoadStickerPacks: (suspend () -> List<StickerPackData>)? = null,
+    val onRequestReply: ((comment: CommentItem, target: CommentReplyItem?) -> Unit)? = null,
+    val onRequestDeleteComment: ((comment: CommentItem) -> Unit)? = null
 )
