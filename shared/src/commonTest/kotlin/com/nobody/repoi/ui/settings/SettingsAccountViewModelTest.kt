@@ -167,4 +167,39 @@ class SettingsAccountViewModelTest {
         assertTrue(state.phoneBound)
         assertEquals("139****9000", state.maskedPhone)
     }
+
+    @Test
+    fun exportDialog_openDismissToggleVisibility() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val viewModel = SettingsAccountViewModel(repository(mock))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showExportDialog)
+        viewModel.openExportDialog()
+        assertTrue(viewModel.uiState.value.showExportDialog)
+        assertFalse(viewModel.uiState.value.exportTokenRevealed)
+
+        viewModel.toggleExportTokenVisibility()
+        assertTrue(viewModel.uiState.value.exportTokenRevealed)
+
+        viewModel.dismissExportDialog()
+        assertFalse(viewModel.uiState.value.showExportDialog)
+        assertFalse(viewModel.uiState.value.exportTokenRevealed)
+    }
+
+    @Test
+    fun activeToken_exposesCurrentSessionToken() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val viewModel = SettingsAccountViewModel(repository(mock, token = "utoken-export"))
+        advanceUntilIdle()
+
+        assertEquals("utoken-export", viewModel.activeToken)
+    }
+
+    @Test
+    fun maskToken_masksMiddleKeepsEnds() {
+        assertEquals("c4ca••••••••8f9e", com.nobody.repoi.ui.settings.panes.maskToken("c4ca123456788f9e"))
+        assertEquals("••••••••", com.nobody.repoi.ui.settings.panes.maskToken("short"))
+        assertEquals("暂无可用令牌，请重新登录", com.nobody.repoi.ui.settings.panes.maskToken(""))
+    }
 }

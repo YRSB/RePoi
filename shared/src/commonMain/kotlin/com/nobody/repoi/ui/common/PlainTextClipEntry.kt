@@ -15,3 +15,12 @@ import androidx.compose.ui.platform.ClipEntry
  * Android label 固定 `"poishelf"`（与原生版 `ClipData.newPlainText("poishelf", …)` 一致）。
  */
 expect fun plainTextClipEntry(text: String): ClipEntry
+
+/**
+ * 跨平台 [ClipEntry] 纯文本提取（Token 登录粘贴入口）。
+ *
+ * 背景：commonMain 的 [ClipEntry] 不暴露 `clipData`（平台构造器语义差异，
+ * 见 [plainTextClipEntry] 注释），读取必须下沉到平台侧实现。
+ * 返回已 trim 的首条文本，空剪贴板返回 null。
+ */
+expect fun ClipEntry.plainText(): String?

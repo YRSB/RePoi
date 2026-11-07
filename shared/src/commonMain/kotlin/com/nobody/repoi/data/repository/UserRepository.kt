@@ -131,6 +131,39 @@ class UserRepository(
             throw ApiException(response.code, response.msg ?: "登录失败")
         }
     }
+    /**
+     * Token 登录原子验权：用候选令牌经请求体直达通道请求当前用户信息，成功后持久化会话，失败不落盘。
+     *
+     * 验权成功调用 `saveToken`/`saveCurrentUser` 落盘并刷新内存档案；验权失败保留旧会话
+     * （内存镜像与 `_currentUserProfile` 不动）并按失败类型映射友好错误（4001 令牌失效、
+     * 网络异常、其他业务错误），调用方输入由 ViewModel 保留。
+     */
+    suspend fun loginWithToken(rawToken: String): Result<UserProfile> = runCatching {
+        val candidate = rawToken.trim()
+        if (candidate.isBlank()) throw ApiException(400, "请输入登录令牌")
+        val response = try {
+            api.getUserSelfWithToken(candidate)
+        } catch (e: Exception) {
+            if (e is ApiException) throw mapTokenLoginError(e)
+            throw ApiException(-1, "网络连接异常，请检查后重试")
+        }
+        if (response.isSuccess || (response.success && response.data?.user != null)) {
+            val profile = response.data?.user ?: throw ApiException(response.code, "用户信息为空")
+            val userName = profile.nickname?.ifBlank { null } ?: profile.userName
+            tokenManager.saveToken(candidate, userName)
+            runCatching { tokenManager.saveCurrentUser(profile.id, userName) }
+            _currentUserProfile.value = profile
+            profile
+        } else {
+            throw mapTokenLoginError(ApiException(response.code, response.msg ?: "Token 登录失败"))
+        }
+    }
+
+    private fun mapTokenLoginError(e: ApiException): ApiException = when {
+        e.code == 4001 -> ApiException(e.code, "登录令牌已失效，请重新获取")
+        e.code == -1 -> ApiException(e.code, "网络连接异常，请检查后重试")
+        else -> e
+    }
 
     suspend fun logout() {
         tokenManager.clearToken()

@@ -19,7 +19,9 @@ data class SettingsAccountSecurityUiState(
     val wechatBound: Boolean = false,
     val maskedPhone: String = "",
     val maskedEmail: String = "",
-    val loadFailed: Boolean = false
+    val loadFailed: Boolean = false,
+    val showExportDialog: Boolean = false,
+    val exportTokenRevealed: Boolean = false
 )
 
 data class SettingsAccountBinding(
@@ -81,5 +83,19 @@ class SettingsAccountViewModel(
                 )
             }
         }
+    }
+
+    val activeToken: String get() = settingsRepository.activeToken
+
+    fun openExportDialog() {
+        _uiState.update { it.copy(showExportDialog = true, exportTokenRevealed = false) }
+    }
+
+    fun dismissExportDialog() {
+        _uiState.update { it.copy(showExportDialog = false, exportTokenRevealed = false) }
+    }
+
+    fun toggleExportTokenVisibility() {
+        _uiState.update { it.copy(exportTokenRevealed = !it.exportTokenRevealed) }
     }
 }
