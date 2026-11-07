@@ -208,7 +208,7 @@ fun LazyListScope.commentSectionItems(
                     onRetry = onRetryLoadMore
                 )
             }
-            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", contentType = "comments_footer") {
+            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", contentType = "comments_hot_footer") {
                 HotFooterText(hotCount = entry.hotCount)
             }
         }
@@ -1558,7 +1558,7 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     onRetry = onRetryLoadMore
                 )
             }
-            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", span = StaggeredGridItemSpan.FullLine, contentType = "comments_footer") {
+            is CommentFeedEntry.HotFooter -> item(key = "hot_only_footer", span = StaggeredGridItemSpan.FullLine, contentType = "comments_hot_footer") {
                 HotFooterText(hotCount = entry.hotCount)
             }
         }
@@ -1605,14 +1605,20 @@ fun CommentFeedPane(
     var isDeletingComment by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    // 只在执行能力存在时安装 request 回调：否则「删除/回复」入口会因 canDelete/openReplyDialog 的
+    // 非空判定而显示，但顶层弹窗被原始 interaction 的能力门禁拦住，形成点了没反应的死入口。
     val effectiveInteraction = remember(interaction) {
         interaction.copy(
-            onRequestReply = { comment, target ->
-                replyDialogTarget = comment to target
-            },
-            onRequestDeleteComment = { comment ->
-                deleteCommentTarget = comment
-            }
+            onRequestReply = if (interaction.onReplySubmit != null) {
+                { comment: CommentItem, target: CommentReplyItem? ->
+                    replyDialogTarget = comment to target
+                }
+            } else null,
+            onRequestDeleteComment = if (interaction.onDeleteComment != null) {
+                { comment: CommentItem ->
+                    deleteCommentTarget = comment
+                }
+            } else null
         )
     }
 
@@ -1787,9 +1793,15 @@ fun CommentFeedPane(
                     onConfirm = {
                         coroutineScope.launch {
                             isDeletingComment = true
-                            val ok = interaction.onDeleteComment.invoke(comment)
-                            isDeletingComment = false
-                            if (ok) deleteCommentTarget = null
+                            try {
+                                val ok = interaction.onDeleteComment.invoke(comment)
+                                // 只在弹窗仍指向同一评论时关闭，避免误关后续打开的另一条确认框
+                                if (ok && deleteCommentTarget?.id == comment.id) {
+                                    deleteCommentTarget = null
+                                }
+                            } finally {
+                                isDeletingComment = false
+                            }
                         }
                     }
                 )
