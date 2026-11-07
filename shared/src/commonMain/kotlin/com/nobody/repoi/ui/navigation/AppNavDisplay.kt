@@ -4,6 +4,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
@@ -27,13 +28,15 @@ fun AppNavDisplay(
     modifier: Modifier = Modifier,
 ) {
     val onBack: () -> Unit = remember(navigator) { { navigator.pop() } }
+    // 调用方每次重组都会新建 onLoginSuccess；若作为 remember 键，entryProvider 会在每次导航期
+    // 重组时重建，抵消缓存收益。改为「最新值」引用，仅按稳定键记忆 provider。
+    val latestOnLoginSuccess = rememberUpdatedState(onLoginSuccess)
 
     val entryProvider: (NavKey) -> NavEntry<NavKey> = remember(
         navigator,
         tabEntries,
         snackbarHostState,
         showSnackbarHost,
-        onLoginSuccess,
         onBack
     ) {
         entryProvider {
@@ -54,7 +57,7 @@ fun AppNavDisplay(
             systemEntries(
                 navigator = navigator,
                 onBack = onBack,
-                onLoginSuccess = onLoginSuccess
+                onLoginSuccess = { latestOnLoginSuccess.value.invoke() }
             )
         }
     }
