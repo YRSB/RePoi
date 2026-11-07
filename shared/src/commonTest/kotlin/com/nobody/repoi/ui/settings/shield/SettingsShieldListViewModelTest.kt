@@ -142,7 +142,7 @@ class SettingsShieldListViewModelTest {
 
         assertTrue(viewModel.uiState.value.loadFailed)
 
-        mock.replaceRoute("api/mask/list", mock.ok(listBody(listOf(8L to "条目8"))))
+        mock.replaceRoute("api/mask/list", listBody(listOf(8L to "条目8")))
         viewModel.retry()
         advanceUntilIdle()
 
