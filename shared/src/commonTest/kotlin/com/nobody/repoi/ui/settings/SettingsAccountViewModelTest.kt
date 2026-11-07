@@ -32,8 +32,8 @@ class SettingsAccountViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repository(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
+    private fun repository(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
 
     @Test
     fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
@@ -57,6 +57,44 @@ class SettingsAccountViewModelTest {
         assertEquals("138****8000", bindings[1].statusText)
         assertEquals("未绑定", bindings[2].statusText)
         assertEquals("已绑定", bindings[3].statusText)
+    }
+
+    @Test
+    fun unauthenticated_skipsNetworkAndDefaultsEmpty() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val viewModel = SettingsAccountViewModel(repository(mock, token = ""))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertFalse(state.loadFailed)
+        assertFalse(state.passwordBound)
+        assertFalse(state.phoneBound)
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun tokenChanges_triggersRefreshAndReset() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val tokenManager = FakeTokenManager("")
+        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val viewModel = SettingsAccountViewModel(repo)
+        advanceUntilIdle()
+        assertEquals(0, mock.requestCount)
+
+        mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":false,"wechat":true}}"""))
+        mock.enqueue(mock.ok("""{"phone":"138****8000","email":""}"""))
+        tokenManager.currentToken = "new-token"
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.passwordBound)
+        assertEquals(2, mock.requestCount)
+
+        tokenManager.clearToken()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.passwordBound)
+        assertFalse(viewModel.uiState.value.isLoading)
     }
 
     @Test

@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsShieldUiState(
     val nsfwVisible: Boolean = false,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null
 )
@@ -20,14 +20,28 @@ class SettingsShieldViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsShieldUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsShieldUiState(isLoading = settingsRepository.isLoggedIn)
+    )
     val uiState: StateFlow<SettingsShieldUiState> = _uiState.asStateFlow()
 
     init {
-        reload()
+        viewModelScope.launch {
+            settingsRepository.tokenFlow.collect { token ->
+                if (token.isNotBlank()) {
+                    reload()
+                } else {
+                    _uiState.value = SettingsShieldUiState(isLoading = false, nsfwVisible = false)
+                }
+            }
+        }
     }
 
     fun reload() {
+        if (!settingsRepository.isLoggedIn) {
+            _uiState.update { it.copy(isLoading = false, errorMessage = null) }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             settingsRepository.getMysqlSettings()
@@ -51,6 +65,7 @@ class SettingsShieldViewModel(
     }
 
     fun setNsfwVisible(visible: Boolean) {
+        if (!settingsRepository.isLoggedIn) return
         val previous = _uiState.value.nsfwVisible
         var started = false
         _uiState.update {

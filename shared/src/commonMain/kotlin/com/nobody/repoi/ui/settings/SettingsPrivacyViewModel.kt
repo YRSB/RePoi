@@ -29,7 +29,7 @@ object PrivacySettingKeys {
 }
 
 data class SettingsPrivacyUiState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val values: Map<String, Int> = emptyMap(),
     val savingKeys: Set<String> = emptySet(),
     val errorMessage: String? = null
@@ -39,14 +39,28 @@ class SettingsPrivacyViewModel(
     private val repository: SettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsPrivacyUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsPrivacyUiState(isLoading = repository.isLoggedIn)
+    )
     val uiState: StateFlow<SettingsPrivacyUiState> = _uiState.asStateFlow()
 
     init {
-        refresh()
+        viewModelScope.launch {
+            repository.tokenFlow.collect { token ->
+                if (token.isNotBlank()) {
+                    refresh()
+                } else {
+                    _uiState.value = SettingsPrivacyUiState(isLoading = false)
+                }
+            }
+        }
     }
 
     fun refresh() {
+        if (!repository.isLoggedIn) {
+            _uiState.update { it.copy(isLoading = false, errorMessage = null) }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val mysql = repository.getMysqlSettings()
@@ -66,6 +80,7 @@ class SettingsPrivacyViewModel(
     }
 
     fun setOption(key: String, value: Int) {
+        if (!repository.isLoggedIn) return
         val previous = _uiState.value.values[key]
         var started = false
         _uiState.update {

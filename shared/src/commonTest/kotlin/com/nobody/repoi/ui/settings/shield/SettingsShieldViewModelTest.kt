@@ -35,8 +35,8 @@ class SettingsShieldViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repositoryOf(mock: MockApi): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test"))
+    private fun repositoryOf(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
+        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
 
     @Test
     fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
@@ -50,6 +50,39 @@ class SettingsShieldViewModelTest {
         assertTrue(state.nsfwVisible)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
+    }
+
+    @Test
+    fun unauthenticated_skipsNetworkAndDefaultsHidden() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val viewModel = SettingsShieldViewModel(repositoryOf(mock, token = ""))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.nsfwVisible)
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun tokenChanges_triggersReloadAndReset() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
+        val tokenManager = FakeTokenManager("")
+        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val viewModel = SettingsShieldViewModel(repo)
+        advanceUntilIdle()
+        assertEquals(0, mock.requestCount)
+
+        tokenManager.currentToken = "new-token"
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+
+        tokenManager.clearToken()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.nsfwVisible)
+        assertFalse(viewModel.uiState.value.isLoading)
     }
 
     @Test
@@ -102,36 +135,20 @@ class SettingsShieldViewModelTest {
         viewModel.setNsfwVisible(false)
         advanceUntilIdle()
 
+        val request = mock.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/setting/mysql/upd", request.encodedPath)
+        assertEquals("setting_r18", request.formEntries()["key"])
+        assertEquals("1", request.formEntries()["val"])
         assertFalse(viewModel.uiState.value.nsfwVisible)
-        val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
-        assertEquals("/api/setting/mysql/upd", recorded.encodedPath)
-        assertEquals("setting_r18", recorded.formEntries()["key"])
-        assertEquals("1", recorded.formEntries()["val"])
+        assertFalse(viewModel.uiState.value.isSaving)
     }
 
     @Test
-    fun setNsfwVisible_enablePostsValueTwo() = runTest(testDispatcher) {
-        val mock = MockApi()
-        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":1}}"""))
-        mock.route("api/setting/mysql/upd", mock.ok("{}"))
-
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
-        advanceUntilIdle()
-        mock.takeRequest()
-
-        viewModel.setNsfwVisible(true)
-        advanceUntilIdle()
-
-        assertTrue(viewModel.uiState.value.nsfwVisible)
-        assertEquals("2", mock.takeRequest().formEntries()["val"])
-    }
-
-    @Test
-    fun setNsfwVisible_failureRollsBackAndSetsError() = runTest(testDispatcher) {
+    fun setNsfwVisible_failureRollsBackStateAndSurfacesError() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
-        mock.route("api/setting/mysql/upd", mock.failure(500, "网络异常"))
+        mock.route("api/setting/mysql/upd", mock.failure(500, "保存失败"))
 
         val viewModel = SettingsShieldViewModel(repositoryOf(mock))
         advanceUntilIdle()
@@ -140,22 +157,46 @@ class SettingsShieldViewModelTest {
         viewModel.setNsfwVisible(false)
         advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        assertTrue(state.nsfwVisible)
-        assertFalse(state.isSaving)
-        assertNotNull(state.errorMessage)
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+        assertFalse(viewModel.uiState.value.isSaving)
+        assertEquals("保存失败", viewModel.uiState.value.errorMessage)
     }
 
     @Test
-    fun clearErrorMessage_dismissesError() = runTest(testDispatcher) {
+    fun clearErrorMessage_clearsState() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.failure(500, "网络异常"))
 
         val viewModel = SettingsShieldViewModel(repositoryOf(mock))
         advanceUntilIdle()
-        viewModel.clearErrorMessage()
+        assertNotNull(viewModel.uiState.value.errorMessage)
 
+        viewModel.clearErrorMessage()
         assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun setNsfwVisible_optimisticStateBeforeCompletion() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":1}}"""))
+        val gate = CompletableDeferred<Unit>()
+        mock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/setting/mysql/upd") },
+            body = { _, _, _ -> gate.await(); mock.ok("{}") }
+        )
+
+        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        advanceUntilIdle()
+        mock.takeRequest()
+
+        viewModel.setNsfwVisible(true)
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+        assertTrue(viewModel.uiState.value.isSaving)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.nsfwVisible)
+        assertFalse(viewModel.uiState.value.isSaving)
     }
 
     @Test

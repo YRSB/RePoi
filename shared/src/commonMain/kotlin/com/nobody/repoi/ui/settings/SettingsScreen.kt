@@ -72,6 +72,7 @@ fun SettingsScreen(
     onOpenUserInfo: (Long) -> Unit,
     onOpenShieldList: () -> Unit = {},
     onOpenBlocklist: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     themeManager: ThemeManager = koinInject(),
     profileViewModel: ProfileViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
@@ -326,9 +327,12 @@ fun SettingsScreen(
                 isWide = isWide,
                 selectedGroup = selectedGroup,
                 isLoggedIn = profileState.isLoggedIn,
+                profileState = profileState,
                 cacheState = cacheState,
                 onBack = onBack,
                 onSelectGroup = onSelectGroup,
+                onOpenUserInfo = onOpenUserInfo,
+                onNavigateToLogin = onNavigateToLogin,
                 onUpdateCacheLimit = { cacheViewModel.updateMaxSizeBytes(it) },
                 onRequestClearCache = { showClearCacheConfirmDialog = true },
                 onExportLog = onExportLog,
@@ -364,6 +368,7 @@ fun SettingsScreen(
             SettingsContentPane(
                 showBackButton = !isWide,
                 onBack = localOnBack,
+                isLoggedIn = profileState.isLoggedIn,
                 shieldState = shieldState,
                 isExHobbyEnabled = isExHobbyEnabled,
                 privacyState = privacyState,
@@ -385,10 +390,11 @@ fun SettingsScreen(
                 accountState = accountState,
                 onOpenProfile = {
                     val id = profileState.profile?.id ?: 0L
-                    if (id > 0L) onOpenUserInfo(id) else scope.launch { appMessages.show("请先登录") }
+                    if (id > 0L) onOpenUserInfo(id) else onNavigateToLogin()
                 },
                 onRefreshAccount = { accountViewModel.refresh() },
-                onRequestLogout = { showLogoutConfirmDialog = true }
+                onRequestLogout = { showLogoutConfirmDialog = true },
+                onNavigateToLogin = onNavigateToLogin
             )
         }
     }
