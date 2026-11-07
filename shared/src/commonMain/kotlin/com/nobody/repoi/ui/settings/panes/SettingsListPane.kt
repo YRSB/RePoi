@@ -244,12 +244,6 @@ fun SettingsListPane(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "登录后同步手账、管理隐私可见性与账号安全",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 FilledTonalButton(
                                     onClick = onNavigateToLogin,
