@@ -183,7 +183,7 @@ fun SettingsListPane(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 UserAvatar(
-                                    avatarUrl = profileState.profile?.avatar,
+                                    avatarUrl = profileState.profile?.header,
                                     size = 56.dp
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
