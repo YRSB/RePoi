@@ -49,7 +49,7 @@ import androidx.compose.material3.CardDefaults
  * 收藏页（category key=70000）专用相册卡片。
  *
  * 与相册主页面 `ui/album/components/AlbumFeedCard.kt` 的差异（本文件独立实现，**不改 AlbumFeedCard**）：
- * 1. **封面 CDN 变体走 `cover/sr/`**（`MediaCategory.ALBUM` + `ImagePurpose.CARD_STANDARD`）——
+ * 1. **封面 CDN 变体走 `cover/sr/`**（`MediaCategory.ALBUM` + `ImagePurpose.ADAPTIVE_GRID`）——
  *    原版收藏相册页封面取 `pe/c.java:158` 的 `cover/sr/` 自适应长宽比变体，
  *    而主页面卡片用的是 `/n`。瀑布流与相册场景按 AGENTS.md 规范必须走 `/sr`。
  * 2. **时间字段与排序档联动**（交付项 #5）：
@@ -193,11 +193,11 @@ private fun CollectAlbumCover(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // 相册无 cover/n/ 目录：CARD_STANDARD 由管道裁决到保留纵横比的 cover/sr/
+            // 相册无 cover/n/ 目录：瀑布流缩略统一由管道裁决到保留纵横比的 cover/sr/
             PoiAsyncImage(
                 path = item.actualCover,
                 category = MediaCategory.ALBUM,
-                purpose = ImagePurpose.CARD_STANDARD,
+                purpose = ImagePurpose.ADAPTIVE_GRID,
                 contentDescription = item.actualTitle.ifBlank { "相册封面" },
                 modifier = Modifier.fillMaxWidth(),
                 adaptiveRatio = true,
