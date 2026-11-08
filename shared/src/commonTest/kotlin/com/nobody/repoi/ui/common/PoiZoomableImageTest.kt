@@ -160,7 +160,7 @@ class PoiZoomableImageTest {
     }
 
     @Test
-    fun clampPan_landscapeWiderImage_allowsHorizontalPanOnly() {
+    fun clampPan_landscapeImage_clampsBothAxesToOverflowHalf() {
         val viewport = Size(1080f, 1920f)
         // 4:3 横图 Fit 后 1080x810，3 倍后 3240x2430：横向可移动 (3240-1080)/2 = 1080
         val landscape = Size(1600f, 1200f)
