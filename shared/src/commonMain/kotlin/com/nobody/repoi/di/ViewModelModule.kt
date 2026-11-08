@@ -95,7 +95,7 @@ val viewModelModule = module {
     viewModel { PersonDetailViewModel(get(), get()) }
     viewModel { PictureListViewModel(get()) }
     viewModel { PostDetailViewModel(get(), get(), get()) }
-    viewModel { ProfileViewModel(get(), get(), get()) }
+    viewModel { ProfileViewModel(get(), get(), get(), get()) }
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }

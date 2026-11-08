@@ -14,6 +14,8 @@ import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.FriendChangeEvent
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,45 +71,39 @@ data class ProfileUiState(
 class ProfileViewModel(
     private val userRepository: UserRepository,
     private val messageRepository: MessageRepository,
-    private val themeManager: ThemeManager
+    private val themeManager: ThemeManager,
+    private val userSession: UserSession
 ) : ViewModel() {
 
-    private var hasLoadedInitialProfile = false
+    /** 已触发过全量加载的令牌；令牌变化才允许再次进入加载，避免状态抖动重复请求。 */
+    private var loadedToken: String? = null
 
     private val _uiState = MutableStateFlow(
         ProfileUiState(
-            isLoggedIn = userRepository.isLoggedIn,
-            profile = runCatching { userRepository.currentUserProfile.value }.getOrNull()
+            isLoggedIn = userSession.isAuthenticated,
+            profile = (userSession.state.value as? SessionState.Authenticated)?.profile
         )
     )
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
-        if (userRepository.isLoggedIn) {
-            hasLoadedInitialProfile = true
-            loadProfile(isRefresh = false)
-        }
-
         viewModelScope.launch {
-            userRepository.tokenFlow.collect { token ->
-                val loggedIn = token.isNotBlank()
-                _uiState.update { it.copy(isLoggedIn = loggedIn) }
-                if (loggedIn) {
-                    if (!hasLoadedInitialProfile) {
-                        hasLoadedInitialProfile = true
-                        loadProfile(isRefresh = false)
+            userSession.state.collect { state ->
+                when (state) {
+                    is SessionState.Authenticated -> {
+                        _uiState.update {
+                            it.copy(isLoggedIn = true, profile = state.profile ?: it.profile)
+                        }
+                        if (loadedToken != state.token) {
+                            loadedToken = state.token
+                            loadProfile(isRefresh = false)
+                        }
                     }
-                } else {
-                    hasLoadedInitialProfile = false
-                    _uiState.value = ProfileUiState(isLoggedIn = false)
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            userRepository.currentUserProfile.collect { profile ->
-                if (profile != null) {
-                    _uiState.update { it.copy(profile = profile) }
+                    SessionState.Unauthenticated -> {
+                        loadedToken = null
+                        _uiState.value = ProfileUiState(isLoggedIn = false)
+                    }
+                    SessionState.Prewarming -> Unit
                 }
             }
         }
@@ -125,7 +121,7 @@ class ProfileViewModel(
                     state.copy(fellow = curFellow.copy(friendCount = updatedFriendCount))
                 }
                 // 后台静默对齐服务端最新关注统计，保证最终一致性
-                val currentUid = userRepository.currentUserId
+                val currentUid = userSession.currentUserId
                 if (currentUid > 0L) {
                     userRepository.getFellowCount(currentUid).onSuccess { freshFellow ->
                         _uiState.update { it.copy(fellow = freshFellow) }
@@ -141,8 +137,7 @@ class ProfileViewModel(
 
     fun loadProfile(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            userRepository.awaitTokenReady()
-            if (!userRepository.isLoggedIn) return@launch
+            if (!userSession.isAuthenticated) return@launch
 
             _uiState.update {
                 it.copy(
@@ -150,6 +145,11 @@ class ProfileViewModel(
                     isRefreshing = isRefresh,
                     errorMessage = null
                 )
+            }
+
+            // 下拉刷新显式刷新会话档案；全量聚合内部优先复用会话中最新档案
+            if (isRefresh) {
+                userSession.refreshProfile()
             }
 
             // 异步获取未读通知数
@@ -181,6 +181,8 @@ class ProfileViewModel(
                     )
                 }
             }.onFailure { e ->
+                // 令牌失效自愈已重置为未认证时，不再向访客态写入错误
+                if (!userSession.isAuthenticated) return@onFailure
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -206,7 +208,7 @@ class ProfileViewModel(
      * 每日打卡签到。
      */
     fun checkIn() {
-        if (!userRepository.isLoggedIn || _uiState.value.isCheckingIn || _uiState.value.isSignedInToday) return
+        if (!userSession.isAuthenticated || _uiState.value.isCheckingIn || _uiState.value.isSignedInToday) return
         viewModelScope.launch {
             _uiState.update { it.copy(isCheckingIn = true) }
             val result = userRepository.checkIn()
@@ -244,8 +246,8 @@ class ProfileViewModel(
 
     fun logout() {
         viewModelScope.launch {
-            userRepository.logout()
-            hasLoadedInitialProfile = false
+            userSession.logout()
+            loadedToken = null
             _uiState.value = ProfileUiState(isLoggedIn = false)
         }
     }
