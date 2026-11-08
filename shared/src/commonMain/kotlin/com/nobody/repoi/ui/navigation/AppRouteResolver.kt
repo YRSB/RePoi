@@ -17,7 +17,7 @@ import com.nobody.repoi.ui.works.WorksNavParam
  */
 object AppRouteResolver {
 
-    // ── 动态流动作解析（继承旧 FeedActionDispatcher 全部语义）────────────
+    // ── 动态流动作解析（沿用旧动态分发器全部语义）────────────
 
     /**
      * 根据 [ActionItem] 的关联条目与类型解析路由目标。

@@ -79,22 +79,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.platform.LocalAppMessages
-import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.ActionItem
-import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
 import com.nobody.repoi.ui.common.LocalImageViewer
-import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
-import com.nobody.repoi.ui.navigation.CharacterNavParam
-import com.nobody.repoi.ui.person.PersonNavParam
-import com.nobody.repoi.ui.series.SeriesNavParam
-import com.nobody.repoi.ui.vendor.VendorNavParam
-import com.nobody.repoi.ui.works.WorksNavParam
-import com.nobody.repoi.util.FeedActionDispatcher
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * 关注屏（顶层关注目的地，承载关注条目/用户模块）。
@@ -102,21 +93,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowScreen(
-    onNavigateToDetail: ((DetailNavParam) -> Unit)? = null,
-    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
-    onNavigateToPerson: ((PersonNavParam) -> Unit)? = null,
-    onNavigateToWorks: ((WorksNavParam) -> Unit)? = null,
-    onNavigateToVendor: ((VendorNavParam) -> Unit)? = null,
-    onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
-    onNavigateToSeries: ((SeriesNavParam) -> Unit)? = null,
-    onNavigateToUser: ((Long) -> Unit)? = null,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToLogin: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: FollowViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val gridState = rememberLazyStaggeredGridState()
-    val messages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
     val imageViewer = LocalImageViewer.current
 
@@ -240,33 +223,6 @@ fun FollowScreen(
     // 实测 tabRowHeightPx 仅用于下方折叠栏位移锚点，不回灌内容边距
     val feedColumns = rememberFeedStaggeredGridColumns()
 
-    // 条目卡片点击分发（与首页信息流一致）
-    val onActionClick: (ActionItem) -> Unit = remember(
-        messages,
-        onNavigateToDetail,
-        onNavigateToAlbum,
-        onNavigateToVendor,
-        onNavigateToCharacter,
-        onNavigateToPerson,
-        onNavigateToWorks,
-        onNavigateToSeries,
-        onNavigateToUser
-    ) {
-        { item ->
-            FeedActionDispatcher.dispatch(
-                actionItem = item,
-                onMessage = { messages.show(it) },
-                onNavigateToDetail = onNavigateToDetail,
-                onNavigateToAlbum = onNavigateToAlbum,
-                onNavigateToVendor = onNavigateToVendor,
-                onNavigateToCharacter = onNavigateToCharacter,
-                onNavigateToPerson = onNavigateToPerson,
-                onNavigateToWorks = onNavigateToWorks,
-                onNavigateToSeries = onNavigateToSeries,
-                onNavigateToUser = onNavigateToUser
-            )
-        }
-    }
     val onCardImageClick = remember(imageViewer) {
         { rawUrls: List<String>, initialIndex: Int ->
             imageViewer.show(rawUrls, initialIndex)
@@ -363,8 +319,7 @@ fun FollowScreen(
                     ) { actionItem ->
                         ActionCard(
                             actionItem = actionItem,
-                            onItemClick = onActionClick,
-                            onUserClick = onNavigateToUser,
+                            onActionClick = onActionClick,
                             onImageClick = onCardImageClick
                         )
                     }

@@ -35,7 +35,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.util.FeedActionDispatcher
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +49,7 @@ fun VendorDetailScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToCommentDetail: ((CommentDetailNavParam) -> Unit)? = null,
     onNavigateToComments: ((HobbyCommentsNavParam) -> Unit)? = null,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     viewModel: VendorDetailViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -57,16 +57,6 @@ fun VendorDetailScreen(
     val messages = LocalAppMessages.current
     val textSharing = rememberTextSharing()
     val imageViewer = LocalImageViewer.current
-
-    val onActionItemClick = remember(onNavigateToHobby) {
-        { actionItem: ActionItem ->
-            FeedActionDispatcher.dispatch(
-                actionItem = actionItem,
-                onMessage = { messages.show(it) },
-                onNavigateToDetail = onNavigateToHobby
-            )
-        }
-    }
 
     // 初始化加载
     LaunchedEffect(navParam) {
@@ -228,7 +218,7 @@ fun VendorDetailScreen(
                     VendorActionSection(
                         actions = uiState.actions,
                         isLoading = uiState.isActionsLoading,
-                        onActionClick = onActionItemClick,
+                        onActionClick = onActionClick,
                         onViewMore = {
                             val nodeId = if (uiState.companyNodeId > 0L) uiState.companyNodeId else navParam.companyNodeId
                             onNavigateToVendorActions(nodeId, company?.displayName ?: navParam.initialName)
