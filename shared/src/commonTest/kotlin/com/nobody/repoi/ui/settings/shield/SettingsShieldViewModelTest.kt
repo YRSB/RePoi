@@ -1,7 +1,8 @@
 package com.nobody.repoi.ui.settings.shield
 
 import com.nobody.repoi.data.local.TestDataStore
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -36,7 +37,7 @@ class SettingsShieldViewModelTest {
     }
 
     private fun repositoryOf(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
+        SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
 
     @Test
     fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
@@ -69,17 +70,17 @@ class SettingsShieldViewModelTest {
     fun tokenChanges_triggersReloadAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
-        val tokenManager = FakeTokenManager("")
-        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val session = FakeUserSession()
+        val repo = SettingsRepository(mock.api(testDispatcher), session)
         val viewModel = SettingsShieldViewModel(repo)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
-        tokenManager.currentToken = "new-token"
+        session.setState(SessionState.Authenticated(userId = 0L, token = "new-token"))
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.nsfwVisible)
 
-        tokenManager.clearToken()
+        session.setState(SessionState.Unauthenticated)
         advanceUntilIdle()
         assertFalse(viewModel.uiState.value.nsfwVisible)
         assertFalse(viewModel.uiState.value.isLoading)

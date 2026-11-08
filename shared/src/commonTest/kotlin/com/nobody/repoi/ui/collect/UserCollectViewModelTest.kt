@@ -8,6 +8,7 @@ import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.util.CollectInvalidationBus
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
@@ -46,7 +47,8 @@ class UserCollectViewModelTest {
     private suspend fun setup(userId: Long = 999L): UserCollectViewModel {
         val mockApi = MockApi()
         val tokenManager = FakeTokenManager("test-token")
-        val userRepo = UserRepository(mockApi.api(), tokenManager)
+        val session = FakeUserSession("test-token")
+        val userRepo = UserRepository(mockApi.api(), session)
         val collectRepo = CollectRepository(mockApi.api(), mockApi.json)
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
         val bus = CollectInvalidationBus()

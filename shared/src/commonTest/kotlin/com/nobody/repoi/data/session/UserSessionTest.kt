@@ -321,4 +321,61 @@ class UserSessionTest {
         assertEquals("", tokenManager.currentToken)
         assertEquals(1, tokenManager.clearTokenCalls)
     }
+
+    @Test
+    fun 刷新档案_解析全部扩展字段并写回已认证状态() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route(
+            "api/user/self",
+            """{"success": true,"code": 200,"msg": "ok","data": {"user": {"id": 88888,"nickname": "资深胶佬","userName": "collector888","sign": "入坑十年","intro": "专注比例手办与雕像收藏","header": "header/collector.jpg","bnr": "banner/collector.jpg","level": 6,"sex": 1,"birth": "1995-08-18","city": "上海","regTime": "2016-04-20 12:00:00","addTime": "2016-04-20","verify": "知名手办摄影师"}}}"""
+        )
+        val tokenManager = FakeTokenManager(token = "tok-1", userId = 1L)
+        val session = sessionOf(mock, tokenManager)
+        advanceUntilIdle()
+
+        val result = session.refreshProfile()
+
+        assertTrue(result.isSuccess, result.exceptionOrNull()?.toString())
+        val profile = result.getOrThrow()
+        assertEquals(88888L, profile.id)
+        assertEquals("资深胶佬", profile.nickname)
+        assertEquals("collector888", profile.userName)
+        assertEquals("资深胶佬", profile.displayName)
+        assertEquals("入坑十年", profile.sign)
+        assertEquals("专注比例手办与雕像收藏", profile.intro)
+        assertEquals("header/collector.jpg", profile.header)
+        assertEquals("banner/collector.jpg", profile.bnr)
+        assertEquals(6, profile.level)
+        assertEquals(1, profile.sex)
+        assertEquals("男", profile.genderText)
+        assertEquals("1995-08-18", profile.birth)
+        assertEquals("上海", profile.city)
+        assertEquals("2016-04-20 12:00:00", profile.regTime)
+        assertEquals("2016-04-20", profile.addTime)
+        assertEquals("2016-04-20 12:00:00", profile.displayRegisterTime)
+        assertEquals("知名手办摄影师", profile.verify)
+        assertTrue(profile.isVerified)
+
+        // 性别的另外取值与未认证兜底
+        val femaleProfile = profile.copy(sex = 0, verify = null)
+        assertEquals("女", femaleProfile.genderText)
+        assertFalse(femaleProfile.isVerified)
+
+        val secretProfile = profile.copy(sex = 2, verify = "")
+        assertEquals("保密", secretProfile.genderText)
+        assertFalse(secretProfile.isVerified)
+
+        val unsetProfile = profile.copy(sex = null)
+        assertEquals("未设置", unsetProfile.genderText)
+
+        // 注册时间回退到 addTime
+        val addTimeOnlyProfile = profile.copy(regTime = null)
+        assertEquals("2016-04-20", addTimeOnlyProfile.displayRegisterTime)
+
+        // 档案已写回会话状态
+        val authenticated = session.state.value as SessionState.Authenticated
+        assertEquals(88888L, authenticated.userId)
+        assertEquals(profile, authenticated.profile)
+        assertEquals(88888L, tokenManager.currentUserId)
+    }
 }

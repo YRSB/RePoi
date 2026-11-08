@@ -11,6 +11,7 @@ import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -83,15 +84,16 @@ class HobbyDetailViewModelExHobbyTest {
         val commentMock = MockApi()
         val userMock = MockApi()
         val tokenManager = FakeTokenManager("utoken-test")
+        val session = FakeUserSession("utoken-test")
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 
         suspend fun build(): HobbyDetailViewModel {
             preferences.setExHobbyEnabled(enabled)
             val delegate = CommentInteractionDelegate(
-                CommentRepository(commentMock.api(), tokenManager),
+                CommentRepository(commentMock.api(), session),
                 StickerRepository(detailMock.api()),
                 tokenManager,
-                UserRepository(userMock.api(), tokenManager)
+                UserRepository(userMock.api(), session)
             )
             return HobbyDetailViewModel(
                 HobbyDetailRepository(detailMock.api()),
@@ -99,7 +101,7 @@ class HobbyDetailViewModelExHobbyTest {
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,
-                UserRepository(userMock.api(), tokenManager)
+                UserRepository(userMock.api(), session)
             )
         }
 

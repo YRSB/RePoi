@@ -1,20 +1,19 @@
 package com.nobody.repoi.data.repository
 
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ForumDetailData
 import com.nobody.repoi.data.remote.model.ForumItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.session.UserSession
 
 /**
  * 讨论板版块数据仓储。
  * 提供已关注/未关注版块列表、关注取关、排序保存、版块详情及版块帖子流查询能力。
  */
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class ForumRepository(
     private val api: HpoiApi,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) {
 
     /**
@@ -47,7 +46,7 @@ class ForumRepository(
      * @param follow true=关注，false=取关
      */
     suspend fun toggleFocus(forumNodeId: Long, follow: Boolean): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再关注版块")
         }
         if (forumNodeId <= 0L) throw ApiException(400, "版块ID无效")
@@ -65,7 +64,7 @@ class ForumRepository(
      * @param orderedIds 按展示顺序排列的版块 id 列表
      */
     suspend fun updateFocusOrder(orderedIds: List<Long>): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再调整版块排序")
         }
         val response = api.updateForumFocusOrder(order = orderedIds.joinToString(","))

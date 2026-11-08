@@ -77,8 +77,21 @@ class FakeUserSession(
     var tokenExpiredCalls: Int = 0
         private set
 
+    /** 最近一次账号登录的入参（供视图层裁剪/透传断言）。 */
+    var lastLoginAccount: String = ""
+        private set
+
+    var lastLoginPassword: String = ""
+        private set
+
+    /** 最近一次 Token 登录的候选令牌（已由调用链裁剪）。 */
+    var lastTokenCandidate: String = ""
+        private set
+
     override suspend fun login(account: String, password: String): Result<LoginData> {
         loginCalls++
+        lastLoginAccount = account
+        lastLoginPassword = password
         val result = loginResult
         result.onSuccess { data ->
             val token = data.utoken.orEmpty()
@@ -94,6 +107,7 @@ class FakeUserSession(
 
     override suspend fun loginWithToken(rawToken: String): Result<UserProfile> {
         tokenLoginCalls++
+        lastTokenCandidate = rawToken
         val result = tokenLoginResult
         result.onSuccess { profile ->
             val token = rawToken.trim()
