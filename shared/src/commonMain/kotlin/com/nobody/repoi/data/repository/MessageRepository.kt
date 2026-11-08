@@ -23,16 +23,18 @@ class MessageRepository(
      * 获取未读通知消息分类统计计数 (api/unread/push-message/count-v2)。
      */
     suspend fun getUnreadPushCount(): Result<PushCountCategory> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getUnreadPushCount()
-        response.unwrapData(userSession, "获取未读消息数失败")?.map?.push ?: PushCountCategory()
+        response.unwrapData(userSession, "获取未读消息数失败", snapshotToken)?.map?.push ?: PushCountCategory()
     }
 
     /**
      * 获取私信联系人会话列表 (api/message/contact/get)。
      */
     suspend fun getMessageContacts(page: Int = 1): Result<List<MessageContactItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getMessageContacts(page = page)
-        response.unwrapData(userSession, "获取私信列表失败")?.contact ?: emptyList()
+        response.unwrapData(userSession, "获取私信列表失败", snapshotToken)?.contact ?: emptyList()
     }
 
     /**
@@ -42,16 +44,18 @@ class MessageRepository(
      * @param state 1: 置顶, 0: 取消置顶
      */
     suspend fun updateContactTop(id: Long, state: Int): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.updateContactTop(id = id, state = state)
-        response.unwrapUnit(userSession, "更新置顶状态失败")
+        response.unwrapUnit(userSession, "更新置顶状态失败", snapshotToken)
     }
 
     /**
      * 删除私信会话 (api/message/contact/del)。
      */
     suspend fun deleteContact(id: Long, userNodeId: Long): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.deleteContact(id = id, userNodeId = userNodeId)
-        response.unwrapUnit(userSession, "删除会话失败")
+        response.unwrapUnit(userSession, "删除会话失败", snapshotToken)
     }
 
     /**
@@ -64,8 +68,9 @@ class MessageRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<PushMessageItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getPushMessages(type = type, page = page, pageSize = pageSize)
-        response.unwrapData(userSession, "获取通知列表失败")?.pushMessage ?: emptyList()
+        response.unwrapData(userSession, "获取通知列表失败", snapshotToken)?.pushMessage ?: emptyList()
     }
 
     /**
@@ -75,16 +80,18 @@ class MessageRepository(
      * @param messageId 单项消息 ID；为 null 时表示将该分类下所有消息标记为已读
      */
     suspend fun markPushRead(type: Int, messageId: Long? = null): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.markPushRead(type = type, messageId = messageId)
-        response.unwrapUnit(userSession, "标记已读失败")
+        response.unwrapUnit(userSession, "标记已读失败", snapshotToken)
     }
 
     /**
      * 删除单条通知消息 (api/push/del)。
      */
     suspend fun deletePushMessage(messageId: Long, pushType: Int): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.deletePushMessage(messageId = messageId, pushType = pushType)
-        response.unwrapUnit(userSession, "删除通知失败")
+        response.unwrapUnit(userSession, "删除通知失败", snapshotToken)
     }
 
     /**
@@ -97,13 +104,14 @@ class MessageRepository(
         readCount: Int? = null
     ): Result<Unit> = runCatching {
         val idsString = if (!isAll && ids != null) ids.toString() else null
+        val snapshotToken = userSession.currentToken
         val response = api.batchDeletePushMessages(
             pushType = pushType,
             isAll = isAll,
             ids = idsString,
             read = readCount
         )
-        response.unwrapUnit(userSession, "批量删除通知失败")
+        response.unwrapUnit(userSession, "批量删除通知失败", snapshotToken)
     }
 
     /**
@@ -114,8 +122,9 @@ class MessageRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<ChatMessagePayload> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getChatMessages(fromId = fromId, page = page, pageSize = pageSize)
-        response.unwrapData(userSession, "获取聊天记录失败") ?: ChatMessagePayload()
+        response.unwrapData(userSession, "获取聊天记录失败", snapshotToken) ?: ChatMessagePayload()
     }
 
     /**
@@ -126,8 +135,9 @@ class MessageRepository(
         content: String,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.sendTextMessage(toId = toId, content = content, emoticon = emoticon)
-        response.unwrapUnit(userSession, "发送消息失败")
+        response.unwrapUnit(userSession, "发送消息失败", snapshotToken)
     }
 
     /**
@@ -138,8 +148,9 @@ class MessageRepository(
         resaleId: Long,
         content: String? = null
     ): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.sendResaleMessage(toId = toId, resaleId = resaleId, content = content)
-        response.unwrapUnit(userSession, "发送二手卡片失败")
+        response.unwrapUnit(userSession, "发送二手卡片失败", snapshotToken)
     }
 
     /**
@@ -154,37 +165,41 @@ class MessageRepository(
         fileBytes: ByteArray,
         mimeType: String = "image/jpeg",
     ): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.uploadChatMessagePicture(
             toId = toId,
             fileName = fileName,
             fileBytes = fileBytes,
             mimeType = mimeType,
         )
-        response.unwrapUnit(userSession, "发送图片失败")
+        response.unwrapUnit(userSession, "发送图片失败", snapshotToken)
     }
 
     /**
      * 撤回私信消息 (api/message/del)。
      */
     suspend fun withdrawMessage(messageId: Long): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.withdrawMessage(messageId = messageId)
-        response.unwrapUnit(userSession, "撤回消息失败")
+        response.unwrapUnit(userSession, "撤回消息失败", snapshotToken)
     }
 
     /**
      * 获取最新消息 ID，用于长轮询判断是否有增量私信 (api/message/latestMsgId/get)。
      */
     suspend fun getLatestMsgId(userId: Long): Result<Long> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getLatestMsgId(userId = userId)
-        response.unwrapData(userSession, "获取最新消息状态失败")?.latestMsgId ?: 0L
+        response.unwrapData(userSession, "获取最新消息状态失败", snapshotToken)?.latestMsgId ?: 0L
     }
 
     /**
      * 获取黑名单列表 (api/block/list)。
      */
     suspend fun getBlockList(page: Int = 1, pageSize: Int = 50): Result<List<BlockItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getBlockList(page = page, pageSize = pageSize)
-        response.unwrapData(userSession, "获取黑名单失败")?.userBlock ?: emptyList()
+        response.unwrapData(userSession, "获取黑名单失败", snapshotToken)?.userBlock ?: emptyList()
     }
 
     /**
@@ -193,8 +208,9 @@ class MessageRepository(
      * @param blockState 1: 屏蔽, 0: 解除屏蔽
      */
     suspend fun updateUserBlock(userId: Long, blockState: Int): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.updateUserBlock(userId = userId, blockState = blockState)
-        response.unwrapUnit(userSession, "更新黑名单状态失败")
+        response.unwrapUnit(userSession, "更新黑名单状态失败", snapshotToken)
     }
 }
 

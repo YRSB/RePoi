@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -142,6 +141,7 @@ class UserRepository(
      * 兼容桥：档案镜像 `Authenticated.profile`，与状态变更同步可见。
      * 由会话状态单向驱动，无需启动无管理的后台协程。
      */
+    @Deprecated("Use UserSession directly")
     val currentUserProfile: StateFlow<UserProfile?> = object : StateFlow<UserProfile?> {
         override val value: UserProfile?
             get() = (userSession.state.value as? SessionState.Authenticated)?.profile
@@ -161,14 +161,18 @@ class UserRepository(
     private val _friendChangeEvent = MutableSharedFlow<FriendChangeEvent>(extraBufferCapacity = 64)
     val friendChangeEvent: SharedFlow<FriendChangeEvent> = _friendChangeEvent.asSharedFlow()
 
+    @Deprecated("Use UserSession directly")
     suspend fun login(account: String, password: String): Result<LoginData> =
         userSession.login(account = account, password = password)
 
+    @Deprecated("Use UserSession directly")
     suspend fun loginWithToken(rawToken: String): Result<UserProfile> =
         userSession.loginWithToken(rawToken)
 
+    @Deprecated("Use UserSession directly")
     suspend fun logout() = userSession.logout()
 
+    @Deprecated("Use UserSession directly")
     suspend fun getUserProfile(): Result<UserProfile> = userSession.refreshProfile()
 
     suspend fun getFellowCount(userId: Long): Result<FellowCountData> = runCatching {
@@ -304,9 +308,6 @@ class UserRepository(
         }
     }
 
-    /**
-     * 并发聚合拉取个人中心所有数据（self -> fellow + orderStatic + preorder + buy + care + album + checkIn + mp）。
-     */
     /**
      * 并发聚合拉取个人中心所有数据（self -> fellow + orderStatic + preorder + buy + care + album + checkIn + mp）。
      *

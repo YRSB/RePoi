@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -121,5 +122,45 @@ class MessageRepositoryTest {
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
         assertEquals("已被对方屏蔽", exception.message)
+    }
+
+    @Test
+    fun api4001_withSwitchedSession_preservesNewSession() = runTest {
+        val mock = MockApi()
+        val session = FakeUserSession("token-A")
+        val repository = MessageRepository(mock.api(), session)
+
+        mock.routeWhen(
+            predicate = { path, _ -> path.contains("api/unread/push-message/count-v2") },
+            body = { _, _ ->
+                // 模拟在网络请求往返期间，用户切换登录到了新账号 token-B
+                session.setState(SessionState.Authenticated(userId = 2L, token = "token-B"))
+                """{"success":false,"code":4001,"msg":"登录已失效","data":null}"""
+            }
+        )
+
+        val result = repository.getUnreadPushCount()
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiException)
+
+        // 验证在途凭据守卫生效：由于请求发起时的快照是 token-A，不匹配当前活跃的 token-B，因此新会话未被误伤清理！
+        assertTrue(session.isAuthenticated)
+        assertEquals("token-B", session.currentToken)
+    }
+
+    @Test
+    fun api4001_withMatchingSession_clearsSession() = runTest {
+        val mock = MockApi()
+        val session = FakeUserSession("token-A")
+        val repository = MessageRepository(mock.api(), session)
+
+        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效","data":null}""")
+
+        val result = repository.getUnreadPushCount()
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiException)
+
+        // 验证当前会话的 4001 正常触发自愈清理
+        assertFalse(session.isAuthenticated)
     }
 }
