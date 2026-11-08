@@ -89,7 +89,9 @@ fun ExHobbyListScreen(
 
     // 提取所有高清大图链接，供全屏画廊查看：
     // 画廊消费的是纯 URL 字符串（非 PoiAsyncImage 下游），故此处保留 Pipeline 直调；
-    // EX_HOBBY 的非缩略档位由管道裁决为 `n/` 高清变体，与列表卡片共用同一份 Coil 缓存
+    // EX_HOBBY 的非缩略档位由管道裁决为 `n/` 高清变体，因此与列表卡片共享同一份 Coil **磁盘**缓存；
+    // 但卡片走语义化重载（内存键含分类/用途桶），画廊以纯 URL 为内存键，二者不共享内存缓存，
+    // 首次打开画廊会有一次解码，不保证「秒开」
     val allFullUrls = remember(uiState.items) {
         uiState.items.map {
             MediaPipeline.Default.resolveUrl(it.path, MediaCategory.EX_HOBBY, ImagePurpose.CARD_STANDARD)
