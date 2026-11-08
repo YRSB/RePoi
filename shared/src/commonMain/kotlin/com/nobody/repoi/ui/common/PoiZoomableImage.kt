@@ -397,7 +397,9 @@ fun PoiZoomableImage(
                     Modifier
                 }
             )
-            .transformable(state = transformableState, canPan = { isPanEnabled })
+            // canPan 仍只认放大态：长图的单指平移交给上面的 detectDragGestures（可按方向筛选），
+            // 否则 transformable 会吃掉横向拖拽、抢走 Pager 翻页
+            .transformable(state = transformableState, canPan = { isZoomed })
             // 桌面端：滚轮缩放 + 放大态左键拖拽（android 为空实现）
             .poiDesktopZoomAndPan(
                 enabled = true,

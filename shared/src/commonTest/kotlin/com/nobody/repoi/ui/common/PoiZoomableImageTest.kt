@@ -242,7 +242,8 @@ class PoiZoomableImageTest {
     fun clampPan_fillWidthLongImage_allowsVerticalOverflowOnly() {
         val viewport = Size(1080f, 1920f)
         val longImage = Size(100f, 500f)
-        // FillWidth：显示 1080x5400，纵向可移动 (5400-1920)/2 = 1740，纵向溢出而横向刚好铺满
+        // FillWidth：显示 1080x5400，纵向可移动 (5400-1920)/2 = 1740，横向刚好铺满故为 0；
+        // 输入 -9000 已在可移动范围之外，钳制后保留符号（-1740），方向不翻转
         val clamped = clampPan(
             Offset(300f, -9000f),
             scale = 1f,
@@ -251,23 +252,23 @@ class PoiZoomableImageTest {
             panContentScale = PanContentScale.FILL_WIDTH
         )
         assertEquals(0f, clamped.x)
-        assertEquals(1740f, clamped.y)
+        assertEquals(-1740f, clamped.y)
     }
 
     @Test
     fun clampPan_fitLongImage_locksBothAxesWhenFit() {
         val viewport = Size(1080f, 1920f)
         val longImage = Size(100f, 500f)
-        // 对照：Fit 语义下 100x500 被等比缩到 384x1920，正好塞满高度，1 倍时不可平移
-        assertEquals(
-            Offset.Zero,
-            clampPan(
-                Offset(300f, -9000f),
-                scale = 1f,
-                viewport = viewport,
-                contentSize = longImage
-            )
+        // 对照：Fit 语义下 100x500 被等比缩到 384x1920，正好塞满高度，1 倍时不可平移。
+        // Offset 无 equals(容差) 重载，改用分量断言，避免 -0.0 与 0.0 的位模式差异导致假红
+        val clamped = clampPan(
+            Offset(300f, -9000f),
+            scale = 1f,
+            viewport = viewport,
+            contentSize = longImage
         )
+        assertEquals(0f, clamped.x)
+        assertEquals(0f, clamped.y)
     }
 
     // ── 常量契约 ────────────────────────────────────────────

@@ -192,15 +192,19 @@ object DefaultMediaPipeline : MediaPipeline {
     }
 
     /**
-     * 相册封面变体：服务端**没有** `cover/n/` 目录（请求必 404），故列表/详情/瀑布流统一走
-     * 保留纵横比的 `cover/sr/`；全屏原图沿用历史契约 `cover/raw/`——`FeedMediaResolverTest`
+     * 相册封面变体：服务端**没有** `cover/n/` 目录（请求必 404），故缩略图、瀑布流、标准卡片
+     * 统一走保留纵横比的 `cover/sr/`；全屏原图沿用历史契约 `cover/raw/`——`FeedMediaResolverTest`
      * 与详情页大图查看器均依赖该目录可用，且 `cover/n/` 缺档不影响 `cover/raw/`。
      *
-     * 只覆写与 `cover/` 家族不同的那一档，其余直接复用 [coverPrefixOf]，避免同家族两处判断。
+     * 注意不能写成「只覆写 `CARD_STANDARD`，其余委托 [coverPrefixOf]」：那样 `THUMBNAIL` 会落到
+     * `cover/s/`（相册无该目录 ⇒ 404），是 `resolveUrl_album_neverEmitsCoverNormalDirectory`
+     * 之外的另一处 404 暗坑，故此处必须完整枚举四档。
      */
     private fun albumPrefixOf(purpose: ImagePurpose): String = when (purpose) {
+        ImagePurpose.THUMBNAIL -> COVER_SR
+        ImagePurpose.ADAPTIVE_GRID -> COVER_SR
         ImagePurpose.CARD_STANDARD -> COVER_SR
-        else -> coverPrefixOf(purpose)
+        ImagePurpose.FULLSCREEN_RAW -> COVER_RAW
     }
 
     /** `head/` 家族唯一一处「用途 → 变体前缀」映射。 */
