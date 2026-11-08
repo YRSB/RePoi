@@ -303,6 +303,8 @@ internal fun clampRatio(raw: Float): Float = when {
 private fun contentScaleBucketLabel(scale: ContentScale): String = when (scale) {
     ContentScale.Crop -> "crop"
     ContentScale.Fit -> "fit"
+    // FillBounds 会拉伸填满容器，与 Crop/Fit 可视效果差异明显，单独分桶避免缓存键串味
+    ContentScale.FillBounds -> "fill_bounds"
     // `ContentScale` 具体变体在每个平台以独立单例对象暴露，跨平台无法穷举，
     // 因此只对业务用到的三种给出稳定标签，其余统一归入 `other`（仍可区分桶，不影响正确性）。
     else -> "other"

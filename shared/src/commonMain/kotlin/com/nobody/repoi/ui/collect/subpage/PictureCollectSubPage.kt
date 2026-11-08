@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.media.ImagePurpose
@@ -220,7 +221,8 @@ internal fun PictureCollectSubPage(
  *   加载成功后回写并夹取到管道区间 `[0.4f, 2.5f]`，防止极端长图/宽图把单项撑得过高过扁
  *   （与 `ui/picture/PictureListScreen.PictureGridCard` 同策略）；
  * - 缩略图用 `pic/n/` 变体（原版 `pe/c.java` 的图片流规格）；
- * - 容器比例 = 原图比例，配合裁切填充可避免解码前后比例抖动。
+ * - 容器比例 = 原图比例，配合 `ContentScale.FillBounds` 拉伸铺满（沿用迁移前 `AsyncImage` 的缩放语义），
+ *   可避免解码前后比例抖动。
  */
 @Composable
 internal fun UserCollectPicCard(
@@ -245,6 +247,8 @@ internal fun UserCollectPicCard(
             model = thumbnailUrl,
             contentDescription = item.name?.takeIf { it.isNotBlank() } ?: "收藏图片",
             modifier = Modifier.fillMaxWidth(),
+            // 恢复旧 AsyncImage 的拉伸填充语义：铺满瀑布流单项，避免占位比例与真实比例不等时留边
+            contentScale = ContentScale.FillBounds,
             adaptiveRatio = true,
             ratioKey = item.actualUrl,
             fallbackRatio = 1.0f
