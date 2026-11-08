@@ -89,8 +89,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalUriHandler
-import com.nobody.repoi.util.HpoiLinkDispatcher
 import com.nobody.repoi.util.HtmlRichTextParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -165,6 +163,7 @@ fun HobbyDetailScreen(
     onNavigateToHobbyComments: ((HobbyCommentsNavParam) -> Unit)? = null,
     onNavigateToPictureList: ((PictureListNavParam) -> Unit)? = null,
     onNavigateToExHobbyList: ((ExHobbyListNavKey) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
     viewModel: HobbyDetailViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -370,9 +369,7 @@ fun HobbyDetailScreen(
                             isLoading = uiState.isInfoListLoading || initialSkeleton,
                             isDark = isDark,
                             onNavigateToHobbyList = onNavigateToHobbyList,
-                            onNavigateToHobby = onNavigateToHobby,
-                            onNavigateToAlbum = onNavigateToAlbum,
-                            onNavigateToCharacter = onNavigateToCharacter,
+                            onUrlClick = onUrlClick,
                             onEntryClick = { entry ->
                                 if (entry.link?.startsWith("company/") == true || entry.displayKey == "制作") {
                                     val companyId = entry.link?.removePrefix("company/")?.substringBefore("?")?.substringBefore("/")?.toLongOrNull() ?: makerCompanyId
@@ -958,13 +955,10 @@ private fun HobbySpecsSection(
     isDark: Boolean,
     onEntryClick: ((InfoListEntry) -> Unit)? = null,
     onNavigateToHobbyList: ((HobbyListNavParam) -> Unit)? = null,
-    onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
-    onNavigateToAlbum: ((Long) -> Unit)? = null,
-    onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null
+    onUrlClick: ((String) -> Unit)? = null
 ) {
     val clipboard = LocalClipboard.current
     val messages = LocalAppMessages.current
-    val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
     // 过滤有效条目（排除 key 和 value 都为空的）
@@ -1043,21 +1037,12 @@ private fun HobbySpecsSection(
 
         if (hasDetailContent) {
             val linkColor = MaterialTheme.colorScheme.primary
-            val richText = remember(rawHtml, linkColor, onNavigateToHobby, onNavigateToAlbum, onNavigateToCharacter) {
+            val richText = remember(rawHtml, linkColor, onUrlClick) {
                 if (!rawHtml.isNullOrBlank()) {
                     HtmlRichTextParser.parse(
                         html = rawHtml,
                         linkColor = linkColor,
-                        onLinkClick = { url ->
-                            HpoiLinkDispatcher.dispatch(
-                                url = url,
-                                uriHandler = uriHandler,
-                                onMessage = { messages.show(it) },
-                                onNavigateToHobbyDetail = onNavigateToHobby,
-                                onNavigateToAlbum = onNavigateToAlbum,
-                                onNavigateToCharacter = onNavigateToCharacter
-                            )
-                        }
+                        onLinkClick = { url -> onUrlClick?.invoke(url) }
                     )
                 } else null
             }

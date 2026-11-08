@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.forum.ForumHomeScreen
 import com.nobody.repoi.ui.forum.PlateSubscribeScreen
 import com.nobody.repoi.ui.post.PostDetailScreen
@@ -81,6 +83,8 @@ fun EntryProviderScope<NavKey>.communityEntries(
     }
 
     entry<PostDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         PostDetailScreen(
             postId = key.postId,
             initialTitle = key.initialTitle,
@@ -89,10 +93,8 @@ fun EntryProviderScope<NavKey>.communityEntries(
             onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
             onNavigateToZone = { nodeId -> navigator.navigateToZoneDetail(nodeId = nodeId) },
             onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
-            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
-            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
-            onNavigateToPost = { targetPostId -> navigator.navigateToPostDetail(postId = targetPostId) },
-            onNavigateToCommentDetail = { param -> navigator.navigateToCommentDetail(param.copy(isDiscuss = true)) }
+            onNavigateToCommentDetail = { param -> navigator.navigateToCommentDetail(param.copy(isDiscuss = true)) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 }

@@ -24,6 +24,8 @@ class HtmlRichTextParserTest {
         assertEquals("https://www.hpoi.net/hobby/59570", HtmlRichTextParser.normalizeUrl("hobby/59570"))
         assertEquals("https://www.hpoi.net/album/8888", HtmlRichTextParser.normalizeUrl("/album/8888"))
         assertEquals("https://www.hpoi.net/album/8888", HtmlRichTextParser.normalizeUrl("album/8888"))
+        assertEquals("https://www.hpoi.net/user/123", HtmlRichTextParser.normalizeUrl("user/123"))
+        assertEquals("https://www.hpoi.net/vendor/9", HtmlRichTextParser.normalizeUrl("vendor/9"))
         assertEquals("https://example.com/item", HtmlRichTextParser.normalizeUrl("//example.com/item"))
         assertEquals("https://goodsmile.info/product/1", HtmlRichTextParser.normalizeUrl("https://goodsmile.info/product/1"))
         assertEquals("http://goodsmile.info/product/1", HtmlRichTextParser.normalizeUrl("http://goodsmile.info/product/1"))

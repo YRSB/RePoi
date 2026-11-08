@@ -101,7 +101,8 @@ object HtmlRichTextParser {
             trimmed.startsWith("hobby/") || trimmed.startsWith("item/") || trimmed.startsWith("album/") ||
                 trimmed.startsWith("charactar/") || trimmed.startsWith("character/") ||
                 trimmed.startsWith("person/") || trimmed.startsWith("works/") ||
-                trimmed.startsWith("company/") || trimmed.startsWith("series/") ||
+                trimmed.startsWith("company/") || trimmed.startsWith("vendor/") ||
+                trimmed.startsWith("user/") || trimmed.startsWith("series/") ||
                 trimmed.startsWith("posts/") || trimmed.startsWith("post/") -> "https://www.hpoi.net/$trimmed"
             else -> "https://$trimmed"
         }

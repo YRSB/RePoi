@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.album.AlbumDetailScreen
 import com.nobody.repoi.ui.album.AlbumRankListScreen
 import com.nobody.repoi.ui.character.CharacterAlbumListScreen
@@ -24,6 +26,8 @@ fun EntryProviderScope<NavKey>.detailEntries(
     onBack: () -> Unit
 ) {
     entry<HobbyDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         HobbyDetailScreen(
             navParam = key.param,
             onBack = onBack,
@@ -40,11 +44,14 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToHobbyComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) },
             onNavigateToPictureList = { pictureParam -> navigator.navigateToPictureList(pictureParam) },
-            onNavigateToExHobbyList = { exHobbyKey -> navigator.navigate(exHobbyKey) }
+            onNavigateToExHobbyList = { exHobbyKey -> navigator.navigate(exHobbyKey) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 
     entry<AlbumDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         AlbumDetailScreen(
             param = key.param,
             onBack = onBack,
@@ -74,6 +81,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
                 }
             },
             onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(albumId) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) },
             onNavigateToExHobbyList = { exHobbyKey -> navigator.navigate(exHobbyKey) }
