@@ -6,6 +6,7 @@ import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -110,15 +111,17 @@ class FollowRepositoryTest {
         }
 
         mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
-        val result = repository.updateFriend(userId = 555L, state = FriendState.FOLLOWING)
+        val result = repository.updateFriend(userId = 555L, isFollow = true)
         assertTrue(result.isSuccess)
+
+        yield()
+        collectJob.cancel()
 
         assertEquals(1, events.size)
         val event = events.first()
         assertEquals(555L, event.userId)
         assertTrue(event.isFollow)
         assertEquals(FriendState.FOLLOWING, event.state)
-        collectJob.cancel()
     }
 
     @Test
