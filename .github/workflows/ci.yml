@@ -10,15 +10,7 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.gitignore'
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.gitignore'
   workflow_dispatch:
 
 # Cancel superseded runs on PR refs, preserve full runs on main.
@@ -27,28 +19,70 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6144M -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
 
 jobs:
-  test:
-    name: Shared Tests (JVM & Android Host)
+  check-docs-only:
+    name: Check Docs Only
     runs-on: ubuntu-latest
-
+    outputs:
+      skip_ci: ${{ steps.filter.outputs.skip_ci }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Detect change type
+        id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }} --depth=1
+            DIFF_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            DIFF_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "ALL")
+          fi
+          echo "Changed files:"
+          echo "$DIFF_FILES"
+          NON_DOC_FILES=$(echo "$DIFF_FILES" | grep -v -E '^(\.gitignore|docs/.*|.*\.md)$' || true)
+          if [ -z "$NON_DOC_FILES" ]; then
+            echo "Only documentation/markdown files changed."
+            echo "skip_ci=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Code files changed:"
+            echo "$NON_DOC_FILES"
+            echo "skip_ci=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Shared Tests (JVM & Android Host)
+    needs: check-docs-only
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fast pass for docs-only change
+        if: needs.check-docs-only.outputs.skip_ci == 'true'
+        run: echo "Documentation only change; skipping unit test execution."
+
+      - name: Check out repository
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
+        uses: actions/checkout@v7
 
       - name: Set up Gradle environment
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: ./.github/actions/gradle-setup
 
       - name: Run unit tests
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log; exit ${PIPESTATUS[0]}
 
       - name: Summarize first failure
-        if: failure()
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && failure()
         run: |
           {
             echo "## 首个失败"
@@ -58,7 +92,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test reports
-        if: failure()
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
@@ -69,19 +103,28 @@ jobs:
 
   android:
     name: Build Android APK
+    needs: check-docs-only
     runs-on: ubuntu-latest
 
     steps:
+      - name: Fast pass for docs-only change
+        if: needs.check-docs-only.outputs.skip_ci == 'true'
+        run: echo "Documentation only change; skipping Android build."
+
       - name: Check out repository
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: actions/checkout@v7
 
       - name: Set up Gradle environment
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: ./.github/actions/gradle-setup
 
       - name: Build Android app
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         run: ./gradlew :androidApp:assembleDebug --stacktrace
 
       - name: Upload Android APK
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: android-debug-apk
@@ -90,6 +133,7 @@ jobs:
 
   desktop:
     name: Package Desktop (${{ matrix.os }})
+    needs: check-docs-only
     strategy:
       fail-fast: false
       matrix:
@@ -102,12 +146,18 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Fast pass for docs-only change
+        if: needs.check-docs-only.outputs.skip_ci == 'true'
+        shell: bash
+        run: echo "Documentation only change; skipping desktop packaging."
+
       - name: Check out repository
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: actions/checkout@v7
 
       # Windows: 禁用 Windows Defender 实时监控与 I/O 扫描，显著提升小文件 I/O 与打包吞吐率
       - name: Disable Windows Defender
-        if: matrix.os == 'windows-latest'
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           try {
@@ -118,23 +168,25 @@ jobs:
           }
 
       - name: Set up Gradle environment
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: ./.github/actions/gradle-setup
         with:
           setup-android: false
 
       # Linux: 打包 Linux 桌面发行版 (.deb)
       - name: Package Linux desktop distribution
-        if: matrix.os == 'ubuntu-latest'
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && matrix.os == 'ubuntu-latest'
         shell: bash
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace
 
       # Windows: 合并构建可运行镜像与 MSI 安装器，复用 Gradle 单次生命周期
       - name: Build & Package Windows desktop
-        if: matrix.os == 'windows-latest'
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && matrix.os == 'windows-latest'
         shell: bash
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace
 
       - name: Upload desktop distribution
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
@@ -144,7 +196,7 @@ jobs:
       # M6: Windows 安装器/启动器存在性断言（*.msi + 可运行镜像 *.exe 非空）。
       # exe 位于 createDistributable 产出的 binaries/main/app/<packageName>/ 下。
       - name: Assert Windows installer artifacts
-        if: matrix.os == 'windows-latest'
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && matrix.os == 'windows-latest'
         shell: bash
         run: |
           shopt -s nullglob
@@ -156,3 +208,14 @@ jobs:
             if [ ! -s "$f" ]; then echo "empty artifact: $f"; exit 1; fi
             echo "ok: $f"
           done
+
+  auto-merge-docs:
+    name: Auto Merge Docs
+    needs: [check-docs-only, test, android, desktop]
+    if: github.event_name == 'pull_request' && needs.check-docs-only.outputs.skip_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-merge PR
+        run: gh pr merge ${{ github.event.pull_request.number }} --auto --merge || gh pr merge ${{ github.event.pull_request.number }} --merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
