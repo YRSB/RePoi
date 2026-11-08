@@ -220,13 +220,13 @@ class MediaPipelineTest {
     fun resolveCoverUrlOrDefault_fallsBackOnlyWhenPlaceholder() {
         ImagePurpose.entries.forEach { purpose ->
             val default = pipeline.getDefaultCoverUrl(purpose)
-            assertEquals(default, pipeline.resolveCoverUrlOrDefault(null, purpose))
-            assertEquals(default, pipeline.resolveCoverUrlOrDefault("  ", purpose))
-            assertEquals(default, pipeline.resolveCoverUrlOrDefault("none.jpg", purpose))
-            assertEquals(default, pipeline.resolveCoverUrlOrDefault("cover/n/none.jpg", purpose))
+            assertEquals(default, equivalentCoverUrlOrDefault(null, purpose))
+            assertEquals(default, equivalentCoverUrlOrDefault("  ", purpose))
+            assertEquals(default, equivalentCoverUrlOrDefault("none.jpg", purpose))
+            assertEquals(default, equivalentCoverUrlOrDefault("cover/n/none.jpg", purpose))
             assertEquals(
                 pipeline.resolveUrl("2026/08/real.jpg", MediaCategory.HOBBY, purpose),
-                pipeline.resolveCoverUrlOrDefault("2026/08/real.jpg", purpose)
+                equivalentCoverUrlOrDefault("2026/08/real.jpg", purpose)
             )
         }
     }
@@ -368,7 +368,7 @@ class MediaPipelineTest {
         // 路径清理（字面量来自 CdnUrlUtilsTest.cleanCoverPath_cleansAllPrefixes）
         val sample = "2026/08/sample.png"
         listOf("/$sample", "cover/sr/$sample", "cover/s/$sample", "cover/n/$sample", "cover/raw/$sample", "/cover/sr/$sample")
-            .forEach { assertEquals(sample, pipeline.cleanCoverPath(it), "cleanCoverPath 等价性失败：$it") }
+            .forEach { assertEquals(sample, DefaultMediaPipeline.cleanCoverPath(it), "cleanCoverPath 等价性失败：$it") }
 
         // 横幅（字面量来自 CdnUrlUtilsTest.getBannerUrl_and_getRawBannerUrl_resolvesToNormalVariant）
         val bannerRel = "2026/08/12d4b839597948b7b6444810137795e6.jpg"
