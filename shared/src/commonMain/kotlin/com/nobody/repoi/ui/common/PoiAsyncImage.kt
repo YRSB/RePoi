@@ -232,7 +232,7 @@ private fun PoiAsyncImageCore(
 
     Box(
         modifier = modifier
-            .then(if (adaptiveRatio) Modifier.aspectRatio(aspectRatio) else Modifier)
+            .then(Modifier) // MUTATION-PROBE
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .then(clickModifier),
         contentAlignment = Alignment.Center
