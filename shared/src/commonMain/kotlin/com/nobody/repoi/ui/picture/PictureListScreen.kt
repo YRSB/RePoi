@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -375,7 +374,11 @@ private fun PictureListSkeleton(
         modifier = modifier.fillMaxSize(),
         userScrollEnabled = false
     ) {
-        items(6) { index ->
+        items(
+            count = 6,
+            key = { "picture_skeleton_$it" },
+            contentType = { "skeleton" }
+        ) { index ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

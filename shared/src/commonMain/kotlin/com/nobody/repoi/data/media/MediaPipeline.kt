@@ -63,6 +63,10 @@ enum class ImagePurpose {
  *
  * 契约完全解耦 Compose / Android，可在纯 JVM 环境（含单元测试与非 UI 数据层）直接使用；
  * 提供 [MediaPipeline.Default] 伴生实例，Koin 侧另以单例形式注入同一实现。
+ *
+ * 用户相片（`pic/`）家族由 [resolvePictureUrl] 的**接口默认实现**承载：默认委托 [PicUrlRules]
+ * 的纯规则，任何自定义实现覆写该方法即可生效（`FeedMediaResolver.resolve(item, media)` 的
+ * 注入语义因此成立，不再被顶层扩展函数架空）。
  */
 interface MediaPipeline {
     companion object {
@@ -92,4 +96,15 @@ interface MediaPipeline {
 
     /** 写入纵横比缓存，写入前统一截断到 `[0.4f, 2.5f]`。 */
     fun recordAspectRatio(key: String, ratio: Float)
+
+    /**
+     * 解析用户相片（`pic/`）家族 URL：`THUMBNAIL` → `pic/s/`，
+     * `ADAPTIVE_GRID` / `CARD_STANDARD` → `pic/n/`，`FULLSCREEN_RAW` → `pic/raw/`。
+     *
+     * [MediaCategory] 枚举已在 ADR-0007 冻结，没有「用户相片」独立槽位，而动态流附图、
+     * 用户相片查看器等路径必须落在 `pic/` 家族，故以**接口默认实现**承载这套纯规则；
+     * 需要自定义 CDN 策略的实现覆写本方法即可，调用端无需知道默认单例的存在。
+     */
+    fun resolvePictureUrl(path: String?, purpose: ImagePurpose): String =
+        PicUrlRules.resolve(path, purpose)
 }

@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.RelateItem

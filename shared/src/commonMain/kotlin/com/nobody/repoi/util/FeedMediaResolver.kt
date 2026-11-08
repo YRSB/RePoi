@@ -3,7 +3,6 @@ package com.nobody.repoi.util
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.ActionItem
 
 /**

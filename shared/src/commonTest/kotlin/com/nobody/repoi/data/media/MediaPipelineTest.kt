@@ -120,14 +120,34 @@ class MediaPipelineTest {
     }
 
     @Test
-    fun resolveUrl_postAndBanner_passAbsoluteUrlThroughUntouched() {
-        val postAbsolute = "https://rfx.hpoi.net/gk/posts/n/$relPath"
-        assertEquals(postAbsolute, pipeline.resolveUrl(postAbsolute, MediaCategory.POST, ImagePurpose.FULLSCREEN_RAW))
-        assertEquals(postAbsolute, pipeline.resolveUrl(postAbsolute, MediaCategory.POST, ImagePurpose.THUMBNAIL))
+    fun resolveUrl_postAndBanner_downgradeRawSegmentOfAbsoluteUrl() {
+        // 服务端没有 posts/raw/ 与 bnr/raw/ 目录：绝对 URL 也必须改写，否则线上必然 404
+        val postRaw = "https://rfx.hpoi.net/gk/posts/raw/$relPath"
+        val postNormal = "https://rfx.hpoi.net/gk/posts/n/$relPath"
+        assertEquals(postNormal, pipeline.resolveUrl(postRaw, MediaCategory.POST, ImagePurpose.FULLSCREEN_RAW))
+        assertEquals(postNormal, pipeline.resolveRawUrl(postRaw, MediaCategory.POST))
+        assertEquals(postNormal, pipeline.resolveUrl(postNormal, MediaCategory.POST, ImagePurpose.THUMBNAIL))
 
+        val bannerRaw = "https://rfx.hpoi.net/gk/bnr/raw/$relPath"
+        val bannerNormal = "https://rfx.hpoi.net/gk/bnr/n/$relPath"
+        assertEquals(
+            bannerNormal,
+            pipeline.resolveUrl(bannerRaw, MediaCategory.BANNER, ImagePurpose.FULLSCREEN_RAW)
+        )
+        assertEquals(bannerNormal, pipeline.resolveRawUrl(bannerRaw, MediaCategory.BANNER))
+        assertFalse(pipeline.resolveRawUrl(postRaw, MediaCategory.POST).contains("/raw/"))
+        assertFalse(pipeline.resolveRawUrl(bannerRaw, MediaCategory.BANNER).contains("/raw/"))
+    }
+
+    @Test
+    fun resolveUrl_postAndBanner_leaveCustomDomainAbsoluteUrlUntouched() {
+        // 自定义域名不含任何已知变体段，替换规则自然不命中
         val bannerAbsolute = "https://custom.host/bnr.jpg"
         assertEquals(bannerAbsolute, pipeline.resolveUrl(bannerAbsolute, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD))
         assertEquals(bannerAbsolute, pipeline.resolveRawUrl(bannerAbsolute, MediaCategory.BANNER))
+
+        val postAbsolute = "https://custom.host/pics/abc.jpg"
+        assertEquals(postAbsolute, pipeline.resolveUrl(postAbsolute, MediaCategory.POST, ImagePurpose.FULLSCREEN_RAW))
     }
 
     // ------------------------------------------------------------ RESALE / ZONE
@@ -184,6 +204,53 @@ class MediaPipelineTest {
         assertEquals("${base}pic/n/$relPath", pipeline.resolvePictureUrl("pic/raw/$relPath", ImagePurpose.CARD_STANDARD))
         assertEquals("${base}pic/raw/$relPath", pipeline.resolvePictureUrl("https://rfx.hpoi.net/gk/pic/n/$relPath", ImagePurpose.FULLSCREEN_RAW))
         assertEquals("", pipeline.resolvePictureUrl(null, ImagePurpose.THUMBNAIL))
+    }
+
+    @Test
+    fun resolvePictureUrl_defaultImplementationCanBeOverriddenByCustomPipeline() {
+        // 接口默认实现必须真的被覆写方法接管：旧实现的顶层扩展函数会让 receiver 完全失效
+        val custom = object : MediaPipeline by MediaPipeline.Default {
+            override fun resolvePictureUrl(path: String?, purpose: ImagePurpose): String =
+                "custom://${path ?: "null"}/${purpose.name.lowercase()}"
+        }
+
+        assertEquals("custom://$relPath/thumbnail", custom.resolvePictureUrl(relPath, ImagePurpose.THUMBNAIL))
+        // 未覆写的成员仍委托默认实现
+        assertEquals(
+            "${base}cover/n/$relPath",
+            custom.resolveUrl(relPath, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+        // 默认实现自身保持 pic/ 家族规则
+        assertEquals(
+            "${base}pic/n/$relPath",
+            MediaPipeline.Default.resolvePictureUrl(relPath, ImagePurpose.CARD_STANDARD)
+        )
+    }
+
+    // ------------------------------------------------------ 相册缺省占位图（R2-3）
+
+    @Test
+    fun resolveUrl_albumPlaceholder_neverEmitsCoverNormalDirectory() {
+        // 缺省图走 resolveUrl(DEFAULT_COVER_PATH, ALBUM, purpose)：相册无 cover/n/ 目录，全用途不得命中
+        ImagePurpose.entries.forEach { purpose ->
+            val placeholder = pipeline.resolveUrl(
+                DefaultMediaPipeline.DEFAULT_COVER_PATH,
+                MediaCategory.ALBUM,
+                purpose
+            )
+            assertFalse(placeholder.contains("cover/n/"), "相册缺省图 $purpose 命中 cover/n/ 会 404")
+            assertTrue(placeholder.endsWith("/none.jpg"), "相册缺省图应落在 none.jpg：$placeholder")
+        }
+        assertEquals(
+            "${base}cover/sr/none.jpg",
+            pipeline.resolveUrl(DefaultMediaPipeline.DEFAULT_COVER_PATH, MediaCategory.ALBUM, ImagePurpose.CARD_STANDARD)
+        )
+        assertEquals(
+            "${base}cover/raw/none.jpg",
+            pipeline.resolveUrl(DefaultMediaPipeline.DEFAULT_COVER_PATH, MediaCategory.ALBUM, ImagePurpose.FULLSCREEN_RAW)
+        )
+        // 对照：默认缺省封面（非相册路径）确实是 cover/n/none.jpg，正是相册必须绕开的那一档
+        assertEquals("${base}cover/n/none.jpg", pipeline.getDefaultCoverUrl(ImagePurpose.CARD_STANDARD))
     }
 
     // ------------------------------------------------------------- 缺省图判定

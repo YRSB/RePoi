@@ -103,7 +103,6 @@ import androidx.compose.material.icons.filled.ThumbUp
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
@@ -1509,7 +1508,11 @@ private fun HobbyUserAlbumsSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(4) { index ->
+                items(
+                    count = 4,
+                    key = { "hobby_album_skeleton_$it" },
+                    contentType = { "skeleton" }
+                ) { index ->
                     val shimmerWidth = when (index % 3) {
                         0 -> 140.dp
                         1 -> 160.dp

@@ -99,7 +99,6 @@ import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.rememberTextSharing
 import org.koin.compose.viewmodel.koinViewModel

@@ -282,11 +282,11 @@ object CdnUrlUtils {
         replaceWith = ReplaceWith(
             "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.THUMBNAIL)",
             "com.nobody.repoi.data.media.ImagePurpose",
-            "com.nobody.repoi.data.media.resolvePictureUrl"
+            "com.nobody.repoi.data.media.MediaPipeline"
         )
     )
     fun getPicSmallUrl(path: String?): String =
-        DefaultMediaPipeline.resolvePicFamilyUrl(path, ImagePurpose.THUMBNAIL)
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.THUMBNAIL)
 
     /**
      * 兼容别名：默认返回小图缩略图。
@@ -304,11 +304,11 @@ object CdnUrlUtils {
         replaceWith = ReplaceWith(
             "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.CARD_STANDARD)",
             "com.nobody.repoi.data.media.ImagePurpose",
-            "com.nobody.repoi.data.media.resolvePictureUrl"
+            "com.nobody.repoi.data.media.MediaPipeline"
         )
     )
     fun getPicNUrl(path: String?): String =
-        DefaultMediaPipeline.resolvePicFamilyUrl(path, ImagePurpose.CARD_STANDARD)
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.CARD_STANDARD)
 
     /** 用户相片高清原图（`pic/raw/`，未经压缩全量图）。 */
     @Deprecated(
@@ -316,11 +316,11 @@ object CdnUrlUtils {
         replaceWith = ReplaceWith(
             "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.FULLSCREEN_RAW)",
             "com.nobody.repoi.data.media.ImagePurpose",
-            "com.nobody.repoi.data.media.resolvePictureUrl"
+            "com.nobody.repoi.data.media.MediaPipeline"
         )
     )
     fun getRawPicUrl(path: String?): String =
-        DefaultMediaPipeline.resolvePicFamilyUrl(path, ImagePurpose.FULLSCREEN_RAW)
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.FULLSCREEN_RAW)
 
     /** 用户主页横幅图片 URL（`bnr/n/` 变体）。 */
     @Deprecated(
