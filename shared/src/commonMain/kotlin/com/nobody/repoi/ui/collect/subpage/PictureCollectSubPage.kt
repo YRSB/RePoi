@@ -1,25 +1,19 @@
 package com.nobody.repoi.ui.collect.subpage
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -27,17 +21,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
+import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.collect.SubPageData
@@ -46,10 +38,7 @@ import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.collect.components.LoadingCollectView
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.common.PoiAsyncImage
 
 // ── 图片子页（key=90000）────────────────────────────────────
 
@@ -68,7 +57,7 @@ internal const val COLLECT_PICTURE_EMPTY_TEXT = "暂无图片~"
  *   早前版本误读为「单列整宽」，导致横屏下一张图就占满整屏、完全无法浏览；
  * - 列宽策略复用项目内所有瀑布流（相册页 / `ui/picture/PictureListScreen`）的同一入口，
  *   骨架屏同步用同一列宽，避免加载前后列数跳变；
- * - 缩略图规格用 `pic/n/`（[CdnUrlUtils.getPicNUrl]），与原版一致；
+ * - 缩略图规格用 `pic/n/`（`ImagePurpose.CARD_STANDARD` 经 `pic/` 家族解析），与原版一致；
  * - 列表页不显示图片备注（原版 `UserCollectPictureAdapter.java:97` 显式隐藏 remark）。
  *
  * @param currentOrder 当前排序档（`addTime` / `actionDate` / `praiseCount`）
@@ -227,10 +216,11 @@ internal fun PictureCollectSubPage(
 /**
  * 图片卡片：瀑布流单项，按原图比例自适应高度。
  *
- * - 宽高比从 [ImageAspectRatioCache] 取真实原图比例，并夹取到 [MIN_ASPECT_RATIO, MAX_ASPECT_RATIO]
- *   防止极端长图/宽图把单项撑得过高过扁（与 `ui/picture/PictureListScreen.PictureGridCard` 同策略）；
+ * - 高度由 [PoiAsyncImage] 的 `adaptiveRatio` 撑开：首帧读管道纵横比缓存占位，
+ *   加载成功后回写并夹取到管道区间 `[0.4f, 2.5f]`，防止极端长图/宽图把单项撑得过高过扁
+ *   （与 `ui/picture/PictureListScreen.PictureGridCard` 同策略）；
  * - 缩略图用 `pic/n/` 变体（原版 `pe/c.java` 的图片流规格）；
- * - [ContentScale.Crop] + 精确 `aspectRatio` = 完整展示不裁切，同时避免解码前后比例抖动。
+ * - 容器比例 = 原图比例，配合裁切填充可避免解码前后比例抖动。
  */
 @Composable
 internal fun UserCollectPicCard(
@@ -238,65 +228,26 @@ internal fun UserCollectPicCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val imageUrl = remember(item.id, item.actualUrl) {
-        CdnUrlUtils.getPicNUrl(item.actualUrl)
+    // `pic/` 家族无 `sr` 档，缩略档由管道裁决到 `pic/n/`；解析结果交给基元通用重载直通 Coil
+    val thumbnailUrl = remember(item.id, item.actualUrl) {
+        MediaPipeline.Default.resolvePictureUrl(item.actualUrl, ImagePurpose.CARD_STANDARD)
     }
-    val ratioKey = listImageKey(item.actualUrl, imageUrl, "n")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
-    }
-    val imageRequest = rememberListImageRequest(item.actualUrl, imageUrl, "n:collect")
-    // URL 非空但解码/下载失败时也要给出可见反馈，否则只剩一块灰色占位
-    var loadFailed by remember(ratioKey) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .aspectRatio(aspectRatio.coerceIn(MIN_ASPECT_RATIO, MAX_ASPECT_RATIO))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (imageUrl.isNotBlank()) {
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = item.name?.takeIf { it.isNotBlank() } ?: "收藏图片",
-                // 容器比例 = 原图比例，FillBounds 不会裁掉画面内容
-                contentScale = ContentScale.FillBounds,
-                onLoading = { loadFailed = false },
-                onError = { loadFailed = true },
-                onSuccess = { state ->
-                    loadFailed = false
-                    val size = state.painter.intrinsicSize
-                    if (size.width > 0 && size.height > 0) {
-                        val ratio = (size.width / size.height)
-                            .coerceIn(MIN_ASPECT_RATIO, MAX_ASPECT_RATIO)
-                        aspectRatio = ratio
-                        ImageAspectRatioCache[ratioKey] = ratio
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        if (imageUrl.isBlank() || loadFailed) {
-            Icon(
-                imageVector = Icons.Filled.BrokenImage,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
-        }
+        // 空路径/缺省图由基元直接落官方缺省图，失败态由基元渲染破损图标
+        PoiAsyncImage(
+            model = thumbnailUrl,
+            contentDescription = item.name?.takeIf { it.isNotBlank() } ?: "收藏图片",
+            modifier = Modifier.fillMaxWidth(),
+            adaptiveRatio = true,
+            ratioKey = item.actualUrl,
+            fallbackRatio = 1.0f
+        )
     }
 }
-
-/**
- * 图片卡片宽高比下限（竖图不至于过高）。
- *
- * 与 `ui/picture/PictureListScreen.PictureGridCard` 取同一组常量，保证两处图片流手感一致。
- */
-private const val MIN_ASPECT_RATIO = 0.4f
-
-/** 图片卡片宽高比上限（横图不至于过扁） */
-private const val MAX_ASPECT_RATIO = 2.5f
