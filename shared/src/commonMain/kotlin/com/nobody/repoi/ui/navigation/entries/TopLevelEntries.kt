@@ -1,9 +1,11 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.AlbumScreen
 import com.nobody.repoi.ui.follow.FollowScreen
@@ -27,15 +29,10 @@ internal val TopLevelTransitionMetadata: Map<String, Any> = metadata {
  */
 fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
     entry<HomeNavKey>(metadata = TopLevelTransitionMetadata) {
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         HomeFeedScreen(
-            onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
-            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
-            onNavigateToPerson = { param -> navigator.navigateToPerson(param) },
-            onNavigateToWorks = { param -> navigator.navigateToWorks(param) },
-            onNavigateToVendor = { param -> navigator.navigateToVendor(param) },
-            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
-            onNavigateToSeries = { param -> navigator.navigateToSeries(param) },
-            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
             onNavigateToSearch = { param -> navigator.navigateToSearch(param) },
             onNavigateToZoneBrowse = { navigator.navigateToZoneBrowse() },
             onNavigateToForumHome = { navigator.navigateToForumHome() },
@@ -63,15 +60,10 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
     }
 
     entry<FollowNavKey>(metadata = TopLevelTransitionMetadata) {
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         FollowScreen(
-            onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
-            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
-            onNavigateToPerson = { param -> navigator.navigateToPerson(param) },
-            onNavigateToWorks = { param -> navigator.navigateToWorks(param) },
-            onNavigateToVendor = { param -> navigator.navigateToVendor(param) },
-            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
-            onNavigateToSeries = { param -> navigator.navigateToSeries(param) },
-            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
+            onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
             onNavigateToLogin = { navigator.navigateToLogin() }
         )
     }

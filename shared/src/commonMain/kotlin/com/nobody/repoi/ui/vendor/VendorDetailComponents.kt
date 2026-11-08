@@ -286,8 +286,8 @@ internal fun VendorHeaderSection(
 internal fun VendorActionSection(
     actions: List<CompanyActionItem>,
     isLoading: Boolean,
-    onActionClick: (ActionItem) -> Unit,
     onViewMore: () -> Unit,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     onImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null
 ) {
     ElevatedCard(
@@ -340,7 +340,7 @@ internal fun VendorActionSection(
                 val latest = actions.first()
                 ActionCard(
                     actionItem = latest.toActionItem(),
-                    onItemClick = onActionClick,
+                    onActionClick = onActionClick,
                     onImageClick = onImageClick
                 )
             }

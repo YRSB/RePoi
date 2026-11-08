@@ -542,7 +542,7 @@ private fun LazyListScope.userContentFeedItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        onItemClick = { item ->
+                        onActionClick = { item ->
                             val targetRelate = item.relateItem
                             if (targetRelate != null) {
                                 val isAlbum = targetRelate.isAlbum || item.actionType == 3

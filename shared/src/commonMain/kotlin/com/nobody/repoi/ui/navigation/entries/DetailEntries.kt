@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.album.AlbumDetailScreen
 import com.nobody.repoi.ui.album.AlbumRankListScreen
 import com.nobody.repoi.ui.character.CharacterAlbumListScreen
@@ -89,9 +91,12 @@ fun EntryProviderScope<NavKey>.detailEntries(
     }
 
     entry<VendorDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         VendorDetailScreen(
             navParam = key.param,
             onBack = onBack,
+            onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
             onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
             onNavigateToVendorActions = { companyNodeId, companyName ->
@@ -111,17 +116,12 @@ fun EntryProviderScope<NavKey>.detailEntries(
     }
 
     entry<VendorActionsNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         VendorActionsScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
-            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
-            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
-            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
-            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
-            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
-            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) }
+            onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) }
         )
     }
 

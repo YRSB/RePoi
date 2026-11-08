@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.forum.ForumHomeScreen
 import com.nobody.repoi.ui.forum.PlateSubscribeScreen
 import com.nobody.repoi.ui.post.PostDetailScreen
@@ -32,12 +34,15 @@ fun EntryProviderScope<NavKey>.communityEntries(
     }
 
     entry<ZoneDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         ZoneDetailScreen(
             nodeId = key.nodeId,
             initialName = key.initialName,
             initialIcon = key.initialIcon,
             initialCover = key.initialCover,
             onNavigateBack = onBack,
+            onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
             onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
             onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
             onNavigateToPerson = { param -> navigator.navigateToPerson(param) },

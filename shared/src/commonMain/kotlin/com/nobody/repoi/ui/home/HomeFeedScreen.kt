@@ -94,39 +94,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
-import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.common.FakeSearchField
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
-import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
-import com.nobody.repoi.ui.person.PersonNavParam
-import com.nobody.repoi.ui.series.SeriesNavParam
-import com.nobody.repoi.ui.vendor.VendorNavParam
-import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.search.SearchNavParam
-import com.nobody.repoi.util.FeedActionDispatcher
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeFeedScreen(
     modifier: Modifier = Modifier,
-    onNavigateToDetail: ((DetailNavParam) -> Unit)? = null,
-    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
-    onNavigateToPerson: ((PersonNavParam) -> Unit)? = null,
-    onNavigateToWorks: ((WorksNavParam) -> Unit)? = null,
-    onNavigateToVendor: ((VendorNavParam) -> Unit)? = null,
-    onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
-    onNavigateToSeries: ((SeriesNavParam) -> Unit)? = null,
-    onNavigateToUser: ((Long) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToForumHome: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
@@ -352,33 +336,6 @@ fun HomeFeedScreen(
                 }
 
                 else -> {
-                    val messages = LocalAppMessages.current
-                    val onActionItemClick = remember(
-                        messages,
-                        onNavigateToDetail,
-                        onNavigateToAlbum,
-                        onNavigateToVendor,
-                        onNavigateToCharacter,
-                        onNavigateToPerson,
-                        onNavigateToWorks,
-                        onNavigateToSeries,
-                        onNavigateToUser
-                    ) {
-                        { item: ActionItem ->
-                            FeedActionDispatcher.dispatch(
-                                actionItem = item,
-                                onMessage = { messages.show(it) },
-                                onNavigateToDetail = onNavigateToDetail,
-                                onNavigateToAlbum = onNavigateToAlbum,
-                                onNavigateToVendor = onNavigateToVendor,
-                                onNavigateToCharacter = onNavigateToCharacter,
-                                onNavigateToPerson = onNavigateToPerson,
-                                onNavigateToWorks = onNavigateToWorks,
-                                onNavigateToSeries = onNavigateToSeries,
-                                onNavigateToUser = onNavigateToUser
-                            )
-                        }
-                    }
                     val onCardImageClick = remember(imageViewer) {
                         { rawUrls: List<String>, initialIndex: Int ->
                             imageViewer.show(rawUrls, initialIndex)
@@ -400,8 +357,7 @@ fun HomeFeedScreen(
                         ) { actionItem ->
                             ActionCard(
                                 actionItem = actionItem,
-                                onItemClick = onActionItemClick,
-                                onUserClick = onNavigateToUser,
+                                onActionClick = onActionClick,
                                 onImageClick = onCardImageClick
                             )
                         }
