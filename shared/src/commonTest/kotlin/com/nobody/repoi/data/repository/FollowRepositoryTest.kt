@@ -81,14 +81,14 @@ class FollowRepositoryTest {
     fun getFellowCount_success_parsesData() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"data":{"friendCount":42,"fansCount":108}}}"""
+            """{"success":true,"code":200,"data":{"data":{"friendCount":42,"fanCount":108}}}"""
         )
 
         val result = repository.getFellowCount(999L)
         assertTrue(result.isSuccess)
         val data = result.getOrThrow()
         assertEquals(42, data.friendCount)
-        assertEquals(108, data.fansCount)
+        assertEquals(108, data.fanCount)
     }
 
     @Test
