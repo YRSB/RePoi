@@ -367,7 +367,7 @@ class PostRepositoryTest {
         assertTrue(deletePostResult.isFailure)
         assertEquals(400, (deletePostResult.exceptionOrNull() as ApiException).code)
     }
-}    @Test
+    @Test
     fun addDiscuss_tokenExpired_selfHealsSessionAndThrows() = runTest {
         val (mock, session, repository) = setupWithSession("tok-post")
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")

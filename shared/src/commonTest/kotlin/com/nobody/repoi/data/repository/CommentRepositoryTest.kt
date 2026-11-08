@@ -219,7 +219,7 @@ class CommentRepositoryTest {
         assertTrue(result.isFailure)
         assertEquals(400, (result.exceptionOrNull() as ApiException).code)
     }
-}    @Test
+    @Test
     fun addComment_tokenExpired_selfHealsSessionAndThrows() = runTest {
         val (mock, repository, session) = setup(token = "tok-comment")
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")

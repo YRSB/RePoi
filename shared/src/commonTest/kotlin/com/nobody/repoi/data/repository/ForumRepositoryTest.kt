@@ -172,7 +172,7 @@ class ForumRepositoryTest {
         assertTrue(recorded.path!!.contains("order=hits"))
         assertTrue(recorded.path!!.contains("page=2"))
     }
-}    @Test
+    @Test
     fun toggleFocus_tokenExpired_selfHealsSessionAndThrows() = runTest {
         val (mock, session, repository) = setupWithSession("tok-forum")
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
