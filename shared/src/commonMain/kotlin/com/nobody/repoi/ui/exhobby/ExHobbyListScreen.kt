@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +24,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -47,17 +45,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,17 +57,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -97,9 +87,13 @@ fun ExHobbyListScreen(
 
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // 提取所有高清大图链接，供全屏画廊查看
+    // 提取所有高清大图链接，供全屏画廊查看：
+    // 画廊消费的是纯 URL 字符串（非 PoiAsyncImage 下游），故此处保留 Pipeline 直调；
+    // EX_HOBBY 的非缩略档位由管道裁决为 `n/` 高清变体，与列表卡片共用同一份 Coil 缓存
     val allFullUrls = remember(uiState.items) {
-        uiState.items.map { CdnUrlUtils.getExHobbyFullUrl(it.path) }
+        uiState.items.map {
+            MediaPipeline.Default.resolveUrl(it.path, MediaCategory.EX_HOBBY, ImagePurpose.CARD_STANDARD)
+        }
     }
 
     val imageViewer = LocalImageViewer.current
@@ -204,7 +198,8 @@ fun ExHobbyListScreen(
                     ) {
                         itemsIndexed(
                             items = uiState.items,
-                            key = { index, item -> "ex_${item.path}_$index" }
+                            key = { index, item -> "ex_${item.path}_$index" },
+                            contentType = { _, _ -> "exhobby_grid" }
                         ) { index, item ->
                             ExHobbyGridCard(
                                 item = item,
@@ -221,7 +216,11 @@ fun ExHobbyListScreen(
 
                         // 底部加载状态指示
                         if (uiState.isAppending || uiState.loadMoreError != null || !uiState.hasMore) {
-                            item(span = StaggeredGridItemSpan.FullLine, key = "footer_state") {
+                            item(
+                                span = StaggeredGridItemSpan.FullLine,
+                                key = "footer_state",
+                                contentType = "exhobby_footer"
+                            ) {
                                 ExHobbyListFooter(
                                     isAppending = uiState.isAppending,
                                     loadMoreError = uiState.loadMoreError,
@@ -238,7 +237,7 @@ fun ExHobbyListScreen(
 }
 
 /**
- * 瀑布流扩展相片卡片项（自适应宽高比并缓存长宽比）。
+ * 瀑布流扩展相片卡片项（高度由图片真实纵横比自适应）。
  */
 @Composable
 private fun ExHobbyGridCard(
@@ -247,14 +246,8 @@ private fun ExHobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 采用与全屏大图画廊一致的 /n/ 高清变体，使列表与查看器共享 Coil 缓存，实现点击卡片 0 延迟秒开
-    val imageUrl = remember(item.path) {
-        CdnUrlUtils.getExHobbyFullUrl(item.path)
-    }
-    val ratioKey = remember(item.path) { "exhobby:${item.path}" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
-
+    // 采用与全屏大图画廊一致的 /n/ 高清变体（EX_HOBBY 的非缩略档位），
+    // 使列表与查看器共享 Coil 缓存，实现点击卡片 0 延迟秒开
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -267,35 +260,19 @@ private fun ExHobbyGridCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
-            if (imageUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(imageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "ExHobby 图片 ${index + 1}",
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.4f, 2.5f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.BrokenImage,
-                    contentDescription = "图片损坏",
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            }
+            // 空路径/缺省图由基元直接落官方缺省图，失败态由基元渲染破损图标
+            PoiAsyncImage(
+                path = item.path,
+                category = MediaCategory.EX_HOBBY,
+                purpose = ImagePurpose.CARD_STANDARD,
+                contentDescription = "ExHobby 图片 ${index + 1}",
+                modifier = Modifier.fillMaxWidth(),
+                adaptiveRatio = true,
+                fallbackRatio = 1.0f
+            )
         }
     }
 }
