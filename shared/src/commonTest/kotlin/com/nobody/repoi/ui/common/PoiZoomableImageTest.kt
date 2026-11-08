@@ -148,7 +148,7 @@ class PoiZoomableImageTest {
     fun clampPan_landscapeLetterboxed_locksVerticalPan() {
         val viewport = Size(1080f, 1920f)
         val landscape = Size(1920f, 1080f)
-        // Fit 后显示 1080x607.5，2 倍后高 1215 仍不足 1920 → 纵向无可移动空间
+        // Fit 后显示 1080x607.5，2 倍后 2160x1215：横向可移动 (2160-1080)/2 = 540，纵向仍不足一屏
         val clamped = clampPan(
             Offset(100f, 400f),
             scale = 2f,
@@ -157,6 +157,21 @@ class PoiZoomableImageTest {
         )
         assertEquals(0f, clamped.y)
         assertEquals(100f, clamped.x)
+    }
+
+    @Test
+    fun clampPan_landscapeWiderImage_allowsHorizontalPanOnly() {
+        val viewport = Size(1080f, 1920f)
+        // 4:3 横图 Fit 后 1080x810，3 倍后 3240x2430：横向可移动 (3240-1080)/2 = 1080
+        val landscape = Size(1600f, 1200f)
+        val clamped = clampPan(
+            Offset(5000f, 5000f),
+            scale = 3f,
+            viewport = viewport,
+            contentSize = landscape
+        )
+        assertEquals(1080f, clamped.x)
+        assertEquals((2430f - 1920f) / 2f, clamped.y)
     }
 
     @Test
