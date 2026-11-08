@@ -10,6 +10,7 @@ import com.nobody.repoi.data.local.TokenManager
  * 本类保留单例绑定形态（networkModule 显式 tokenProvider 具名绑定），供
  * 旧单测语义对照；实际 Header/Param 合并常量见 [CommonParams]。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommonParamsInterceptor(
     private val tokenProvider: () -> String,
 ) {

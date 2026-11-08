@@ -62,6 +62,7 @@ data class CommentDetailUiState(
     val actionMessage: String? = null
 )
 
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommentDetailViewModel(
     private val repository: CommentRepository,
     private val stickerRepository: StickerRepository,

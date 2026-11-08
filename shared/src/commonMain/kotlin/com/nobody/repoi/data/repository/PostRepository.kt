@@ -10,6 +10,7 @@ import com.nobody.repoi.data.remote.model.PostDetailData
  * 讨论贴与回帖数据仓储。
  * 提供帖子详情查询、回帖列表分页、发表主楼回帖、发表楼中楼回复及删除等能力。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class PostRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager

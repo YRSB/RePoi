@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
  * - 通用 4 页：[UserCollectUiState.commonOrder]（2 档白名单）
  * - 作品：[UserCollectUiState.worksState] + [UserCollectUiState.worksOrderAsc] + [UserCollectUiState.worksTag]
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class UserCollectViewModel(
     private val userRepository: UserRepository,
     private val collectRepository: CollectRepository,

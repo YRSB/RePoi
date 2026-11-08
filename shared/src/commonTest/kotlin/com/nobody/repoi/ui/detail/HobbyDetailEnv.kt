@@ -34,7 +34,7 @@ class HobbyDetailEnv(
     val commentMock: MockApi = MockApi(),
     val userMock: MockApi = MockApi(),
 ) {
-    val tokenManager = FakeTokenManager("utoken-test")
+    private val tokenManager = FakeTokenManager("utoken-test")
     val json: Json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
     private val exhobbyEngine = MockEngine {

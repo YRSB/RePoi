@@ -34,6 +34,7 @@ typealias CommentPageFetch = suspend (nodeId: Long, type: String?, page: Int, pa
  * 4. 主楼评论发表（接口调用与失败处理，成功后由调用方刷新列表，返回 Boolean 表明成功与否）；
  * 5. 消费操作反馈提示。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommentInteractionDelegate(
     private val commentRepository: CommentRepository,
     private val stickerRepository: StickerRepository,

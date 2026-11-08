@@ -38,6 +38,7 @@ data class FollowUiState(
 /**
  * 关注屏状态机（顶层关注目的地，复用关注条目/用户接口）。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class FollowViewModel(
     private val followRepository: FollowRepository,
     private val tokenManager: TokenManager

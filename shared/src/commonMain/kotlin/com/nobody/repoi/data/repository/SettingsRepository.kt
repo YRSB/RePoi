@@ -21,6 +21,7 @@ object PrivacyChannels {
     )
 }
 
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class SettingsRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager
