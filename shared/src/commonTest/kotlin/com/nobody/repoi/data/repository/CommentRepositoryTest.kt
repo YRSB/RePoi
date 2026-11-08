@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -217,5 +218,24 @@ class CommentRepositoryTest {
         val result = repository.deleteComment(nodeId = 10L, type = "comment")
         assertTrue(result.isFailure)
         assertEquals(400, (result.exceptionOrNull() as ApiException).code)
+    }
+}    @Test
+    fun addComment_tokenExpired_selfHealsSessionAndThrows() = runTest {
+        val (mock, repository, session) = setup(token = "tok-comment")
+        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
+        val result = repository.addComment(nodeId = 123L, content = "测试评论")
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
+    }
+
+    @Test
+    fun togglePraise_tokenExpired_selfHealsSessionAndThrows() = runTest {
+        val (mock, repository, session) = setup(token = "tok-praise")
+        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
+        val result = repository.togglePraise(commentId = 123L, relateNodeId = 456L, praised = false)
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 }
