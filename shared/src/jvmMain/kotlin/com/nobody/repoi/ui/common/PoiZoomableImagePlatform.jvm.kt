@@ -45,10 +45,9 @@ actual fun Modifier.poiDesktopZoomAndPan(
                     }
 
                     // 左键按下：放大态进入拖拽平移，直到整组指针抬起
+                    // 按下本身不消费，保证「未拖动」时单击/双击仍由 combinedClickable 处理
                     PointerEventType.Press -> {
-                        val change = event.changes.firstOrNull()
-                        if (change != null && isZoomed()) {
-                            change.consume()
+                        if (isZoomed()) {
                             var isPointerDown = true
                             while (isPointerDown) {
                                 val moveEvent = awaitPointerEvent()
