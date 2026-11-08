@@ -260,15 +260,15 @@ class PoiZoomableImageTest {
         val viewport = Size(1080f, 1920f)
         val longImage = Size(100f, 500f)
         // 对照：Fit 语义下 100x500 被等比缩到 384x1920，正好塞满高度，1 倍时不可平移。
-        // Offset 无 equals(容差) 重载，改用分量断言，避免 -0.0 与 0.0 的位模式差异导致假红
         val clamped = clampPan(
             Offset(300f, -9000f),
             scale = 1f,
             viewport = viewport,
             contentSize = longImage
         )
-        assertEquals(0f, clamped.x)
-        assertEquals(0f, clamped.y)
+        // 钳制下界来自 -maxY，结果为 -0.0；Float 的 equals 区分 ±0.0，
+        // 故不用 assertEquals 而用数值相等（== 对 ±0.0 判真）
+        assertTrue(clamped.x == 0f && clamped.y == 0f, "Fit 语义下 1 倍时不可平移，实际 $clamped")
     }
 
     // ── 常量契约 ────────────────────────────────────────────
