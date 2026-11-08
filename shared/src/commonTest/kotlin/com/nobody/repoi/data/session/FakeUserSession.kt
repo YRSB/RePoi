@@ -47,9 +47,6 @@ class FakeUserSession(
     override val currentToken: String
         get() = (_state.value as? SessionState.Authenticated)?.token.orEmpty()
 
-    override val currentUserName: String
-        get() = (_state.value as? SessionState.Authenticated)?.profile?.displayName.orEmpty()
-
     /** 账号登录结果；默认失败，提醒用例显式配置。 */
     var loginResult: Result<LoginData> =
         Result.failure(ApiException(500, "FakeUserSession: 未配置账号登录结果"))

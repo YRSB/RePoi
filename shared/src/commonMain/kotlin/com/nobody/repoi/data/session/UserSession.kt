@@ -27,9 +27,6 @@ interface UserSession {
     /** 当前活跃登录令牌；未认证时为空串。 */
     val currentToken: String
 
-    /** 当前用户名，供评论乐观回显等保留既有行为；未认证时为空串。 */
-    val currentUserName: String
-
     /**
      * 账号密码登录。成功后持久化凭据并切换为已认证，失败不改变现有会话。
      */

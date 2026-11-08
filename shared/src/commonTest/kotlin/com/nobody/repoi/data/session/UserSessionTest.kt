@@ -70,7 +70,6 @@ class UserSessionTest {
         assertFalse(restored.isProfileLoaded)
         assertTrue(session.isAuthenticated)
         assertEquals("tok-1", session.exportActiveToken())
-        assertEquals("缓存昵称", session.currentUserName)
         assertEquals(1, tokenManager.awaitReadyCalls)
 
         gate.complete(Unit)
@@ -81,7 +80,6 @@ class UserSessionTest {
         assertEquals("tok-1", refreshed.token)
         assertEquals("胶友", refreshed.profile?.nickname)
         assertTrue(refreshed.isProfileLoaded)
-        assertEquals("胶友", session.currentUserName)
         assertEquals(1, mock.requestCount)
     }
 
@@ -301,7 +299,6 @@ class UserSessionTest {
         assertEquals("", tokenManager.currentUserName)
         assertEquals(1, tokenManager.clearTokenCalls)
         assertEquals("", session.exportActiveToken())
-        assertEquals("", session.currentUserName)
     }
 
     @Test

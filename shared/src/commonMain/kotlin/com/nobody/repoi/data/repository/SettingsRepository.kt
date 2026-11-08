@@ -36,6 +36,9 @@ class SettingsRepository(
 
     val isLoggedIn: Boolean get() = userSession.isAuthenticated
 
+    /** 当前活跃令牌的唯一出口（ADR-0005），底层落到 [UserSession.exportActiveToken]。 */
+    val activeToken: String get() = userSession.exportActiveToken()
+
     suspend fun addMask(itemNodeId: Long): Result<Unit> = runCatching {
         val response = api.addMask(itemNodeId = itemNodeId)
         response.unwrapUnit(userSession, "屏蔽失败")

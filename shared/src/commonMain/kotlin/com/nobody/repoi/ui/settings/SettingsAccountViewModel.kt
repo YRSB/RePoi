@@ -93,7 +93,7 @@ class SettingsAccountViewModel(
         }
     }
 
-    val activeToken: String get() = userSession.exportActiveToken()
+    val activeToken: String get() = settingsRepository.activeToken
 
     fun openExportDialog() {
         _uiState.update { it.copy(showExportDialog = true, exportTokenRevealed = false) }

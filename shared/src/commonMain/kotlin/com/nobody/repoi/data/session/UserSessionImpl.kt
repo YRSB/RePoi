@@ -49,9 +49,6 @@ internal class UserSessionImpl(
     override val currentToken: String
         get() = authenticatedOrNull()?.token.orEmpty()
 
-    override val currentUserName: String
-        get() = authenticatedOrNull()?.profile?.displayName ?: tokenManager.currentUserName
-
     init {
         // 预热在内部 scope 内闭环，外部调用方无需等待即可拿到 Prewarming 态。
         scope.launch { runCatching { prewarm() } }

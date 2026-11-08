@@ -6,6 +6,7 @@ import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentThreadPage
 import com.nobody.repoi.data.remote.model.CommentUser
+import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -200,7 +201,10 @@ class CommentRepository(
                         content = content,
                         user = CommentUser(
                             userId = userSession.currentUserId,
-                            nickname = userSession.currentUserName
+                            nickname = (userSession.state.value as? SessionState.Authenticated)
+                                ?.profile
+                                ?.let { it.nickname?.ifBlank { null } ?: it.userName }
+                                .orEmpty()
                         )
                     )
                 }

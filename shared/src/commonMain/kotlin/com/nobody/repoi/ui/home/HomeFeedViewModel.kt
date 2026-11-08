@@ -137,11 +137,15 @@ class HomeFeedViewModel(
             }
         }
 
-        // 启动时在后台静默同步一次服务端最新的专区与设置（若本地缓存为空也能即时拉取）
-        // 会话预热中先等待就绪，避免冷启动空令牌请求；无会话时立即同步。
+        // 启动时立即同步一次专区与设置，不阻塞等待会话预热；若首屏发出时仍处于
+        // Prewarming，则在会话就绪后再补拉一次带凭据的响应，保证关注专区最终一致。
         viewModelScope.launch {
-            userSession?.state?.first { it !is SessionState.Prewarming }
             zoneRepository.getZoneHomeTabs()
+            val session = userSession ?: return@launch
+            if (session.state.value is SessionState.Prewarming) {
+                session.state.first { it !is SessionState.Prewarming }
+                zoneRepository.getZoneHomeTabs()
+            }
         }
 
         setupAccountState()
