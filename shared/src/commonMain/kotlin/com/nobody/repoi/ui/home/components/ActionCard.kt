@@ -75,8 +75,7 @@ fun ActionCard(
     actionItem: ActionItem,
     modifier: Modifier = Modifier,
     fallbackAvatarUrl: String? = null,
-    onItemClick: ((ActionItem) -> Unit)? = null,
-    onUserClick: ((Long) -> Unit)? = null,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     onImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null
 ) {
     val relateItem = actionItem.relateItem
@@ -127,8 +126,8 @@ fun ActionCard(
 
     // 🎨 M3 Expressive 卡片容器：采用 surfaceContainerLow 与标准水波纹交互
     ElevatedCard(
-        onClick = { onItemClick?.invoke(actionItem) },
-        enabled = onItemClick != null,
+        onClick = { onActionClick?.invoke(actionItem) },
+        enabled = onActionClick != null,
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -224,7 +223,7 @@ fun ActionCard(
                         UserFeedHeader(
                             actionItem = actionItem,
                             fallbackAvatarUrl = fallbackAvatarUrl,
-                            onUserClick = onUserClick
+                            onActionClick = onActionClick
                         )
 
                         // 柔和分割线
@@ -541,11 +540,13 @@ private fun UserFeedHeader(
     actionItem: ActionItem,
     modifier: Modifier = Modifier,
     fallbackAvatarUrl: String? = null,
-    onUserClick: ((Long) -> Unit)? = null
+    onActionClick: ((ActionItem) -> Unit)? = null
 ) {
     val user = actionItem.user
     val targetUserId = user?.actualUserId ?: 0L
-    val isUserClickable = onUserClick != null && targetUserId > 0L
+    val isUserClickable = onActionClick != null && targetUserId > 0L
+    // 头像/昵称复用动作回调：relateItem 置空后解析器落到作者用户页
+    val onAuthorClick: () -> Unit = { onActionClick?.invoke(actionItem.copy(relateItem = null)) }
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -570,7 +571,7 @@ private fun UserFeedHeader(
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .then(
                     if (isUserClickable) {
-                        Modifier.clickable { onUserClick.invoke(targetUserId) }
+                        Modifier.clickable(onClick = onAuthorClick)
                     } else Modifier
                 ),
             contentAlignment = Alignment.Center
@@ -623,7 +624,7 @@ private fun UserFeedHeader(
                             .weight(1f, fill = false)
                             .then(
                                 if (isUserClickable) {
-                                    Modifier.clickable { onUserClick.invoke(targetUserId) }
+                                    Modifier.clickable(onClick = onAuthorClick)
                                 } else Modifier
                             )
                     )

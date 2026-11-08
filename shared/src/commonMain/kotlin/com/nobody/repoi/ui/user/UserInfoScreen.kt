@@ -325,6 +325,7 @@ fun UserInfoScreen(
                                         columns = 3,
                                         onNavigateToAlbum = onNavigateToAlbum,
                                         onNavigateToHobby = onNavigateToHobby,
+                                        onNavigateToUser = onNavigateToUser,
                                         onImageClick = { images, index ->
                                             if (images.isNotEmpty()) {
                                                 imageViewer.show(images, index)
@@ -415,6 +416,7 @@ fun UserInfoScreen(
                                 columns = 2,
                                 onNavigateToAlbum = onNavigateToAlbum,
                                 onNavigateToHobby = onNavigateToHobby,
+                                onNavigateToUser = onNavigateToUser,
                                 onImageClick = { images, index ->
                                     if (images.isNotEmpty()) {
                                         imageViewer.show(images, index)
@@ -466,6 +468,7 @@ private fun LazyListScope.userContentFeedItems(
     columns: Int,
     onNavigateToAlbum: (AlbumNavParam) -> Unit,
     onNavigateToHobby: (Long) -> Unit,
+    onNavigateToUser: (Long) -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
     onSelectAlbumSubTab: (Int) -> Unit
 ) {
@@ -542,7 +545,7 @@ private fun LazyListScope.userContentFeedItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        onItemClick = { item ->
+                        onActionClick = { item ->
                             val targetRelate = item.relateItem
                             if (targetRelate != null) {
                                 val isAlbum = targetRelate.isAlbum || item.actionType == 3
@@ -562,6 +565,12 @@ private fun LazyListScope.userContentFeedItems(
                                     if (targetHobbyId > 0L) {
                                         onNavigateToHobby(targetHobbyId)
                                     }
+                                }
+                            } else {
+                                // 头像/昵称等作者点击：relateItem 为空时落到动态作者主页
+                                val targetUserId = item.user?.actualUserId ?: 0L
+                                if (targetUserId > 0L) {
+                                    onNavigateToUser(targetUserId)
                                 }
                             }
                         },

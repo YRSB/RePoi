@@ -148,7 +148,6 @@ import com.nobody.repoi.ui.zone.components.ZonePostCardSkeleton
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 import com.nobody.repoi.ui.zone.components.ZoneResaleCardSkeleton
-import com.nobody.repoi.util.FeedActionDispatcher
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
@@ -173,6 +172,7 @@ fun ZoneDetailScreen(
     onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
     onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToResaleMarket: ((Long, String?) -> Unit)? = null,
+    onActionClick: ((ActionItem) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: ZoneDetailViewModel = koinViewModel()
 ) {
@@ -423,26 +423,6 @@ fun ZoneDetailScreen(
             scrollBehavior.state.contentOffset = 0f
         }
         wasRefreshing = uiState.isAnyRefreshing
-    }
-
-    val onActionItemClick = remember(
-        onNavigateToDetail, onNavigateToAlbum, onNavigateToVendor, onNavigateToCharacter,
-        onNavigateToPerson, onNavigateToWorks, onNavigateToSeries, onNavigateToUser
-    ) {
-        { item: ActionItem ->
-            FeedActionDispatcher.dispatch(
-                actionItem = item,
-                onMessage = { messages.show(it) },
-                onNavigateToDetail = onNavigateToDetail,
-                onNavigateToAlbum = onNavigateToAlbum,
-                onNavigateToVendor = onNavigateToVendor,
-                onNavigateToCharacter = onNavigateToCharacter,
-                onNavigateToPerson = onNavigateToPerson,
-                onNavigateToWorks = onNavigateToWorks,
-                onNavigateToSeries = onNavigateToSeries,
-                onNavigateToUser = onNavigateToUser
-            )
-        }
     }
 
     val onCardImageClick = remember(imageViewer) {
@@ -1026,7 +1006,7 @@ fun ZoneDetailScreen(
                             ) { item ->
                                 ActionCard(
                                     actionItem = item,
-                                    onItemClick = onActionItemClick,
+                                    onActionClick = onActionClick,
                                     onImageClick = onCardImageClick
                                 )
                             }
