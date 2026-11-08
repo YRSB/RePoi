@@ -7,7 +7,6 @@ import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
@@ -64,7 +63,6 @@ class HomeFeedViewModelTest {
     ) {
         val feedRequests: Int get() = feedMock.requestCount
         val userSession = FakeUserSession("utoken-test")
-        val userRepository = UserRepository(accountMock.api(), userSession)
         val messageRepository = MessageRepository(accountMock.api(), userSession)
     }
 
@@ -93,7 +91,7 @@ class HomeFeedViewModelTest {
             HomeRepository(feedMock.api()),
             zoneRepository,
             preferences,
-            if (accounts) userRepository else null,
+            if (accounts) userSession else null,
             if (accounts) messageRepository else null
         )
 
@@ -524,8 +522,12 @@ class HomeFeedViewModelTest {
     fun accountHeader_updatesAvatarOnInit() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
-        env.userSession.refreshProfileResult = Result.success(
-            UserProfile(id = 88888L, nickname = "手办达人", header = "avatar/abc.jpg")
+        env.userSession.setState(
+            SessionState.Authenticated(
+                userId = 88888L,
+                token = "utoken-test",
+                profile = UserProfile(id = 88888L, nickname = "手办达人", header = "avatar/abc.jpg")
+            )
         )
         val viewModel = env.viewModel(accounts = true)
         advanceUntilIdle()
@@ -559,7 +561,7 @@ class HomeFeedViewModelTest {
             HomeRepository(env.feedMock.api()),
             env.zoneRepository,
             env.preferences,
-            UserRepository(env.accountMock.api(), session),
+            session,
             MessageRepository(env.accountMock.api(), session)
         )
         advanceUntilIdle()
@@ -580,7 +582,7 @@ class HomeFeedViewModelTest {
             HomeRepository(env.feedMock.api()),
             env.zoneRepository,
             env.preferences,
-            UserRepository(env.accountMock.api(), session),
+            session,
             MessageRepository(env.accountMock.api(), session)
         )
         advanceUntilIdle()
