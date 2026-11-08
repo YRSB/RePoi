@@ -72,7 +72,7 @@ class UserFinanceRepositoryTest {
                     })
                     add(buildJsonObject {
                         put("currency", "jpy")
-                        put("money", 10000.0) // 10000 * 0.05 = 500
+                        put("money", 10000.0) // 10000 JPY * 0.06 = 600 RMB
                     })
                 })
             })
@@ -83,8 +83,8 @@ class UserFinanceRepositoryTest {
         val figureGroup = groups.first()
         assertEquals("手办", figureGroup.categoryName)
         assertEquals(2, figureGroup.items.size)
-        // 100 RMB + 10000 JPY (500 RMB) = 600 RMB
-        assertEquals(600.0, figureGroup.totalRmb, 0.01)
+        // 100 RMB + 10000 JPY (600 RMB) = 700 RMB
+        assertEquals(700.0, figureGroup.totalRmb, 0.01)
     }
 
     @Test

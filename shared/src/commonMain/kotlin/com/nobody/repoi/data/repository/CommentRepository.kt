@@ -89,8 +89,8 @@ class CommentRepository(
         )
         if (response.isSuccess) {
             response.data?.toCommentThreadPage() ?: CommentThreadPage()
-        } else if (response.code == -9005 || response.code == 404) {
-            // 容错：个别讨论节点被上游当做普通评论传入时，-9005 自动回落 discuss/reply/get
+        } else if (response.code == -900 || response.code == -9005 || response.code == 404 || response.msg?.contains("删除") == true) {
+            // 容错：个别讨论节点被上游当做普通评论传入或报删除时，自动回落 discuss/reply/get
             val discussResp = runCatching {
                 api.getDiscussReplies(discussNodeId = commentId, page = page)
             }.getOrNull()

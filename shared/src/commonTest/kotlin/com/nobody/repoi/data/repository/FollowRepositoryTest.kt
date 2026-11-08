@@ -3,8 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -104,16 +104,21 @@ class FollowRepositoryTest {
     @Test
     fun updateFriend_success_emitsFriendChangeEvent() = runTest {
         val (mock, _, repository) = setup()
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
+        val events = mutableListOf<FriendChangeEvent>()
+        val collectJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            repository.friendChangeEvent.collect { events.add(it) }
+        }
 
-        val eventDeferred = async { repository.friendChangeEvent.first() }
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
         val result = repository.updateFriend(userId = 555L, state = FriendState.FOLLOWING)
         assertTrue(result.isSuccess)
 
-        val event = eventDeferred.await()
+        assertEquals(1, events.size)
+        val event = events.first()
         assertEquals(555L, event.userId)
         assertTrue(event.isFollow)
         assertEquals(FriendState.FOLLOWING, event.state)
+        collectJob.cancel()
     }
 
     @Test
@@ -131,7 +136,7 @@ class FollowRepositoryTest {
     fun getUserFellowList_success_parsesItems() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"list":[{"id":1,"userId":666,"userName":"TestUser"}]}}"""
+            """{"success":true,"code":200,"data":{"list":[{"both":1,"user":{"id":666,"userName":"TestUser"}}]}}"""
         )
 
         val result = repository.getUserFellowList(userId = 999L, type = 0, page = 1)
