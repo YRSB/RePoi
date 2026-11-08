@@ -1,15 +1,16 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.local.TestDataStore
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.ZoneRepository
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -17,8 +18,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -62,11 +61,11 @@ class HomeFeedViewModelTest {
         val accountMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
+        val dispatcher: CoroutineDispatcher,
     ) {
         val feedRequests: Int get() = feedMock.requestCount
-        val tokenManager = FakeTokenManager("utoken-test")
-        val userRepository = UserRepository(accountMock.api(), tokenManager)
-        val messageRepository = MessageRepository(accountMock.api(), tokenManager)
+        val userSession = FakeUserSession("utoken-test")
+        val messageRepository = MessageRepository(accountMock.api(dispatcher), userSession)
     }
 
     private suspend fun env(
@@ -85,16 +84,16 @@ class HomeFeedViewModelTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
-        val zoneRepository = ZoneRepository(zoneMock.api(), preferences)
-        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository)
+        val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
+        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
         HomeFeedViewModel(
-            HomeRepository(feedMock.api()),
+            HomeRepository(feedMock.api(dispatcher)),
             zoneRepository,
             preferences,
-            if (accounts) userRepository else null,
+            if (accounts) userSession else FakeUserSession(),
             if (accounts) messageRepository else null
         )
 
@@ -525,9 +524,12 @@ class HomeFeedViewModelTest {
     fun accountHeader_updatesAvatarOnInit() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
-        env.accountMock.route(
-            "api/user/self",
-            """{"success":true,"code":200,"msg":"ok","data":{"user":{"id":88888,"nickname":"手办达人","header":"avatar/abc.jpg"}}}"""
+        env.userSession.setState(
+            SessionState.Authenticated(
+                userId = 88888L,
+                token = "utoken-test",
+                profile = UserProfile(id = 88888L, nickname = "手办达人", header = "avatar/abc.jpg")
+            )
         )
         val viewModel = env.viewModel(accounts = true)
         advanceUntilIdle()
@@ -539,7 +541,6 @@ class HomeFeedViewModelTest {
     fun unreadCount_updatesOnInitAndRefresh() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
-        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
         env.accountMock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":2,"reply":3,"praise":5,"recommend":0,"follownews":4,"commodity":1,"posts_reply":0}}}}""",
             """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{}}}}"""
@@ -557,13 +558,13 @@ class HomeFeedViewModelTest {
     fun loggedOutAccount_leavesAvatarAndUnreadEmpty() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
-        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
+        val session = FakeUserSession()
         val viewModel = HomeFeedViewModel(
-            HomeRepository(env.feedMock.api()),
+            HomeRepository(env.feedMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
-            UserRepository(env.accountMock.api(), FakeTokenManager("")),
-            MessageRepository(env.accountMock.api(), FakeTokenManager(""))
+            session,
+            MessageRepository(env.accountMock.api(env.dispatcher), session)
         )
         advanceUntilIdle()
 
@@ -575,52 +576,41 @@ class HomeFeedViewModelTest {
     fun coldStartBeforeTokenPrewarm_stillLoadsUnreadCount() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
-        env.accountMock.route("api/user/self", env.accountMock.failure(401, "未登录"))
         env.accountMock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"map":{"push":{"system":1,"reply":2,"praise":3,"recommend":0,"follownews":4,"commodity":5,"posts_reply":0}}}}"""
         )
-        val coldToken = ColdStartTokenManager("utoken-test")
+        val session = FakeUserSession(SessionState.Prewarming)
         val viewModel = HomeFeedViewModel(
-            HomeRepository(env.feedMock.api()),
+            HomeRepository(env.feedMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
-            UserRepository(env.accountMock.api(), coldToken),
-            MessageRepository(env.accountMock.api(), coldToken)
+            session,
+            MessageRepository(env.accountMock.api(env.dispatcher), session)
         )
+        advanceUntilIdle()
+        assertEquals(0, viewModel.uiState.value.unreadMessageCount)
+
+        // 预热完成：凭据就绪后才触发未读数拉取
+        session.setState(SessionState.Authenticated(userId = 1L, token = "utoken-test"))
         advanceUntilIdle()
 
         assertEquals(15, viewModel.uiState.value.unreadMessageCount)
     }
 
     @Test
-    fun zoneHomeTabsSync_waitsForTokenPrewarm() = runTest(testDispatcher) {
+    fun zoneHomeTabsSync_dispatchesImmediatelyAndResyncsAfterPrewarm() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
-        var prewarmedAtZoneRequest = false
-        env.zoneMock.routeWhen(
-            predicate = { path, _, _ -> path.contains("api/zone/home-tabs") },
-            body = { _, _, _ ->
-                prewarmedAtZoneRequest = env.tokenManager.awaitReadyCalls > 0
-                """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
-            }
-        )
+        env.userSession.setState(SessionState.Prewarming)
+
         env.viewModel(accounts = true)
         advanceUntilIdle()
+        // 不等待预热：首屏立即同步一次（可能暂为空令牌响应）
+        assertEquals(1, env.zoneMock.requestCount)
 
-        assertTrue(prewarmedAtZoneRequest)
-    }
-
-    private class ColdStartTokenManager(token: String) : TokenManager(TestDataStore.userPrefs()) {
-        private val tokenState = MutableStateFlow(token)
-        override val tokenFlow: Flow<String> = tokenState
-        override var currentToken: String = ""
-        override suspend fun clearToken() {
-            currentToken = ""
-            tokenState.value = ""
-        }
-
-        override suspend fun awaitReady() {
-            currentToken = tokenState.value
-        }
+        env.userSession.setState(SessionState.Authenticated(userId = 1L, token = "utoken-test"))
+        advanceUntilIdle()
+        // 预热完成后补拉一次带凭据的响应，保证关注专区最终一致
+        assertEquals(2, env.zoneMock.requestCount)
     }
 }

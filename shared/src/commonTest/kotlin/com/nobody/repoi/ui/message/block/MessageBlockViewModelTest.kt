@@ -1,7 +1,7 @@
 package com.nobody.repoi.ui.message.block
 
 import com.nobody.repoi.data.remote.model.BlockItem
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +71,7 @@ class MessageBlockViewModelTest {
     }
 
     private fun viewModelOf(mock: MockApi): MessageBlockViewModel {
-        val repository = MessageRepository(mock.api(), FakeTokenManager("utoken-test"))
+        val repository = MessageRepository(mock.api(), FakeUserSession("utoken-test"))
         return MessageBlockViewModel(repository)
     }
 

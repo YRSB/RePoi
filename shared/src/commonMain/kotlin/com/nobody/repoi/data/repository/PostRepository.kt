@@ -1,10 +1,10 @@
 package com.nobody.repoi.data.repository
 
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.PostDetailData
+import com.nobody.repoi.data.session.UserSession
 
 /**
  * 讨论贴与回帖数据仓储。
@@ -12,7 +12,7 @@ import com.nobody.repoi.data.remote.model.PostDetailData
  */
 class PostRepository(
     private val api: HpoiApi,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) {
 
     /**
@@ -105,7 +105,7 @@ class PostRepository(
         content: String,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再发表回帖")
         }
         if (postId <= 0L) throw ApiException(400, "帖子ID无效")
@@ -136,7 +136,7 @@ class PostRepository(
         toReplyId: Long? = null,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再回复")
         }
         if (postId <= 0L || discussId <= 0L) throw ApiException(400, "参数无效")
@@ -162,7 +162,7 @@ class PostRepository(
         id: Long,
         isSubReply: Boolean
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再进行删除操作")
         }
         if (id <= 0L) throw ApiException(400, "参数无效")
@@ -181,7 +181,7 @@ class PostRepository(
      * @param postId 帖子节点 ID
      */
     suspend fun deletePost(postId: Long): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再删除帖子")
         }
         if (postId <= 0L) throw ApiException(400, "帖子ID无效")

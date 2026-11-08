@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,14 +12,14 @@ import kotlin.test.assertTrue
  *
  * 对齐 PoiShelf `CommentRepositoryTest`（逐用例；Retrofit+MockWebServer →
  * [MockApi] MockEngine+真实 HpoiApi；Mockito `mock(TokenManager)` →
- * [FakeTokenManager]；JUnit4 → kotlin.test）。
+ * [FakeUserSession]；JUnit4 → kotlin.test）。
  */
 class CommentRepositoryTest {
 
-    private fun setup(token: String = "utoken-test"): Triple<MockApi, CommentRepository, FakeTokenManager> {
+    private fun setup(token: String = "utoken-test"): Triple<MockApi, CommentRepository, FakeUserSession> {
         val mock = MockApi()
-        val tokenManager = FakeTokenManager(token)
-        return Triple(mock, CommentRepository(mock.api(), tokenManager), tokenManager)
+        val userSession = FakeUserSession(token)
+        return Triple(mock, CommentRepository(mock.api(), userSession), userSession)
     }
 
     @Test

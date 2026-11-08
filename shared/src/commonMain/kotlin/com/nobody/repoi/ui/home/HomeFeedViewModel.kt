@@ -8,16 +8,15 @@ import com.nobody.repoi.data.remote.model.ZoneTabsSettings
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.repository.MessageRepository
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.ZoneRepository
+import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.DateTimeFormats
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -49,7 +48,7 @@ class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
     private val zoneRepository: ZoneRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
-    private val userRepository: UserRepository? = null,
+    private val userSession: UserSession,
     private val messageRepository: MessageRepository? = null
 ) : ViewModel() {
 
@@ -137,9 +136,8 @@ class HomeFeedViewModel(
             }
         }
 
-        // 启动时在后台静默同步一次服务端最新的专区与设置（若本地缓存为空也能即时拉取）
+        // 启动时立即同步一次专区与设置，不阻塞等待会话预热
         viewModelScope.launch {
-            userRepository?.awaitTokenReady()
             zoneRepository.getZoneHomeTabs()
         }
 
@@ -325,7 +323,6 @@ class HomeFeedViewModel(
     fun loadInitialFeed() {
         initialLoadJob?.cancel()
         initialLoadJob = viewModelScope.launch {
-            userRepository?.awaitTokenReady()
             val currentState = _uiState.value
 
             // 关注 Tab 但未关注任何专区：直接展示空状态，不发网络请求避免降级为查全量
@@ -424,36 +421,50 @@ class HomeFeedViewModel(
     }
 
     private fun setupAccountState() {
-        val userRepo = userRepository ?: return
         viewModelScope.launch {
-            userRepo.currentUserProfile.collect { profile ->
-                _uiState.update { it.copy(userAvatar = profile?.header) }
-            }
-        }
-        viewModelScope.launch {
-            userRepo.tokenFlow.distinctUntilChanged().collect { token ->
-                if (token.isBlank()) {
-                    _uiState.update { it.copy(unreadMessageCount = 0, userAvatar = null) }
-                    return@collect
+            var lastToken: String? = null
+            var profileRefreshRequested = false
+            userSession.state.collect { state ->
+                when (state) {
+                    is SessionState.Authenticated -> {
+                        val tokenChanged = state.token != lastToken
+                        if (tokenChanged) {
+                            lastToken = state.token
+                            profileRefreshRequested = false
+                            // 令牌初次就绪或切换时，触发关注专区刷新以保障最终一致
+                            launch { zoneRepository.getZoneHomeTabs() }
+                            fetchUnreadMessages()
+                        }
+                        _uiState.update { it.copy(userAvatar = state.profile?.header) }
+                        if (state.profile == null && !profileRefreshRequested) {
+                            // 档案缺失时仅主动补拉一次，后续由会话内部增量刷新兜底
+                            profileRefreshRequested = true
+                            launch { userSession.refreshProfile() }
+                        }
+                    }
+                    SessionState.Unauthenticated -> {
+                        lastToken = null
+                        profileRefreshRequested = false
+                        _uiState.update { it.copy(userAvatar = null, unreadMessageCount = 0) }
+                    }
+                    SessionState.Prewarming -> {
+                        // 预热中：保持中性状态，不提前刷掉可能已有的头像
+                        lastToken = null
+                        profileRefreshRequested = false
+                    }
                 }
-                userRepo.awaitTokenReady()
-                if (userRepo.currentUserProfile.value == null) {
-                    userRepo.getUserProfile()
-                }
-                fetchUnreadMessages()
             }
         }
     }
 
     private fun fetchUnreadMessages() {
-        val userRepo = userRepository ?: return
         val messageRepo = messageRepository ?: return
         viewModelScope.launch {
-            userRepo.awaitTokenReady()
-            val token = userRepo.tokenFlow.first()
+            val token = userSession.currentToken
             if (token.isBlank()) return@launch
             val count = messageRepo.getUnreadPushCount().getOrNull() ?: return@launch
-            if (userRepo.tokenFlow.first() != token) return@launch
+            // 请求期间令牌可能已切换/失效，二次校验避免污染新会话的未读数
+            if (userSession.currentToken != token) return@launch
             _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
         }
     }

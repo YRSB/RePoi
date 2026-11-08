@@ -9,9 +9,14 @@ import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
+import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
@@ -32,8 +37,8 @@ import kotlin.test.assertTrue
  *
  * 对齐 PoiShelf `UserRepositoryTest`（逐用例；Retrofit+MockWebServer →
  * [MockApi] MockEngine+真实 HpoiApi（含按体分发 `routeWhen`，等价 Dispatcher）；
- * Mockito `mock(TokenManager)` → [FakeTokenManager]（`verify clearToken` →
- * `clearTokenCalls` 计数）；JUnit4 → kotlin.test + `runTest`）。
+ * 鉴权依赖 [FakeUserSession]（4001 断言改为会话未认证与 `tokenExpiredCalls` 计数）；
+ * JUnit4 → kotlin.test + `runTest`）。
  */
 class UserRepositoryTest {
 
@@ -43,10 +48,10 @@ class UserRepositoryTest {
         isLenient = true
     }
 
-    private fun setup(token: String = "utoken-test"): Triple<MockApi, FakeTokenManager, UserRepository> {
+    private fun setup(token: String = "utoken-test"): Triple<MockApi, FakeUserSession, UserRepository> {
         val mock = MockApi()
-        val tokenManager = FakeTokenManager(token)
-        return Triple(mock, tokenManager, UserRepository(mock.api(), tokenManager))
+        val session = FakeUserSession(token)
+        return Triple(mock, session, UserRepository(mock.api(), session))
     }
 
     @Test
@@ -154,9 +159,16 @@ class UserRepositoryTest {
 
     @Test
     fun loadFullProfile_1Plus5Concurrency_aggregatesAllData() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, session, repository) = setup()
+        // 会话中已有档案：loadFullProfile 直接复用，不再请求 /api/user/self
+        session.setState(
+            SessionState.Authenticated(
+                userId = 88888L,
+                token = "utoken-test",
+                profile = UserProfile(id = 88888L, nickname = "手办达人", userName = "master", level = 5),
+            )
+        )
         // 配置按路径 + 按体分发（等价 Dispatcher 1+5 并发拦截）
-        mock.route("api/user/self", """{"success":true,"code":200,"msg":"ok","data":{"user":{"id":88888,"nickname":"手办达人","userName":"master","level":5}}}""")
         mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":120,"friendCount":45,"praiseCount":666}}}""")
         mock.route(
             "api/user/orderStatic",
@@ -202,6 +214,29 @@ class UserRepositoryTest {
         assertEquals(600.0, data.finance.supplementedTotalRmb, 0.001) // 10000 JPY * 0.06
         assertEquals(2000.0, data.finance.historyTotalRmb, 0.001)     // 2000 RMB * 1.0
         assertEquals("+10%", data.finance.amazonFluctuation)
+    }
+
+    @Test
+    fun loadFullProfile_withForceRefresh_fetchesLatestSelfProfile() = runTest {
+        val (mock, session, repository) = setup()
+        session.setState(
+            SessionState.Authenticated(
+                userId = 88888L,
+                token = "utoken-test",
+                profile = UserProfile(id = 88888L, nickname = "旧昵称", userName = "master", level = 5),
+            )
+        )
+        val freshProfile = UserProfile(id = 88888L, nickname = "新昵称", userName = "master", level = 6)
+        session.refreshProfileResult = Result.success(freshProfile)
+        mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":0,"friendCount":0,"praiseCount":0}}}""")
+        mock.route("api/user/orderStatic", """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":0,"preorder":0,"care":0}}}}""")
+
+        val result = repository.loadFullProfile(forceRefresh = true)
+        assertTrue(result.isSuccess)
+        val data = result.getOrThrow()
+        assertEquals(1, session.refreshProfileCalls)
+        assertEquals("新昵称", data.profile.displayName)
+        assertEquals(6, data.profile.level)
     }
 
     @Test
@@ -291,8 +326,8 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun getUserCollectHobbyList_onApiFailure_throwsApiExceptionAndClearsTokenOnExpired() = runTest {
-        val (mock, tokenManager, repository) = setup()
+    fun getUserCollectHobbyList_onApiFailure_throwsApiExceptionAndSelfHealsSession() = runTest {
+        val (mock, session, repository) = setup()
         mock.enqueue(mock.failure(4001, "登录凭证已过期"))
 
         val result = repository.getUserCollectHobbyList(
@@ -306,7 +341,8 @@ class UserRepositoryTest {
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
         assertEquals(4001, exception.code)
-        assertEquals(1, tokenManager.clearTokenCalls)
+        assertEquals(1, session.tokenExpiredCalls)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 
     @Test
@@ -778,8 +814,8 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun getUserFellowList_tokenExpired_clearsTokenAndThrowsApiException() = runTest {
-        val (mock, tokenManager, repository) = setup()
+    fun getUserFellowList_tokenExpired_selfHealsSessionAndThrowsApiException() = runTest {
+        val (mock, session, repository) = setup()
         mock.enqueue(mock.failure(4001, "登录已过期"))
 
         val result = repository.getUserFellowList(userId = 88888L, type = 1, page = 1)
@@ -788,7 +824,8 @@ class UserRepositoryTest {
         assertTrue(exception is ApiException)
         assertEquals(4001, exception.code)
 
-        assertEquals(1, tokenManager.clearTokenCalls)
+        assertEquals(1, session.tokenExpiredCalls)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
         assertNull(repository.currentUserProfile.value)
     }
 
@@ -881,85 +918,28 @@ class UserRepositoryTest {
 
     @Test
     fun updateUserBase_success_postsKeyAndValueAndRefreshesProfile() = runTest {
-        val (mock, _, repository) = setup()
-        // 1. upd 请求响应成功
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        // 2. getUserProfile 刷新调用响应
-        mock.enqueue(
-            """{"success": true,"code": 200,"msg": "ok","data": {"user": {"id": 88888,"nickname": "新昵称","sign": "新签名","level": 5}}}"""
+        val (mock, session, repository) = setup()
+        session.refreshProfileResult = Result.success(
+            UserProfile(id = 88888L, nickname = "新昵称", sign = "新签名", level = 5)
         )
+        // upd 请求响应成功；档案刷新由会话即刻返回，不再发 /api/user/self
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
 
         val result = repository.updateUserBase(key = "sign", value = "新签名")
         assertTrue(result.isSuccess)
 
-        // 验证第 1 个请求：updateUserBase
-        val req1 = mock.takeRequest()
-        assertEquals("POST", req1.method)
-        assertEquals("/api/user/base/upd", req1.path)
-        val form1 = req1.formEntries()
-        assertEquals("sign", form1["key"])
-        assertEquals("新签名", form1["val"])
+        val req = mock.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/api/user/base/upd", req.path)
+        val form = req.formEntries()
+        assertEquals("sign", form["key"])
+        assertEquals("新签名", form["val"])
 
-        // 验证第 2 个请求：getUserProfile (getUserSelf)
-        val req2 = mock.takeRequest()
-        assertEquals("POST", req2.method)
-        assertEquals("/api/user/self", req2.path)
-
-        // 验证缓存流更新
+        // 验证会话档案镜像同步
         val currentProfile = repository.currentUserProfile.value
         assertNotNull(currentProfile)
         assertEquals("新签名", currentProfile.sign)
         assertEquals("新昵称", currentProfile.nickname)
-    }
-
-    @Test
-    fun getUserProfile_parsesAllExtendedR2Fields() = runTest {
-        val (mock, _, repository) = setup()
-        mock.enqueue(
-            """{"success": true,"code": 200,"msg": "ok","data": {"user": {"id": 88888,"nickname": "资深胶佬","userName": "collector888","sign": "入坑十年","intro": "专注比例手办与雕像收藏","header": "header/collector.jpg","bnr": "banner/collector.jpg","level": 6,"sex": 1,"birth": "1995-08-18","city": "上海","regTime": "2016-04-20 12:00:00","addTime": "2016-04-20","verify": "知名手办摄影师"}}}"""
-        )
-
-        val result = repository.getUserProfile()
-        assertTrue(result.isSuccess)
-        val profile = result.getOrThrow()
-
-        assertEquals(88888L, profile.id)
-        assertEquals("资深胶佬", profile.nickname)
-        assertEquals("collector888", profile.userName)
-        assertEquals("资深胶佬", profile.displayName)
-        assertEquals("入坑十年", profile.sign)
-        assertEquals("专注比例手办与雕像收藏", profile.intro)
-        assertEquals("header/collector.jpg", profile.header)
-        assertEquals("banner/collector.jpg", profile.bnr)
-        assertEquals(6, profile.level)
-        assertEquals(1, profile.sex)
-        assertEquals("男", profile.genderText)
-        assertEquals("1995-08-18", profile.birth)
-        assertEquals("上海", profile.city)
-        assertEquals("2016-04-20 12:00:00", profile.regTime)
-        assertEquals("2016-04-20", profile.addTime)
-        assertEquals("2016-04-20 12:00:00", profile.displayRegisterTime)
-        assertEquals("知名手办摄影师", profile.verify)
-        assertTrue(profile.isVerified)
-
-        // 验证性别的另外取值与未认证兜底
-        val femaleProfile = profile.copy(sex = 0, verify = null)
-        assertEquals("女", femaleProfile.genderText)
-        assertFalse(femaleProfile.isVerified)
-
-        val secretProfile = profile.copy(sex = 2, verify = "")
-        assertEquals("保密", secretProfile.genderText)
-        assertFalse(secretProfile.isVerified)
-
-        val unsetProfile = profile.copy(sex = null)
-        assertEquals("未设置", unsetProfile.genderText)
-
-        // 验证注册时间回退到 addTime
-        val addTimeOnlyProfile = profile.copy(regTime = null)
-        assertEquals("2016-04-20", addTimeOnlyProfile.displayRegisterTime)
-
-        // 验证内存缓存同步
-        assertEquals(profile, repository.currentUserProfile.value)
     }
 
     @Test
@@ -1004,59 +984,79 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun loginWithToken_blankToken_failsWithoutRequest() = runTest {
-        val (mock, tokenManager, repository) = setup(token = "")
-        val beforeToken = tokenManager.currentToken
-        val beforeProfile = repository.currentUserProfile.value
+    @Suppress("DEPRECATION")
+    fun compatibilityBridge_proxiesSessionAccessors() = runTest {
+        val profile = UserProfile(id = 42L, nickname = "胶友")
+        val session = FakeUserSession(
+            SessionState.Authenticated(userId = 42L, token = "tok-42", profile = profile)
+        )
+        val repository = UserRepository(MockApi().api(), session)
 
-        val result = repository.loginWithToken("   \n ")
-
-        assertTrue(result.isFailure)
-        assertEquals("请输入登录令牌", result.exceptionOrNull()?.message)
-        assertEquals(0, mock.requestCount)
-        assertEquals(beforeToken, tokenManager.currentToken)
-        assertEquals(beforeProfile, repository.currentUserProfile.value)
+        assertEquals("tok-42", repository.tokenFlow.first())
+        assertEquals("tok-42", repository.currentToken)
+        assertTrue(repository.isLoggedIn)
+        assertEquals(42L, repository.currentUserId)
+        assertEquals(profile, repository.currentUserProfile.value)
     }
 
     @Test
-    fun loginWithToken_success_persistsTokenAndProfile() = runTest {
-        val (mock, tokenManager, repository) = setup(token = "")
-        mock.enqueue(mock.ok("""{"user":{"id":88888,"nickname":"资深胶佬","userName":"collector888"}}"""))
+    @Suppress("DEPRECATION")
+    fun compatibilityBridge_tokenFlowAndProfileMirrorFollowSessionTransitions() = runTest {
+        val session = FakeUserSession("tok-old")
+        val repository = UserRepository(MockApi().api(), session)
+        assertEquals("tok-old", repository.tokenFlow.first())
 
-        val result = repository.loginWithToken("candidate-token")
+        val profile = UserProfile(id = 7L, nickname = "新用户", header = "avatar/new.jpg")
+        session.setState(SessionState.Authenticated(userId = 7L, token = "tok-new", profile = profile))
+        assertEquals("tok-new", repository.tokenFlow.first())
+        assertEquals(profile, repository.currentUserProfile.value)
+
+        session.setState(SessionState.Unauthenticated)
+        assertEquals("", repository.tokenFlow.first())
+        assertNull(repository.currentUserProfile.value)
+    }
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun compatibilityBridge_awaitTokenReadyResumesAfterPrewarm() = runTest {
+        val session = FakeUserSession(SessionState.Prewarming)
+        val repository = UserRepository(MockApi().api(), session)
+        var resumed = false
+
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            repository.awaitTokenReady()
+            resumed = true
+        }
+        advanceUntilIdle()
+        assertFalse(resumed)
+
+        session.setState(SessionState.Authenticated(userId = 1L, token = "tok-1"))
+        advanceUntilIdle()
+        assertTrue(resumed)
+        job.cancel()
+    }
+
+    @Test
+    fun logout_delegatesToSession() = runTest {
+        val (_, session, repository) = setup()
+
+        repository.logout()
+
+        assertEquals(1, session.logoutCalls)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
+        assertNull(repository.currentUserProfile.value)
+    }
+
+    @Test
+    fun getUserProfile_delegatesToSessionRefresh() = runTest {
+        val (_, session, repository) = setup()
+        val profile = UserProfile(id = 9L, nickname = "会话档案")
+        session.refreshProfileResult = Result.success(profile)
+
+        val result = repository.getUserProfile()
 
         assertTrue(result.isSuccess)
-        assertEquals(88888L, result.getOrThrow().id)
-        assertEquals("candidate-token", tokenManager.currentToken)
-        assertEquals(88888L, repository.currentUserProfile.value?.id)
-        val request = mock.takeRequest()
-        assertEquals("/api/user/self", request.path)
-        assertEquals("candidate-token", request.formEntries()["utoken"])
-    }
-
-    @Test
-    fun loginWithToken_expiredToken4001_reportsFriendlyErrorAndRollsBack() = runTest {
-        val (mock, tokenManager, repository) = setup(token = "")
-        mock.enqueue(mock.failure(4001, "登录凭证已过期"))
-
-        val result = repository.loginWithToken("expired-token")
-
-        assertTrue(result.isFailure)
-        assertEquals("登录令牌已失效，请重新获取", result.exceptionOrNull()?.message)
-        assertEquals("", tokenManager.currentToken)
-        assertNull(repository.currentUserProfile.value)
-    }
-
-    @Test
-    fun loginWithToken_serverError_reportsServerMessageWithoutPersisting() = runTest {
-        val (mock, tokenManager, repository) = setup(token = "")
-        mock.enqueue(status = io.ktor.http.HttpStatusCode.ServiceUnavailable, body = mock.failure(503, "服务暂不可用"))
-
-        val result = repository.loginWithToken("candidate-token")
-
-        assertTrue(result.isFailure)
-        assertEquals("服务暂不可用", result.exceptionOrNull()?.message)
-        assertEquals("", tokenManager.currentToken)
-        assertNull(repository.currentUserProfile.value)
+        assertEquals(1, session.refreshProfileCalls)
+        assertEquals(profile, repository.currentUserProfile.value)
     }
 }

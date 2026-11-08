@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,7 +12,7 @@ import kotlin.test.assertTrue
  * 讨论板版块仓储单测：关注列表解析、关注取关、排序保存、版块详情与帖子流查询（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `ForumRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeTokenManager]；
+ * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeUserSession]；
  * JUnit4 → kotlin.test）。
  * 移植说明：`updateFocusOrder` 的 `order=3%2C1%2C2` 为 OkHttp 线上百分号编码形态；
  * MockEngine 侧捕获的是解码后 form 值，断言改为 `formEntries()["order"] == "3,1,2"`，语义等价。
@@ -20,7 +21,7 @@ class ForumRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Pair<MockApi, ForumRepository> {
         val mock = MockApi()
-        return mock to ForumRepository(mock.api(), FakeTokenManager(token))
+        return mock to ForumRepository(mock.api(), FakeUserSession(token))
     }
 
     @Test

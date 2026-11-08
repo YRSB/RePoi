@@ -8,7 +8,7 @@ import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.PostDetailData
 import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.data.repository.PostRepository
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.ui.common.comment.CommentFeedState
 import com.nobody.repoi.util.buildEmoticonParam
@@ -58,11 +58,12 @@ data class PostDetailUiState(
 
 /**
  * 帖子详情页 ViewModel，负责帖子详情、多图与评论列表单向数据流管理。
+ * 当前用户身份由 [UserSession] 提供，不再直接依赖凭据存储。
  */
 class PostDetailViewModel(
     private val postRepository: PostRepository,
     private val stickerRepository: StickerRepository,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -83,7 +84,7 @@ class PostDetailViewModel(
         activePostId = postId
         activeNodeId = nodeId
         _uiState.value = PostDetailUiState(
-            currentUserId = tokenManager.currentUserId,
+            currentUserId = userSession.currentUserId,
             detail = if (!initialTitle.isNullOrBlank()) {
                 PostDetailData(id = nodeId ?: 0L, itemId = postId, title = initialTitle)
             } else null,
@@ -105,7 +106,7 @@ class PostDetailViewModel(
                     isCommentsLoading = true,
                     commentsError = null,
                     commentsPage = 1,
-                    currentUserId = tokenManager.currentUserId
+                    currentUserId = userSession.currentUserId
                 )
             }
 
@@ -179,7 +180,7 @@ class PostDetailViewModel(
         if (postId <= 0L && nodeId <= 0L) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, currentUserId = tokenManager.currentUserId) }
+            _uiState.update { it.copy(isRefreshing = true, currentUserId = userSession.currentUserId) }
 
             coroutineScope {
                 val detailDeferred = async { postRepository.getPostDetail(postId, nodeId) }

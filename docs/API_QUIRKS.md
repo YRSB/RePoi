@@ -120,4 +120,4 @@
 - **推荐解法**：
   - 网络基类统一配置默认 BaseURL `https://www.hpoi.net.cn/`；
   - 图片与静态资源 CDN 工具类 `CdnUrlUtils` 确保指向高可用域名；
-  - 网络插件在接收到 `code == 4001` 时发布全局认证失效事件，由 `TokenManager` 统一切断。
+  - 网络插件在接收到 `code == 4001` 时发布全局认证失效事件，由 `UserSession.notifyTokenExpired()` 统一切断。

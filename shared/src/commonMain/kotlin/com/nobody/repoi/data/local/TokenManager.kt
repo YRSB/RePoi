@@ -25,10 +25,16 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * KMP 移植：构造器改取 `DataStore<Preferences>`（平台模块按同名
  * `user_prefs.preferences_pb` 提供），替代 `Context.preferencesDataStore`。
  * 内存镜像经 `kotlin.concurrent.atomics` 实现（common 无 `@Volatile`）。
+ *
+ * 可见性：本适配器为 [com.nobody.repoi.data.session.UserSessionImpl] 的内部实现细节，
+ * 仅由 [com.nobody.repoi.data.session.createUserSession] 组合根构造，
+ * 不注册为可独立注入的单例，也不再作为公开接缝（ADR-0005 单一鉴权出口）。
+ * `prewarmOnCreate` 仅供测试替身关闭真实 DataStore 预读。
  */
 @OptIn(ExperimentalAtomicApi::class)
-open class TokenManager(
+internal open class TokenManager(
     private val dataStore: DataStore<Preferences>,
+    prewarmOnCreate: Boolean = true,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -41,13 +47,13 @@ open class TokenManager(
         get() = tokenRef.load()
         set(value) { tokenRef.store(value) }
 
-    var currentUserId: Long
+    open var currentUserId: Long
         get() = userIdRef.load()
-        private set(value) { userIdRef.store(value) }
+        set(value) { userIdRef.store(value) }
 
-    var currentUserName: String
+    open var currentUserName: String
         get() = userNameRef.load()
-        private set(value) { userNameRef.store(value) }
+        set(value) { userNameRef.store(value) }
 
     open val tokenFlow: Flow<String> = dataStore.data.map { prefs ->
         prefs[TOKEN_KEY] ?: ""
@@ -57,23 +63,27 @@ open class TokenManager(
         prefs[USER_ID_KEY] ?: 0L
     }
 
-    private val prewarmJob: Job = scope.launch {
-        runCatching {
-            // 冷启动预热：从 DataStore 一次性恢复内存镜像。
-            // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
-            val prefs = dataStore.data.first()
-            if (localWriteRef.load()) return@runCatching
-            if (tokenRef.load().isEmpty()) prefs[TOKEN_KEY]?.let { tokenRef.store(it) }
-            if (userIdRef.load() == 0L) prefs[USER_ID_KEY]?.let { userIdRef.store(it) }
-            if (userNameRef.load().isEmpty()) prefs[USER_NAME_KEY]?.let { userNameRef.store(it) }
+    private val prewarmJob: Job? = if (prewarmOnCreate) {
+        scope.launch {
+            runCatching {
+                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
+                // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
+                val prefs = dataStore.data.first()
+                if (localWriteRef.load()) return@runCatching
+                if (tokenRef.load().isEmpty()) prefs[TOKEN_KEY]?.let { tokenRef.store(it) }
+                if (userIdRef.load() == 0L) prefs[USER_ID_KEY]?.let { userIdRef.store(it) }
+                if (userNameRef.load().isEmpty()) prefs[USER_NAME_KEY]?.let { userNameRef.store(it) }
+            }
         }
+    } else {
+        null
     }
 
     open suspend fun awaitReady() {
-        prewarmJob.join()
+        prewarmJob?.join()
     }
 
-    suspend fun saveToken(token: String, userName: String? = null) {
+    open suspend fun saveToken(token: String, userName: String? = null) {
         localWriteRef.store(true)
         currentToken = token
         currentUserId = 0L

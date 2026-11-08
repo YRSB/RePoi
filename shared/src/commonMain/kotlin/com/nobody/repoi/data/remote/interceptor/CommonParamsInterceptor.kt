@@ -1,7 +1,5 @@
 package com.nobody.repoi.data.remote.interceptor
 
-import com.nobody.repoi.data.local.TokenManager
-
 /**
  * 公共参数拦截器桩（OkHttp 时代的 Koin 绑定保留位）。
  *
@@ -13,7 +11,5 @@ import com.nobody.repoi.data.local.TokenManager
 class CommonParamsInterceptor(
     private val tokenProvider: () -> String,
 ) {
-    constructor(tokenManager: TokenManager) : this({ tokenManager.currentToken })
-
     fun token(): String = runCatching { tokenProvider() }.getOrDefault("")
 }

@@ -15,7 +15,7 @@
 fun loadsBindingStatus() = runTest {
     val mock = MockApi()
     mock.enqueue(mock.ok("""{...}"""))
-    val repository = SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+    val repository = SettingsRepository(mock.api(), FakeUserSession("utoken-test"))
 
     val result = repository.checkAccount()
 
@@ -52,7 +52,9 @@ fun tearDownMain() {
 fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
     val mock = MockApi()
     mock.enqueue(mock.ok("""{...}"""))
-    val viewModel = SettingsAccountViewModel(SettingsRepository(mock.api(testDispatcher), FakeTokenManager("utoken-test")))
+    val session = FakeUserSession("utoken-test")
+    val repository = SettingsRepository(mock.api(testDispatcher), session)
+    val viewModel = SettingsAccountViewModel(repository, session)
     advanceUntilIdle()
 
     assertFalse(viewModel.uiState.value.isLoading)

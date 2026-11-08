@@ -1,6 +1,8 @@
 package com.nobody.repoi.ui.settings
 
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -32,15 +34,21 @@ class SettingsAccountViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repository(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
+    private fun setup(
+        mock: MockApi,
+        token: String = "utoken-test"
+    ): Pair<FakeUserSession, SettingsAccountViewModel> {
+        val session = FakeUserSession(token)
+        val repository = SettingsRepository(mock.api(testDispatcher), session)
+        return session to SettingsAccountViewModel(repository, session)
+    }
 
     @Test
     fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":false,"wechat":true}}"""))
         mock.enqueue(mock.ok("""{"phone":"138****8000","email":""}"""))
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -62,7 +70,7 @@ class SettingsAccountViewModelTest {
     @Test
     fun unauthenticated_skipsNetworkAndDefaultsEmpty() = runTest(testDispatcher) {
         val mock = MockApi()
-        val viewModel = SettingsAccountViewModel(repository(mock, token = ""))
+        val viewModel = setup(mock, token = "").second
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -76,21 +84,21 @@ class SettingsAccountViewModelTest {
     @Test
     fun tokenChanges_triggersRefreshAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
-        val tokenManager = FakeTokenManager("")
-        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
-        val viewModel = SettingsAccountViewModel(repo)
+        val session = FakeUserSession()
+        val repo = SettingsRepository(mock.api(testDispatcher), session)
+        val viewModel = SettingsAccountViewModel(repo, session)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
         mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":false,"wechat":true}}"""))
         mock.enqueue(mock.ok("""{"phone":"138****8000","email":""}"""))
-        tokenManager.currentToken = "new-token"
+        session.setState(SessionState.Authenticated(userId = 0L, token = "new-token"))
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.passwordBound)
         assertEquals(2, mock.requestCount)
 
-        tokenManager.clearToken()
+        session.setState(SessionState.Unauthenticated)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.passwordBound)
@@ -98,10 +106,33 @@ class SettingsAccountViewModelTest {
     }
 
     @Test
+    fun authenticatedProfileUpdate_sameToken_doesNotTriggerExtraRefresh() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":false,"wechat":true}}"""))
+        mock.enqueue(mock.ok("""{"phone":"138****8000","email":""}"""))
+        val (session, viewModel) = setup(mock)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.passwordBound)
+        assertEquals(2, mock.requestCount)
+
+        session.setState(
+            SessionState.Authenticated(
+                userId = 1L,
+                token = "utoken-test",
+                profile = UserProfile(id = 1L, nickname = "昵称", userName = "user")
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(2, mock.requestCount)
+        assertTrue(viewModel.uiState.value.passwordBound)
+    }
+
+    @Test
     fun initialState_whenCheckFails_reportsLoadFailed() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.enqueue(mock.failure(403, "无权访问"))
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -115,7 +146,7 @@ class SettingsAccountViewModelTest {
         val mock = MockApi()
         mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":true,"wechat":false}}"""))
         mock.enqueue(mock.ok("""{"phone":"138****8000","email":"a****@x.com"}"""))
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
         assertEquals("138****8000", viewModel.uiState.value.maskedPhone)
 
@@ -135,7 +166,7 @@ class SettingsAccountViewModelTest {
         val mock = MockApi()
         mock.enqueue(mock.ok("""{"result":{"verify":false,"password":false,"phone":false,"email":false,"wechat":false}}"""))
         mock.enqueue(mock.failure(500, "服务端异常"))
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -153,7 +184,7 @@ class SettingsAccountViewModelTest {
         val mock = MockApi()
         mock.enqueue(mock.ok("""{"result":{"verify":false,"password":false,"phone":false,"email":false,"wechat":false}}"""))
         mock.enqueue(mock.ok("""{"phone":"","email":""}"""))
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
         assertFalse(viewModel.uiState.value.phoneBound)
 
@@ -171,7 +202,7 @@ class SettingsAccountViewModelTest {
     @Test
     fun exportDialog_openDismissToggleVisibility() = runTest(testDispatcher) {
         val mock = MockApi()
-        val viewModel = SettingsAccountViewModel(repository(mock))
+        val viewModel = setup(mock).second
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.showExportDialog)
@@ -190,9 +221,10 @@ class SettingsAccountViewModelTest {
     @Test
     fun activeToken_exposesCurrentSessionToken() = runTest(testDispatcher) {
         val mock = MockApi()
-        val viewModel = SettingsAccountViewModel(repository(mock, token = "utoken-export"))
+        val (session, viewModel) = setup(mock, token = "utoken-export")
         advanceUntilIdle()
 
+        assertEquals("utoken-export", session.exportActiveToken())
         assertEquals("utoken-export", viewModel.activeToken)
     }
 

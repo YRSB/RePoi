@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.AccountCheckResult
 import com.nobody.repoi.data.remote.model.UserPrivacyPayload
 import com.nobody.repoi.data.repository.SettingsRepository
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,16 +39,17 @@ fun SettingsAccountSecurityUiState.bindings(): List<SettingsAccountBinding> = li
 )
 
 class SettingsAccountViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val userSession: UserSession
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        SettingsAccountSecurityUiState(isLoading = settingsRepository.isLoggedIn)
+        SettingsAccountSecurityUiState(isLoading = userSession.isAuthenticated)
     )
     val uiState: StateFlow<SettingsAccountSecurityUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            settingsRepository.tokenFlow.collect { token ->
+            userSession.tokenFlow.collect { token ->
                 if (token.isNotBlank()) {
                     refresh()
                 } else {
@@ -58,7 +60,7 @@ class SettingsAccountViewModel(
     }
 
     fun refresh() {
-        if (!settingsRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(isLoading = false, loadFailed = false) }
             return
         }
@@ -85,7 +87,7 @@ class SettingsAccountViewModel(
         }
     }
 
-    val activeToken: String get() = settingsRepository.activeToken
+    val activeToken: String get() = userSession.exportActiveToken()
 
     fun openExportDialog() {
         _uiState.update { it.copy(showExportDialog = true, exportTokenRevealed = false) }

@@ -1,8 +1,8 @@
 package com.nobody.repoi.ui.follow
 
-import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -13,7 +13,7 @@ class FollowViewModelTest {
         val mock = MockApi()
         val viewModel = FollowViewModel(
             FollowRepository(mock.api(), mock.json),
-            FakeTokenManager("token")
+            FakeUserSession("token")
         )
 
         viewModel.saveScrollPosition(3, 7)

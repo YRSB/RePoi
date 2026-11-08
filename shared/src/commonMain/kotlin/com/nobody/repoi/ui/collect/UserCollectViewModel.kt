@@ -6,7 +6,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.data.repository.CollectRepository
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.util.CollectInvalidationBus
@@ -34,7 +34,7 @@ class UserCollectViewModel(
     private val userRepository: UserRepository,
     private val collectRepository: CollectRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
-    private val tokenManager: TokenManager,
+    private val userSession: UserSession,
     private val collectInvalidationBus: CollectInvalidationBus,
     navUserId: Long = 0L,
     navInitialCollectState: String? = null,
@@ -1233,7 +1233,7 @@ class UserCollectViewModel(
      * 登录用户 id 与当前浏览用户 id 相同即为「本人」，仅本人可见写操作入口。
      */
     private fun resolveIsSelf(targetUserId: Long): Boolean {
-        val loginId = tokenManager.currentUserId
+        val loginId = userSession.currentUserId
         return loginId > 0L && loginId == targetUserId
     }
 

@@ -6,11 +6,11 @@ import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
-import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -34,7 +34,7 @@ class HobbyDetailEnv(
     val commentMock: MockApi = MockApi(),
     val userMock: MockApi = MockApi(),
 ) {
-    val tokenManager = FakeTokenManager("utoken-test")
+    private val session = FakeUserSession("utoken-test")
     val json: Json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
     private val exhobbyEngine = MockEngine {
@@ -47,14 +47,14 @@ class HobbyDetailEnv(
 
     val detailRepository = HobbyDetailRepository(detailMock.api())
     val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
-    val commentRepository = CommentRepository(commentMock.api(), tokenManager)
+    val commentRepository = CommentRepository(commentMock.api(), session)
     val stickerRepository = StickerRepository(detailMock.api())
-    val userRepository = UserRepository(userMock.api(), tokenManager)
+    val userRepository = UserRepository(userMock.api(), session)
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 
     val commentDelegate = CommentInteractionDelegate(
-        commentRepository, stickerRepository, tokenManager, userRepository
+        commentRepository, stickerRepository, session
     )
 
     fun viewModel(): HobbyDetailViewModel = HobbyDetailViewModel(

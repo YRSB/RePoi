@@ -5,12 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentThreadPage
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.DeletedComment
 import com.nobody.repoi.data.repository.StickerRepository
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.buildEmoticonParam
 import kotlinx.coroutines.Job
@@ -62,11 +61,16 @@ data class CommentDetailUiState(
     val actionMessage: String? = null
 )
 
+/**
+ * 评论详情页状态机与动作。
+ *
+ * 身份判定统一走 [UserSession]：`currentUserId` 与 `currentToken` 语义等价于原凭据存储读取，
+ * 档案缺失时通过 [UserSession.refreshProfile] 触发会话内刷新，不再直接依赖仓储。
+ */
 class CommentDetailViewModel(
     private val repository: CommentRepository,
     private val stickerRepository: StickerRepository,
-    private val tokenManager: TokenManager,
-    private val userRepository: UserRepository
+    private val userSession: UserSession
 ) : ViewModel() {
     companion object {
         /** 子评论分页大小：与 hasMore 判定口径共用 */
@@ -404,13 +408,13 @@ class CommentDetailViewModel(
     }
 
     val currentCommentUserId: Long
-        get() = tokenManager.currentUserId
+        get() = userSession.currentUserId
 
     suspend fun resolveCommentUserId(): Long {
-        val cached = tokenManager.currentUserId
-        if (cached > 0L || tokenManager.currentToken.isBlank()) return cached
-        userRepository.getUserProfile()
-        return tokenManager.currentUserId
+        val cached = userSession.currentUserId
+        if (cached > 0L || userSession.currentToken.isBlank()) return cached
+        userSession.refreshProfile()
+        return userSession.currentUserId
     }
 
     suspend fun deleteHeaderComment(): Boolean {
