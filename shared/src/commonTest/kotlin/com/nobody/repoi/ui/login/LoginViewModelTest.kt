@@ -4,8 +4,6 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.LoginData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.remote.model.UserProfileSummary
-import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,8 +43,7 @@ class LoginViewModelTest {
 
     private fun setup(): Pair<FakeUserSession, LoginViewModel> {
         val session = FakeUserSession("utoken-test")
-        val repository = UserRepository(MockApi().api(), session)
-        return session to LoginViewModel(repository)
+        return session to LoginViewModel(session)
     }
 
     @Test
@@ -82,6 +79,8 @@ class LoginViewModelTest {
         assertEquals(1, session.loginCalls)
         assertEquals("user", session.lastLoginAccount)
         assertEquals("pass", session.lastLoginPassword)
+        assertTrue(session.isAuthenticated)
+        assertEquals("tok123", session.currentToken)
     }
 
     @Test
@@ -101,6 +100,9 @@ class LoginViewModelTest {
         assertEquals("密码错误", state.errorMessage)
         assertEquals("user", state.account)
         assertFalse(successCalled)
+        assertEquals(1, session.loginCalls)
+        assertTrue(session.isAuthenticated)
+        assertEquals("utoken-test", session.currentToken)
     }
 
     @Test
@@ -162,6 +164,8 @@ class LoginViewModelTest {
         assertTrue(successCalled)
         assertEquals(1, session.tokenLoginCalls)
         assertEquals("candidate-token", session.lastTokenCandidate)
+        assertTrue(session.isAuthenticated)
+        assertEquals("candidate-token", session.currentToken)
     }
 
     @Test
@@ -180,6 +184,8 @@ class LoginViewModelTest {
         assertEquals("登录令牌已失效，请重新获取", state.errorMessage)
         assertEquals("expired-token", state.token)
         assertFalse(successCalled)
+        assertEquals(1, session.tokenLoginCalls)
+        assertEquals("utoken-test", session.currentToken)
     }
 
     @Test
@@ -198,6 +204,8 @@ class LoginViewModelTest {
         assertEquals("服务暂不可用", state.errorMessage)
         assertEquals("candidate-token", state.token)
         assertFalse(successCalled)
+        assertEquals(1, session.tokenLoginCalls)
+        assertEquals("utoken-test", session.currentToken)
     }
 
     @Test
