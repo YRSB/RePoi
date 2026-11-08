@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sell
@@ -36,27 +34,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.ui.common.LocalImageViewer
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 
 /**
  * 专区二手交易卡片（参考首页动态 ActionCard 交易样式重构）。
@@ -77,16 +67,10 @@ fun ZoneResaleCard(
     onMoreClick: (() -> Unit)? = null
 ) {
     val imageViewer = LocalImageViewer.current
-    val coverUrl = remember(item) { item.displayCoverUrl }
-    val thumbRequest = rememberListImageRequest(item.hobbyCover ?: item.displayCover, coverUrl ?: "", "resale")
-    val userAvatarUrl = remember(item.user?.header) { CdnUrlUtils.getHeadUrl(item.user?.header) }
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
-    // 自适应图片纵横比：优先从 LRU 缓存获取，官方钳制比例不小于 0.4f
-    var imageRatio by remember(coverUrl) {
-        mutableFloatStateOf(coverUrl?.let { ImageAspectRatioCache[it] } ?: 1.0f)
-    }
-    val effectiveRatio = imageRatio.coerceAtLeast(0.4f)
+    // 海报来源分两类：优先关联手办主封面（cover/n/），缺失时回退卖家实物图（resale/n/）。
+    // 两者由管道按分类裁决变体，这里只给原始相对路径，缺省/失败态交给基元
+    val coverPath = item.displayCover
+    val coverCategory = if (!item.hobbyCover.isNullOrBlank()) MediaCategory.HOBBY else MediaCategory.RESALE
 
     val targetUserId = item.user?.userId ?: 0L
     val isUserClickable = onUserClick != null && targetUserId > 0L
@@ -110,47 +94,20 @@ fun ZoneResaleCard(
             verticalAlignment = Alignment.Top
         ) {
             // ── 【左侧栏】：自适应海报（宽定死 96dp，纯净无遮挡）──
-            Box(
+            // 比例由基元自适应撑开（纵向钳制走管道 0.4 下界），保留旧版顶部对齐语义
+            PoiAsyncImage(
+                path = coverPath,
+                category = coverCategory,
+                purpose = ImagePurpose.CARD_STANDARD,
+                contentDescription = item.detail,
                 modifier = Modifier
                     .width(96.dp)
-                    .aspectRatio(effectiveRatio)
                     .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!coverUrl.isNullOrBlank() && !loadFailed) {
-                    AsyncImage(
-                        model = thumbRequest,
-                        contentDescription = item.detail,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize(),
-                        onSuccess = { state ->
-                            val size = state.painter.intrinsicSize
-                            if (size.width > 0 && size.height > 0) {
-                                val ratio = size.width / size.height
-                                if (ratio in 0.2f..5.0f && kotlin.math.abs(ratio - imageRatio) > 0.01f) {
-                                    imageRatio = ratio
-                                    ImageAspectRatioCache[coverUrl] = ratio
-                                }
-                            }
-                        },
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.BrokenImage,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-            }
+                adaptiveRatio = true,
+                fallbackRatio = 1.0f,
+                alignment = Alignment.TopCenter
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -198,14 +155,14 @@ fun ZoneResaleCard(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
                                 )
-                                if (!userAvatarUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = userAvatarUrl,
-                                        contentDescription = item.user?.nickname,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
+                                // 头像走管道 AVATAR 分类（head/n/ 标准档），空路径由基元兜底缺省图
+                                PoiAsyncImage(
+                                    path = item.user?.header,
+                                    category = MediaCategory.AVATAR,
+                                    purpose = ImagePurpose.CARD_STANDARD,
+                                    contentDescription = item.user?.nickname,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
 
                             Text(

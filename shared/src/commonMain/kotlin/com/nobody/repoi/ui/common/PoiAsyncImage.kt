@@ -62,6 +62,7 @@ private val BrokenImageIconSize = 28.dp
  * @param fallbackRatio 纵横比缓存未命中时的回退比例（如相册无图卡片 17:24），缺省 1.0f
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
+ * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
  */
 @Composable
 fun PoiAsyncImage(
@@ -74,7 +75,8 @@ fun PoiAsyncImage(
     adaptiveRatio: Boolean = false,
     fallbackRatio: Float? = null,
     enableFullscreenPreview: Boolean = false,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    alignment: Alignment = Alignment.Center
 ) {
     val pipeline = MediaPipeline.Default
     val resolvedUrl = remember(path, category, purpose) { pipeline.resolveUrl(path, category, purpose) }
@@ -99,7 +101,8 @@ fun PoiAsyncImage(
         adaptiveRatio = adaptiveRatio,
         fallbackRatio = fallbackRatio,
         enableFullscreenPreview = enableFullscreenPreview,
-        onClick = onClick
+        onClick = onClick,
+        alignment = alignment
     )
 }
 
@@ -118,6 +121,7 @@ fun PoiAsyncImage(
  * @param fallbackRatio 纵横比缓存未命中时的回退比例，缺省 1.0f
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器（仅纯字符串 URL 可用）
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
+ * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
  */
 @Composable
 fun PoiAsyncImage(
@@ -129,7 +133,8 @@ fun PoiAsyncImage(
     ratioKey: String? = null,
     fallbackRatio: Float? = null,
     enableFullscreenPreview: Boolean = false,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    alignment: Alignment = Alignment.Center
 ) {
     val urlText = remember(model) { modelTextOf(model) }
     val bucket = remember(contentScale, adaptiveRatio) {
@@ -149,7 +154,8 @@ fun PoiAsyncImage(
         adaptiveRatio = adaptiveRatio,
         fallbackRatio = fallbackRatio,
         enableFullscreenPreview = enableFullscreenPreview,
-        onClick = onClick
+        onClick = onClick,
+        alignment = alignment
     )
 }
 
@@ -171,7 +177,8 @@ private fun PoiAsyncImageCore(
     adaptiveRatio: Boolean,
     fallbackRatio: Float?,
     enableFullscreenPreview: Boolean,
-    onClick: (() -> Unit)?
+    onClick: (() -> Unit)?,
+    alignment: Alignment
 ) {
     val pipeline = MediaPipeline.Default
     // ImageRequest 直通；其余模型统一经列表请求工厂生成带独立缓存键的请求
@@ -230,6 +237,7 @@ private fun PoiAsyncImageCore(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = contentScale,
+                alignment = alignment,
                 modifier = Modifier.fillMaxSize(),
                 onSuccess = { state ->
                     if (!adaptiveRatio) {

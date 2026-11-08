@@ -9,30 +9,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
 /**
@@ -45,11 +35,6 @@ fun ZoneEntityCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
-    val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -62,7 +47,7 @@ fun ZoneEntityCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧方形微曲角封面（68dp x 68dp）
+            // 左侧方形微曲角封面（68dp x 68dp），缺省/失败态由基元内置
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -70,22 +55,13 @@ fun ZoneEntityCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
-                if (!coverUrl.isNullOrBlank() && !loadFailed) {
-                    AsyncImage(
-                        model = thumbRequest,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
-                    )
-                }
+                PoiAsyncImage(
+                    path = item.cover,
+                    category = MediaCategory.ZONE,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             // 右侧信息展示（名称 + 浏览量）

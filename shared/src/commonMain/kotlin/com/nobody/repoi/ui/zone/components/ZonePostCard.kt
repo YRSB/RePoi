@@ -8,18 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CardDefaults
@@ -29,41 +26,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.ui.common.LevelPill
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
-import kotlin.math.abs
-
-/**
- * 讨论帖图片缩略图宽高比内存缓存，避免反复重组或滚动时产生布局跳跃。
- *
- * KMP 移植说明：原生 `android.util.LruCache` 改为共用
- * [ImageAspectRatioCache]（Mutex 保护的 LinkedHashMap LRU，上限 500 项）。
- */
-private object PostThumbnailAspectRatioCache {
-    operator fun get(url: String): Float? = ImageAspectRatioCache[url]
-    operator fun set(url: String, ratio: Float) {
-        ImageAspectRatioCache[url] = ratio
-    }
-}
 
 /**
  * 专区讨论分类下的帖子卡片（风格对齐信息流 ActionCard，严格限制配图高度）。
@@ -98,17 +75,18 @@ fun ZonePostCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 用户头像
-                AsyncImage(
-                    model = CdnUrlUtils.getHeadSmallUrl(post.userHeader),
+                // 用户头像（head/s/ 缩略档，缺省由基元兜底）
+                PoiAsyncImage(
+                    path = post.userHeader,
+                    category = MediaCategory.AVATAR,
+                    purpose = ImagePurpose.THUMBNAIL,
                     contentDescription = post.userName,
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
                         .clickable(enabled = onUserClick != null && post.userId > 0L) {
                             onUserClick?.invoke(post.userId)
-                        },
-                    contentScale = ContentScale.Crop
+                        }
                 )
 
                 Spacer(modifier = Modifier.width(10.dp))
@@ -190,22 +168,18 @@ fun ZonePostCard(
             // 4. 图片缩略图（对齐首页动态卡片排版规范：统一规整矩阵，Crop充满杜绝上下左右留白）
             val picList = post.picList
             if (picList.isNotEmpty()) {
-                val allRawUrls = picList.map { CdnUrlUtils.getPostsRawUrl(it) }
+                // 查看器取原图地址（帖子无 raw 目录，管道已强制降级 posts/n/）
+                val allRawUrls = picList.map {
+                    MediaPipeline.Default.resolveRawUrl(it, MediaCategory.POST)
+                }
 
                 if (picList.size == 1) {
                     val picPath = picList[0]
-                    var singleRatio by remember(picPath) {
-                        mutableFloatStateOf(PostThumbnailAspectRatioCache[picPath] ?: 0.75f)
-                    }
-
-                    // 单张图对齐首页动态信息流海报规范：限高 150dp，宽度自适应，Crop 充满彻底杜绝留白
-                    val effectiveRatio = singleRatio.coerceIn(0.65f, 1.6f)
-                    val targetHeight = 150.dp
-                    val targetWidth = targetHeight * effectiveRatio
-
+                    // 单张图对齐首页动态信息流海报规范：固定高度 150dp，宽度由基元按图片真实比例撑开
+                    // （比例上下界由管道统一钳制，Crop 充满彻底杜绝留白）
                     Box(
                         modifier = Modifier
-                            .size(width = targetWidth, height = targetHeight)
+                            .height(150.dp)
                             .clip(MaterialTheme.shapes.small)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .clickable {
@@ -213,15 +187,14 @@ fun ZonePostCard(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        PostThumbImage(
-                            imageUrl = CdnUrlUtils.getPostsUrl(picPath),
-                            modifier = Modifier.fillMaxSize(),
-                            onSuccessRatio = { r ->
-                                if (r in 0.2f..5.0f && abs(r - singleRatio) > 0.01f) {
-                                    singleRatio = r
-                                    PostThumbnailAspectRatioCache[picPath] = r
-                                }
-                            }
+                        PoiAsyncImage(
+                            path = picPath,
+                            category = MediaCategory.POST,
+                            purpose = ImagePurpose.CARD_STANDARD,
+                            contentDescription = "帖子配图",
+                            modifier = Modifier.height(150.dp),
+                            adaptiveRatio = true,
+                            fallbackRatio = 0.75f
                         )
                     }
                 } else {
@@ -245,8 +218,11 @@ fun ZonePostCard(
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
-                                PostThumbImage(
-                                    imageUrl = CdnUrlUtils.getPostsUrl(picPath),
+                                PoiAsyncImage(
+                                    path = picPath,
+                                    category = MediaCategory.POST,
+                                    purpose = ImagePurpose.CARD_STANDARD,
+                                    contentDescription = "帖子配图",
                                     modifier = Modifier.fillMaxSize()
                                 )
 
@@ -317,43 +293,6 @@ fun ZonePostCard(
                 }
             }
         }
-    }
-}
-
-/**
- * 帖子缩略图（带加载失败显式占位）。
- * 对标原版加载失败态：图片 404/损坏时展示破图图标，而非静默灰块。
- */
-@Composable
-private fun PostThumbImage(
-    imageUrl: String,
-    modifier: Modifier = Modifier,
-    onSuccessRatio: ((Float) -> Unit)? = null
-) {
-    var loadFailed by remember(imageUrl) { mutableStateOf(false) }
-    if (!loadFailed) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "帖子配图",
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-            onSuccess = { state ->
-                val size = state.painter.intrinsicSize
-                if (size.width > 0 && size.height > 0 && onSuccessRatio != null) {
-                    onSuccessRatio(size.width / size.height)
-                }
-            },
-            onError = { loadFailed = true }
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Outlined.BrokenImage,
-            contentDescription = "图片加载失败",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-            modifier = modifier
-                .fillMaxSize()
-                .padding(28.dp)
-        )
     }
 }
 

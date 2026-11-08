@@ -149,6 +149,8 @@ fun ActionCard(
                         adaptiveRatio = true,
                         ratioKey = coverUrl,
                         fallbackRatio = 1.0f,
+                        // 恢复旧 AsyncImage(alignment = TopCenter) 语义：竖版海报按顶部对齐裁切
+                        alignment = Alignment.TopCenter,
                         enableFullscreenPreview = false,
                         onClick = if (onImageClick != null && allRawUrls.isNotEmpty()) {
                             { onImageClick(allRawUrls, 0) }
