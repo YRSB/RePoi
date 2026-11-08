@@ -11,9 +11,10 @@ class FollowViewModelTest {
     @Test
     fun scrollPosition_saveAndReset() {
         val mock = MockApi()
+        val session = FakeUserSession("token")
         val viewModel = FollowViewModel(
-            FollowRepository(mock.api(), mock.json),
-            FakeUserSession("token")
+            FollowRepository(mock.api(), mock.json, session),
+            session
         )
 
         viewModel.saveScrollPosition(3, 7)
