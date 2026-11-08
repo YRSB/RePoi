@@ -68,6 +68,15 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 
 ## 反馈回路
 
-本地严禁执行 Gradle 测试任务。诊断打印用 `println("DIAG-<tag> ...")` 输出，
+默认本地不执行 Gradle 测试任务；仅当用户显式豁免时允许本地运行（优先 `:shared:jvmTest`）。诊断打印用 `println("DIAG-<tag> ...")` 输出，
 CI 失败后经 `test-reports` 产物下载 XML 提取（`gh run download <run-id> -n test-reports`），
 `system-out` 节点内即测试标准输出。诊断合入前必须删除打印。
+
+### Windows 本地 hostTest 已知失败
+
+`:shared:testAndroidHostTest` 在 Windows 本机存在与改动无关的既有失败：
+
+- DataStore 持久化用例因 `preferences_pb.tmp` 重命名抛 `IOException`（`SearchHistoryManagerTest`、`ThemeManagerTest`、`TokenManagerTest`、`ViewPreferencesManagerTest`、`SearchRepositoryTest`）；
+- `ZoneRepositoryTest` 的既有断言漂移。
+
+以 CI Linux 的 `Shared Tests` 结果为准，不要据此定位业务回归。
