@@ -233,7 +233,7 @@ fun AlbumStaggeredCard(
                         modifier = Modifier.weight(1f, fill = false),
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        // 作者头像：head/n/ 标准档，空路径与失败态由基元兜底
+                        // 作者头像：head/s/ 缩略档（16dp），空路径与失败态由基元兜底
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
