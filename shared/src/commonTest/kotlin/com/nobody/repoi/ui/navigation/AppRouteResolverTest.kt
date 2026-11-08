@@ -15,14 +15,13 @@ import kotlin.test.assertIs
 /**
  * 统一路由解析器测试（纯 JVM，无 Compose/平台副作用）。
  *
- * 第 1 段为旧 `FeedActionDispatcherTest` 与 `HpoiLinkDispatcherTest` 用例的
- * 无损平移（断言对象由 `FeedTargetDestination` / `HpoiRoute` 改为 [RouteTarget]）；
+ * 第 1 段为旧版动态分流器与链接调度器用例的无损平移（断言对象统一为 [RouteTarget]）；
  * 第 2 段补全 9 类站内 URL、站外伪装路径、空白与非法 ID 边界；
  * 第 3 段覆盖 resolveAction 全部分类区间、ID 回退与用户回退。
  */
 class AppRouteResolverTest {
 
-    // ── 1. 旧 FeedActionDispatcherTest 平移 ──────────────────────────────
+    // ── 1. 旧版分流器用例平移 ────────────────────────────────────────────
 
     @Test
     fun `resolveAction - company or vendor resolves to Vendor destination`() {
