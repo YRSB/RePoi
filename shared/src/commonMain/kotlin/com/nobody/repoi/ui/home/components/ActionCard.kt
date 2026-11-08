@@ -36,7 +36,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,9 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.nobody.repoi.util.ImageAspectRatioCache
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,14 +53,17 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
+import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.RelateItem
 import com.nobody.repoi.data.remote.model.UserProfileSummary
 import com.nobody.repoi.ui.common.LevelPill
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
-import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.FeedMediaResolver
 import com.nobody.repoi.util.FeedContentResolver
@@ -98,31 +99,12 @@ fun ActionCard(
     val isCommentSameAsFigure = isOfficialNotice && !mainComment.isNullOrBlank() && !figureName.isNullOrBlank() &&
         (mainComment.equals(figureName, ignoreCase = true) || mainComment.equals(relateItem?.name, ignoreCase = true) || mainComment.equals(relateItem?.nameCN, ignoreCase = true))
 
-    val context = LocalPlatformContext.current
-    val coverRequest = remember(context, coverUrl) {
-        if (coverUrl.isNotBlank()) {
-            ImageRequest.Builder(context)
-                .data(coverUrl)
-                .crossfade(false)
-                .build()
-        } else null
+    // 海报高度交给 PoiAsyncImage 的 adaptiveRatio：先读纵横比缓存占位，加载成功后再回写
+    // 附图来自 pic/ 家族（MediaCategory 无 pic 槽位），先用扩展 resolvePictureUrl 解析成绝对 URL，
+    // 再交给基元通用重载直通 Coil；缩略档位对齐旧 getPicSmallUrl 的 pic/s/
+    val extraImageUrls = remember(displayExtraImages) {
+        displayExtraImages.map { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.THUMBNAIL) }
     }
-    val extraImageRequests = remember(context, displayExtraImages) {
-        displayExtraImages.take(3).map { path: String ->
-            ImageRequest.Builder(context)
-                .data(CdnUrlUtils.getPicSmallUrl(path))
-                .crossfade(false)
-                .build()
-        }
-    }
-
-    // 采用 Hpoi 官方设计：相册无图默认 17:24 黄金比例，其余默认 1:1 方形占位防跳动，优先从 LRU 缓存获取已解码比例
-    val defaultRatio = if (mediaInfo.isAlbumNoCover) 17f / 24f else 1.0f
-    var imageRatio by remember(coverUrl, mediaInfo.isAlbumNoCover) {
-        mutableFloatStateOf(if (mediaInfo.isAlbumNoCover) defaultRatio else (ImageAspectRatioCache[coverUrl] ?: 1.0f))
-    }
-    // 官方钳制规则：下限 0.4f (f(0.4f)，高度最大至 2.5 倍宽)，超宽图无上限原比展示 (e() 未设)
-    val effectiveRatio = imageRatio.coerceAtLeast(0.4f)
 
     // 🎨 M3 Expressive 卡片容器：采用 surfaceContainerLow 与标准水波纹交互
     ElevatedCard(
@@ -146,57 +128,34 @@ fun ActionCard(
         ) {
             // ── 【左侧栏】：Hpoi 官方同款自适应海报（宽定死 96dp，相册无图时展示浅天蓝纯文本卡片）──
             if (shouldShowLeftCover) {
-                Box(
-                    modifier = Modifier
-                        .width(96.dp)
-                        .aspectRatio(effectiveRatio)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable(enabled = onImageClick != null && allRawUrls.isNotEmpty()) {
-                            onImageClick?.invoke(allRawUrls, 0)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (mediaInfo.isAlbumNoCover) {
-                        val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
-                        AlbumTextCover(
-                            title = albumTitle,
-                            modifier = Modifier.fillMaxSize(),
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
-                        )
-                    } else if (coverRequest != null) {
-                        AsyncImage(
-                            model = coverRequest,
-                            contentDescription = "条目海报",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter,
-                            onSuccess = { state ->
-                                val size = state.painter.intrinsicSize
-                                if (size.width > 0 && size.height > 0) {
-                                    val ratio = size.width / size.height
-                                    if (ratio in 0.2f..5.0f && kotlin.math.abs(ratio - imageRatio) > 0.01f) {
-                                        imageRatio = ratio
-                                        ImageAspectRatioCache[coverUrl] = ratio
-                                    }
-                                }
-                            },
-                            onError = { state ->
-                                AppLogger.d("ActionCard", "封面加载失败: url=$coverUrl, error=${state.result.throwable.message ?: "未知"}")
-                            }
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无配图",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
+                if (mediaInfo.isAlbumNoCover) {
+                    val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
+                    // 相册无图沿用官方 17:24 黄金比例纯文本卡（圆角由 AlbumTextCover 自身裁剪）
+                    AlbumTextCover(
+                        title = albumTitle,
+                        modifier = Modifier
+                            .width(96.dp)
+                            .aspectRatio(17f / 24f),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                } else {
+                    // 点击优先级由基元保证：传了 onClick 就不再触发全屏查看器，避免双触发
+                    PoiAsyncImage(
+                        model = coverUrl,
+                        contentDescription = "条目海报",
+                        modifier = Modifier
+                            .width(96.dp)
+                            .clip(MaterialTheme.shapes.small),
+                        adaptiveRatio = true,
+                        ratioKey = coverUrl,
+                        fallbackRatio = 1.0f,
+                        enableFullscreenPreview = false,
+                        onClick = if (onImageClick != null && allRawUrls.isNotEmpty()) {
+                            { onImageClick(allRawUrls, 0) }
+                        } else {
+                            null
                         }
-                    }
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -261,13 +220,12 @@ fun ActionCard(
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    val request = extraImageRequests.getOrNull(index)
-                                    if (request != null) {
-                                        AsyncImage(
-                                            model = request,
+                                    val thumbUrl = extraImageUrls.getOrNull(index)
+                                    if (thumbUrl != null) {
+                                        PoiAsyncImage(
+                                            model = thumbUrl,
                                             contentDescription = "附图缩略图",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
 
