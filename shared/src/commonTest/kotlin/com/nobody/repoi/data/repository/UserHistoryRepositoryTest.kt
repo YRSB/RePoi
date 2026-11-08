@@ -21,7 +21,7 @@ class UserHistoryRepositoryTest {
     fun getUserHistoryList_success_parsesItems() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"readList":[{"id":123,"itemNodeId":456,"itemType":"hobby","itemName":"手办A"}]}}"""
+            """{"success":true,"code":200,"data":{"readList":[{"id":123,"nodeId":456,"itemType":"hobby","title":"手办A"}]}}"""
         )
 
         val result = repository.getUserHistoryList(itemType = "hobby", page = 1)
@@ -29,8 +29,8 @@ class UserHistoryRepositoryTest {
         val list = result.getOrThrow()
         assertEquals(1, list.size)
         assertEquals(123L, list.first().id)
-        assertEquals(456L, list.first().itemNodeId)
-        assertEquals("手办A", list.first().itemName)
+        assertEquals(456L, list.first().nodeId)
+        assertEquals("手办A", list.first().title)
     }
 
     @Test
