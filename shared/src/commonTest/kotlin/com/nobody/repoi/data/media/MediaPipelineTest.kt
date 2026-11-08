@@ -336,20 +336,17 @@ class MediaPipelineTest {
             assertEquals(expected, pipeline.resolveRawUrl(path, MediaCategory.HOBBY), "cover/raw：$path")
         }
 
-        // 缺省封面（OrDefault）语义：占位符才回退，否则走标准变体（字面量来自 CdnUrlUtilsTest）
-        val orDefaultCases = listOf<Pair<String?, String>>(
-            null to nUrl,
-            "" to nUrl,
-            "   " to nUrl,
-            "null" to nUrl,
-            "none.jpg" to nUrl,
-            "cover/n/none.jpg" to nUrl
-        )
-        orDefaultCases.forEach { (path, defaultExpected) ->
-            assertEquals(defaultExpected, equivalentCoverUrlOrDefault(path, ImagePurpose.CARD_STANDARD))
+        // 缺省封面（OrDefault）语义：占位符才回退官方缺省图，否则走标准变体（字面量来自 CdnUrlUtilsTest）
+        val defaultNormal = "${base}cover/n/none.jpg"
+        listOf(null, "", "   ", "null", "none.jpg", "cover/n/none.jpg").forEach { path ->
+            assertEquals(
+                defaultNormal,
+                equivalentCoverUrlOrDefault(path, ImagePurpose.CARD_STANDARD),
+                "OrDefault 缺省回退失败：$path"
+            )
         }
         assertEquals(
-            "${base}cover/n/none.jpg",
+            defaultNormal,
             pipeline.getDefaultCoverUrl(ImagePurpose.CARD_STANDARD)
         )
         assertEquals(
