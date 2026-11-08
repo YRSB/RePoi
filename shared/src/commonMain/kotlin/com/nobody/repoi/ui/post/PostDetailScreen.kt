@@ -56,7 +56,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,7 +68,6 @@ import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.PostDetailData
 import com.nobody.repoi.data.remote.model.PostRelateItem
-import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.common.DetailTopNavigation
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
@@ -82,10 +80,8 @@ import com.nobody.repoi.ui.common.comment.CommentFilterMode
 import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.common.comment.commentSectionItems
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.HpoiLinkDispatcher
 import com.nobody.repoi.util.HtmlRichTextParser
 import kotlinx.coroutines.launch
 
@@ -103,16 +99,13 @@ fun PostDetailScreen(
     onNavigateToDetail: ((DetailNavParam) -> Unit)? = null,
     onNavigateToZone: ((Long) -> Unit)? = null,
     onNavigateToUser: ((Long) -> Unit)? = null,
-    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
-    onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
-    onNavigateToPost: ((Long) -> Unit)? = null,
     onNavigateToCommentDetail: ((CommentDetailNavParam) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: PostDetailViewModel = koinViewModel()
 ) {
     val messages = LocalAppMessages.current
     val textSharing = rememberTextSharing()
-    val uriHandler = LocalUriHandler.current
     val isDark = LocalIsDarkTheme.current
     val imageViewer = LocalImageViewer.current
     val coroutineScope = rememberCoroutineScope()
@@ -417,21 +410,11 @@ fun PostDetailScreen(
 
                             // 2.3 帖子富文本正文
                             if (!detail.content.isNullOrBlank()) {
-                                val richText = remember(detail.content) {
+                                val richText = remember(detail.content, onUrlClick) {
                                     HtmlRichTextParser.parse(
                                         html = detail.content,
                                         linkColor = ColorLink,
-                                        onLinkClick = { url ->
-                                            HpoiLinkDispatcher.dispatch(
-                                                url = url,
-                                                uriHandler = uriHandler,
-                                                onMessage = { messages.show(it) },
-                                                onNavigateToHobbyDetail = onNavigateToDetail,
-                                                onNavigateToAlbum = { id -> onNavigateToAlbum?.invoke(AlbumNavParam(albumId = id)) },
-                                                onNavigateToCharacter = onNavigateToCharacter,
-                                                onNavigateToPost = onNavigateToPost
-                                            )
-                                        }
+                                        onLinkClick = { url -> onUrlClick?.invoke(url) }
                                     )
                                 }
 

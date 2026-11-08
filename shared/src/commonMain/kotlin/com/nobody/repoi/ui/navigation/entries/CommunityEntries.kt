@@ -86,6 +86,8 @@ fun EntryProviderScope<NavKey>.communityEntries(
     }
 
     entry<PostDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         PostDetailScreen(
             postId = key.postId,
             initialTitle = key.initialTitle,
@@ -94,10 +96,8 @@ fun EntryProviderScope<NavKey>.communityEntries(
             onNavigateToDetail = { param -> navigator.navigateToDetail(param) },
             onNavigateToZone = { nodeId -> navigator.navigateToZoneDetail(nodeId = nodeId) },
             onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
-            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
-            onNavigateToCharacter = { param -> navigator.navigateToCharacter(param) },
-            onNavigateToPost = { targetPostId -> navigator.navigateToPostDetail(postId = targetPostId) },
-            onNavigateToCommentDetail = { param -> navigator.navigateToCommentDetail(param.copy(isDiscuss = true)) }
+            onNavigateToCommentDetail = { param -> navigator.navigateToCommentDetail(param.copy(isDiscuss = true)) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 }

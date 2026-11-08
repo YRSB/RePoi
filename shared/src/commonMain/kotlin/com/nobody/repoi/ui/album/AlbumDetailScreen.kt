@@ -133,9 +133,7 @@ import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import androidx.compose.ui.platform.LocalUriHandler
 import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.HpoiLinkDispatcher
 import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.util.ImageAspectRatioCache
 import com.nobody.repoi.ui.theme.largeCard
@@ -147,6 +145,7 @@ fun AlbumDetailScreen(
     onBack: () -> Unit,
     onNavigateToHobbyDetail: (DetailNavParam) -> Unit,
     onNavigateToAlbum: (Long) -> Unit,
+    onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     onNavigateToCommentDetail: ((CommentDetailNavParam) -> Unit)? = null,
     onNavigateToComments: ((HobbyCommentsNavParam) -> Unit)? = null,
@@ -390,8 +389,7 @@ fun AlbumDetailScreen(
                                 viewModel.followAuthor()
                             }
                         },
-                        onNavigateToHobbyDetail = onNavigateToHobbyDetail,
-                        onNavigateToAlbum = onNavigateToAlbum,
+                        onUrlClick = onUrlClick,
                         modifier = Modifier
                             .statusBarsPadding()
                             .padding(top = 56.dp, bottom = 12.dp)
@@ -598,13 +596,10 @@ private fun AlbumHeaderCard(
     followState: FriendState,
     showFollow: Boolean = true,
     onToggleFollow: () -> Unit,
-    onNavigateToHobbyDetail: ((DetailNavParam) -> Unit)? = null,
-    onNavigateToAlbum: ((Long) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isFollowed = followState.isFollowed
-    val messages = LocalAppMessages.current
-    val uriHandler = LocalUriHandler.current
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -758,20 +753,12 @@ private fun AlbumHeaderCard(
 
             if (hasContent) {
                 val linkColor = MaterialTheme.colorScheme.primary
-                val richText = remember(rawHtml, linkColor, onNavigateToHobbyDetail, onNavigateToAlbum) {
+                val richText = remember(rawHtml, linkColor, onUrlClick) {
                     if (!rawHtml.isNullOrBlank()) {
                         HtmlRichTextParser.parse(
                             html = rawHtml,
                             linkColor = linkColor,
-                            onLinkClick = { url ->
-                                HpoiLinkDispatcher.dispatch(
-                                    url = url,
-                                    uriHandler = uriHandler,
-                                    onMessage = { messages.show(it) },
-                                    onNavigateToHobbyDetail = onNavigateToHobbyDetail,
-                                    onNavigateToAlbum = onNavigateToAlbum
-                                )
-                            }
+                            onLinkClick = { url -> onUrlClick?.invoke(url) }
                         )
                     } else null
                 }
