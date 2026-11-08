@@ -22,30 +22,30 @@ class UserFinanceRepositoryTest {
     fun getOrderStaticData_success() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"count":{"preorderCount":5,"buyCount":12,"totalCount":17}}}"""
+            """{"success":true,"code":200,"data":{"data":{"count":{"preorder":5,"buy":12,"care":17}}}}"""
         )
 
         val result = repository.getOrderStaticData(12345L)
         assertTrue(result.isSuccess)
         val data = result.getOrThrow()
-        assertEquals(5, data.count?.preorderCount)
-        assertEquals(12, data.count?.buyCount)
-        assertEquals(17, data.count?.totalCount)
+        assertEquals(5, data.count?.preorder)
+        assertEquals(12, data.count?.buy)
+        assertEquals(17, data.count?.care)
     }
 
     @Test
     fun getOrderStatic_success() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"count":{"preorderCount":3,"buyCount":8,"totalCount":11}}}"""
+            """{"success":true,"code":200,"data":{"data":{"count":{"preorder":3,"buy":8,"care":11}}}}"""
         )
 
         val result = repository.getOrderStatic(12345L)
         assertTrue(result.isSuccess)
         val count = result.getOrThrow()
-        assertEquals(3, count.preorderCount)
-        assertEquals(8, count.buyCount)
-        assertEquals(11, count.totalCount)
+        assertEquals(3, count.preorder)
+        assertEquals(8, count.buy)
+        assertEquals(11, count.care)
     }
 
     @Test
