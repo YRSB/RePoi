@@ -220,7 +220,7 @@ fun VendorActionsScreen(
                         verticalItemSpacing = 8.dp,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(6) { ShimmerHost { ActionCardSkeleton() } }
+                        items(count = 6, key = { "vendor_actions_skeleton_$it" }, contentType = { "skeleton" }) { ShimmerHost { ActionCardSkeleton() } }
                     }
                 }
 

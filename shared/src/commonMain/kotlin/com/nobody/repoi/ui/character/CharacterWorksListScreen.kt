@@ -529,7 +529,7 @@ private fun CharacterWorksSkeletonList(
         modifier = modifier.fillMaxSize(),
         userScrollEnabled = false
     ) {
-        items(6) {
+        items(count = 6, key = { "character_works_skeleton_$it" }, contentType = { "skeleton" }) {
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(12.dp),

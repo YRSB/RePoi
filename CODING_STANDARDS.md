@@ -130,6 +130,9 @@
 ### 1. 详情页排版
 - **单流平铺规范**：手办、厂商、人物、系列、作品等详情页统一使用单一 `LazyColumn` 滚动流平铺所有数据卡片。
 - **列表渲染性能**：所有 Lazy 列表项必须显式配置稳定的 `key` 与 `contentType`，避免频繁触发不必要的重组。
+  - **适用范围含骨架屏与占位项**：`items(count = N)` 的固定数量占位块同样适用，不得因为"是假的"就省略。
+  - 写法示例：`items(count = 6, key = { "picture_skeleton_$it" }, contentType = { "skeleton" }) { ... }`
+  - `key` 需在**同一 Lazy 容器内**唯一（跨容器可复用），必要时加页面前缀避免同页多处骨架屏键冲突。
 
 ### 2. 自适应双窗格
 - **断点分配**：通过 `currentWindowAdaptiveInfoV2().windowSizeClass` 断点判定：
