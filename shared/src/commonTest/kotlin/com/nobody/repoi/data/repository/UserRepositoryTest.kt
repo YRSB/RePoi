@@ -3,7 +3,9 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.AmazonMoneyData
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
+import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.FriendState
+import com.nobody.repoi.data.repository.UserFinanceRepository
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -51,110 +53,9 @@ class UserRepositoryTest {
     private fun setup(token: String = "utoken-test"): Triple<MockApi, FakeUserSession, UserRepository> {
         val mock = MockApi()
         val session = FakeUserSession(token)
-        return Triple(mock, session, UserRepository(mock.api(), session))
-    }
-
-    @Test
-    fun parseOrderFinance_computesAllCurrenciesAndFluctuation() {
-        val (_, _, repository) = setup()
-        val preorderJson = buildJsonArray {
-            add(buildJsonObject {
-                put("key", "category_100")
-                put("val", buildJsonArray {
-                    add(buildJsonObject {
-                        put("currency", "yen")
-                        put("money", 10000.0)
-                    })
-                    add(buildJsonObject {
-                        put("currency", "dollar")
-                        put("money", 100.0)
-                    })
-                })
-            })
-            add(buildJsonObject {
-                put("key", "category_200")
-                put("val", buildJsonArray {
-                    add(buildJsonObject {
-                        put("currency", "euro")
-                        put("money", 50.0)
-                    })
-                    add(buildJsonObject {
-                        put("currency", "hkd")
-                        put("money", 200.0)
-                    })
-                    add(buildJsonObject {
-                        put("currency", "rmb")
-                        put("money", 1000.0)
-                    })
-                })
-            })
-        }
-
-        val orderJson = buildJsonArray {
-            add(buildJsonObject {
-                put("key", "category_300")
-                put("val", buildJsonArray {
-                    add(buildJsonObject {
-                        put("currency", "cny")
-                        put("money", 888.0)
-                    })
-                })
-            })
-        }
-
-        val orderData = OrderStaticData(
-            count = OrderCount(buy = 1, preorder = 2, care = 3),
-            allPreorderMoney = preorderJson,
-            allOrderMoney = orderJson,
-            amazonMoney = AmazonMoneyData(initialPrice = 1000, price = 1250)
-        )
-
-        val finance = repository.parseOrderFinance(orderData)
-
-        // 待补款验证：
-        // 手办：JPY 10000 * 0.06 = 600.0 + USD 100 * 6.4 = 640.0 => 1240.0
-        // 模型：EUR 50 * 6.9 = 345.0 + HKD 200 * 0.92 = 184.0 + RMB 1000 * 1.0 = 1000.0 => 1529.0
-        // 待补款总计: 1240.0 + 1529.0 = 2769.0
-        assertEquals(2, finance.supplementedGroups.size)
-        assertEquals("手办", finance.supplementedGroups[0].categoryName)
-        assertEquals(1240.0, finance.supplementedGroups[0].totalRmb, 0.001)
-        assertEquals("动漫模型", finance.supplementedGroups[1].categoryName)
-        assertEquals(1529.0, finance.supplementedGroups[1].totalRmb, 0.001)
-        assertEquals(2769.0, finance.supplementedTotalRmb, 0.001)
-
-        // 已入总额验证：CNY 888.0 * 1.0 = 888.0
-        assertEquals(1, finance.historyGroups.size)
-        assertEquals("Doll娃娃", finance.historyGroups[0].categoryName)
-        assertEquals(888.0, finance.historyTotalRmb, 0.001)
-
-        // 亚马逊涨跌幅：(1250 - 1000) * 100 / 1000 = 25% => "+25%"
-        assertEquals("+25%", finance.amazonFluctuation)
-    }
-
-    @Test
-    fun parseOrderFinance_handlesEdgeCasesAndNullSafely() {
-        val (_, _, repository) = setup()
-        // null orderData
-        val emptyFinance = repository.parseOrderFinance(null)
-        assertEquals(0.0, emptyFinance.supplementedTotalRmb, 0.001)
-        assertEquals(0.0, emptyFinance.historyTotalRmb, 0.001)
-        assertEquals("0%", emptyFinance.amazonFluctuation)
-        assertTrue(emptyFinance.supplementedGroups.isEmpty())
-        assertTrue(emptyFinance.historyGroups.isEmpty())
-
-        // 负涨跌幅验证
-        val negativeAmazon = AmazonMoneyData(initialPrice = 1000, price = 850)
-        assertEquals("-15%", negativeAmazon.fluctuationText)
-
-        // 持平 0% 验证
-        val flatAmazon = AmazonMoneyData(initialPrice = 1000, price = 1000)
-        assertEquals("0%", flatAmazon.fluctuationText)
-
-        // 初始价格为 0 或空
-        val zeroAmazon = AmazonMoneyData(initialPrice = 0, price = 500)
-        assertEquals("0%", zeroAmazon.fluctuationText)
-        val nullAmazon = AmazonMoneyData(initialPrice = null, price = 500)
-        assertEquals("0%", nullAmazon.fluctuationText)
+        val followRepo = FollowRepository(mock.api(), json, session)
+        val financeRepo = UserFinanceRepository(mock.api(), json)
+        return Triple(mock, session, UserRepository(mock.api(), session, followRepo, financeRepo))
     }
 
     @Test
@@ -346,28 +247,6 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun getOrderStaticData_successAndDelegation() = runTest {
-        val (mock, _, repository) = setup()
-        mock.enqueue(
-            """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":8,"preorder":4,"care":2},"amazonMoney":{"initialPrice":500,"price":600}}}}"""
-        )
-
-        val dataResult = repository.getOrderStaticData(12345L)
-        assertTrue(dataResult.isSuccess)
-        val data = dataResult.getOrThrow()
-        assertEquals(8, data.count?.buy)
-        assertEquals("+20%", data.amazonMoney?.fluctuationText)
-
-        // 验证 getOrderStatic 委托行为
-        mock.enqueue(
-            """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":8,"preorder":4,"care":2}}}}"""
-        )
-        val countResult = repository.getOrderStatic(12345L)
-        assertTrue(countResult.isSuccess)
-        assertEquals(8, countResult.getOrThrow().buy)
-    }
-
-    @Test
     fun userCollectHobbyItem_parsesNestedCollectionAndComputesProperties() {
         val jsonStr = """{
             "id": 501,
@@ -394,28 +273,6 @@ class UserRepositoryTest {
         assertEquals(16800.0, item.actualOrderMoney ?: 0.0, 0.001)
         assertEquals("yen", item.actualCurrency)
         assertEquals(9.6, item.averageRating, 0.001)
-    }
-
-    @Test
-    fun parseCategoryMoneyGroups_supportsStringifiedJsonAndAliases() {
-        val (_, _, repository) = setup()
-        // 测试 stringified JSON array 作为 val，以及币种别名与大小写容错
-        val stringifiedJson = buildJsonArray {
-            add(buildJsonObject {
-                put("key", "category_figure")
-                put("val", "[{\"currency\":\" JPY \",\"money\":\"1000\"},{\"currency\":\"港币\",\"money\":50}]")
-            })
-        }
-        val groups = repository.parseCategoryMoneyGroups(stringifiedJson)
-        assertEquals(1, groups.size)
-        assertEquals("手办", groups[0].categoryName)
-        assertEquals(2, groups[0].items.size)
-        assertEquals("日元", groups[0].items[0].displayName)
-        assertEquals("JP¥", groups[0].items[0].symbol)
-        assertEquals("港元", groups[0].items[1].displayName)
-        assertEquals("HK$", groups[0].items[1].symbol)
-        // 1000 * 0.06 = 60.0 + 50 * 0.92 = 46.0 => 106.0
-        assertEquals(106.0, groups[0].totalRmb, 0.001)
     }
 
     @Test
@@ -778,58 +635,6 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun getUserFellowList_success_parsesUserAndBothStatus() = runTest {
-        val (mock, _, repository) = setup()
-        mock.enqueue(
-            """{"success": true,"code": 200,"msg": "ok","data": {"list": [{"user": {"id": 10001,"nickname": "手办同好A","userName": "fellow_a","sign": "喜欢初音和阿尔托莉雅","intro": "个人简介A","header": "header/user_10001.jpg","level": 3},"both": 2},{"user": {"id": 10002,"nickname": "手办同好B","userName": "fellow_b","sign": "","intro": "只看模型","header": "header/user_10002.jpg","level": 1},"both": 0}],"count": 2}}"""
-        )
-
-        val result = repository.getUserFellowList(userId = 88888L, type = 0, page = 1, pageSize = 20)
-        assertTrue(result.isSuccess)
-        val list = result.getOrThrow()
-        assertEquals(2, list.size)
-
-        val item1 = list[0]
-        assertEquals(10001L, item1.userId)
-        assertEquals("手办同好A", item1.displayName)
-        assertEquals("喜欢初音和阿尔托莉雅", item1.signature)
-        assertEquals("header/user_10001.jpg", item1.avatarUrl)
-        assertTrue(item1.isFollowed)
-        assertTrue(item1.isMutual)
-
-        val item2 = list[1]
-        assertEquals(10002L, item2.userId)
-        assertEquals("手办同好B", item2.displayName)
-        assertEquals("只看模型", item2.signature)
-        assertTrue(item2.isFollowed)
-        assertFalse(item2.isMutual)
-
-        val recorded = mock.takeRequest()
-        assertEquals("POST", recorded.method)
-        val form = recorded.formEntries()
-        assertEquals("88888", form["id"])
-        assertEquals("0", form["type"])
-        assertEquals("1", form["page"])
-        assertEquals("20", form["pageSize"])
-    }
-
-    @Test
-    fun getUserFellowList_tokenExpired_selfHealsSessionAndThrowsApiException() = runTest {
-        val (mock, session, repository) = setup()
-        mock.enqueue(mock.failure(4001, "登录已过期"))
-
-        val result = repository.getUserFellowList(userId = 88888L, type = 1, page = 1)
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is ApiException)
-        assertEquals(4001, exception.code)
-
-        assertEquals(1, session.tokenExpiredCalls)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
-        assertNull(repository.currentUserProfile.value)
-    }
-
-    @Test
     fun getUserPraiseList_success_parsesItemAndUser() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
@@ -856,67 +661,6 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun updateFriend_followAndUnfollow_postsCorrectState() = runTest {
-        val (mock, _, repository) = setup()
-        // 关注 (isFollow = true -> state = 0)
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
-        val followResult = repository.updateFriend(userId = 99999L, isFollow = true)
-        assertTrue(followResult.isSuccess)
-
-        val followReq = mock.takeRequest()
-        assertEquals("POST", followReq.method)
-        assertEquals("/api/user/friend/upd", followReq.path)
-        val followForm = followReq.formEntries()
-        assertEquals("99999", followForm["userId"])
-        assertEquals("0", followForm["state"])
-
-        // 取关 (isFollow = false -> state = 5)
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
-        val unfollowResult = repository.updateFriend(userId = 99999L, isFollow = false)
-        assertTrue(unfollowResult.isSuccess)
-
-        val unfollowReq = mock.takeRequest()
-        assertEquals("POST", unfollowReq.method)
-        assertEquals("/api/user/friend/upd", unfollowReq.path)
-        val unfollowForm = unfollowReq.formEntries()
-        assertEquals("99999", unfollowForm["userId"])
-        assertEquals("5", unfollowForm["state"])
-    }
-
-    @Test
-    fun updateFriend_success_emitsFriendChangeEvent() = runTest {
-        val (mock, _, repository) = setup()
-        val events = mutableListOf<FriendChangeEvent>()
-        val collectJob = launch(start = CoroutineStart.UNDISPATCHED) {
-            repository.friendChangeEvent.collect { events.add(it) }
-        }
-
-        // 1. 关注
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
-        val followResult = repository.updateFriend(userId = 88888L, isFollow = true)
-        assertTrue(followResult.isSuccess)
-        mock.takeRequest()
-
-        // 2. 取关
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
-        val unfollowResult = repository.updateFriend(userId = 88888L, isFollow = false)
-        assertTrue(unfollowResult.isSuccess)
-        mock.takeRequest()
-
-        yield()
-        collectJob.cancel()
-
-        assertEquals(2, events.size)
-        assertEquals(88888L, events[0].userId)
-        assertTrue(events[0].isFollow)
-        assertEquals(FriendState.FOLLOWING, events[0].state)
-
-        assertEquals(88888L, events[1].userId)
-        assertFalse(events[1].isFollow)
-        assertEquals(FriendState.NOT_FOLLOWING, events[1].state)
-    }
-
-    @Test
     fun updateUserBase_success_postsKeyAndValueAndRefreshesProfile() = runTest {
         val (mock, session, repository) = setup()
         session.refreshProfileResult = Result.success(
@@ -936,7 +680,7 @@ class UserRepositoryTest {
         assertEquals("新签名", form["val"])
 
         // 验证会话档案镜像同步
-        val currentProfile = repository.currentUserProfile.value
+        val currentProfile = (session.state.value as? SessionState.Authenticated)?.profile
         assertNotNull(currentProfile)
         assertEquals("新签名", currentProfile.sign)
         assertEquals("新昵称", currentProfile.nickname)
@@ -983,80 +727,4 @@ class UserRepositoryTest {
         assertEquals("77777", req2.formEntries()["userId"])
     }
 
-    @Test
-    @Suppress("DEPRECATION")
-    fun compatibilityBridge_proxiesSessionAccessors() = runTest {
-        val profile = UserProfile(id = 42L, nickname = "胶友")
-        val session = FakeUserSession(
-            SessionState.Authenticated(userId = 42L, token = "tok-42", profile = profile)
-        )
-        val repository = UserRepository(MockApi().api(), session)
-
-        assertEquals("tok-42", repository.tokenFlow.first())
-        assertEquals("tok-42", repository.currentToken)
-        assertTrue(repository.isLoggedIn)
-        assertEquals(42L, repository.currentUserId)
-        assertEquals(profile, repository.currentUserProfile.value)
-    }
-
-    @Test
-    @Suppress("DEPRECATION")
-    fun compatibilityBridge_tokenFlowAndProfileMirrorFollowSessionTransitions() = runTest {
-        val session = FakeUserSession("tok-old")
-        val repository = UserRepository(MockApi().api(), session)
-        assertEquals("tok-old", repository.tokenFlow.first())
-
-        val profile = UserProfile(id = 7L, nickname = "新用户", header = "avatar/new.jpg")
-        session.setState(SessionState.Authenticated(userId = 7L, token = "tok-new", profile = profile))
-        assertEquals("tok-new", repository.tokenFlow.first())
-        assertEquals(profile, repository.currentUserProfile.value)
-
-        session.setState(SessionState.Unauthenticated)
-        assertEquals("", repository.tokenFlow.first())
-        assertNull(repository.currentUserProfile.value)
-    }
-
-    @Test
-    @Suppress("DEPRECATION")
-    fun compatibilityBridge_awaitTokenReadyResumesAfterPrewarm() = runTest {
-        val session = FakeUserSession(SessionState.Prewarming)
-        val repository = UserRepository(MockApi().api(), session)
-        var resumed = false
-
-        val job = launch(start = CoroutineStart.UNDISPATCHED) {
-            repository.awaitTokenReady()
-            resumed = true
-        }
-        advanceUntilIdle()
-        assertFalse(resumed)
-
-        session.setState(SessionState.Authenticated(userId = 1L, token = "tok-1"))
-        advanceUntilIdle()
-        assertTrue(resumed)
-        job.cancel()
-    }
-
-    @Test
-    fun logout_delegatesToSession() = runTest {
-        val (_, session, repository) = setup()
-
-        repository.logout()
-
-        assertEquals(1, session.logoutCalls)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
-        assertNull(repository.currentUserProfile.value)
-    }
-
-    @Test
-    fun getUserProfile_delegatesToSessionRefresh() = runTest {
-        val (_, session, repository) = setup()
-        val profile = UserProfile(id = 9L, nickname = "会话档案")
-        session.refreshProfileResult = Result.success(profile)
-
-        val result = repository.getUserProfile()
-
-        assertTrue(result.isSuccess)
-        assertEquals(1, session.refreshProfileCalls)
-        assertEquals(profile, repository.currentUserProfile.value)
-    }
 }

@@ -9,7 +9,7 @@ import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
@@ -98,7 +98,7 @@ class HobbyDetailViewModelExHobbyTest {
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,
-                UserRepository(userMock.api(), session)
+                UserHistoryRepository(userMock.api(), session)
             )
         }
 

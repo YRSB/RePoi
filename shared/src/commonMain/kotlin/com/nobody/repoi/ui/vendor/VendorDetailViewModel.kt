@@ -10,7 +10,7 @@ import com.nobody.repoi.data.remote.model.CompanySeriesItem
 import com.nobody.repoi.data.remote.model.CompanyTagItem
 import com.nobody.repoi.data.remote.model.CompanyTagVoteItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.util.AppLogger
@@ -128,7 +128,7 @@ data class VendorDetailUiState(
 
 class VendorDetailViewModel(
     private val repository: VendorDetailRepository,
-    private val userRepository: UserRepository,
+    private val userSession: UserSession,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -361,7 +361,7 @@ class VendorDetailViewModel(
         _uiState.update { it.copy(isIntroExpanded = !it.isIntroExpanded) }
     }
 
-    val isLoggedIn: Boolean get() = userRepository.isLoggedIn
+    val isLoggedIn: Boolean get() = userSession.isAuthenticated
 
     /**
      * 打开“我的印象”打分与标签弹窗。

@@ -5,6 +5,8 @@ import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.FollowRepository
+import com.nobody.repoi.data.repository.UserFinanceRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
@@ -28,7 +30,7 @@ import kotlin.test.assertTrue
  *
  * 鉴权与档案驱动全部经 [FakeUserSession]：状态流同步演进，无冷启动等待；
  * 全量聚合走真实 [UserRepository] + [MockApi]（fellow/orderStatic/collect/top/album/checkIn/mp），
- * 未读通知走真实 [MessageRepository]。`getUserProfile` 由 `fake.refreshProfileResult`
+ * 未读通知走真实 [MessageRepository]。会话档案刷新由 `fake.refreshProfileResult`
  * 提供，不请求 `/api/user/self`。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -64,11 +66,15 @@ class ProfileViewModelTest {
         stubProfileRoutes(mock)
         val session = FakeUserSession(initialState)
         val api = mock.api(testDispatcher)
+        val followRepo = FollowRepository(api, mock.json, session)
+        val financeRepo = UserFinanceRepository(api)
+        val userRepo = UserRepository(api, session, followRepo, financeRepo)
         val viewModel = ProfileViewModel(
-            UserRepository(api, session),
+            userRepo,
             MessageRepository(api, session),
             ThemeManager(TestDataStore.themePrefs()),
             session,
+            followRepo,
         )
         return Env(mock, session, viewModel)
     }

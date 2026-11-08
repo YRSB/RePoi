@@ -13,6 +13,7 @@ import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.FriendChangeEvent
 import com.nobody.repoi.data.repository.MessageRepository
+import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
@@ -72,7 +73,8 @@ class ProfileViewModel(
     private val userRepository: UserRepository,
     private val messageRepository: MessageRepository,
     private val themeManager: ThemeManager,
-    private val userSession: UserSession
+    private val userSession: UserSession,
+    private val followRepository: FollowRepository
 ) : ViewModel() {
 
     /** 已触发过全量加载的令牌；令牌变化才允许再次进入加载，避免状态抖动重复请求。 */
@@ -109,7 +111,7 @@ class ProfileViewModel(
         }
 
         viewModelScope.launch {
-            userRepository.friendChangeEvent.collect { event ->
+            followRepository.friendChangeEvent.collect { event ->
                 _uiState.update { state ->
                     val curFellow = state.fellow ?: return@update state
                     val curFriendCount = curFellow.friendCount
@@ -123,7 +125,7 @@ class ProfileViewModel(
                 // 后台静默对齐服务端最新关注统计，保证最终一致性
                 val currentUid = userSession.currentUserId
                 if (currentUid > 0L) {
-                    userRepository.getFellowCount(currentUid).onSuccess { freshFellow ->
+                    followRepository.getFellowCount(currentUid).onSuccess { freshFellow ->
                         _uiState.update { it.copy(fellow = freshFellow) }
                     }
                 }

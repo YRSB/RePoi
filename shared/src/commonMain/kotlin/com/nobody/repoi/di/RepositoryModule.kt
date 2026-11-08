@@ -18,8 +18,10 @@ import com.nobody.repoi.data.repository.PostRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.SearchRepository
 import com.nobody.repoi.data.repository.SeriesDetailRepository
-import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.SettingsRepository
+import com.nobody.repoi.data.repository.StickerRepository
+import com.nobody.repoi.data.repository.UserFinanceRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
@@ -28,7 +30,7 @@ import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import org.koin.dsl.module
 
 /**
- * 仓储模块：23 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
+ * 仓储模块：25 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
  * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
  */
 val repositoryModule = module {
@@ -38,7 +40,7 @@ val repositoryModule = module {
     single { CharacterDetailRepository(get()) }
     single { CommentRepository(get(), get()) }
     single { ExHobbyRepository(get()) }
-    single { FollowRepository(get(), get()) }
+    single { FollowRepository(get(), get(), get()) }
     single { ForumRepository(get(), get()) }
     single { HobbyDetailRepository(get()) }
     single { HomeRepository(get()) }
@@ -52,7 +54,9 @@ val repositoryModule = module {
     single { SeriesDetailRepository(get(), get()) }
     single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
-    single { UserRepository(get(), get()) }
+    single { UserHistoryRepository(get(), get()) }
+    single { UserFinanceRepository(get(), get()) }
+    single { UserRepository(get(), get(), get(), get()) }
     single { VendorDetailRepository(get(), get()) }
     single { WorksDetailRepository(get()) }
     single { ZoneRepository(get(), get()) }

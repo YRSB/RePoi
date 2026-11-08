@@ -3,7 +3,7 @@ package com.nobody.repoi.ui.user.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.UserHistoryItem
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.pagedListLoader
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class UserHistoryViewModel(
-    private val userRepository: UserRepository
+    private val userHistoryRepository: UserHistoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserHistoryUiState())
@@ -24,7 +24,7 @@ class UserHistoryViewModel(
         pageSize = 10,
         keySelector = { it.id }
     ) { page, _ ->
-        userRepository.getUserHistoryList(UserHistoryCategory.HOBBY.itemType, page)
+        userHistoryRepository.getUserHistoryList(UserHistoryCategory.HOBBY.itemType, page)
     }
 
     private val albumLoader: PagedListLoader<UserHistoryItem> = pagedListLoader(
@@ -32,7 +32,7 @@ class UserHistoryViewModel(
         pageSize = 10,
         keySelector = { it.id }
     ) { page, _ ->
-        userRepository.getUserHistoryList(UserHistoryCategory.ALBUM.itemType, page)
+        userHistoryRepository.getUserHistoryList(UserHistoryCategory.ALBUM.itemType, page)
     }
 
     init {
@@ -165,7 +165,7 @@ class UserHistoryViewModel(
         _uiState.update { it.copy(isDeleting = true) }
 
         viewModelScope.launch {
-            val result = userRepository.deleteUserHistory(idsToDelete)
+            val result = userHistoryRepository.deleteUserHistory(idsToDelete)
             result.onSuccess {
                 val deletedSet = idsToDelete.toSet()
                 hobbyLoader.removeItem { it.id in deletedSet }

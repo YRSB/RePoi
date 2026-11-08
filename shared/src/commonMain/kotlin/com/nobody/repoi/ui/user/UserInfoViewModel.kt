@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.user
+package com.nobody.repoi.ui.user
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,8 +8,14 @@ import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.FriendChangeEvent
+import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.FriendState
+import com.nobody.repoi.data.repository.UserFinanceRepository
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.data.session.UserSession
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +57,9 @@ data class UserInfoUiState(
  */
 class UserInfoViewModel(
     private val userRepository: UserRepository,
+    private val userSession: UserSession,
+    private val followRepository: FollowRepository,
+    private val userFinanceRepository: UserFinanceRepository,
     userId: Long = 0L,
 ) : ViewModel() {
 
@@ -60,8 +69,8 @@ class UserInfoViewModel(
 
     private val _uiState = MutableStateFlow(
         UserInfoUiState(
-            profile = if (targetUserId <= 0L) userRepository.currentUserProfile.value else null,
-            isSelf = targetUserId <= 0L || (userRepository.currentUserId > 0L && targetUserId == userRepository.currentUserId)
+            profile = if (targetUserId <= 0L) (userSession.state.value as? SessionState.Authenticated)?.profile else null,
+            isSelf = targetUserId <= 0L || (userSession.currentUserId > 0L && targetUserId == userSession.currentUserId)
         )
     )
     val uiState: StateFlow<UserInfoUiState> = _uiState.asStateFlow()
@@ -72,15 +81,18 @@ class UserInfoViewModel(
         }
 
         viewModelScope.launch {
-            userRepository.currentUserProfile.collect { profile ->
-                if (_uiState.value.isSelf && profile != null) {
-                    _uiState.update { it.copy(profile = profile) }
+            userSession.state
+                .map { (it as? SessionState.Authenticated)?.profile }
+                .distinctUntilChanged()
+                .collect { profile ->
+                    if (_uiState.value.isSelf && profile != null) {
+                        _uiState.update { it.copy(profile = profile) }
+                    }
                 }
-            }
         }
 
         viewModelScope.launch {
-            userRepository.friendChangeEvent.collect { event ->
+            followRepository.friendChangeEvent.collect { event ->
                 val curProfile = _uiState.value.profile ?: return@collect
                 if (_uiState.value.isSelf) {
                     // 查看本人主页时：关注/取关他人影响本人的关注数 friendCount
@@ -121,11 +133,11 @@ class UserInfoViewModel(
             return
         }
         initializedUserId = userId
-        val isSelf = userId <= 0L || (userRepository.currentUserId > 0L && userId == userRepository.currentUserId)
+        val isSelf = userId <= 0L || (userSession.currentUserId > 0L && userId == userSession.currentUserId)
         _uiState.update {
             it.copy(
                 isSelf = isSelf,
-                profile = if (isSelf) userRepository.currentUserProfile.value else null
+                profile = if (isSelf) (userSession.state.value as? SessionState.Authenticated)?.profile else null
             )
         }
         loadProfile(userId)
@@ -138,27 +150,27 @@ class UserInfoViewModel(
     fun loadProfile(userId: Long = initializedUserId ?: targetUserId) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val isSelf = userId <= 0L || (userRepository.currentUserId > 0L && userId == userRepository.currentUserId)
+            val isSelf = userId <= 0L || (userSession.currentUserId > 0L && userId == userSession.currentUserId)
             val result = if (isSelf) {
-                userRepository.getUserProfile()
+                userSession.refreshProfile()
             } else {
                 userRepository.getUserInfo(userId)
             }
             result.onSuccess { profile ->
-                val actualIsSelf = isSelf || (userRepository.currentUserId > 0L && profile.id == userRepository.currentUserId)
+                val actualIsSelf = isSelf || (userSession.currentUserId > 0L && profile.id == userSession.currentUserId)
                 val userNodeId = profile.id
 
                 // 并发拉取社交统计、订单统计、相似度与关注状态、下游动态与相册（使用 try-catch 防御 mock 未存根或网络异常）
                 val fellowDeferred = async {
                     try {
-                        userRepository.getFellowCount(userNodeId).getOrNull()
+                        followRepository.getFellowCount(userNodeId).getOrNull()
                     } catch (_: Throwable) {
                         null
                     }
                 }
                 val orderDeferred = async {
                     try {
-                        userRepository.getOrderStaticData(userNodeId).getOrNull()
+                        userFinanceRepository.getOrderStaticData(userNodeId).getOrNull()
                     } catch (_: Throwable) {
                         null
                     }
@@ -173,7 +185,7 @@ class UserInfoViewModel(
                 } else null
                 val fellowTypeDeferred = if (!actualIsSelf) async {
                     try {
-                        userRepository.getFellowType(userNodeId).getOrNull() ?: FriendState.UNKNOWN
+                        followRepository.getFellowType(userNodeId).getOrNull() ?: FriendState.UNKNOWN
                     } catch (_: Throwable) {
                         FriendState.UNKNOWN
                     }
@@ -217,7 +229,7 @@ class UserInfoViewModel(
                 }
 
                 val historyGroups = orderData?.allOrderMoney?.let { moneyMap ->
-                    runCatching { userRepository.parseCategoryMoneyGroups(moneyMap) }.getOrDefault(emptyList())
+                    runCatching { userFinanceRepository.parseCategoryMoneyGroups(moneyMap) }.getOrDefault(emptyList())
                 } ?: emptyList()
                 val totalRmb = historyGroups.sumOf { it.totalRmb }
                 val totalMoneyText = if (totalRmb >= 10000.0) {
@@ -287,7 +299,7 @@ class UserInfoViewModel(
         }
 
         viewModelScope.launch {
-            val result = userRepository.updateFriend(profile.id, isFollow = newFollow)
+            val result = followRepository.updateFriend(profile.id, isFollow = newFollow)
             result.onFailure { error ->
                 _uiState.update {
                     it.copy(
@@ -346,7 +358,7 @@ class UserInfoViewModel(
                 return@launch
             }
 
-            val latest = userRepository.getUserProfile().getOrNull()
+            val latest = userSession.refreshProfile().getOrNull()
                 ?: _uiState.value.profile?.copy(sign = sign, intro = intro)
             _uiState.update {
                 it.copy(
@@ -387,7 +399,7 @@ class UserInfoViewModel(
                 }
             }
 
-            val latest = userRepository.getUserProfile().getOrNull()
+            val latest = userSession.refreshProfile().getOrNull()
                 ?: _uiState.value.profile?.copy(
                     nickname = nickname,
                     sex = sex,
@@ -466,7 +478,7 @@ class UserInfoViewModel(
                 }
             }
 
-            val latest = userRepository.getUserProfile().getOrNull()
+            val latest = userSession.refreshProfile().getOrNull()
                 ?: _uiState.value.profile?.copy(
                     nickname = nickname.ifBlank { _uiState.value.profile?.nickname },
                     sign = sign,

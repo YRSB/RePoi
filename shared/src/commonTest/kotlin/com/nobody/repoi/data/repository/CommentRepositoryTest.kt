@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -62,6 +63,22 @@ class CommentRepositoryTest {
         val recorded = mock.takeRequest()
         assertTrue(recorded.encodedPath!!.startsWith("/api/discuss/reply/get"))
         assertTrue(recorded.bodyContains("discussNodeId=36213759"))
+    }
+
+    @Test
+    fun getReplies_isDiscussFailure_throwsWithoutFallingBack() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(400, "楼层不存在"))
+        mock.enqueue(mock.ok("""{"comment":{"id":1},"list":[]}"""))
+
+        val result = repository.getReplies(commentId = 36213759L, page = 1, isDiscuss = true)
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull() as ApiException
+        assertEquals(400, exception.code)
+        assertEquals("楼层不存在", exception.message)
+        // 讨论楼层失败后不得静默回落常规评论接口
+        assertEquals(1, mock.requestCount)
     }
 
     @Test
@@ -217,5 +234,47 @@ class CommentRepositoryTest {
         val result = repository.deleteComment(nodeId = 10L, type = "comment")
         assertTrue(result.isFailure)
         assertEquals(400, (result.exceptionOrNull() as ApiException).code)
+    }
+    @Test
+    fun addComment_tokenExpired_selfHealsSessionAndThrows() = runTest {
+        val (mock, repository, session) = setup(token = "tok-comment")
+        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
+        val result = repository.addComment(nodeId = 123L, content = "测试评论")
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
+    }
+
+    @Test
+    fun togglePraise_tokenExpired_selfHealsSessionAndThrows() = runTest {
+        val (mock, repository, session) = setup(token = "tok-praise")
+        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
+        val result = repository.togglePraise(commentId = 123L, relateNodeId = 456L, praised = false)
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
+    }
+
+    @Test
+    fun api4001_withSwitchedSession_preservesNewSession() = runTest {
+        val (mock, repository, session) = setup(token = "token-A")
+        mock.routeWhen(
+            predicate = { path, _ -> path.contains("api/comment/add") },
+            body = { _, _ ->
+                // 模拟网络往返期间用户切换登录到了新账号 token-B
+                session.setState(SessionState.Authenticated(userId = 2L, token = "token-B"))
+                """{"success":false,"code":4001,"msg":"登录已失效","data":null}"""
+            }
+        )
+
+        val result = repository.addComment(nodeId = 123L, content = "在途凭据守卫")
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is ApiException)
+        assertEquals(4001, exception.code)
+        // 在途凭据守卫生效：旧请求快照 token-A 不匹配活跃 token-B，新会话未被误伤清理
+        assertTrue(session.isAuthenticated)
+        assertEquals("token-B", session.currentToken)
     }
 }

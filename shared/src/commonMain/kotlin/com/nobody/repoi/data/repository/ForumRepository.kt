@@ -21,8 +21,12 @@ class ForumRepository(
      * @param forumPage 分页页码，从 1 开始
      */
     suspend fun getFocusForums(forumPage: Int = 1): Result<List<ForumItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getFocusForumList(forumPage = forumPage)
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "获取已关注版块失败")
         }
         response.data?.forumList ?: emptyList()
@@ -33,8 +37,12 @@ class ForumRepository(
      * @param forumPage 分页页码，从 1 开始
      */
     suspend fun getUnfocusForums(forumPage: Int = 1): Result<List<ForumItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getUnfocusForumList(forumPage = forumPage)
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "获取未关注版块失败")
         }
         response.data?.forumList ?: emptyList()
@@ -46,7 +54,8 @@ class ForumRepository(
      * @param follow true=关注，false=取关
      */
     suspend fun toggleFocus(forumNodeId: Long, follow: Boolean): Result<Unit> = runCatching {
-        if (userSession.currentToken.isBlank()) {
+        val snapshotToken = userSession.currentToken
+        if (snapshotToken.isBlank()) {
             throw ApiException(4001, "请先登录后再关注版块")
         }
         if (forumNodeId <= 0L) throw ApiException(400, "版块ID无效")
@@ -55,6 +64,9 @@ class ForumRepository(
             state = if (follow) 1 else 0
         )
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "版块关注操作失败")
         }
     }
@@ -64,11 +76,15 @@ class ForumRepository(
      * @param orderedIds 按展示顺序排列的版块 id 列表
      */
     suspend fun updateFocusOrder(orderedIds: List<Long>): Result<Unit> = runCatching {
-        if (userSession.currentToken.isBlank()) {
+        val snapshotToken = userSession.currentToken
+        if (snapshotToken.isBlank()) {
             throw ApiException(4001, "请先登录后再调整版块排序")
         }
         val response = api.updateForumFocusOrder(order = orderedIds.joinToString(","))
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "保存版块排序失败")
         }
     }
@@ -78,9 +94,13 @@ class ForumRepository(
      * @param forumId 版块节点 ID
      */
     suspend fun getForumDetail(forumId: Long): Result<ForumDetailData?> = runCatching {
+        val snapshotToken = userSession.currentToken
         if (forumId <= 0L) throw ApiException(400, "版块ID无效")
         val response = api.getForumDetail(forumId = forumId)
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "获取版块详情失败")
         }
         response.data?.forum
@@ -101,6 +121,7 @@ class ForumRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<PostItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.searchPosts(
             forumNodeId = forumNodeId,
             order = order,
@@ -110,6 +131,9 @@ class ForumRepository(
             pageSize = pageSize
         )
         if (!response.isSuccess) {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
             throw ApiException(response.code, response.msg ?: "获取帖子列表失败")
         }
         response.data?.list ?: emptyList()

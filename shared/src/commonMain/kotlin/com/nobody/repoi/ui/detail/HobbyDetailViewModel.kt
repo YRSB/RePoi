@@ -18,7 +18,7 @@ import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -147,7 +147,7 @@ class HobbyDetailViewModel(
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate,
     private val exHobbyRepository: ExHobbyRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
-    private val userRepository: UserRepository
+    private val userHistoryRepository: UserHistoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HobbyDetailUiState())
@@ -259,7 +259,7 @@ class HobbyDetailViewModel(
 
     private suspend fun recordHistory(nodeId: Long) {
         runCatching {
-            userRepository.addUserHistory(nodeId)
+            userHistoryRepository.addUserHistory(nodeId)
         }
     }
 

@@ -7,6 +7,7 @@ import com.nobody.repoi.data.remote.model.UserPraiseItem
 import com.nobody.repoi.data.remote.model.UserProfileSummary
 import com.nobody.repoi.data.repository.FriendChangeEvent
 import com.nobody.repoi.data.repository.FriendState
+import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,6 +110,7 @@ data class FriendListUiState(
  */
 class FriendListViewModel(
     private val userRepository: UserRepository,
+    private val followRepository: FollowRepository,
     userId: Long = 0L,
     initialType: Int = 0,
 ) : ViewModel() {
@@ -128,7 +130,7 @@ class FriendListViewModel(
         }
 
         viewModelScope.launch {
-            userRepository.friendChangeEvent.collect { event ->
+            followRepository.friendChangeEvent.collect { event ->
                 _uiState.update { state ->
                     val targetIndex = state.items.indexOfFirst { it.userId == event.userId }
                     if (targetIndex >= 0) {
@@ -271,7 +273,7 @@ class FriendListViewModel(
 
         // 2. 异步调用后端更新 API
         viewModelScope.launch {
-            val result = userRepository.updateFriend(userId = targetUserId, isFollow = newFollowState)
+            val result = followRepository.updateFriend(userId = targetUserId, isFollow = newFollowState)
             if (result.isFailure) {
                 // 失败时回滚状态并提示用户
                 val ex = result.exceptionOrNull()
@@ -308,7 +310,7 @@ class FriendListViewModel(
                         }
                     }
             } else {
-                userRepository.getUserFellowList(userId = currentUserId, type = tab, page = page, pageSize = PAGE_SIZE)
+                followRepository.getUserFellowList(userId = currentUserId, type = tab, page = page, pageSize = PAGE_SIZE)
                     .map { list -> list.map { FriendListItemModel.fromFellowItem(it, currentTab = tab) } }
             }
 

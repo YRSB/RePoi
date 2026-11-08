@@ -9,7 +9,7 @@ import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
@@ -49,7 +49,7 @@ class HobbyDetailEnv(
     val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
     val commentRepository = CommentRepository(commentMock.api(), session)
     val stickerRepository = StickerRepository(detailMock.api())
-    val userRepository = UserRepository(userMock.api(), session)
+    val userHistoryRepository = UserHistoryRepository(userMock.api(), session)
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 
@@ -59,7 +59,7 @@ class HobbyDetailEnv(
 
     fun viewModel(): HobbyDetailViewModel = HobbyDetailViewModel(
         detailRepository, collectRepository, commentDelegate,
-        exHobbyRepository, preferences, userRepository
+        exHobbyRepository, preferences, userHistoryRepository
     )
 
     /** loadDetail 基础 7 件套（详情/信息/官图/相册/时间轴/关联/评论×2）。 */
