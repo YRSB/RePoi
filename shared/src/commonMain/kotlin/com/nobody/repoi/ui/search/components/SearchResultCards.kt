@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,28 +23,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.SearchResultItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.SearchUserItem
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import androidx.compose.material3.ElevatedCard
 
 /**
@@ -58,11 +49,6 @@ fun HobbySearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
-    val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -74,7 +60,7 @@ fun HobbySearchCard(
                 .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 封面图片（1:1 正方形微曲角）
+            // 封面图片（1:1 正方形微曲角），缺省/失败态由基元内置
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -82,22 +68,13 @@ fun HobbySearchCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
-                if (!loadFailed) {
-                    AsyncImage(
-                        model = thumbRequest,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                PoiAsyncImage(
+                    path = item.cover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             // 右侧文本详情
@@ -163,14 +140,8 @@ fun AlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.cover)
-    val ratioKey = listImageKey(item.cover, coverUrl, "sr")
-    val coverRequest = rememberListImageRequest(item.cover, coverUrl, "sr:waterfall")
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    var aspectRatio by remember(ratioKey, isNoCover) {
-        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
-    }
+    // 无封面（含官方缺省吉祥物）沿用历史 17:24 纯文本卡，有封面由基元按真实比例撑开
+    val isNoCover = MediaPipeline.Default.isPlaceholder(item.cover)
 
     ElevatedCard(
         onClick = onClick,
@@ -182,7 +153,7 @@ fun AlbumStaggeredCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(aspectRatio)
+                    .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
                 if (isNoCover) {
@@ -191,19 +162,15 @@ fun AlbumStaggeredCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    AsyncImage(
-                        model = coverRequest,
+                    // 相册封面走 MediaCategory.ALBUM：管道统一裁决到保留纵横比的 cover/sr/
+                    PoiAsyncImage(
+                        path = item.cover,
+                        category = MediaCategory.ALBUM,
+                        purpose = ImagePurpose.ADAPTIVE_GRID,
                         contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        onSuccess = { state ->
-                            val size = state.painter.intrinsicSize
-                            if (size.width > 0 && size.height > 0) {
-                                val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                                aspectRatio = ratio
-                                ImageAspectRatioCache[ratioKey] = ratio
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxWidth(),
+                        adaptiveRatio = true,
+                        fallbackRatio = 1.0f
                     )
                 }
 
@@ -266,21 +233,20 @@ fun AlbumStaggeredCard(
                         modifier = Modifier.weight(1f, fill = false),
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        val headUrl = item.user?.header?.let { CdnUrlUtils.getHeadUrl(it) }
+                        // 作者头像：head/n/ 标准档，空路径与失败态由基元兜底
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         ) {
-                            if (!headUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = headUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                            PoiAsyncImage(
+                                path = item.user?.header,
+                                category = MediaCategory.AVATAR,
+                                purpose = ImagePurpose.THUMBNAIL,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
 
                         Text(
@@ -315,11 +281,6 @@ fun GeneralSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
-    val thumbRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -339,22 +300,13 @@ fun GeneralSearchCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
-                if (!loadFailed) {
-                    AsyncImage(
-                        model = thumbRequest,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                PoiAsyncImage(
+                    path = item.cover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             Column(
@@ -393,8 +345,6 @@ fun SearchUserCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val headUrl = CdnUrlUtils.getHeadUrl(user.header)
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -413,10 +363,11 @@ fun SearchUserCard(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
-                AsyncImage(
-                    model = headUrl,
+                PoiAsyncImage(
+                    path = user.header,
+                    category = MediaCategory.AVATAR,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = user.nickname,
-                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             }

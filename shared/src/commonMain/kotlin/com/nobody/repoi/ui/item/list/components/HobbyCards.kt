@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,33 +12,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
 /**
@@ -52,11 +43,7 @@ fun HobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
-    val gridImageRequest = rememberListImageRequest(item.cover, coverUrl, "grid")
     val bottomScrim = remember { Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))) }
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
 
     ElevatedCard(
         onClick = onClick,
@@ -66,29 +53,14 @@ fun HobbyGridCard(
         shape = MaterialTheme.shapes.small
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (!loadFailed) {
-                AsyncImage(
-                    model = gridImageRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    onError = { loadFailed = true }
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
+            // 封面缺省与失败态均由基元承担：空路径/占位符走官方缺省图，加载失败显示破损图标
+            PoiAsyncImage(
+                path = item.cover,
+                category = MediaCategory.HOBBY,
+                purpose = ImagePurpose.CARD_STANDARD,
+                contentDescription = item.displayName,
+                modifier = Modifier.fillMaxSize()
+            )
 
             // 顶部热度角标
             val hitsText = item.displayHitsText
@@ -146,11 +118,6 @@ fun HobbyListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
-    val thumbImageRequest = rememberListImageRequest(item.cover, coverUrl, "thumb")
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -171,22 +138,13 @@ fun HobbyListCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
-                if (!loadFailed) {
-                    AsyncImage(
-                        model = thumbImageRequest,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                PoiAsyncImage(
+                    path = item.cover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             // 右侧信息列
