@@ -38,8 +38,15 @@ import kotlin.test.assertTrue
  * 请求会立即失败（组件落到破损图标分支），因此不引入 `coil-test` 依赖、不访问 CDN。
  *
  * 各用例刻意使用**不同的** `purpose`，使内部比例缓存键（含用途桶）互不相同，避免互相污染。
+ *
+ * 有效性已通过变异测试验证：临时摘掉基元的 `Modifier.aspectRatio` 后，
+ * 前三条断言比例的用例全部 FAILED（`653 tests completed, 3 failed`），
+ * 第四条 `adaptiveRatioDisabled_...` 仍通过（符合预期，它不依赖比例）。
+ *
+ * 注：`runComposeUiTest` 目前有 v2 新 API，但 v2 改用 `StandardTestDispatcher`
+ * 改变协程调度语义；本测试只做一次同步布局测量，无异步等待，故暂留旧 API 以保证确定性。
  */
-@OptIn(ExperimentalTestApi::class)
+@OptIn(ExperimentalTestApi::class, coil3.annotation.DelicateCoilApi::class)
 class PoiAsyncImageLayoutTest {
 
     @BeforeTest
