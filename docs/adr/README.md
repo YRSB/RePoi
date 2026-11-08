@@ -18,6 +18,7 @@
 | [ADR-0004](0004-m3e-theme-shapes-convergence.md) | Material 3 Expressive 设计系统收敛、终结 ExpressiveTokens 反模式与全面回归官方原生组件 | **主题/设计系统/形状**：收敛至 MaterialTheme.shapes、回归原生 ElevatedCard/Card 零传参、非对称圆角扩展属性、全量彻底移除自建包装 | 已采纳并全量执行 (Accepted & Completed) - 2026-11-07 |
 | [ADR-0005](0005-token-auth-import-export.md) | 登录令牌导入导出与 Token 登录原子验权 | **鉴权/会话/跨端**：请求体候选令牌直达验权、登录页双模、设置页导出安全闭环 | 已采纳并全量执行 (Accepted & Completed) - 2026-11-07 |
 | [ADR-0006](0006-unified-route-action-resolver.md) | 统一路由与动作解析器 (AppRouteResolver) 架构深化 | **导航/路由/解耦**：无副作用纯解析器、强类型 RouteTarget、终结回调击穿、直连 Navigation 3 | 已采纳 (Accepted) - 2026-11-08 |
+| [ADR-0007](0007-media-pipeline-async-image.md) | 多媒体管道 (MediaPipeline) 与自适应图片呈现基元架构深化 | **多媒体/呈现/防抖/手势**：纯计算 MediaPipeline、404 防御闭环、PoiAsyncImage 内置宽高比防抖、跨平台 PoiZoomableImage、渐进桥接 | 已采纳 (Accepted) - 2026-11-08 |
 
 ---
 
