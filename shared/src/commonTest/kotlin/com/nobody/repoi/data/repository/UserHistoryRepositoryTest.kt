@@ -21,10 +21,10 @@ class UserHistoryRepositoryTest {
     fun getUserHistoryList_success_parsesItems() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"data":{"historyList":[{"id":123,"itemNodeId":456,"itemType":"hobby","itemName":"手办A"}]}}"""
+            """{"success":true,"code":200,"data":{"readList":[{"id":123,"itemNodeId":456,"itemType":"hobby","itemName":"手办A"}]}}"""
         )
 
-        val result = repository.getUserHistoryList(type = "hobby", page = 1)
+        val result = repository.getUserHistoryList(itemType = "hobby", page = 1)
         assertTrue(result.isSuccess)
         val list = result.getOrThrow()
         assertEquals(1, list.size)
@@ -38,7 +38,7 @@ class UserHistoryRepositoryTest {
         val (mock, session, repository) = setup("expired-token")
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录令牌已过期"}""")
 
-        val result = repository.getUserHistoryList(type = "hobby", page = 1)
+        val result = repository.getUserHistoryList(itemType = "hobby", page = 1)
         assertTrue(result.isFailure)
         assertIs<ApiException>(result.exceptionOrNull())
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
@@ -83,7 +83,7 @@ class UserHistoryRepositoryTest {
         val result = repository.deleteUserHistory(listOf(101L, 102L))
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        assertTrue(recorded.bodyContains("historyIds=101%2C102") || recorded.bodyContains("historyIds=101,102"))
+        assertTrue(recorded.bodyContains("ids=%5B101%2C102%5D") || recorded.bodyContains("ids=[101,102]"))
     }
 
     @Test

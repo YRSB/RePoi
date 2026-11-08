@@ -17,17 +17,16 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
- * 关注关系枚举定义。
+ * 好友/关注关系状态枚举。
+ * 0=已关注/单向关注, 2=互相关注, 5=未关注/取关, -1=未知
  */
 enum class FriendState(val code: Int) {
-    UNKNOWN(-1),
-    NOT_FOLLOWING(0),
-    FOLLOWING(1),
-    SPECIAL_FOLLOWING(2),
-    MUTUAL_FOLLOWING(3),
-    BLACK(4);
+    FOLLOWING(0),      // 已关注 / 单向关注
+    MUTUAL(2),         // 互相关注
+    NOT_FOLLOWING(5),  // 未关注 / 取消关注
+    UNKNOWN(-1);
 
-    val isFollowed: Boolean get() = this == FOLLOWING || this == SPECIAL_FOLLOWING || this == MUTUAL_FOLLOWING
+    val isFollowed: Boolean get() = this == FOLLOWING || this == MUTUAL
 
     companion object {
         fun fromCode(code: Int): FriendState = entries.find { it.code == code } ?: UNKNOWN
@@ -36,6 +35,11 @@ enum class FriendState(val code: Int) {
 
 /**
  * 好友/关注状态变更广播事件。
+ * 当在任何界面关注或取消关注某位用户并请求成功时发射。
+ *
+ * @param userId 目标用户 UID
+ * @param isFollow true 为已关注，false 为未关注
+ * @param state 关联的 FriendState
  */
 data class FriendChangeEvent(
     val userId: Long,

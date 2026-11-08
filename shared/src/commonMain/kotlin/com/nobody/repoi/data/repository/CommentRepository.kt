@@ -4,6 +4,7 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
+import com.nobody.repoi.data.remote.model.CommentReplyPayload
 import com.nobody.repoi.data.remote.model.CommentThreadPage
 import com.nobody.repoi.data.remote.model.CommentUser
 import com.nobody.repoi.data.session.SessionState
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-typealias CommentThreadPage = com.nobody.repoi.data.remote.model.CommentThreadPage
+fun CommentReplyPayload.toCommentThreadPage(): CommentThreadPage =
+    CommentThreadPage(comment = comment, replies = list ?: emptyList())
 
 data class DeletedComment(
     val commentId: Long,
@@ -43,8 +45,13 @@ class CommentRepository(
     }
 
     /** 发布一条删除广播（删除成功后调用，上游列表页按 id 移除）。 */
+    suspend fun emitDeleted(deleted: DeletedComment) {
+        _deletedComments.emit(deleted)
+    }
+
+    /** 发布一条删除广播（通过 id 委托重载）。 */
     suspend fun emitDeletedComment(commentId: Long, replyId: Long? = null) {
-        _deletedComments.emit(DeletedComment(commentId = commentId, replyId = replyId))
+        emitDeleted(DeletedComment(commentId = commentId, replyId = replyId))
     }
 
     /**

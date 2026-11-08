@@ -24,23 +24,22 @@ class UserFinanceRepository(
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     /**
-     * 获取指定用户的订单统计原始数据 (api/order/static)。
+     * 获取指定用户的订单统计原始数据 (api/user/orderStatic)。
      */
     suspend fun getOrderStaticData(userId: Long): Result<OrderStaticData> = runCatching {
         val response = api.getOrderStatic(userId = userId)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data ?: OrderStaticData()
+        if (response.isSuccess || (response.success && response.data?.data != null)) {
+            response.data?.data ?: OrderStaticData()
         } else {
             throw ApiException(response.code, response.msg ?: "获取订单统计失败")
         }
     }
 
     /**
-     * 获取指定用户的订单计数 (api/order/static)。
+     * 获取指定用户的订单计数 (api/user/orderStatic)。
      */
     suspend fun getOrderStatic(userId: Long): Result<OrderCount> = runCatching {
-        val data = getOrderStaticData(userId).getOrThrow()
-        data.orderCount ?: OrderCount()
+        getOrderStaticData(userId).map { it.count ?: OrderCount() }.getOrThrow()
     }
 
     /**

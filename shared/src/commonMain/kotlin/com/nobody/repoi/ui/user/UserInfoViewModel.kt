@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.user
+package com.nobody.repoi.ui.user
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,7 +8,6 @@ import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.FriendChangeEvent
-import com.nobody.repoi.data.repository.FriendState
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.FriendState
 import com.nobody.repoi.data.repository.UserFinanceRepository

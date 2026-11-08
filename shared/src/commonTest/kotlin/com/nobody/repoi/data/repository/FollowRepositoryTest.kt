@@ -94,7 +94,7 @@ class FollowRepositoryTest {
     @Test
     fun getFellowType_success_mapsFriendState() = runTest {
         val (mock, _, repository) = setup()
-        mock.enqueue("""{"success":true,"code":200,"data":{"friendState":1}}""")
+        mock.enqueue("""{"success":true,"code":200,"data":{"friendState":0}}""")
 
         val result = repository.getFellowType(888L)
         assertTrue(result.isSuccess)
