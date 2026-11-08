@@ -1,7 +1,8 @@
 package com.nobody.repoi.ui.settings.shield
 
 import com.nobody.repoi.data.remote.model.MaskItem
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -36,7 +37,7 @@ class SettingsShieldListViewModelTest {
     }
 
     private fun repositoryOf(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
+        SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
 
     private fun listBody(items: List<Pair<Long, String>>): String {
         val list = items.joinToString(",") { (id, name) ->
@@ -87,8 +88,8 @@ class SettingsShieldListViewModelTest {
     @Test
     fun tokenChanges_triggersReloadAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
-        val tokenManager = FakeTokenManager("")
-        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val session = FakeUserSession()
+        val repo = SettingsRepository(mock.api(testDispatcher), session)
         mock.routeWhen(
             predicate = { path, _, _ -> path.contains("api/mask/list") },
             body = { _, _, _ -> listBody(listOf(1L to "用户1")) }
@@ -97,11 +98,11 @@ class SettingsShieldListViewModelTest {
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
-        tokenManager.currentToken = "new-token"
+        session.setState(SessionState.Authenticated(userId = 0L, token = "new-token"))
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.items.size)
 
-        tokenManager.clearToken()
+        session.setState(SessionState.Unauthenticated)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.items.isEmpty())
         assertFalse(viewModel.uiState.value.isLoading)

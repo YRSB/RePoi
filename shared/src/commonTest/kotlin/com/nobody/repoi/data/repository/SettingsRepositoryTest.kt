@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,7 +11,7 @@ class SettingsRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Pair<MockApi, SettingsRepository> {
         val mock = MockApi()
-        return mock to SettingsRepository(mock.api(), FakeTokenManager(token))
+        return mock to SettingsRepository(mock.api(), FakeUserSession(token))
     }
 
     @Test

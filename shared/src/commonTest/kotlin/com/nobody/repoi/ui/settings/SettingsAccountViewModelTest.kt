@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.settings
 
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,7 @@ class SettingsAccountViewModelTest {
     }
 
     private fun repository(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeTokenManager(token))
+        SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
 
     @Test
     fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
@@ -76,21 +77,21 @@ class SettingsAccountViewModelTest {
     @Test
     fun tokenChanges_triggersRefreshAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
-        val tokenManager = FakeTokenManager("")
-        val repo = SettingsRepository(mock.api(testDispatcher), tokenManager)
+        val session = FakeUserSession()
+        val repo = SettingsRepository(mock.api(testDispatcher), session)
         val viewModel = SettingsAccountViewModel(repo)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
         mock.enqueue(mock.ok("""{"result":{"verify":true,"password":true,"phone":true,"email":false,"wechat":true}}"""))
         mock.enqueue(mock.ok("""{"phone":"138****8000","email":""}"""))
-        tokenManager.currentToken = "new-token"
+        session.setState(SessionState.Authenticated(userId = 0L, token = "new-token"))
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.passwordBound)
         assertEquals(2, mock.requestCount)
 
-        tokenManager.clearToken()
+        session.setState(SessionState.Unauthenticated)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.passwordBound)

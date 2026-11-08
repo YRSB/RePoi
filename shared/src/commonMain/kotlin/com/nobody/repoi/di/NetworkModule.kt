@@ -1,11 +1,11 @@
 package com.nobody.repoi.di
 
 import co.touchlab.kermit.Logger as KermitLogger
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.interceptor.CommonParams
 import com.nobody.repoi.data.remote.plugin.installCommonParams
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.KtorLogFormatter
 import io.ktor.client.HttpClient
@@ -83,7 +83,7 @@ val networkModule = module {
             defaultRequest {
                 url(CommonParams.BASE_URL)
             }
-        }.installCommonParams(tokenProvider = { get<TokenManager>().currentToken })
+        }.installCommonParams(tokenProvider = { get<UserSession>().currentToken })
     }
     single(named("exhobby")) {
         val json = get<Json>()
@@ -129,7 +129,7 @@ val networkModule = module {
     }
     single { HpoiApi(get(named("hpoi")), get()) }
     single { ExHobbyApi(get(named("exhobby")), get()) }
-    single { com.nobody.repoi.data.remote.interceptor.CommonParamsInterceptor(tokenProvider = { get<TokenManager>().currentToken }) }
+    single { com.nobody.repoi.data.remote.interceptor.CommonParamsInterceptor(tokenProvider = { get<UserSession>().currentToken }) }
 }
 
 /**

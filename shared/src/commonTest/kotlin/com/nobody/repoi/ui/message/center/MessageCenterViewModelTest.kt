@@ -1,6 +1,6 @@
 package com.nobody.repoi.ui.message.center
 
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +43,7 @@ class MessageCenterViewModelTest {
     }
 
     private fun viewModelOf(mock: MockApi): MessageCenterViewModel {
-        val repository = MessageRepository(mock.api(), FakeTokenManager("utoken-test"))
+        val repository = MessageRepository(mock.api(), FakeUserSession("utoken-test"))
         return MessageCenterViewModel(repository)
     }
 

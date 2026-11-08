@@ -1,12 +1,12 @@
 package com.nobody.repoi.data.repository
 
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentThreadPage
 import com.nobody.repoi.data.remote.model.CommentUser
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,10 +25,9 @@ data class DeletedComment(
  * 6 个详情页的评论内联组件与评论详情页共用本仓储；跨页面的主楼更新经
  * [commentUpdates] 广播，各详情 ViewModel 按 id 合并到自己的热/最新两路列表。
  */
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommentRepository(
     private val api: HpoiApi,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) {
 
     private val _commentUpdates = MutableSharedFlow<CommentItem>(extraBufferCapacity = 16)
@@ -114,7 +113,7 @@ class CommentRepository(
         relateNodeId: Long,
         praised: Boolean
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再点赞")
         }
         val response = if (praised) {
@@ -136,7 +135,7 @@ class CommentRepository(
         content: String,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再发表评论")
         }
         val response = api.addComment(nodeId = nodeId, content = content, emoticon = emoticon)
@@ -177,7 +176,7 @@ class CommentRepository(
         isDiscuss: Boolean = false,
         relateNodeId: Long = 0L
     ): Result<CommentReplyItem> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再回复")
         }
         if (isDiscuss) {
@@ -200,8 +199,8 @@ class CommentRepository(
                         id = nowMillis(),
                         content = content,
                         user = CommentUser(
-                            userId = tokenManager.currentUserId,
-                            nickname = tokenManager.currentUserName
+                            userId = userSession.currentUserId,
+                            nickname = userSession.currentUserName
                         )
                     )
                 }
@@ -241,7 +240,7 @@ class CommentRepository(
         nodeId: Long,
         type: String
     ): Result<Unit> = runCatching {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             throw ApiException(4001, "请先登录后再删除评论")
         }
         val response = if (type == "discuss" || type == "discuss_reply") {

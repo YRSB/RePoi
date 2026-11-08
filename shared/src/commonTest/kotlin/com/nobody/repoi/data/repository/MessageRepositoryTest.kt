@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,14 +12,14 @@ import kotlin.test.assertTrue
  * [MessageRepository] 单元测试：覆盖通知未读计数、私信联系人、聊天记录、撤回与黑名单契约（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `MessageRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeTokenManager]；
+ * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeUserSession]；
  * JUnit4 → kotlin.test）。
  */
 class MessageRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Pair<MockApi, MessageRepository> {
         val mock = MockApi()
-        return mock to MessageRepository(mock.api(), FakeTokenManager(token))
+        return mock to MessageRepository(mock.api(), FakeUserSession(token))
     }
 
     @Test

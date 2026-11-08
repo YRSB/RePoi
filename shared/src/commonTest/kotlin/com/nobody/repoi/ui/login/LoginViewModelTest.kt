@@ -1,8 +1,12 @@
 package com.nobody.repoi.ui.login
 
-import com.nobody.repoi.data.repository.FakeTokenManager
+import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.LoginData
+import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.data.remote.model.UserProfileSummary
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -21,10 +25,8 @@ import kotlin.test.assertTrue
 /**
  * 登录 ViewModel 测试（KMP commonTest 移植）。
  *
- * 对齐 PoiShelf `LoginViewModelTest`（逐用例；Mockito `mock(UserRepository)` →
- * 真实 UserRepository 背后 [MockApi] MockEngine（`verify never/login` →
- * `mock.requestCount` 断言）；`MainDispatcherRule` → `Dispatchers.setMain`；
- * JUnit4 → kotlin.test + `runTest`）。
+ * 登录动作已收敛到 `UserSession`：本测试以 [FakeUserSession] 预置成功/失败结果，
+ * 断言 ViewModel 的加载态、错误文案、输入保留与成功回调；网络语义见 `UserSessionTest`。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -41,29 +43,30 @@ class LoginViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun setup(): Triple<MockApi, FakeTokenManager, LoginViewModel> {
-        val mock = MockApi()
-        val tokenManager = FakeTokenManager("utoken-test")
-        val repository = UserRepository(mock.api(), tokenManager)
-        return Triple(mock, tokenManager, LoginViewModel(repository))
+    private fun setup(): Pair<FakeUserSession, LoginViewModel> {
+        val session = FakeUserSession("utoken-test")
+        val repository = UserRepository(MockApi().api(), session)
+        return session to LoginViewModel(repository)
     }
 
     @Test
     fun emptyFields_rejectLoginWithoutRequest() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
+        val (session, viewModel) = setup()
 
         viewModel.login()
         advanceUntilIdle()
 
         assertEquals("请输入账号和密码", viewModel.uiState.value.errorMessage)
         assertFalse(viewModel.uiState.value.isLoading)
-        assertEquals(0, mock.requestCount)
+        assertEquals(0, session.loginCalls)
     }
 
     @Test
     fun login_successTrimsAccountAndInvokesCallback() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
-        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"utoken":"tok123","user":{"userName":"user"}}}""")
+        val (session, viewModel) = setup()
+        session.loginResult = Result.success(
+            LoginData(utoken = "tok123", user = UserProfileSummary(userName = "user"))
+        )
         var successCalled = false
         viewModel.onAccountChange("  user  ")
         viewModel.onPasswordChange("pass")
@@ -76,16 +79,15 @@ class LoginViewModelTest {
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
         assertTrue(successCalled)
-        assertEquals(1, mock.requestCount)
-        val form = mock.takeRequest().formEntries()
-        assertEquals("user", form["account"])
-        assertEquals("pass", form["password"])
+        assertEquals(1, session.loginCalls)
+        assertEquals("user", session.lastLoginAccount)
+        assertEquals("pass", session.lastLoginPassword)
     }
 
     @Test
     fun login_failureShowsMessageAndKeepsForm() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
-        mock.enqueue(mock.failure(400, "密码错误"))
+        val (session, viewModel) = setup()
+        session.loginResult = Result.failure(ApiException(400, "密码错误"))
         var successCalled = false
         viewModel.onAccountChange("user")
         viewModel.onPasswordChange("bad")
@@ -103,7 +105,7 @@ class LoginViewModelTest {
 
     @Test
     fun editingFields_clearsPreviousError() = runTest(testDispatcher) {
-        val (_, _, viewModel) = setup()
+        val (_, viewModel) = setup()
         viewModel.login()
         assertEquals("请输入账号和密码", viewModel.uiState.value.errorMessage)
 
@@ -118,7 +120,7 @@ class LoginViewModelTest {
 
     @Test
     fun togglePasswordVisibility_flipsFlag() = runTest(testDispatcher) {
-        val (_, _, viewModel) = setup()
+        val (_, viewModel) = setup()
         assertFalse(viewModel.uiState.value.passwordVisible)
 
         viewModel.togglePasswordVisibility()
@@ -130,7 +132,7 @@ class LoginViewModelTest {
 
     @Test
     fun tokenLogin_blankToken_showsErrorWithoutRequest() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
+        val (session, viewModel) = setup()
         viewModel.onTokenChange("  \n ")
 
         viewModel.loginWithToken {}
@@ -138,13 +140,15 @@ class LoginViewModelTest {
 
         assertEquals("请输入登录令牌", viewModel.uiState.value.errorMessage)
         assertFalse(viewModel.uiState.value.isLoading)
-        assertEquals(0, mock.requestCount)
+        assertEquals(0, session.tokenLoginCalls)
     }
 
     @Test
-    fun tokenLogin_success_persistsTokenAndInvokesCallback() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
-        mock.enqueue(mock.ok("""{"user":{"id":88888,"nickname":"资深胶佬","userName":"collector888"}}"""))
+    fun tokenLogin_success_invokesCallbackWithTrimmedCandidate() = runTest(testDispatcher) {
+        val (session, viewModel) = setup()
+        session.tokenLoginResult = Result.success(
+            UserProfile(id = 88888L, nickname = "资深胶佬", userName = "collector888")
+        )
         var successCalled = false
         viewModel.onTokenChange(" candidate-token ")
 
@@ -156,14 +160,14 @@ class LoginViewModelTest {
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
         assertTrue(successCalled)
-        assertEquals(1, mock.requestCount)
-        assertEquals("candidate-token", mock.takeRequest().formEntries()["utoken"])
+        assertEquals(1, session.tokenLoginCalls)
+        assertEquals("candidate-token", session.lastTokenCandidate)
     }
 
     @Test
     fun tokenLogin_invalidToken4001_showsFriendlyErrorAndRetainsInput() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
-        mock.enqueue(mock.failure(4001, "登录凭证已过期"))
+        val (session, viewModel) = setup()
+        session.tokenLoginResult = Result.failure(ApiException(4001, "登录令牌已失效，请重新获取"))
         var successCalled = false
         viewModel.onTokenChange("expired-token")
 
@@ -180,11 +184,8 @@ class LoginViewModelTest {
 
     @Test
     fun tokenLogin_serverError_showsServerMessageAndRetainsInput() = runTest(testDispatcher) {
-        val (mock, _, viewModel) = setup()
-        mock.enqueue(
-            status = io.ktor.http.HttpStatusCode.ServiceUnavailable,
-            body = mock.failure(503, "服务暂不可用")
-        )
+        val (session, viewModel) = setup()
+        session.tokenLoginResult = Result.failure(ApiException(503, "服务暂不可用"))
         var successCalled = false
         viewModel.onTokenChange("candidate-token")
 
@@ -201,7 +202,7 @@ class LoginViewModelTest {
 
     @Test
     fun modeSwitch_preservesEnteredValues() = runTest(testDispatcher) {
-        val (_, _, viewModel) = setup()
+        val (_, viewModel) = setup()
         viewModel.onAccountChange("user")
         viewModel.onTokenChange("candidate-token")
 

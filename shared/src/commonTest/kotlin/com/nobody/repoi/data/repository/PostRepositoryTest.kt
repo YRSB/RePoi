@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,7 +11,7 @@ import kotlin.test.assertTrue
  * 讨论贴仓储单测：帖子详情、回帖列表适配、发表回帖、楼中楼回复与删除（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `PostRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeTokenManager]；
+ * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeUserSession]；
  * JUnit4 → kotlin.test）。
  * 移植说明：`addDiscuss` 的 URL 解码断言在 MockEngine 侧直接断言解码后 form 值，语义等价。
  */
@@ -18,7 +19,7 @@ class PostRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Pair<MockApi, PostRepository> {
         val mock = MockApi()
-        return mock to PostRepository(mock.api(), FakeTokenManager(token))
+        return mock to PostRepository(mock.api(), FakeUserSession(token))
     }
 
     @Test

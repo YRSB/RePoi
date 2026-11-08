@@ -1,22 +1,22 @@
 package com.nobody.repoi.data.repository
 
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.BlockItem
 import com.nobody.repoi.data.remote.model.ChatMessagePayload
 import com.nobody.repoi.data.remote.model.MessageContactItem
 import com.nobody.repoi.data.remote.model.PushCountCategory
 import com.nobody.repoi.data.remote.model.PushMessageItem
+import com.nobody.repoi.data.session.UserSession
 
 /**
  * 消息与通知模块仓储实现。
  *
  * 封装分类通知、未读数统计、私信联系人会话、1v1 聊天记录与长轮询、黑名单管理。
+ * 鉴权经 [UserSession]；4001 由统一解包触发会话自愈。
  */
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class MessageRepository(
     private val api: HpoiApi,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) {
 
     /**
@@ -24,7 +24,7 @@ class MessageRepository(
      */
     suspend fun getUnreadPushCount(): Result<PushCountCategory> = runCatching {
         val response = api.getUnreadPushCount()
-        response.unwrapData(tokenManager, "获取未读消息数失败")?.map?.push ?: PushCountCategory()
+        response.unwrapData(userSession, "获取未读消息数失败")?.map?.push ?: PushCountCategory()
     }
 
     /**
@@ -32,7 +32,7 @@ class MessageRepository(
      */
     suspend fun getMessageContacts(page: Int = 1): Result<List<MessageContactItem>> = runCatching {
         val response = api.getMessageContacts(page = page)
-        response.unwrapData(tokenManager, "获取私信列表失败")?.contact ?: emptyList()
+        response.unwrapData(userSession, "获取私信列表失败")?.contact ?: emptyList()
     }
 
     /**
@@ -43,7 +43,7 @@ class MessageRepository(
      */
     suspend fun updateContactTop(id: Long, state: Int): Result<Unit> = runCatching {
         val response = api.updateContactTop(id = id, state = state)
-        response.unwrapUnit(tokenManager, "更新置顶状态失败")
+        response.unwrapUnit(userSession, "更新置顶状态失败")
     }
 
     /**
@@ -51,7 +51,7 @@ class MessageRepository(
      */
     suspend fun deleteContact(id: Long, userNodeId: Long): Result<Unit> = runCatching {
         val response = api.deleteContact(id = id, userNodeId = userNodeId)
-        response.unwrapUnit(tokenManager, "删除会话失败")
+        response.unwrapUnit(userSession, "删除会话失败")
     }
 
     /**
@@ -65,7 +65,7 @@ class MessageRepository(
         pageSize: Int = 20
     ): Result<List<PushMessageItem>> = runCatching {
         val response = api.getPushMessages(type = type, page = page, pageSize = pageSize)
-        response.unwrapData(tokenManager, "获取通知列表失败")?.pushMessage ?: emptyList()
+        response.unwrapData(userSession, "获取通知列表失败")?.pushMessage ?: emptyList()
     }
 
     /**
@@ -76,7 +76,7 @@ class MessageRepository(
      */
     suspend fun markPushRead(type: Int, messageId: Long? = null): Result<Unit> = runCatching {
         val response = api.markPushRead(type = type, messageId = messageId)
-        response.unwrapUnit(tokenManager, "标记已读失败")
+        response.unwrapUnit(userSession, "标记已读失败")
     }
 
     /**
@@ -84,7 +84,7 @@ class MessageRepository(
      */
     suspend fun deletePushMessage(messageId: Long, pushType: Int): Result<Unit> = runCatching {
         val response = api.deletePushMessage(messageId = messageId, pushType = pushType)
-        response.unwrapUnit(tokenManager, "删除通知失败")
+        response.unwrapUnit(userSession, "删除通知失败")
     }
 
     /**
@@ -103,7 +103,7 @@ class MessageRepository(
             ids = idsString,
             read = readCount
         )
-        response.unwrapUnit(tokenManager, "批量删除通知失败")
+        response.unwrapUnit(userSession, "批量删除通知失败")
     }
 
     /**
@@ -115,7 +115,7 @@ class MessageRepository(
         pageSize: Int = 20
     ): Result<ChatMessagePayload> = runCatching {
         val response = api.getChatMessages(fromId = fromId, page = page, pageSize = pageSize)
-        response.unwrapData(tokenManager, "获取聊天记录失败") ?: ChatMessagePayload()
+        response.unwrapData(userSession, "获取聊天记录失败") ?: ChatMessagePayload()
     }
 
     /**
@@ -127,7 +127,7 @@ class MessageRepository(
         emoticon: String? = null
     ): Result<Unit> = runCatching {
         val response = api.sendTextMessage(toId = toId, content = content, emoticon = emoticon)
-        response.unwrapUnit(tokenManager, "发送消息失败")
+        response.unwrapUnit(userSession, "发送消息失败")
     }
 
     /**
@@ -139,7 +139,7 @@ class MessageRepository(
         content: String? = null
     ): Result<Unit> = runCatching {
         val response = api.sendResaleMessage(toId = toId, resaleId = resaleId, content = content)
-        response.unwrapUnit(tokenManager, "发送二手卡片失败")
+        response.unwrapUnit(userSession, "发送二手卡片失败")
     }
 
     /**
@@ -160,7 +160,7 @@ class MessageRepository(
             fileBytes = fileBytes,
             mimeType = mimeType,
         )
-        response.unwrapUnit(tokenManager, "发送图片失败")
+        response.unwrapUnit(userSession, "发送图片失败")
     }
 
     /**
@@ -168,7 +168,7 @@ class MessageRepository(
      */
     suspend fun withdrawMessage(messageId: Long): Result<Unit> = runCatching {
         val response = api.withdrawMessage(messageId = messageId)
-        response.unwrapUnit(tokenManager, "撤回消息失败")
+        response.unwrapUnit(userSession, "撤回消息失败")
     }
 
     /**
@@ -176,7 +176,7 @@ class MessageRepository(
      */
     suspend fun getLatestMsgId(userId: Long): Result<Long> = runCatching {
         val response = api.getLatestMsgId(userId = userId)
-        response.unwrapData(tokenManager, "获取最新消息状态失败")?.latestMsgId ?: 0L
+        response.unwrapData(userSession, "获取最新消息状态失败")?.latestMsgId ?: 0L
     }
 
     /**
@@ -184,7 +184,7 @@ class MessageRepository(
      */
     suspend fun getBlockList(page: Int = 1, pageSize: Int = 50): Result<List<BlockItem>> = runCatching {
         val response = api.getBlockList(page = page, pageSize = pageSize)
-        response.unwrapData(tokenManager, "获取黑名单失败")?.userBlock ?: emptyList()
+        response.unwrapData(userSession, "获取黑名单失败")?.userBlock ?: emptyList()
     }
 
     /**
@@ -194,7 +194,7 @@ class MessageRepository(
      */
     suspend fun updateUserBlock(userId: Long, blockState: Int): Result<Unit> = runCatching {
         val response = api.updateUserBlock(userId = userId, blockState = blockState)
-        response.unwrapUnit(tokenManager, "更新黑名单状态失败")
+        response.unwrapUnit(userSession, "更新黑名单状态失败")
     }
 }
 
