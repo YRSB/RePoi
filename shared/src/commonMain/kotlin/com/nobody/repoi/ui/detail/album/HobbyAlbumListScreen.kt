@@ -48,7 +48,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,23 +55,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material3.ElevatedCard
@@ -302,14 +299,8 @@ private fun HobbyAlbumStaggeredCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
-    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(album.cover)
-    val ratioKey = listImageKey(album.cover, coverUrl, "sr")
-    val coverRequest = rememberListImageRequest(album.cover, coverUrl, "sr:waterfall")
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    var aspectRatio by remember(ratioKey, isNoCover) {
-        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
-    }
+    // 无封面判定统一交给管道：路径为空或官方缺省吉祥物（none.jpg）时沿用历史 17:24 纯文本卡
+    val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     ElevatedCard(
         onClick = onClick,
@@ -320,7 +311,8 @@ private fun HobbyAlbumStaggeredCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(aspectRatio)
+                    // 有图时高度由 PoiAsyncImage 的自适应纵横比撑开，无图时固定 17:24
+                    .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                     .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
@@ -330,19 +322,15 @@ private fun HobbyAlbumStaggeredCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    AsyncImage(
-                        model = coverRequest,
+                    // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/
+                    PoiAsyncImage(
+                        path = album.cover,
+                        category = MediaCategory.ALBUM,
+                        purpose = ImagePurpose.ADAPTIVE_GRID,
                         contentDescription = album.displayName,
-                        contentScale = ContentScale.Crop,
-                        onSuccess = { state ->
-                            val size = state.painter.intrinsicSize
-                            if (size.width > 0 && size.height > 0) {
-                                val ratio = (size.width / size.height).coerceIn(0.6f, 2.0f)
-                                aspectRatio = ratio
-                                ImageAspectRatioCache[ratioKey] = ratio
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxWidth(),
+                        adaptiveRatio = true,
+                        fallbackRatio = 1.0f
                     )
                 }
             }
@@ -371,8 +359,6 @@ private fun HobbyAlbumStaggeredCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        val avatarUrl = CdnUrlUtils.getHeadSmallUrl(album.user?.header)
-                        val avatarRequest = rememberListImageRequest(album.user?.header, avatarUrl, "avatar")
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
@@ -380,14 +366,14 @@ private fun HobbyAlbumStaggeredCard(
                                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (avatarUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = avatarRequest,
-                                    contentDescription = album.userNickname,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                            // 头像走 head/ 家族方形缩略档，外层 16dp 圆形裁切
+                            PoiAsyncImage(
+                                path = album.user?.header,
+                                category = MediaCategory.AVATAR,
+                                purpose = ImagePurpose.THUMBNAIL,
+                                contentDescription = album.userNickname,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                         Text(
                             text = album.userNickname,
