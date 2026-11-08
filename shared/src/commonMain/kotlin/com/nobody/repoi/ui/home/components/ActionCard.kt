@@ -35,10 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,11 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.media.resolvePictureUrl
 import com.nobody.repoi.data.remote.model.ActionItem
@@ -64,7 +58,6 @@ import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
-import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.FeedMediaResolver
 import com.nobody.repoi.util.FeedContentResolver
 import com.nobody.repoi.util.resolveMediaDisplayInfo
@@ -513,17 +506,8 @@ private fun UserFeedHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val userAvatar = user?.header?.ifBlank { null }
-        val avatarUrl = fallbackAvatarUrl?.ifBlank { null } ?: CdnUrlUtils.getHeadSmallUrl(userAvatar)
-        val context = LocalPlatformContext.current
-        val avatarRequest = remember(context, avatarUrl) {
-            if (avatarUrl.isNotBlank()) {
-                ImageRequest.Builder(context)
-                    .data(avatarUrl)
-                    .crossfade(false)
-                    .build()
-            } else null
-        }
-        var avatarLoadFailed by remember(avatarUrl) { mutableStateOf(false) }
+        // 外部传入的绝对地址优先（时间线数据可能缓存完整头像 URL），否则交回管道按 AVATAR 缩略档裁决
+        val hasFallback = fallbackAvatarUrl?.isNotBlank() == true
         Box(
             modifier = Modifier
                 .size(32.dp)
@@ -542,13 +526,21 @@ private fun UserFeedHeader(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)
             )
-            if (avatarRequest != null && !avatarLoadFailed) {
-                AsyncImage(
-                    model = avatarRequest,
+            if (hasFallback) {
+                PoiAsyncImage(
+                    model = fallbackAvatarUrl,
                     contentDescription = "用户头像",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    onError = { avatarLoadFailed = true }
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                PoiAsyncImage(
+                    path = userAvatar,
+                    category = MediaCategory.AVATAR,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = "用户头像",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
         }
