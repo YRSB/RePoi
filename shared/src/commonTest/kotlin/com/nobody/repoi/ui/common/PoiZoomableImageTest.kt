@@ -280,4 +280,80 @@ class PoiZoomableImageTest {
         assertEquals(3f, POI_LONG_IMAGE_THRESHOLD)
         assertEquals(1.02f, POI_ZOOMED_THRESHOLD)
     }
+
+    // ── 长图纵向导航（双击顶部/底部） ────────────────────────
+
+    @Test
+    fun maxVerticalPan_longImage_fillWidthOverflowHalf() {
+        // 视口 100x100，内容 100x1000，FillWidth 拟合比例 = 1 → 显示高 1000 → 溢出 900 → 单侧 450
+        val maxY = maxVerticalPan(
+            scale = 1f,
+            viewport = Size(100f, 100f),
+            contentSize = Size(100f, 1000f),
+            panContentScale = PanContentScale.FILL_WIDTH
+        )
+        assertEquals(450f, maxY, 0.0001f)
+    }
+
+    @Test
+    fun maxVerticalPan_fitLongImage_alsoPositive() {
+        // Fit 会把整张长图塞进视口，此时无溢出 → 0（长图模式下调用方应传 FILL_WIDTH）
+        val maxY = maxVerticalPan(
+            scale = 1f,
+            viewport = Size(100f, 100f),
+            contentSize = Size(100f, 1000f),
+            panContentScale = PanContentScale.FIT
+        )
+        assertEquals(0f, maxY, 0.0001f)
+    }
+
+    @Test
+    fun maxVerticalPan_degenerateInputs_returnZero() {
+        assertEquals(0f, maxVerticalPan(1f, Size(100f, 100f), Size.Zero), 0.0001f)
+        assertEquals(0f, maxVerticalPan(1f, Size.Zero, Size(100f, 1000f)), 0.0001f)
+        assertEquals(0f, maxVerticalPan(0f, Size(100f, 100f), Size(100f, 1000f)), 0.0001f)
+        assertEquals(0f, maxVerticalPan(Float.NaN, Size(100f, 100f), Size(100f, 1000f)), 0.0001f)
+    }
+
+    @Test
+    fun maxVerticalPan_wideImage_returnsZero() {
+        // 宽图在 FillWidth 下高度不足视口 → 无纵向余量
+        val maxY = maxVerticalPan(
+            scale = 1f,
+            viewport = Size(100f, 100f),
+            contentSize = Size(400f, 100f),
+            panContentScale = PanContentScale.FILL_WIDTH
+        )
+        assertEquals(0f, maxY, 0.0001f)
+    }
+
+    @Test
+    fun longImageAnchorOffset_top_usesPositiveMaxY() {
+        // 约定 offset.y > 0 表示「向下看内容」（图片上移），故顶部 = +maxY
+        assertEquals(Offset(0f, 300f), longImageAnchorOffset(Offset.Zero, 300f, LongImageAnchor.TOP))
+    }
+
+    @Test
+    fun longImageAnchorOffset_bottom_usesNegativeMaxY() {
+        assertEquals(Offset(0f, -300f), longImageAnchorOffset(Offset.Zero, 300f, LongImageAnchor.BOTTOM))
+    }
+
+    @Test
+    fun longImageAnchorOffset_noOverflow_returnsZero() {
+        // 无可滚动余量时不能出现「双击纹丝不动还播动画」的死手感
+        assertEquals(Offset.Zero, longImageAnchorOffset(Offset(0f, 50f), 0f, LongImageAnchor.TOP))
+        assertEquals(Offset.Zero, longImageAnchorOffset(Offset(0f, 50f), Float.NaN, LongImageAnchor.BOTTOM))
+    }
+
+    @Test
+    fun nextLongImageAnchor_fromNearBottom_jumpsToTop() {
+        // offset.y <= 0 视为更靠近底部 → 下一次跳顶部
+        assertEquals(LongImageAnchor.TOP, nextLongImageAnchor(Offset.Zero))
+        assertEquals(LongImageAnchor.TOP, nextLongImageAnchor(Offset(0f, -200f)))
+    }
+
+    @Test
+    fun nextLongImageAnchor_fromTop_jumpsToBottom() {
+        assertEquals(LongImageAnchor.BOTTOM, nextLongImageAnchor(Offset(0f, 200f)))
+    }
 }

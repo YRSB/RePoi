@@ -153,6 +153,68 @@ internal fun isLongImageRatio(
  * - [FILL_WIDTH]：与 `ContentScale.FillWidth` 一致，宽度撑满、高度自然溢出（超长图纵向浏览）。
  */
 internal enum class PanContentScale { FIT, FILL_WIDTH }
+/**
+ * 长图纵向导航的锚点：条漫/长条图在未放大状态下「双击」时的落点。
+ *
+ * 长图纵向溢出后，可用位移范围是 `[-maxY, +maxY]`（见 [clampPan]）。约定 `offset.y > 0` 为向下看
+ * 内容（图片上移），故「顶部」对应 `+maxY`、「底部」对应 `-maxY`。
+ */
+internal enum class LongImageAnchor { TOP, BOTTOM }
+
+/**
+ * 长图双击导航的目标偏移（纯函数）：在「顶部」与「底部」之间翻转。
+ *
+ * 判定规则：当前偏移更靠近底部（`offset.y <= 0`）则跳顶部，否则跳底部；`maxY <= 0`（无可滚动余量）
+ * 时返回 [Offset.Zero]，避免出现「双击却纹丝不动」的死手感。
+ */
+internal fun longImageAnchorOffset(
+    offset: Offset,
+    maxY: Float,
+    target: LongImageAnchor
+): Offset {
+    if (maxY.isNaN() || maxY <= 0f) return Offset.Zero
+    return when (target) {
+        LongImageAnchor.TOP -> Offset(0f, maxY)
+        LongImageAnchor.BOTTOM -> Offset(0f, -maxY)
+    }
+}
+
+/**
+ * 依据当前偏移推断长图「双击」应跳向哪一端（顶部优先）。
+ *
+ * 当前已在上半区（`offset.y > 0`）或正好居中时跳底部，处于下半区时跳顶部。
+ */
+internal fun nextLongImageAnchor(offset: Offset): LongImageAnchor =
+    if (offset.y > 0f) LongImageAnchor.BOTTOM else LongImageAnchor.TOP
+
+/**
+ * 纵向可平移余量（纯函数）：长图在 [scale] 下超出视口的高度的一半，即单侧最大位移。
+ *
+ * 与 [clampPan] 共用同一套拟合语义，供长图「双击跳顶部/底部」计算落点；尺寸非法时返回 0。
+ */
+internal fun maxVerticalPan(
+    scale: Float,
+    viewport: Size,
+    contentSize: Size,
+    panContentScale: PanContentScale = PanContentScale.FIT
+): Float {
+    if (scale.isNaN() || scale <= 0f) return 0f
+    if (viewport.width <= 0f || viewport.height <= 0f) return 0f
+    if (contentSize.width <= 0f || contentSize.height <= 0f) return 0f
+
+    val fitScale = when (panContentScale) {
+        PanContentScale.FIT -> min(
+            viewport.width / contentSize.width,
+            viewport.height / contentSize.height
+        )
+
+        PanContentScale.FILL_WIDTH -> viewport.width / contentSize.width
+    }
+    if (fitScale.isNaN() || fitScale <= 0f) return 0f
+
+    val overflow = (contentSize.height * fitScale * scale - viewport.height) / 2f
+    return if (overflow.isNaN() || overflow <= 0f) 0f else overflow
+}
 
 /**
  * 平移边界钳制（纯函数）：把 [offset] 夹到「放大后的图片不露黑边」的合法范围。
@@ -464,6 +526,23 @@ fun PoiZoomableImage(
                 onDoubleClick = {
                     if (scale.value > minScale) {
                         resetZoom(animated = true)
+                    } else if (isLongImage) {
+                        // 长图放大对「逐段阅读条漫」没有帮助（填满宽度后纵向仍有大量余量），
+                        // 双击改为在「顶部」与「底部」之间跳转，直接对齐用户读长图的实际需求。
+                        val maxY = maxVerticalPan(
+                            scale = scale.value,
+                            viewport = viewportSize,
+                            contentSize = imageIntrinsicSize,
+                            panContentScale = panContentScale
+                        )
+                        val target = longImageAnchorOffset(
+                            offset = offset.value,
+                            maxY = maxY,
+                            target = nextLongImageAnchor(offset.value)
+                        )
+                        scope.launch {
+                            offset.animateTo(target, animationSpec = tween(POI_ZOOM_ANIMATION_MILLIS))
+                        }
                     } else {
                         scope.launch {
                             scale.animateTo(
@@ -510,6 +589,14 @@ fun PoiZoomableImage(
                         !isLongImage
                     ) {
                         isLongImage = true
+                        // 长图默认从「顶部」开始阅读：居中会让条漫开头被裁掉，用户得先往上拖
+                        val maxY = maxVerticalPan(
+                            scale = scale.value,
+                            viewport = viewportSize,
+                            contentSize = imageIntrinsicSize,
+                            panContentScale = PanContentScale.FILL_WIDTH
+                        )
+                        scope.launch { offset.snapTo(Offset(0f, maxY)) }
                         currentOnDetectLongImage?.invoke()
                     }
                 },
