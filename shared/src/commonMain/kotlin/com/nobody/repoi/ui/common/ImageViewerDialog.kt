@@ -130,6 +130,9 @@ fun ImageViewerDialog(
                 if (url.isNotBlank()) {
                     val request = ImageRequest.Builder(platformContext)
                         .data(url)
+                        // 与 [PoiZoomableImage] 的解码尺寸保持一致：既避免巨图全尺寸解码导致 OOM，
+                        // 也让预取结果与主图请求命中同一份内存缓存（否则尺寸不同会缓存串味、失去秒开）
+                        .size(POI_DEFAULT_MAX_DECODE_WIDTH_PX, decodeHeightPx)
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .build()
