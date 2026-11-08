@@ -59,6 +59,7 @@ data class PostDetailUiState(
 /**
  * 帖子详情页 ViewModel，负责帖子详情、多图与评论列表单向数据流管理。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class PostDetailViewModel(
     private val postRepository: PostRepository,
     private val stickerRepository: StickerRepository,

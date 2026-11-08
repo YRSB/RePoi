@@ -92,6 +92,7 @@ data class AlbumUiState(
     val isFollowEmpty: Boolean = false
 )
 
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class AlbumViewModel(
     private val repository: AlbumRepository,
     private val tokenManager: TokenManager

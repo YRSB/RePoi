@@ -25,6 +25,7 @@ data class DeletedComment(
  * 6 个详情页的评论内联组件与评论详情页共用本仓储；跨页面的主楼更新经
  * [commentUpdates] 广播，各详情 ViewModel 按 id 合并到自己的热/最新两路列表。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommentRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager

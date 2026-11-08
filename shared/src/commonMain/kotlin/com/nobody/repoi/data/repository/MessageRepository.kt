@@ -13,6 +13,7 @@ import com.nobody.repoi.data.remote.model.PushMessageItem
  *
  * 封装分类通知、未读数统计、私信联系人会话、1v1 聊天记录与长轮询、黑名单管理。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class MessageRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager

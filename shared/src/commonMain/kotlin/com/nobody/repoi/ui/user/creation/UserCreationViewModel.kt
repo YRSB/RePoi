@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class UserCreationViewModel(
     private val userRepository: UserRepository,
     private val tokenManager: TokenManager,

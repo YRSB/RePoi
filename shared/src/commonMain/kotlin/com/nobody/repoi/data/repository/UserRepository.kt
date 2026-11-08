@@ -102,6 +102,7 @@ data class FriendChangeEvent(
  * 用户与个人中心数据仓储。
  * 参考 FluentHpoi MyPageService，统一负责登录、登出、用户信息、社交统计、订单统计与收藏封面列表。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class UserRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager

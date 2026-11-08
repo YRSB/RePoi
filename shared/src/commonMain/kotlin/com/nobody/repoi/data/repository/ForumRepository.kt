@@ -11,6 +11,7 @@ import com.nobody.repoi.data.remote.model.PostItem
  * 讨论板版块数据仓储。
  * 提供已关注/未关注版块列表、关注取关、排序保存、版块详情及版块帖子流查询能力。
  */
+@Suppress("EXPOSED_PARAMETER_TYPE")
 class ForumRepository(
     private val api: HpoiApi,
     private val tokenManager: TokenManager
