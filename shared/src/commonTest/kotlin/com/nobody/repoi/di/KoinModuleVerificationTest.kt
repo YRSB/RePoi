@@ -27,12 +27,15 @@ import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.SearchRepository
 import com.nobody.repoi.data.repository.SeriesDetailRepository
 import com.nobody.repoi.data.repository.StickerRepository
+import com.nobody.repoi.data.repository.UserFinanceRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.ui.album.AlbumViewModel
+import com.nobody.repoi.ui.user.history.UserHistoryViewModel
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.ui.follow.FollowViewModel
 import com.nobody.repoi.ui.home.HomeFeedViewModel
@@ -91,7 +94,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
             koin.getOrNull<CollectInvalidationBus>().shouldNotBeNull()
 
-            // 3. 全量 23 个 Repository 及其交互代理
+            // 3. 全量 25 个 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumDetailRepository>().shouldNotBeNull()
@@ -111,6 +114,8 @@ class KoinModuleVerificationTest {
             koin.getOrNull<SearchRepository>().shouldNotBeNull()
             koin.getOrNull<SeriesDetailRepository>().shouldNotBeNull()
             koin.getOrNull<StickerRepository>().shouldNotBeNull()
+            koin.getOrNull<UserHistoryRepository>().shouldNotBeNull()
+            koin.getOrNull<UserFinanceRepository>().shouldNotBeNull()
             koin.getOrNull<UserRepository>().shouldNotBeNull()
             koin.getOrNull<VendorDetailRepository>().shouldNotBeNull()
             koin.getOrNull<WorksDetailRepository>().shouldNotBeNull()
@@ -141,6 +146,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<LoginViewModel>().shouldNotBeNull()
             koin.getOrNull<AlbumViewModel>().shouldNotBeNull()
             koin.getOrNull<FollowViewModel>().shouldNotBeNull()
+            koin.getOrNull<UserHistoryViewModel>().shouldNotBeNull()
         } finally {
             app.close()
         }

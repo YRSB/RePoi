@@ -65,7 +65,7 @@ import org.koin.dsl.module
  */
 val viewModelModule = module {
     viewModel { AlbumViewModel(get(), get()) }
-    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AlbumRankListViewModel(get()) }
     viewModel { CharacterDetailViewModel(get(), get()) }
     viewModel { CharacterAlbumListViewModel(get()) }
@@ -81,7 +81,7 @@ val viewModelModule = module {
     viewModel { FollowViewModel(get(), get()) }
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
-    viewModel { FriendListViewModel(get()) }
+    viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(), get(), get(named("download"))) }
     viewModel { HomeFeedViewModel(get(), get(), get(), get(), get()) }
     viewModel { ItemHomeViewModel(get(), get()) }
@@ -94,7 +94,7 @@ val viewModelModule = module {
     viewModel { PersonDetailViewModel(get(), get()) }
     viewModel { PictureListViewModel(get()) }
     viewModel { PostDetailViewModel(get(), get(), get()) }
-    viewModel { ProfileViewModel(get(), get(), get(), get()) }
+    viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }
@@ -105,7 +105,7 @@ val viewModelModule = module {
     viewModel { SettingsShieldListViewModel(get()) }
     viewModel { SettingsPrivacyViewModel(get()) }
     viewModel { SettingsCacheViewModel(get(), get(), get()) }
-    viewModel { UserInfoViewModel(get()) }
+    viewModel { UserInfoViewModel(get(), get(), get(), get()) }
     viewModel { UserCreationViewModel(get(), get()) }
     viewModel { UserHistoryViewModel(get()) }
     viewModel { VendorDetailViewModel(get(), get(), get()) }

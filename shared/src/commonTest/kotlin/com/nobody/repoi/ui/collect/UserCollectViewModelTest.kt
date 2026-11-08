@@ -6,6 +6,8 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.FollowRepository
+import com.nobody.repoi.data.repository.UserFinanceRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.util.CollectInvalidationBus
@@ -46,7 +48,9 @@ class UserCollectViewModelTest {
     private suspend fun setup(userId: Long = 999L): UserCollectViewModel {
         val mockApi = MockApi()
         val session = FakeUserSession("test-token")
-        val userRepo = UserRepository(mockApi.api(), session)
+        val followRepo = FollowRepository(mockApi.api(), mockApi.json, session)
+        val financeRepo = UserFinanceRepository(mockApi.api())
+        val userRepo = UserRepository(mockApi.api(), session, followRepo, financeRepo)
         val collectRepo = CollectRepository(mockApi.api(), mockApi.json)
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
         val bus = CollectInvalidationBus()

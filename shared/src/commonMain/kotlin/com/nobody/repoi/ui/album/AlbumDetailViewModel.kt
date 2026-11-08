@@ -15,7 +15,9 @@ import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.repository.FollowRepository
+import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.util.ListPaging
 import com.nobody.repoi.data.repository.FriendState
 import kotlinx.coroutines.Job
@@ -129,7 +131,9 @@ data class AlbumDetailUiState(
 class AlbumDetailViewModel(
     private val repository: AlbumDetailRepository,
     private val collectRepository: CollectRepository,
-    private val userRepository: UserRepository,
+    private val userSession: UserSession,
+    private val followRepository: FollowRepository,
+    private val userHistoryRepository: UserHistoryRepository,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate,
     private val exHobbyRepository: ExHobbyRepository,
     private val viewPreferencesManager: ViewPreferencesManager
@@ -159,7 +163,7 @@ class AlbumDetailViewModel(
         }
         // 监听登录态变化，登录后自动补录互动状态，退出后重置
         viewModelScope.launch {
-            userRepository.tokenFlow.collect { token ->
+            userSession.tokenFlow.collect { token ->
                 val currentAlbum = _uiState.value.album
                 if (token.isNotBlank()) {
                     if (currentAlbum != null) {
@@ -396,13 +400,13 @@ class AlbumDetailViewModel(
      * 并发拉取点赞、收藏及作者关注的初始状态（仅登录用户拉取）。
      */
     private fun loadInteractionStates(album: AlbumData) {
-        val currentUserId = userRepository.currentUserId
+        val currentUserId = userSession.currentUserId
         val authorId = album.authorUserId
         val isAuthor = currentUserId > 0L && authorId > 0L && currentUserId == authorId
 
         _uiState.update { it.copy(isAuthor = isAuthor) }
 
-        if (!userRepository.isLoggedIn) return
+        if (!userSession.isAuthenticated) return
 
         val actualAlbumId = album.actualAlbumId
 
@@ -410,7 +414,7 @@ class AlbumDetailViewModel(
             val likeDeferred = async { repository.getAlbumLikeInfo(actualAlbumId) }
             val collectDeferred = async { collectRepository.getCollectState(actualAlbumId) }
             val followDeferred = if (!isAuthor && authorId > 0L) {
-                async { userRepository.getFellowType(authorId) }
+                async { followRepository.getFellowType(authorId) }
             } else null
 
             val likeResult = runCatching { likeDeferred.await() }.getOrNull()
@@ -431,7 +435,7 @@ class AlbumDetailViewModel(
      * 点赞微交互（乐观更新，防抖锁，失败回滚）。
      */
     fun toggleLike() {
-        if (!userRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
             return
         }
@@ -488,7 +492,7 @@ class AlbumDetailViewModel(
      * 收藏微交互（乐观更新，防抖锁，失败回滚）。
      */
     fun toggleCollect() {
-        if (!userRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
             return
         }
@@ -600,7 +604,7 @@ class AlbumDetailViewModel(
      * 关注作者（乐观更新，防抖锁，失败回滚）。
      */
     fun followAuthor() {
-        if (!userRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
             return
         }
@@ -621,7 +625,7 @@ class AlbumDetailViewModel(
         }
 
         viewModelScope.launch {
-            val result = userRepository.updateFriend(userId = authorId, state = FriendState.FOLLOWING)
+            val result = followRepository.updateFriend(userId = authorId, state = FriendState.FOLLOWING)
             result.fold(
                 onSuccess = {
                     _uiState.update {
@@ -648,7 +652,7 @@ class AlbumDetailViewModel(
      * 取消关注作者（弹窗确认后调用，乐观更新，防抖锁，失败回滚）。
      */
     fun unfollowAuthor() {
-        if (!userRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
             return
         }
@@ -669,7 +673,7 @@ class AlbumDetailViewModel(
         }
 
         viewModelScope.launch {
-            val result = userRepository.updateFriend(userId = authorId, state = FriendState.NOT_FOLLOWING)
+            val result = followRepository.updateFriend(userId = authorId, state = FriendState.NOT_FOLLOWING)
             result.fold(
                 onSuccess = {
                     _uiState.update {
@@ -705,7 +709,7 @@ class AlbumDetailViewModel(
     private fun recordHistory(albumId: Long) {
         viewModelScope.launch {
             runCatching {
-                userRepository.addUserHistory(albumId)
+                userHistoryRepository.addUserHistory(albumId)
             }
         }
     }

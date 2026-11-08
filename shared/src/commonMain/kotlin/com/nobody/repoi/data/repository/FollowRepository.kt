@@ -4,11 +4,44 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionListData
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.JsonRefResolver
+import com.nobody.repoi.data.remote.model.UserFellowItem
+import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.platform.DateTimeFormats
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import com.nobody.repoi.platform.DateTimeFormats
+
+/**
+ * 关注关系枚举定义。
+ */
+enum class FriendState(val code: Int) {
+    UNKNOWN(-1),
+    NOT_FOLLOWING(0),
+    FOLLOWING(1),
+    SPECIAL_FOLLOWING(2),
+    MUTUAL_FOLLOWING(3),
+    BLACK(4);
+
+    val isFollowed: Boolean get() = this == FOLLOWING || this == SPECIAL_FOLLOWING || this == MUTUAL_FOLLOWING
+
+    companion object {
+        fun fromCode(code: Int): FriendState = entries.find { it.code == code } ?: UNKNOWN
+    }
+}
+
+/**
+ * 好友/关注状态变更广播事件。
+ */
+data class FriendChangeEvent(
+    val userId: Long,
+    val isFollow: Boolean,
+    val state: FriendState = if (isFollow) FriendState.FOLLOWING else FriendState.NOT_FOLLOWING
+)
 
 /**
  * 关注动态分页结果（含翻页游标）。
@@ -20,12 +53,17 @@ data class FollowPage(
 )
 
 /**
- * 关注条目/用户数据仓储（关注屏数据来源）。
+ * 关注条目/用户与社交好友关系数据仓储。
+ * 提供关注屏动态分页、用户关注状态查询、关注取关操作、社交列表查询与跨页面好友状态变更广播。
  */
 class FollowRepository(
     private val api: HpoiApi,
-    private val json: Json
+    private val json: Json,
+    private val userSession: UserSession
 ) {
+    private val _friendChangeEvent = MutableSharedFlow<FriendChangeEvent>(extraBufferCapacity = 64)
+    val friendChangeEvent: SharedFlow<FriendChangeEvent> = _friendChangeEvent.asSharedFlow()
+
     /**
      * 拉取关注动态分页（条目动态/用户动态共用，翻页靠 lastId）。
      */
@@ -37,14 +75,12 @@ class FollowRepository(
         pageSize: Int = 20
     ): Result<FollowPage> = runCatching {
         val response = api.getFollowDynamics(
-            // 原 App 条目动态恒带 page=1，用户动态不带该字段
             page = if (type == "item") 1 else null,
             lastId = lastId,
             pageSize = pageSize,
             actionType = actionType,
             subType = subType,
             type = type,
-            // 原 App 条目动态恒带 isHome=0，用户动态不带该字段
             isHome = if (type == "item") 0 else null
         )
         if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "数据加载失败")
@@ -54,6 +90,86 @@ class FollowRepository(
             lastId = parseFollowCursor(list.lastOrNull()?.actionDate),
             hasMore = list.isNotEmpty()
         )
+    }
+
+    /**
+     * 获取指定用户的关注数与粉丝数 (api/user/fellow/count)。
+     */
+    suspend fun getFellowCount(userId: Long): Result<FellowCountData> = runCatching {
+        val response = api.getFellowCount(userNodeId = userId)
+        if (response.isSuccess || (response.success && response.data?.data != null)) {
+            response.data?.data ?: FellowCountData()
+        } else {
+            throw ApiException(response.code, response.msg ?: "获取关注粉丝数失败")
+        }
+    }
+
+    /**
+     * 查询指定用户的关注状态 (api/user/fellow/type)。
+     */
+    suspend fun getFellowType(userId: Long): Result<FriendState> = runCatching {
+        val response = api.getFellowType(userNId = userId)
+        if (response.isSuccess) {
+            val stateCode = response.data?.friendState ?: -1
+            FriendState.fromCode(stateCode)
+        } else {
+            throw ApiException(response.code, response.msg ?: "获取用户关注状态失败")
+        }
+    }
+
+    /**
+     * 更新用户关注/好友状态 (api/user/friend/upd)。
+     */
+    suspend fun updateFriend(userId: Long, state: FriendState): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
+        val response = api.updateFriend(userId = userId, state = state.code)
+        if (response.isSuccess) {
+            _friendChangeEvent.emit(
+                FriendChangeEvent(
+                    userId = userId,
+                    isFollow = state.isFollowed,
+                    state = state
+                )
+            )
+        } else {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
+            throw ApiException(response.code, response.msg ?: "更新用户关注状态失败")
+        }
+    }
+
+    /**
+     * 更新用户关注/好友状态重载 (isFollow: true=关注, false=取消关注)。
+     */
+    suspend fun updateFriend(userId: Long, isFollow: Boolean): Result<Unit> {
+        val targetState = if (isFollow) FriendState.FOLLOWING else FriendState.NOT_FOLLOWING
+        return updateFriend(userId = userId, state = targetState)
+    }
+
+    /**
+     * 获取用户社交列表 (关注/粉丝) (api/user/fellow)。
+     * @param userId 目标用户 ID
+     * @param type 0=关注, 1=粉丝
+     * @param page 分页页码（1 起始）
+     * @param pageSize 每页条数
+     */
+    suspend fun getUserFellowList(
+        userId: Long,
+        type: Int,
+        page: Int,
+        pageSize: Int = 20
+    ): Result<List<UserFellowItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
+        val response = api.getUserFellow(userId = userId, type = type, page = page, pageSize = pageSize)
+        if (response.isSuccess || (response.success && response.data != null)) {
+            response.data?.list ?: emptyList()
+        } else {
+            if (response.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
+            throw ApiException(response.code, response.msg ?: "获取好友列表失败")
+        }
     }
 
     /**
@@ -72,6 +188,5 @@ class FollowRepository(
 internal fun parseFollowCursor(dateStr: String?): Long {
     if (dateStr.isNullOrBlank()) return 0L
     dateStr.toLongOrNull()?.let { return it }
-    // 兼容数字时间戳（毫秒/秒）与日期字符串两种格式。
     return DateTimeFormats.parseServerDateTime(dateStr) ?: 0L
 }

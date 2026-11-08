@@ -2,7 +2,8 @@ package com.nobody.repoi.ui.forum
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.ForumRepository
 import com.nobody.repoi.data.remote.model.ForumDetailData
 import com.nobody.repoi.data.remote.model.PostItem
@@ -82,7 +83,7 @@ data class ForumHomeUiState(
  */
 class ForumHomeViewModel(
     private val forumRepository: ForumRepository,
-    private val userRepository: UserRepository
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ForumHomeUiState())
@@ -98,7 +99,7 @@ class ForumHomeViewModel(
     private var avatarRequested = false
 
     init {
-        userRepository.tokenFlow
+        userSession.tokenFlow
             .map { it.isNotBlank() }
             .distinctUntilChanged()
             .onEach { loggedIn ->
@@ -116,7 +117,9 @@ class ForumHomeViewModel(
             }
             .launchIn(viewModelScope)
 
-        userRepository.currentUserProfile
+        userSession.state
+            .map { (it as? SessionState.Authenticated)?.profile }
+            .distinctUntilChanged()
             .onEach { profile ->
                 if (profile?.header != null) {
                     _uiState.update { it.copy(userAvatar = profile.header) }
@@ -321,7 +324,7 @@ class ForumHomeViewModel(
         if (!_uiState.value.isLoggedIn || !_uiState.value.userAvatar.isNullOrBlank() || avatarRequested) return
         avatarRequested = true
         viewModelScope.launch {
-            userRepository.getUserProfile().onSuccess { profile ->
+            userSession.refreshProfile().onSuccess { profile ->
                 _uiState.update { it.copy(userAvatar = profile.header) }
             }
         }

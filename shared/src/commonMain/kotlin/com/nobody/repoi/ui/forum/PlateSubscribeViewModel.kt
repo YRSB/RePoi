@@ -2,7 +2,7 @@ package com.nobody.repoi.ui.forum
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.ForumRepository
 import com.nobody.repoi.data.remote.model.ForumItem
 import com.nobody.repoi.util.paging.PagedListLoader
@@ -50,7 +50,7 @@ data class PlateSubscribeUiState(
  */
 class PlateSubscribeViewModel(
     private val forumRepository: ForumRepository,
-    private val userRepository: UserRepository
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlateSubscribeUiState())
@@ -105,7 +105,7 @@ class PlateSubscribeViewModel(
             }
             .launchIn(viewModelScope)
 
-        userRepository.tokenFlow
+        userSession.tokenFlow
             .map { it.isNotBlank() }
             .distinctUntilChanged()
             .onEach { loggedIn ->
@@ -225,7 +225,7 @@ class PlateSubscribeViewModel(
 
     private fun ensureUserLevel() {
         viewModelScope.launch {
-            userRepository.getUserProfile()
+            userSession.refreshProfile()
                 .onSuccess { profile ->
                     _uiState.update { it.copy(userLevel = profile.level) }
                 }
