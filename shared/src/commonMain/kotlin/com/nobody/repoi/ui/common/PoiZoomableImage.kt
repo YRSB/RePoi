@@ -42,6 +42,7 @@ import coil3.request.crossfade
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.min
 
 /** 判定「已放大」的缩放阈值：不高于该值视为未放大（单指滑动交还外层 `HorizontalPager`）。 */
@@ -65,7 +66,7 @@ internal const val POI_ZOOM_ANIMATION_MILLIS: Int = 220
 /** 手势静止多久（毫秒）后视为松手并触发回弹收敛。 */
 internal const val POI_GESTURE_SETTLE_DELAY_MILLIS: Long = 140L
 
-/** 超长图判定倍数：解码后高度超过高度上限的该倍数即视为超长图。 */
+/** 超长图判定阈值：解码后图片的**高宽比**超过该值即视为超长图（与规格原文「高宽比 > 3」一致）。 */
 internal const val POI_LONG_IMAGE_THRESHOLD: Float = 3f
 
 /**
@@ -128,21 +129,57 @@ internal fun anchorAdjustedOffset(offset: Offset, factor: Float, anchor: Offset)
 }
 
 /**
+ * 是否属于「超长图」（纯函数）：解码后**高宽比**大于 [threshold] 即命中。
+ *
+ * 不能用「高度超过高度上限的倍数」判定：`ImageRequest.size()` 已把解码结果夹取到
+ * `maxDecodeWidthPx × maxDecodeHeightPx`，`intrinsicSize.height` 恒不超过上限，那个判据永不成立。
+ * 宽/高任一非正或为 `NaN` 时返回 `false`（矢量图与未指定尺寸的 painter）。
+ */
+internal fun isLongImageRatio(
+    width: Float,
+    height: Float,
+    threshold: Float = POI_LONG_IMAGE_THRESHOLD
+): Boolean {
+    if (width.isNaN() || height.isNaN()) return false
+    if (width <= 0f || height <= 0f) return false
+    val ratio = height / width
+    return ratio.isFinite() && ratio > threshold
+}
+
+/**
+ * 平移钳制时使用的拟合语义。
+ *
+ * - [FIT]：与 `ContentScale.Fit` 一致，等比塞进视口（常规大图）；
+ * - [FILL_WIDTH]：与 `ContentScale.FillWidth` 一致，宽度撑满、高度自然溢出（超长图纵向浏览）。
+ */
+internal enum class PanContentScale { FIT, FILL_WIDTH }
+
+/**
  * 平移边界钳制（纯函数）：把 [offset] 夹到「放大后的图片不露黑边」的合法范围。
  *
- * 先按 `ContentScale.Fit` 语义把 [contentSize] 等比塞进 [viewport]，再乘 [scale]
+ * 先按 [panContentScale] 语义把 [contentSize] 等比塞进 [viewport]，再乘 [scale]
  * 得到实际显示尺寸；两轴允许的最大位移即溢出量的一半。
  * 尺寸非正、[scale] 非正或出现 `NaN` 时退化为 `Offset.Zero`。
  */
-internal fun clampPan(offset: Offset, scale: Float, viewport: Size, contentSize: Size): Offset {
+internal fun clampPan(
+    offset: Offset,
+    scale: Float,
+    viewport: Size,
+    contentSize: Size,
+    panContentScale: PanContentScale = PanContentScale.FIT
+): Offset {
     if (offset.x.isNaN() || offset.y.isNaN() || scale.isNaN()) return Offset.Zero
     if (viewport.width <= 0f || viewport.height <= 0f) return Offset.Zero
     if (contentSize.width <= 0f || contentSize.height <= 0f) return Offset.Zero
 
-    val fitScale = min(
-        viewport.width / contentSize.width,
-        viewport.height / contentSize.height
-    )
+    val fitScale = when (panContentScale) {
+        PanContentScale.FIT -> min(
+            viewport.width / contentSize.width,
+            viewport.height / contentSize.height
+        )
+
+        PanContentScale.FILL_WIDTH -> viewport.width / contentSize.width
+    }
     if (fitScale.isNaN() || fitScale <= 0f) return Offset.Zero
 
     val displayedWidth = contentSize.width * fitScale * scale
@@ -174,8 +211,11 @@ internal fun clampPan(offset: Offset, scale: Float, viewport: Size, contentSize:
  * - **桌面端**：滚轮缩放（以指针为锚点）与放大态左键拖拽平移经
  *   [poiDesktopZoomAndPan] 的 `expect/actual` 平台基元提供，`commonMain` 不出现 JVM-only API。
  * - **超长图保护**：解码尺寸按 [maxDecodeWidthPx] × [maxDecodeHeightPx] 夹取；
- *   [maxDecodeHeightPx] 非空且解码后高度超过其 [POI_LONG_IMAGE_THRESHOLD] 倍时回调
- *   [onDetectLongImage]。
+ *   [maxDecodeHeightPx] 非空且解码后**高宽比**超过 [POI_LONG_IMAGE_THRESHOLD] 时回调
+ *   [onDetectLongImage]（不能按「高度超过上限倍数」判定，解码已被夹取，那个判据永不成立）。
+ * - **长图纵向浏览**：命中超长图后改用 `ContentScale.FillWidth`（宽度撑满、高度自然溢出），
+ *   未放大也允许**纵向**拖拽平移（横向拖拽不拦截、不消费，交还外层 `HorizontalPager` 翻页），
+ *   平移量仍按 [clampPan] 的 `FILL_WIDTH` 语义钳制。
  *
  * @param imageUrl 绝对图片 URL；为 `null` 或空白时只显示破损占位，不发网络请求
  * @param contentDescription 无障碍描述，默认「高清大图」
@@ -183,7 +223,7 @@ internal fun clampPan(offset: Offset, scale: Float, viewport: Size, contentSize:
  * @param isActive 是否为当前页；`false` 时复位缩放与偏移
  * @param maxDecodeWidthPx 解码宽度上限
  * @param maxDecodeHeightPx 解码高度上限；`null` 表示不夹取高度
- * @param contentScale 图片填充方式
+ * @param contentScale 图片填充方式；命中超长图时会自动切换为 `ContentScale.FillWidth`
  * @param minScale 未放大基准缩放（最小值）
  * @param maxScale 最大缩放
  * @param doubleTapScale 双击放大目标倍率
@@ -224,8 +264,15 @@ fun PoiZoomableImage(
     var hasImageError by remember(imageUrl) { mutableStateOf(isBlankUrl) }
     var viewportSize by remember { mutableStateOf(Size.Zero) }
     var imageIntrinsicSize by remember(imageUrl) { mutableStateOf(Size.Zero) }
+    // 超长图态：开启纵向浏览（FillWidth + 未放大也可纵向拖拽）；换图时随 URL 重置
+    var isLongImage by remember(imageUrl) { mutableStateOf(false) }
 
     val isZoomed by remember { derivedStateOf { scale.value > POI_ZOOMED_THRESHOLD } }
+    // 长图用 FillWidth 拟合（宽度撑满、高度溢出才能滚动），其余沿用调用方给的 Fit
+    val effectiveContentScale = if (isLongImage) ContentScale.FillWidth else contentScale
+    val panContentScale = if (isLongImage) PanContentScale.FILL_WIDTH else PanContentScale.FIT
+    // 未放大也可拖拽：放大态或长图态
+    val isPanEnabled = isZoomed || isLongImage
 
     /** 把缩放与偏移复位到初始态（切页、放大态单击、双击复原共用）。 */
     fun resetZoom(animated: Boolean) {
@@ -252,10 +299,11 @@ fun PoiZoomableImage(
             if (legalScale != scale.value) {
                 scale.animateTo(legalScale, animationSpec = tween(POI_ZOOM_ANIMATION_MILLIS))
             }
-            val targetOffset = if (legalScale <= POI_ZOOMED_THRESHOLD) {
+            // 长图在未放大时同样合法持有纵向偏移，不能像常规图那样强制归零
+            val targetOffset = if (legalScale <= POI_ZOOMED_THRESHOLD && !isLongImage) {
                 Offset.Zero
             } else {
-                clampPan(offset.value, legalScale, viewportSize, imageIntrinsicSize)
+                clampPan(offset.value, legalScale, viewportSize, imageIntrinsicSize, panContentScale)
             }
             if (targetOffset != offset.value) {
                 offset.animateTo(targetOffset, animationSpec = tween(POI_ZOOM_ANIMATION_MILLIS))
@@ -277,6 +325,13 @@ fun PoiZoomableImage(
         }
     }
 
+    // 长图态退出（换图后重新判定为常规图）时清掉残留偏移，避免新图带着旧偏移出现
+    LaunchedEffect(isLongImage) {
+        if (!isLongImage && offset.value != Offset.Zero) {
+            offset.snapTo(Offset.Zero)
+        }
+    }
+
     // 双指捏合缩放：transformable 只响应多指，不拦截单指滑动，翻页仍交给外层 Pager
     val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
         val newScale = dampedScale(
@@ -285,12 +340,13 @@ fun PoiZoomableImage(
             minScale = minScale,
             maxScale = maxScale
         )
-        val targetOffset = if (newScale > POI_ZOOMED_THRESHOLD) {
+        val targetOffset = if (newScale > POI_ZOOMED_THRESHOLD || isLongImage) {
             clampPan(
                 offset = offset.value + panChange,
                 scale = newScale,
                 viewport = viewportSize,
-                contentSize = imageIntrinsicSize
+                contentSize = imageIntrinsicSize,
+                panContentScale = panContentScale
             )
         } else {
             Offset.Zero
@@ -317,17 +373,22 @@ fun PoiZoomableImage(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { viewportSize = Size(it.width.toFloat(), it.height.toFloat()) }
-            // 放大态：单指拖拽平移（未放大时不挂载，滑动交还外层 Pager）
+            // 放大态或长图态：单指拖拽平移；其余情况不挂载，滑动交还外层 Pager。
+            // 长图未放大时只处理「更偏纵向」的拖拽，横向拖拽既不消费也不平移，保证翻页手感。
             .then(
-                if (isZoomed) {
-                    Modifier.pointerInput(Unit) {
+                if (isPanEnabled) {
+                    Modifier.pointerInput(isPanEnabled, isLongImage) {
                         detectDragGestures { change, dragAmount ->
+                            if (!isZoomed && abs(dragAmount.y) <= abs(dragAmount.x)) {
+                                return@detectDragGestures
+                            }
                             change.consume()
                             val target = clampPan(
                                 offset = offset.value + dragAmount,
                                 scale = scale.value,
                                 viewport = viewportSize,
-                                contentSize = imageIntrinsicSize
+                                contentSize = imageIntrinsicSize,
+                                panContentScale = panContentScale
                             )
                             scope.launch { offset.snapTo(target) }
                         }
@@ -336,7 +397,7 @@ fun PoiZoomableImage(
                     Modifier
                 }
             )
-            .transformable(state = transformableState, canPan = { isZoomed })
+            .transformable(state = transformableState, canPan = { isPanEnabled })
             // 桌面端：滚轮缩放 + 放大态左键拖拽（android 为空实现）
             .poiDesktopZoomAndPan(
                 enabled = true,
@@ -354,16 +415,18 @@ fun PoiZoomableImage(
                                 factor = targetScale / currentScale,
                                 anchor = anchorFromCenter
                             )
-                            val targetOffset = if (targetScale <= POI_ZOOMED_THRESHOLD) {
-                                Offset.Zero
-                            } else {
-                                clampPan(
-                                    offset = movedOffset,
-                                    scale = targetScale,
-                                    viewport = viewportSize,
-                                    contentSize = imageIntrinsicSize
-                                )
-                            }
+                            val targetOffset =
+                                if (targetScale <= POI_ZOOMED_THRESHOLD && !isLongImage) {
+                                    Offset.Zero
+                                } else {
+                                    clampPan(
+                                        offset = movedOffset,
+                                        scale = targetScale,
+                                        viewport = viewportSize,
+                                        contentSize = imageIntrinsicSize,
+                                        panContentScale = panContentScale
+                                    )
+                                }
                             scope.launch {
                                 scale.snapTo(targetScale)
                                 offset.snapTo(targetOffset)
@@ -377,7 +440,8 @@ fun PoiZoomableImage(
                             offset = offset.value + delta,
                             scale = scale.value,
                             viewport = viewportSize,
-                            contentSize = imageIntrinsicSize
+                            contentSize = imageIntrinsicSize,
+                            panContentScale = panContentScale
                         )
                         scope.launch { offset.snapTo(target) }
                     }
@@ -431,15 +495,19 @@ fun PoiZoomableImage(
                         translationX = offset.value.x,
                         translationY = offset.value.y
                     ),
-                contentScale = contentScale,
+                contentScale = effectiveContentScale,
                 onSuccess = { state ->
                     isImageLoading = false
                     hasImageError = false
                     val intrinsic = state.painter.intrinsicSize
                     imageIntrinsicSize = intrinsic
+                    // 纵横比判定（解码已被 size() 夹取，高度倍数判据永不成立）；
+                    // maxDecodeHeightPx == null 表示调用方明确不限制高度，也就无需长图保护
                     if (maxDecodeHeightPx != null &&
-                        intrinsic.height > maxDecodeHeightPx * POI_LONG_IMAGE_THRESHOLD
+                        isLongImageRatio(intrinsic.width, intrinsic.height) &&
+                        !isLongImage
                     ) {
+                        isLongImage = true
                         currentOnDetectLongImage?.invoke()
                     }
                 },

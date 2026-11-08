@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -50,6 +52,7 @@ import coil3.request.CachePolicy
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import coil3.ImageLoader
+import kotlin.math.roundToInt
 
 /**
  * 全局大图画廊弹窗宿主，统一挂载在根部脚手架 (RePoiApp) 中。
@@ -92,6 +95,13 @@ fun ImageViewerDialog(
     val platformContext = LocalPlatformContext.current
     val imageLoader: ImageLoader = koinInject()
     val coroutineScope = rememberCoroutineScope()
+    // 与 PictureGalleryScreen 同源的解码高度上限估算：窗口像素高度优先，取不到回落 800dp，
+    // 避免巨图全尺寸解码导致 OOM（此前这里完全未设上限）
+    val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    val decodeHeightPx = remember(windowSize, density) {
+        windowSize.height.takeIf { it > 0 } ?: with(density) { 800.dp.toPx().roundToInt() }
+    }
 
     // 追踪当前页面是否处于放大状态，放大状态下禁用 Pager 滑动以支持拖拽平移
     var isCurrentPageZoomed by remember { mutableStateOf(false) }
@@ -153,6 +163,7 @@ fun ImageViewerDialog(
                 PoiZoomableImage(
                     imageUrl = imageUrls[page],
                     isActive = pagerState.currentPage == page,
+                    maxDecodeHeightPx = decodeHeightPx,
                     onZoomChanged = { isZoomed ->
                         if (pagerState.currentPage == page) {
                             isCurrentPageZoomed = isZoomed

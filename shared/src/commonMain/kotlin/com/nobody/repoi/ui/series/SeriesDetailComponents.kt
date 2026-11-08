@@ -594,7 +594,11 @@ internal fun SeriesAlbumsSection(
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(4) { index ->
+                    items(
+                        count = 4,
+                        key = { "series_album_skeleton_$it" },
+                        contentType = { "skeleton" }
+                    ) { index ->
                         val shimmerWidth = when (index % 3) {
                             0 -> 140.dp
                             1 -> 160.dp

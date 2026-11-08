@@ -429,7 +429,11 @@ private fun HobbyAlbumListSkeleton(
         userScrollEnabled = false,
         modifier = modifier.fillMaxSize()
     ) {
-        items(6) { index ->
+        items(
+            count = 6,
+            key = { "hobby_album_list_skeleton_$it" },
+            contentType = { "skeleton" }
+        ) { index ->
             val ratio = when (index % 3) {
                 0 -> 0.75f
                 1 -> 1.2f

@@ -368,7 +368,11 @@ private fun CharacterAlbumListSkeleton(
         modifier = modifier.fillMaxSize(),
         userScrollEnabled = false
     ) {
-        items(6) { index ->
+        items(
+            count = 6,
+            key = { "character_album_skeleton_$it" },
+            contentType = { "skeleton" }
+        ) { index ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

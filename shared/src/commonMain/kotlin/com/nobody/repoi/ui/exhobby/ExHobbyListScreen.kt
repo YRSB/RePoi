@@ -364,7 +364,11 @@ private fun ExHobbyListSkeleton(
         userScrollEnabled = false
     ) {
         val dummyHeights = listOf(180.dp, 240.dp, 160.dp, 220.dp, 200.dp, 190.dp)
-        items(10) { index ->
+        items(
+            count = 10,
+            key = { "ex_hobby_skeleton_$it" },
+            contentType = { "skeleton" }
+        ) { index ->
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()

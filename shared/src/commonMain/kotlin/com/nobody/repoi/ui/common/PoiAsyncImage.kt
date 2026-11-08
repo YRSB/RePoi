@@ -31,6 +31,12 @@ import kotlin.math.abs
 /** 未命中缓存、无回退比例且非自适应场景下的默认纵横比（正方形占位，防布局跳动）。 */
 private const val DEFAULT_ASPECT_RATIO = 1.0f
 
+/** 手办/条目的语义缺省纵横比（17:24 竖版海报，ADR-0007 §3）。 */
+internal const val HOBBY_FALLBACK_ASPECT_RATIO = 17f / 24f
+
+/** 相册及其余分类的语义缺省纵横比（1.0f 正方形，ADR-0007 §3）。 */
+internal const val DEFAULT_CATEGORY_ASPECT_RATIO = 1.0f
+
 /** 本地比例写回的阈值：变化小于该值时不触发状态更新，避免无谓重组。 */
 private const val RATIO_UPDATE_THRESHOLD = 0.01f
 
@@ -44,12 +50,14 @@ private val BrokenImageIconSize = 28.dp
  * 调用端不再关心目录差异、404 避坑与纵横比缓存。
  *
  * 行为约定：
- * - [path] 为空、空白或命中官方缺省图（`none.jpg`）时**不请求**该路径，直接展示
- *   [MediaPipeline.getDefaultCoverUrl] 给出的官方缺省图；
+ * - [path] 为空、空白或命中官方缺省图（`none.jpg`）时**不请求**该路径，直接展示分类感知的
+ *   官方缺省图：相册走 `cover/sr/none.jpg`（服务端没有 `cover/n/` 目录），其余分类走
+ *   [MediaPipeline.getDefaultCoverUrl]；
  * - 请求统一经 [rememberListImageRequest] 生成，缓存键区分「分类 + 用途 + 缩放模式 + 自适应与否」，
  *   防止缩略图与原图缓存串味；
  * - [adaptiveRatio] 为真时用 `Modifier.aspectRatio` 自行撑开高度（调用方只需给出宽度约束），
- *   首帧同步读缓存占位，加载成功后再回写；
+ *   首帧同步读缓存占位，加载成功后再回写；未命中缓存且未显式给 [fallbackRatio] 时按分类取
+ *   语义缺省比例（手办 17:24，其余 1:1，见 [fallbackRatioFor]）；
  *   **约束前提**：`aspectRatio` 只在至少一个轴仍可自由伸缩时生效。若调用方同时钉死宽与高
  *   （如 `Modifier.fillMaxSize()` 落在尺寸确定的父容器里），比例将被忽略、图片铺满容器。
  *   需要「定高、宽度按比例反推」时必须只给高度（`Modifier.height(...)`），不要叠加 `fillMaxSize()`；
@@ -62,7 +70,7 @@ private val BrokenImageIconSize = 28.dp
  * @param modifier 外部尺寸与样式约束
  * @param contentScale 内容缩放模式，默认裁切填充
  * @param adaptiveRatio 是否按图片真实纵横比自适应高度
- * @param fallbackRatio 纵横比缓存未命中时的回退比例（如相册无图卡片 17:24），缺省 1.0f
+ * @param fallbackRatio 纵横比缓存未命中时的回退比例；缺省按分类取语义值（手办 17:24，其余 1:1）
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
  * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
@@ -81,12 +89,12 @@ fun PoiAsyncImage(
     onClick: (() -> Unit)? = null,
     alignment: Alignment = Alignment.Center
 ) {
-    val pipeline = MediaPipeline.Default
+    val pipeline = LocalMediaPipeline.current
     val resolvedUrl = remember(path, category, purpose) { pipeline.resolveUrl(path, category, purpose) }
-    // 空路径与官方缺省图不发网络请求，直接落到同一用途档位的吉祥物缺省图
-    val needsRequest = remember(path, resolvedUrl) { shouldLoadFromNetwork(path, resolvedUrl) }
-    val displayUrl = remember(needsRequest, resolvedUrl, purpose) {
-        if (needsRequest) resolvedUrl else pipeline.getDefaultCoverUrl(purpose)
+    // 空路径与官方缺省图不发网络请求，直接落到分类感知的吉祥物缺省图
+    val needsRequest = remember(path, resolvedUrl) { shouldLoadFromNetwork(path, resolvedUrl, pipeline) }
+    val displayUrl = remember(needsRequest, resolvedUrl, category, purpose) {
+        if (needsRequest) resolvedUrl else placeholderUrlFor(pipeline, category, purpose)
     }
     val bucket = remember(category, purpose, contentScale, adaptiveRatio) {
         imageBucketKey(category, purpose, contentScaleBucketLabel(contentScale), adaptiveRatio)
@@ -98,6 +106,7 @@ fun PoiAsyncImage(
         previewUrl = if (needsRequest) resolvedUrl else null,
         ratioKey = ratioCacheKey(path, resolvedUrl, bucket),
         bucket = bucket,
+        category = category,
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = contentScale,
@@ -121,7 +130,7 @@ fun PoiAsyncImage(
  * @param contentScale 内容缩放模式，默认裁切填充
  * @param adaptiveRatio 是否按图片真实纵横比自适应高度
  * @param ratioKey 纵横比缓存键，缺省按 [model] 的字符串形式反推
- * @param fallbackRatio 纵横比缓存未命中时的回退比例，缺省 1.0f
+ * @param fallbackRatio 纵横比缓存未命中时的回退比例，缺省 1.0f（无分类上下文，不套用手办比例）
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器（仅纯字符串 URL 可用）
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
  * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
@@ -151,6 +160,7 @@ fun PoiAsyncImage(
         previewUrl = if (model is String) model.ifBlank { null } else null,
         ratioKey = ratioKey ?: ratioCacheKey(null, urlText, bucket),
         bucket = bucket,
+        category = null,
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = contentScale,
@@ -174,6 +184,7 @@ private fun PoiAsyncImageCore(
     previewUrl: String?,
     ratioKey: String,
     bucket: String,
+    category: MediaCategory?,
     contentDescription: String?,
     modifier: Modifier,
     contentScale: ContentScale,
@@ -183,7 +194,7 @@ private fun PoiAsyncImageCore(
     onClick: (() -> Unit)?,
     alignment: Alignment
 ) {
-    val pipeline = MediaPipeline.Default
+    val pipeline = LocalMediaPipeline.current
     // ImageRequest 直通；其余模型统一经列表请求工厂生成带独立缓存键的请求
     val listRequest = if (model !is ImageRequest && urlText.isNotBlank()) {
         rememberListImageRequest(urlText, urlText, bucket)
@@ -194,15 +205,15 @@ private fun PoiAsyncImageCore(
 
     var loadFailed by remember(urlText) { mutableStateOf(false) }
 
-    var aspectRatio by remember(ratioKey, adaptiveRatio, fallbackRatio) {
+    var aspectRatio by remember(ratioKey, adaptiveRatio, fallbackRatio, category) {
         mutableFloatStateOf(
             if (!adaptiveRatio) {
                 DEFAULT_ASPECT_RATIO
             } else {
-                // 缓存可能由旧代码写入（历史上界 2.0f/5.0f 混杂），读取后一律按管道区间规整
+                // 缓存可能由旧代码写入（历史上界 2.0f/5.0f 混杂），读取后一律按管道区间规整；
+                // 缓存与显式回退都缺席时才套用分类语义缺省比例
                 pipeline.getAspectRatio(ratioKey)?.let(::clampRatio)
-                    ?: fallbackRatio?.let(::clampRatio)
-                    ?: DEFAULT_ASPECT_RATIO
+                    ?: clampRatio(fallbackRatioFor(category, fallbackRatio))
             }
         )
     }
@@ -267,17 +278,54 @@ private fun PoiAsyncImageCore(
  *
  * 空/空白路径与官方缺省吉祥物视为「无可请求资源」，由调用方改用缺省图。
  */
-internal fun shouldLoadFromNetwork(path: String?, resolvedUrl: String): Boolean =
-    resolvedUrl.isNotBlank() && !MediaPipeline.Default.isPlaceholder(path)
+internal fun shouldLoadFromNetwork(
+    path: String?,
+    resolvedUrl: String,
+    pipeline: MediaPipeline = MediaPipeline.Default
+): Boolean = resolvedUrl.isNotBlank() && !pipeline.isPlaceholder(path)
 
 /**
- * 构造纵横比缓存键与列表缓存键共用的复合键。
+ * 分类感知的官方缺省图 URL（无请求态下展示）。
  *
- * 以资源的**最后一段文件名**（无则回落完整 URL）作为基座，再拼上区分桶，保证同一张图在不同
- * 用途/缩放模式下的缓存互不串味。
+ * 只对 [MediaCategory.ALBUM] 特判：相册在 CDN 上**没有** `cover/n/` 目录，
+ * `getDefaultCoverUrl(CARD_STANDARD)` 会产出必然 404 的 `cover/n/none.jpg`，
+ * 故改由管道按相册规则解析 `DEFAULT_COVER_PATH`（→ `cover/sr/none.jpg`）。
+ * 其它分类保持 `cover/n/none.jpg`（真实部署的吉祥物图）——`posts/n/none.jpg`、
+ * `resale/n/none.jpg` 未必存在，不能一概走 `resolveUrl`。
  */
-internal fun ratioCacheKey(path: String?, url: String, bucket: String): String =
-    listImageKey(path, url, bucket)
+internal fun placeholderUrlFor(
+    pipeline: MediaPipeline,
+    category: MediaCategory,
+    purpose: ImagePurpose
+): String = when (category) {
+    MediaCategory.ALBUM ->
+        pipeline.resolveUrl(DefaultMediaPipeline.DEFAULT_COVER_PATH, MediaCategory.ALBUM, purpose)
+    else -> pipeline.getDefaultCoverUrl(purpose)
+}
+
+/**
+ * 自适应比例在「缓存未命中且调用方未显式指定」时的语义缺省值。
+ *
+ * ADR-0007 §3：内置手办 17:24、相册 1.0f。此处把「其余分类一律 1.0f」一并落实；
+ * 通用重载（[category] 为 `null`，无分类上下文）同样回落 1.0f。
+ */
+internal fun fallbackRatioFor(category: MediaCategory?, explicit: Float?): Float = when {
+    explicit != null -> explicit
+    category == MediaCategory.HOBBY -> HOBBY_FALLBACK_ASPECT_RATIO
+    else -> DEFAULT_CATEGORY_ASPECT_RATIO
+}
+
+/**
+ * 构造纵横比缓存键。
+ *
+ * 基座取**完整路径**（无路径时回落完整 URL）而非文件名：不同目录下同名文件（各相册的
+ * `cover.jpg`）宽度比完全不同，按文件名建键会让它们共用同一个比例；同时所有占位图都会
+ * 落到 `none.jpg` 键上互相污染。Coil 的内存缓存键仍由 [listImageKey] 单独构造，二者解耦。
+ */
+internal fun ratioCacheKey(path: String?, url: String, bucket: String): String {
+    val base = path?.takeIf { it.isNotBlank() } ?: url
+    return "$base:$bucket"
+}
 
 /**
  * 构造列表请求的区分桶：分类 + 用途 + 缩放模式 + 是否自适应。

@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.common
 
+import com.nobody.repoi.data.media.DefaultMediaPipeline
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
@@ -11,7 +12,7 @@ import kotlin.test.assertTrue
 /**
  * [PoiAsyncImage] 可脱离 Compose 运行时验证的纯逻辑单测。
  *
- * 只覆盖基元内部抽出的纯函数（占位判定、比例截断、缓存键构造）；
+ * 只覆盖基元内部抽出的纯函数（占位判定、分类缺省图、语义缺省比例、比例截断与缓存键构造）；
  * 涉及测量/绘制/点击的部分交由 UI 层人工验证，避免为此引入 Compose 测试运行时。
  */
 class PoiAsyncImageTest {
@@ -53,6 +54,61 @@ class PoiAsyncImageTest {
                 resolvedUrl = "https://rfx.hpoi.net/gk/cover/sr/abc.jpg"
             )
         )
+    }
+
+    // -------------------------------------------------------------- 分类缺省占位图
+
+    @Test
+    fun placeholderUrl_album_never_uses_coverNormalDirectory() {
+        // 相册在 CDN 上没有 cover/n/ 目录：缺省吉祥物图也必须绕开这一档
+        ImagePurpose.entries.forEach { purpose ->
+            val placeholder = placeholderUrlFor(MediaPipeline.Default, MediaCategory.ALBUM, purpose)
+            assertFalse(placeholder.contains("cover/n/"), "相册缺省图 $purpose 命中 cover/n/ 会 404")
+            assertEquals(
+                MediaPipeline.Default.resolveUrl(DefaultMediaPipeline.DEFAULT_COVER_PATH, MediaCategory.ALBUM, purpose),
+                placeholder
+            )
+        }
+        assertEquals(
+            "https://rfx.hpoi.net/gk/cover/sr/none.jpg",
+            placeholderUrlFor(MediaPipeline.Default, MediaCategory.ALBUM, ImagePurpose.CARD_STANDARD)
+        )
+    }
+
+    @Test
+    fun placeholderUrl_otherCategories_keepDefaultCoverUrl() {
+        // 其它分类保持真实部署的 cover/ 吉祥物图，不因相册特判被连带改写
+        listOf(MediaCategory.HOBBY, MediaCategory.POST, MediaCategory.BANNER, MediaCategory.RESALE).forEach { category ->
+            ImagePurpose.entries.forEach { purpose ->
+                assertEquals(
+                    MediaPipeline.Default.getDefaultCoverUrl(purpose),
+                    placeholderUrlFor(MediaPipeline.Default, category, purpose),
+                    "$category/$purpose"
+                )
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ 语义缺省比例
+
+    @Test
+    fun fallbackRatio_hobby_usesVerticalPosterRatio() {
+        // ADR-0007 §3：内置手办 17:24 语义缺省
+        assertEquals(17f / 24f, fallbackRatioFor(MediaCategory.HOBBY, null), 0.0001f)
+    }
+
+    @Test
+    fun fallbackRatio_albumAndOthers_useSquare() {
+        // 相册及其余分类（含通用重载的无分类上下文）一律 1:1
+        listOf(MediaCategory.ALBUM, MediaCategory.POST, MediaCategory.ZONE, null).forEach { category ->
+            assertEquals(1.0f, fallbackRatioFor(category, null), 0.0001f, "category=$category")
+        }
+    }
+
+    @Test
+    fun fallbackRatio_explicitValueWinsOverCategoryDefault() {
+        assertEquals(0.75f, fallbackRatioFor(MediaCategory.HOBBY, 0.75f), 0.0001f)
+        assertEquals(1.5f, fallbackRatioFor(MediaCategory.ALBUM, 1.5f), 0.0001f)
     }
 
     // ---------------------------------------------------------------- 比例截断
@@ -127,16 +183,16 @@ class PoiAsyncImageTest {
     }
 
     @Test
-    fun ratioKey_uses_file_name_plus_bucket() {
+    fun ratioKey_uses_fullPath_plus_bucket() {
         val bucket = imageBucketKey(
             category = MediaCategory.ALBUM,
             purpose = ImagePurpose.ADAPTIVE_GRID,
             contentScaleLabel = "crop",
             adaptiveRatio = true
         )
-        // 键基座取文件名，避免同一资源在不同变体目录下被误判为不同图片
+        // 键基座取完整路径：仅凭文件名会让不同目录下的同名图共用同一个比例
         assertEquals(
-            "abc.jpg:$bucket",
+            "cover/sr/2024/abc.jpg:$bucket",
             ratioCacheKey(
                 path = "cover/sr/2024/abc.jpg",
                 url = "https://rfx.hpoi.net/gk/cover/sr/2024/abc.jpg",
@@ -152,22 +208,48 @@ class PoiAsyncImageTest {
                 bucket = bucket
             )
         )
+        // 空白路径同样回落 URL
+        assertEquals(
+            "https://rfx.hpoi.net/gk/cover/sr/abc.jpg:$bucket",
+            ratioCacheKey(
+                path = "   ",
+                url = "https://rfx.hpoi.net/gk/cover/sr/abc.jpg",
+                bucket = bucket
+            )
+        )
     }
 
     @Test
-    fun ratioKey_is_stable_across_variants_of_same_file() {
+    fun ratioKey_differsForSameFileNameInDifferentDirectories() {
         val bucket = "album:adaptive_grid:crop:adaptive"
-        val small = ratioCacheKey("cover/s/abc.jpg", "https://rfx.hpoi.net/gk/cover/s/abc.jpg", bucket)
-        val raw = ratioCacheKey("cover/raw/abc.jpg", "https://rfx.hpoi.net/gk/cover/raw/abc.jpg", bucket)
-        // 同一张图的不同变体共享同一纵横比，键必须一致
-        assertEquals(small, raw)
+        val first = ratioCacheKey("cover/sr/2024/abc.jpg", "https://rfx.hpoi.net/gk/cover/sr/2024/abc.jpg", bucket)
+        val second = ratioCacheKey("cover/sr/2025/abc.jpg", "https://rfx.hpoi.net/gk/cover/sr/2025/abc.jpg", bucket)
+        assertTrue(first != second, "不同目录同名文件必须使用不同比例键：$first / $second")
     }
 
     @Test
-    fun ratioKey_differs_for_different_buckets() {
+    fun ratioKey_differsForDifferentBuckets() {
         assertTrue(
             ratioCacheKey("abc.jpg", "https://rfx.hpoi.net/gk/cover/sr/abc.jpg", "album:adaptive_grid:crop:adaptive") !=
                 ratioCacheKey("abc.jpg", "https://rfx.hpoi.net/gk/cover/sr/abc.jpg", "album:thumbnail:crop:static")
+        )
+    }
+
+    @Test
+    fun ratioKey_placeholder_doesNotCollideAcrossCategories() {
+        // 所有缺省图都指向 none.jpg：键必须靠分类桶区分，否则相册方图会污染手办竖图
+        val albumBucket = imageBucketKey(
+            MediaCategory.ALBUM, ImagePurpose.ADAPTIVE_GRID, "crop", true
+        )
+        val hobbyBucket = imageBucketKey(
+            MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID, "crop", true
+        )
+        val albumPlaceholder = placeholderUrlFor(MediaPipeline.Default, MediaCategory.ALBUM, ImagePurpose.ADAPTIVE_GRID)
+        val hobbyPlaceholder = placeholderUrlFor(MediaPipeline.Default, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID)
+
+        assertTrue(
+            ratioCacheKey(null, albumPlaceholder, albumBucket) !=
+                ratioCacheKey(null, hobbyPlaceholder, hobbyBucket)
         )
     }
 
@@ -181,7 +263,7 @@ class PoiAsyncImageTest {
             val resolved = pipeline.resolveUrl(sample, MediaCategory.ALBUM, ImagePurpose.ADAPTIVE_GRID)
             assertEquals(
                 !pipeline.isPlaceholder(sample) && resolved.isNotBlank(),
-                shouldLoadFromNetwork(sample, resolved),
+                shouldLoadFromNetwork(sample, resolved, pipeline),
                 "路径 $sample 的请求判定应与管道占位语义一致"
             )
         }

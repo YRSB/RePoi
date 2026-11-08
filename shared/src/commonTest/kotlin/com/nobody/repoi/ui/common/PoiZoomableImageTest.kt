@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -198,6 +199,74 @@ class PoiZoomableImageTest {
         assertEquals(
             Offset.Zero,
             clampPan(Offset(Float.NaN, 0f), scale = 2f, viewport = viewport, contentSize = Size(10f, 10f))
+        )
+    }
+
+    // ── 超长图判定（纵横比） ────────────────────────────────
+
+    @Test
+    fun isLongImageRatio_tallImage_isDetected() {
+        // 宽 100、高 500 → 高宽比 5 > 3，命中超长图
+        assertTrue(isLongImageRatio(width = 100f, height = 500f))
+    }
+
+    @Test
+    fun isLongImageRatio_wideImage_isNotDetected() {
+        // 宽 500、高 100 → 高宽比 0.2，绝不命中（旧「高度超过上限倍数」判据在这里会误报为空判）
+        assertFalse(isLongImageRatio(width = 500f, height = 100f))
+    }
+
+    @Test
+    fun isLongImageRatio_thresholdBoundary_isExclusive() {
+        // 恰好 3 倍不算超长图，必须严格大于阈值
+        assertFalse(isLongImageRatio(width = 100f, height = 300f))
+        assertTrue(isLongImageRatio(width = 100f, height = 301f))
+        // 阈值可覆盖（测试替换实现时用）
+        assertTrue(isLongImageRatio(width = 100f, height = 250f, threshold = 2f))
+    }
+
+    @Test
+    fun isLongImageRatio_degenerateSizes_areNotDetected() {
+        // 矢量图 / 未指定尺寸的 painter 会出现 NaN、0 或负值，一律不判长图
+        assertFalse(isLongImageRatio(width = Float.NaN, height = 500f))
+        assertFalse(isLongImageRatio(width = 100f, height = Float.NaN))
+        assertFalse(isLongImageRatio(width = 0f, height = 500f))
+        assertFalse(isLongImageRatio(width = 100f, height = 0f))
+        assertFalse(isLongImageRatio(width = 100f, height = -500f))
+        assertFalse(isLongImageRatio(width = Float.POSITIVE_INFINITY, height = 500f))
+    }
+
+    // ── 长图纵向浏览：FillWidth 拟合下的平移钳制 ────────────
+
+    @Test
+    fun clampPan_fillWidthLongImage_allowsVerticalOverflowOnly() {
+        val viewport = Size(1080f, 1920f)
+        val longImage = Size(100f, 500f)
+        // FillWidth：显示 1080x5400，纵向可移动 (5400-1920)/2 = 1740，纵向溢出而横向刚好铺满
+        val clamped = clampPan(
+            Offset(300f, -9000f),
+            scale = 1f,
+            viewport = viewport,
+            contentSize = longImage,
+            panContentScale = PanContentScale.FILL_WIDTH
+        )
+        assertEquals(0f, clamped.x)
+        assertEquals(1740f, clamped.y)
+    }
+
+    @Test
+    fun clampPan_fitLongImage_locksBothAxesWhenFit() {
+        val viewport = Size(1080f, 1920f)
+        val longImage = Size(100f, 500f)
+        // 对照：Fit 语义下 100x500 被等比缩到 384x1920，正好塞满高度，1 倍时不可平移
+        assertEquals(
+            Offset.Zero,
+            clampPan(
+                Offset(300f, -9000f),
+                scale = 1f,
+                viewport = viewport,
+                contentSize = longImage
+            )
         )
     }
 

@@ -69,7 +69,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -150,13 +150,14 @@ fun PictureGalleryScreen(
     val messages = LocalAppMessages.current
     val imageLoader: ImageLoader = koinInject()
     val coroutineScope = rememberCoroutineScope()
-    // 超长图保护用的解码高度上限：取自当前窗口自适应信息（KMP 无 android Configuration）
-    val screenHeightPx = with(LocalDensity.current) {
-        currentWindowAdaptiveInfoV2().windowSizeClass.run { null }.let {
-            // 回退：以窗口高度下限断点估算（桌面/手机均可用，精确值由 Density 换算）
-            800.dp.toPx()
-        }
-    }.roundToInt()
+    // 超长图保护用的解码高度上限：优先取真实窗口高度（KMP 无 android Configuration，
+    // 但 LocalWindowInfo 在双端均给出容器像素尺寸；桌面缩放窗口、分屏时会实时变化），
+    // 取不到（初始帧为 0）时回落 800dp 估算值，保证解码上限始终有限、巨图不会 OOM
+    val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    val screenHeightPx = remember(windowSize, density) {
+        windowSize.height.takeIf { it > 0 } ?: with(density) { 800.dp.toPx().roundToInt() }
+    }
 
     var isCurrentPageZoomed by remember { mutableStateOf(false) }
     var chromeVisible by remember { mutableStateOf(true) }
