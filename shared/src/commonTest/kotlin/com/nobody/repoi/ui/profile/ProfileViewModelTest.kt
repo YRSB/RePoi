@@ -30,7 +30,7 @@ import kotlin.test.assertTrue
  *
  * 鉴权与档案驱动全部经 [FakeUserSession]：状态流同步演进，无冷启动等待；
  * 全量聚合走真实 [UserRepository] + [MockApi]（fellow/orderStatic/collect/top/album/checkIn/mp），
- * 未读通知走真实 [MessageRepository]。`getUserProfile` 由 `fake.refreshProfileResult`
+ * 未读通知走真实 [MessageRepository]。会话档案刷新由 `fake.refreshProfileResult`
  * 提供，不请求 `/api/user/self`。
  */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -125,6 +125,35 @@ class FollowRepositoryTest {
     }
 
     @Test
+    fun updateFriend_followAndUnfollow_postsCorrectState() = runTest {
+        val (mock, _, repository) = setup()
+
+        // 关注：isFollow = true -> state = 0
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
+        val followResult = repository.updateFriend(userId = 99999L, isFollow = true)
+        assertTrue(followResult.isSuccess)
+
+        val followReq = mock.takeRequest()
+        assertEquals("POST", followReq.method)
+        assertEquals("/api/user/friend/upd", followReq.encodedPath)
+        val followForm = followReq.formEntries()
+        assertEquals("99999", followForm["userId"])
+        assertEquals("0", followForm["state"])
+
+        // 取关：isFollow = false -> state = 5
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
+        val unfollowResult = repository.updateFriend(userId = 99999L, isFollow = false)
+        assertTrue(unfollowResult.isSuccess)
+
+        val unfollowReq = mock.takeRequest()
+        assertEquals("POST", unfollowReq.method)
+        assertEquals("/api/user/friend/upd", unfollowReq.encodedPath)
+        val unfollowForm = unfollowReq.formEntries()
+        assertEquals("99999", unfollowForm["userId"])
+        assertEquals("5", unfollowForm["state"])
+    }
+
+    @Test
     fun updateFriend_tokenExpired_selfHealsSessionAndThrows() = runTest {
         val (mock, session, repository) = setup("token-to-expire")
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")

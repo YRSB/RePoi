@@ -21,7 +21,11 @@ import kotlinx.serialization.json.doubleOrNull
  */
 class UserFinanceRepository(
     private val api: HpoiApi,
-    private val json: Json = Json { ignoreUnknownKeys = true }
+    private val json: Json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
+    }
 ) {
     /**
      * 获取指定用户的订单统计原始数据 (api/user/orderStatic)。
@@ -45,7 +49,7 @@ class UserFinanceRepository(
     /**
      * 解析订单财务与行情指标（多币种待补款、已入总额换算人民币及亚马逊涨跌幅）。
      */
-    fun parseOrderFinance(orderPayload: OrderStaticData?): OrderFinanceSummary {
+    internal fun parseOrderFinance(orderPayload: OrderStaticData?): OrderFinanceSummary {
         if (orderPayload == null) return OrderFinanceSummary()
         val supplementedGroups = parseCategoryMoneyGroups(orderPayload.allPreorderMoney)
         val historyGroups = parseCategoryMoneyGroups(orderPayload.allOrderMoney)
@@ -65,7 +69,7 @@ class UserFinanceRepository(
     /**
      * 解析按分类汇总的多币种金额分组。
      */
-    fun parseCategoryMoneyGroups(jsonElement: JsonElement?): List<CategoryMoneyGroup> {
+    internal fun parseCategoryMoneyGroups(jsonElement: JsonElement?): List<CategoryMoneyGroup> {
         if (jsonElement == null) return emptyList()
         val array = when (jsonElement) {
             is JsonArray -> jsonElement

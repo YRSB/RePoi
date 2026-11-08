@@ -386,4 +386,27 @@ class PostRepositoryTest {
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
         assertEquals(SessionState.Unauthenticated, session.state.value)
     }
+
+    @Test
+    fun api4001_withSwitchedSession_preservesNewSession() = runTest {
+        val (mock, session, repository) = setupWithSession("token-A")
+        mock.routeWhen(
+            predicate = { path, _ -> path.contains("api/discuss/add") },
+            body = { _, _ ->
+                // 模拟网络往返期间用户切换登录到了新账号 token-B
+                session.setState(SessionState.Authenticated(userId = 2L, token = "token-B"))
+                """{"success":false,"code":4001,"msg":"登录已失效","data":null}"""
+            }
+        )
+
+        val result = repository.addDiscuss(postId = 12345L, content = "在途凭据守卫")
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is ApiException)
+        assertEquals(4001, exception.code)
+        // 在途凭据守卫生效：旧请求快照 token-A 不匹配活跃 token-B，新会话未被误伤清理
+        assertTrue(session.isAuthenticated)
+        assertEquals("token-B", session.currentToken)
+    }
 }

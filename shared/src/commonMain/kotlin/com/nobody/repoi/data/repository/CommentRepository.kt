@@ -49,11 +49,6 @@ class CommentRepository(
         _deletedComments.emit(deleted)
     }
 
-    /** 发布一条删除广播（通过 id 委托重载）。 */
-    suspend fun emitDeletedComment(commentId: Long, replyId: Long? = null) {
-        emitDeleted(DeletedComment(commentId = commentId, replyId = replyId))
-    }
-
     /**
      * 获取单条主评论的子评论分页（api/comment/reply/list）。
      *
@@ -76,11 +71,11 @@ class CommentRepository(
             if (discussResp.isSuccess) {
                 return@runCatching discussResp.data?.toCommentThreadPage(parentSnapshot)
                     ?: CommentThreadPage(comment = parentSnapshot)
-            } else {
-                if (discussResp.isTokenExpired) {
-                    userSession.notifyTokenExpired(snapshotToken)
-                }
             }
+            if (discussResp.isTokenExpired) {
+                userSession.notifyTokenExpired(snapshotToken)
+            }
+            throw ApiException(discussResp.code, discussResp.msg ?: "获取回复失败")
         }
         val response = api.getCommentReplies(
             commentId = commentId,

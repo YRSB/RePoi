@@ -449,7 +449,7 @@ class UserRepository(
         val response = api.updateUserBase(key = key, value = value)
         if (response.isSuccess) {
             if (autoRefresh) {
-                getUserProfile()
+                userSession.refreshProfile()
             }
         } else {
             if (response.isTokenExpired) {
@@ -460,12 +460,7 @@ class UserRepository(
     }
 
     /**
-     * 获取当前登录用户档案（转发至 [UserSession]）。
-     */
-    suspend fun getUserProfile(): Result<UserProfile> = userSession.refreshProfile()
-
-    /**
-     * 查询指定用户的详细资料 (api/user/getinfo)。
+     * 查询指定用户的详细资料 (api/user/getinfo).
      * 优先尝试主节点 ID (id)，若未匹配则回退尝试账号 ID (userId)，双重保障兼顾节点 ID 与历史账号 ID。
      */
     suspend fun getUserInfo(userId: Long): Result<UserProfile> = runCatching {
