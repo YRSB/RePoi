@@ -179,11 +179,19 @@ jobs:
         shell: bash
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace
 
-      # Windows: 合并构建可运行镜像与 MSI 安装器，复用 Gradle 单次生命周期
+      # Windows: 合并构建可运行镜像与 MSI 安装器，复用 Gradle 单次生命周期。
+      # compose 插件会从 GitHub Releases 现拉 wix311-binaries.zip，偶发 HTTP 504；失败重试一次。
       - name: Build & Package Windows desktop
         if: needs.check-docs-only.outputs.skip_ci != 'true' && matrix.os == 'windows-latest'
         shell: bash
-        run: ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace
+        run: |
+          for attempt in 1 2; do
+            if ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace; then
+              exit 0
+            fi
+            echo "::warning::Windows desktop packaging attempt ${attempt} failed; retrying once"
+          done
+          exit 1
 
       - name: Upload desktop distribution
         if: needs.check-docs-only.outputs.skip_ci != 'true'
