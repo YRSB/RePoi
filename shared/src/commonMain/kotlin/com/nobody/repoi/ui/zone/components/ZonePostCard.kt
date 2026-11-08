@@ -175,8 +175,8 @@ fun ZonePostCard(
 
                 if (picList.size == 1) {
                     val picPath = picList[0]
-                    // 单张图对齐首页动态信息流海报规范：外层 Box 固定 150dp 定高，并负责圆角、底色与点击；
-                    // 图片由基元 Crop 铺满该区域（内外不再重复声明高度约束）
+                    // 单张图对齐首页动态信息流海报规范：固定高度 150dp，宽度由基元按图片真实比例撑开
+                    // （比例上下界由管道统一钳制，Crop 充满彻底杜绝留白）
                     Box(
                         modifier = Modifier
                             .height(150.dp)
@@ -192,8 +192,10 @@ fun ZonePostCard(
                             category = MediaCategory.POST,
                             purpose = ImagePurpose.CARD_STANDARD,
                             contentDescription = "帖子配图",
-                            // 高度约束由外层 150dp 定高 Box 提供，内层只负责填满，避免重复约束
-                            modifier = Modifier.fillMaxSize(),
+                            // 注意：adaptiveRatio = true 依赖 aspectRatio 在「高度已定、宽度未定」的约束下反推宽度。
+                            // 此处必须保留 height(150.dp)，不得改为 fillMaxSize()——后者会锁死宽度，
+                            // 使 aspectRatio 失效并退化为整行铺满。
+                            modifier = Modifier.height(150.dp),
                             adaptiveRatio = true,
                             fallbackRatio = 0.75f
                         )

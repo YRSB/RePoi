@@ -50,6 +50,9 @@ private val BrokenImageIconSize = 28.dp
  *   防止缩略图与原图缓存串味；
  * - [adaptiveRatio] 为真时用 `Modifier.aspectRatio` 自行撑开高度（调用方只需给出宽度约束），
  *   首帧同步读缓存占位，加载成功后再回写；
+ *   **约束前提**：`aspectRatio` 只在至少一个轴仍可自由伸缩时生效。若调用方同时钉死宽与高
+ *   （如 `Modifier.fillMaxSize()` 落在尺寸确定的父容器里），比例将被忽略、图片铺满容器。
+ *   需要「定高、宽度按比例反推」时必须只给高度（`Modifier.height(...)`），不要叠加 `fillMaxSize()`；
  * - [enableFullscreenPreview] 为真时点击唤起全屏查看器；若同时提供 [onClick]，则 [onClick] 优先。
  *
  * @param path Hpoi 资源路径（相对路径或绝对 URL，可为空）
