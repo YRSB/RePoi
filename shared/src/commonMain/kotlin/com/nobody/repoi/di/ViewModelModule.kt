@@ -101,7 +101,7 @@ val viewModelModule = module {
     viewModel { SearchViewModel(get(), get()) }
     viewModel { SeriesDetailViewModel(get(), get()) }
     viewModel { SettingsViewModel(get()) }
-    viewModel { SettingsAccountViewModel(get()) }
+    viewModel { SettingsAccountViewModel(get(), get()) }
     viewModel { SettingsShieldViewModel(get()) }
     viewModel { SettingsShieldListViewModel(get()) }
     viewModel { SettingsPrivacyViewModel(get()) }
