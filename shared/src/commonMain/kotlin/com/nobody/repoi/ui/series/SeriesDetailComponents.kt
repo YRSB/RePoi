@@ -7,7 +7,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.platform.LocalUriHandler
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
@@ -64,33 +63,28 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.crossfade
-import coil3.request.ImageRequest
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.AlbumData
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.data.remote.model.SeriesData
-import com.nobody.repoi.util.ImageAspectRatioCache
 import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet
 import androidx.compose.material3.ElevatedCard
@@ -108,7 +102,6 @@ internal fun SeriesHeaderSection(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getRawCoverUrl(series.cover)
     val displayName = series.displayName.ifBlank { "系列详情" }
     val subName = series.subName
     val introText = series.detailPlainText
@@ -133,14 +126,14 @@ internal fun SeriesHeaderSection(
                         .clip(RoundedCornerShape(16.dp))
                         .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
                 ) {
-                    if (!coverUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = coverUrl,
-                            contentDescription = displayName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    // 系列详情主图档位：CARD_STANDARD 落 cover/n/，空路径由组件回退官方缺省图
+                    PoiAsyncImage(
+                        path = series.cover,
+                        category = MediaCategory.HOBBY,
+                        purpose = ImagePurpose.CARD_STANDARD,
+                        contentDescription = displayName,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 // 右侧：中文标题 / 主名 + 外文原名 + 属性胶囊
@@ -322,14 +315,14 @@ internal fun SeriesHobbysSection(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         onClick = { onHobbyClick(item) }
                     ) {
-                        if (!item.cover.isNullOrBlank()) {
-                            AsyncImage(
-                                model = CdnUrlUtils.getRawCoverUrl(item.cover),
-                                contentDescription = item.displayName,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
+                        // 九宫格封面属标准卡片展示档位，走 cover/n/
+                        PoiAsyncImage(
+                            path = item.cover,
+                            category = MediaCategory.HOBBY,
+                            purpose = ImagePurpose.CARD_STANDARD,
+                            contentDescription = item.displayName,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
@@ -395,14 +388,14 @@ internal fun SeriesSubSeriesSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    if (!item.cover.isNullOrBlank()) {
-                                        AsyncImage(
-                                            model = CdnUrlUtils.getRawCoverUrl(item.cover),
-                                            contentDescription = item.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                    // 子系列缩略图：标准卡片档位 cover/n/
+                                    PoiAsyncImage(
+                                        path = item.cover,
+                                        category = MediaCategory.HOBBY,
+                                        purpose = ImagePurpose.CARD_STANDARD,
+                                        contentDescription = item.displayName,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
                                 }
 
                                 Column(
@@ -506,14 +499,14 @@ internal fun SeriesRelateSeriesSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    if (!item.cover.isNullOrBlank()) {
-                                        AsyncImage(
-                                            model = CdnUrlUtils.getRawCoverUrl(item.cover),
-                                            contentDescription = item.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                    // 子系列缩略图：标准卡片档位 cover/n/
+                                    PoiAsyncImage(
+                                        path = item.cover,
+                                        category = MediaCategory.HOBBY,
+                                        purpose = ImagePurpose.CARD_STANDARD,
+                                        contentDescription = item.displayName,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
                                 }
 
                                 Text(
@@ -653,12 +646,8 @@ private fun SeriesAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(album.cover) {
-        album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
-    }
-    val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
+    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走占位图标分支
+    val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
         onClick = onClick,
@@ -671,26 +660,20 @@ private fun SeriesAlbumCard(
         Box(
             modifier = Modifier
                 .height(160.dp)
-                .aspectRatio(aspectRatio)
+                .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
-            if (coverUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverUrl)
-                        .crossfade(true)
-                        .build(),
+            if (!isNoCover) {
+                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
+                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+                PoiAsyncImage(
+                    path = album.cover,
+                    category = MediaCategory.ALBUM,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = album.displayName,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.6f, 2.2f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    adaptiveRatio = true,
+                    fallbackRatio = 1.0f
                 )
             } else {
                 Box(
@@ -842,14 +825,14 @@ internal fun SeriesGoodsSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    if (!goods.cover.isNullOrBlank()) {
-                                        AsyncImage(
-                                            model = goods.cover,
-                                            contentDescription = goods.name,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                    // 在售周边封面同属 cover/ 家族，标准卡片档位走 cover/n/
+                                    PoiAsyncImage(
+                                        path = goods.cover,
+                                        category = MediaCategory.HOBBY,
+                                        purpose = ImagePurpose.CARD_STANDARD,
+                                        contentDescription = goods.name,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
 
                                     if (!goods.saleTypeStr.isNullOrBlank()) {
                                         Surface(
