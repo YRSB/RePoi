@@ -2,6 +2,9 @@ package com.nobody.repoi.ui.navigation
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import androidx.compose.ui.platform.UriHandler
+import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.AlbumRankListNavParam
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
@@ -175,3 +178,51 @@ fun RePoiNavigator.navigateToMessageChat(targetUserId: Long, targetUserName: Str
     currentBackStack.navigateToMessageChat(targetUserId, targetUserName, targetUserHeader)
 fun RePoiNavigator.navigateToSettingsShieldList() = currentBackStack.navigateToSettingsShieldList()
 fun RePoiNavigator.navigateToMessageBlock() = currentBackStack.navigateToMessageBlock()
+
+private const val NAV_LOG_SCOPE = "导航"
+
+/**
+ * 执行统一路由目标 [RouteTarget] 的副作用落点：
+ * - [RouteTarget.Internal] 压入全局根栈；
+ * - [RouteTarget.External] 空白静默返回，非空交由 [uriHandler] 打开，失败提示；
+ * - [RouteTarget.Notice] 直接透传提示文案。
+ *
+ * 全部分支统一写入应用日志“导航”域，便于排查跳转问题。
+ */
+fun RePoiNavigator.navigate(target: RouteTarget, uriHandler: UriHandler, onMessage: (String) -> Unit) {
+    when (target) {
+        is RouteTarget.Internal -> {
+            AppLogger.i(NAV_LOG_SCOPE, "站内跳转 ${target.key}")
+            navigate(target.key)
+        }
+
+        is RouteTarget.External -> {
+            val url = target.url
+            if (url.isBlank()) return
+            try {
+                AppLogger.i(NAV_LOG_SCOPE, "打开外部链接 $url")
+                uriHandler.openUri(url)
+            } catch (e: Exception) {
+                AppLogger.w(NAV_LOG_SCOPE, "打开外部链接失败 $url：${e.message}")
+                onMessage("无法打开链接：$url")
+            }
+        }
+
+        is RouteTarget.Notice -> {
+            AppLogger.i(NAV_LOG_SCOPE, "用户提示 ${target.message}")
+            onMessage(target.message)
+        }
+    }
+}
+
+/**
+ * 解析动态流动作并执行跳转。
+ */
+fun RePoiNavigator.navigateAction(actionItem: ActionItem, uriHandler: UriHandler, onMessage: (String) -> Unit) =
+    navigate(AppRouteResolver.resolveAction(actionItem), uriHandler, onMessage)
+
+/**
+ * 解析富文本超链接并执行跳转。
+ */
+fun RePoiNavigator.navigateUrl(url: String, uriHandler: UriHandler, onMessage: (String) -> Unit) =
+    navigate(AppRouteResolver.resolveUrl(url), uriHandler, onMessage)
