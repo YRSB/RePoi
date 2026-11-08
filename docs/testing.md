@@ -71,3 +71,16 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 本地严禁执行 Gradle 测试任务。诊断打印用 `println("DIAG-<tag> ...")` 输出，
 CI 失败后经 `test-reports` 产物下载 XML 提取（`gh run download <run-id> -n test-reports`），
 `system-out` 节点内即测试标准输出。诊断合入前必须删除打印。
+
+### 按需测试 CI（TDD 内环）
+
+`.github/workflows/tests.yml` 只跑 `:shared:jvmTest` 与 `:shared:testAndroidHostTest`，不构建 APK/桌面产物：
+
+```bash
+gh workflow run tests.yml --ref <branch>
+gh run list --workflow Tests --branch <branch> --limit 1
+gh run watch <run-id> --exit-status
+```
+
+`workflow_dispatch` 使用目标分支上的工作流定义，实施分支需先包含 `tests.yml`（从 main 切出即满足）。
+

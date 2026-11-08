@@ -1,0 +1,57 @@
+# 按需测试流水线：只跑 shared 单测，不构建 APK / 桌面产物。
+#
+# 用法（本地无需 Gradle）：
+#   gh workflow run tests.yml --ref <branch>
+#   gh run list --workflow Tests --branch <branch> --limit 1
+#   gh run watch <run-id> --exit-status
+#
+# 说明：workflow_dispatch 使用目标分支上的本文件定义，因此实施分支需包含本文件。
+name: Tests
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6144M -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
+
+jobs:
+  test:
+    name: Shared Tests (JVM & Android Host)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+
+      - name: Run unit tests
+        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize first failure
+        if: failure()
+        run: |
+          {
+            echo "## 首个失败"
+            echo '```'
+            grep -m5 -E "e: |FAILED" test-output.log || echo "(未能提取错误行)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            shared/build/reports/tests/
+            shared/build/test-results/
+            test-output.log
