@@ -217,6 +217,29 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun loadFullProfile_withForceRefresh_fetchesLatestSelfProfile() = runTest {
+        val (mock, session, repository) = setup()
+        session.setState(
+            SessionState.Authenticated(
+                userId = 88888L,
+                token = "utoken-test",
+                profile = UserProfile(id = 88888L, nickname = "旧昵称", userName = "master", level = 5),
+            )
+        )
+        val freshProfile = UserProfile(id = 88888L, nickname = "新昵称", userName = "master", level = 6)
+        session.refreshProfileResult = Result.success(freshProfile)
+        mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":0,"friendCount":0,"praiseCount":0}}}""")
+        mock.route("api/user/orderStatic", """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":0,"preorder":0,"care":0}}}}""")
+
+        val result = repository.loadFullProfile(forceRefresh = true)
+        assertTrue(result.isSuccess)
+        val data = result.getOrThrow()
+        assertEquals(1, session.refreshProfileCalls)
+        assertEquals("新昵称", data.profile.displayName)
+        assertEquals(6, data.profile.level)
+    }
+
+    @Test
     fun getUserCollectHobbyList_passesAllRequiredParamsAndParsesItems() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(

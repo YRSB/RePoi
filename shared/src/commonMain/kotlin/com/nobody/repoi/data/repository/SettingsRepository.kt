@@ -4,11 +4,8 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AccountCheckResult
 import com.nobody.repoi.data.remote.model.MaskItem
 import com.nobody.repoi.data.remote.model.UserPrivacyPayload
-import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -30,9 +27,7 @@ class SettingsRepository(
 ) {
     /** 兼容桥：由会话状态映射当前令牌；新代码应直接观察 [UserSession.state]。 */
     val tokenFlow: Flow<String>
-        get() = userSession.state
-            .map { (it as? SessionState.Authenticated)?.token.orEmpty() }
-            .distinctUntilChanged()
+        get() = userSession.tokenFlow
 
     val isLoggedIn: Boolean get() = userSession.isAuthenticated
 

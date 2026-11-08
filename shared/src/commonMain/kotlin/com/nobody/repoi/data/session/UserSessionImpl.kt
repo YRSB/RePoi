@@ -122,8 +122,11 @@ internal class UserSessionImpl(
         }
     }
 
-    override suspend fun notifyTokenExpired() {
+    override suspend fun notifyTokenExpired(triggeredToken: String?) {
         mutex.withLock {
+            if (triggeredToken != null && currentToken != triggeredToken) {
+                return@withLock
+            }
             // 幂等：已处于未认证且存储凭据已空时无需重复清理。
             if (_state.value == SessionState.Unauthenticated && tokenManager.currentToken.isBlank()) {
                 return@withLock
@@ -181,11 +184,7 @@ internal class UserSessionImpl(
 
     /** 4001 自愈：仅当失效请求仍属于当前会话时才清理，避免误伤新登录会话。 */
     private suspend fun expireIfActive(token: String) {
-        mutex.withLock {
-            if (currentToken != token) return@withLock
-            tokenManager.clearToken()
-            _state.value = SessionState.Unauthenticated
-        }
+        notifyTokenExpired(token)
     }
 
     private fun authenticatedOrNull(): SessionState.Authenticated? =

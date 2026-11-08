@@ -49,7 +49,7 @@ class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
     private val zoneRepository: ZoneRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
-    private val userSession: UserSession? = null,
+    private val userSession: UserSession,
     private val messageRepository: MessageRepository? = null
 ) : ViewModel() {
 
@@ -137,15 +137,9 @@ class HomeFeedViewModel(
             }
         }
 
-        // 启动时立即同步一次专区与设置，不阻塞等待会话预热；若首屏发出时仍处于
-        // Prewarming，则在会话就绪后再补拉一次带凭据的响应，保证关注专区最终一致。
+        // 启动时立即同步一次专区与设置，不阻塞等待会话预热
         viewModelScope.launch {
             zoneRepository.getZoneHomeTabs()
-            val session = userSession ?: return@launch
-            if (session.state.value is SessionState.Prewarming) {
-                session.state.first { it !is SessionState.Prewarming }
-                zoneRepository.getZoneHomeTabs()
-            }
         }
 
         setupAccountState()
@@ -428,30 +422,36 @@ class HomeFeedViewModel(
     }
 
     private fun setupAccountState() {
-        val session = userSession ?: return
         viewModelScope.launch {
             var lastToken: String? = null
             var profileRefreshRequested = false
-            session.state.collect { state ->
+            userSession.state.collect { state ->
                 when (state) {
                     is SessionState.Authenticated -> {
                         val tokenChanged = state.token != lastToken
                         if (tokenChanged) {
                             lastToken = state.token
                             profileRefreshRequested = false
+                            // 令牌初次就绪或切换时，触发关注专区刷新以保障最终一致
+                            launch { zoneRepository.getZoneHomeTabs() }
+                            fetchUnreadMessages()
                         }
                         _uiState.update { it.copy(userAvatar = state.profile?.header) }
                         if (state.profile == null && !profileRefreshRequested) {
                             // 档案缺失时仅主动补拉一次，后续由会话内部增量刷新兜底
                             profileRefreshRequested = true
-                            launch { session.refreshProfile() }
+                            launch { userSession.refreshProfile() }
                         }
-                        if (tokenChanged) fetchUnreadMessages()
                     }
-                    SessionState.Unauthenticated, SessionState.Prewarming -> {
+                    SessionState.Unauthenticated -> {
                         lastToken = null
                         profileRefreshRequested = false
                         _uiState.update { it.copy(userAvatar = null, unreadMessageCount = 0) }
+                    }
+                    SessionState.Prewarming -> {
+                        // 预热中：保持中性状态，不提前刷掉可能已有的头像
+                        lastToken = null
+                        profileRefreshRequested = false
                     }
                 }
             }
@@ -459,14 +459,13 @@ class HomeFeedViewModel(
     }
 
     private fun fetchUnreadMessages() {
-        val session = userSession ?: return
         val messageRepo = messageRepository ?: return
         viewModelScope.launch {
-            val token = session.currentToken
+            val token = userSession.currentToken
             if (token.isBlank()) return@launch
             val count = messageRepo.getUnreadPushCount().getOrNull() ?: return@launch
             // 请求期间令牌可能已切换/失效，二次校验避免污染新会话的未读数
-            if (session.currentToken != token) return@launch
+            if (userSession.currentToken != token) return@launch
             _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
         }
     }

@@ -124,6 +124,27 @@ class UserSessionTest {
     }
 
     @Test
+    fun 令牌失效通知_携带不匹配凭据时忽略清理_避免误伤新会话() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val tokenManager = FakeTokenManager(token = "new-token", userId = 10L, userName = "新用户")
+        val session = sessionOf(mock, tokenManager)
+        advanceUntilIdle()
+
+        // 旧在途请求携带 old-token 收到 4001
+        session.notifyTokenExpired(triggeredToken = "old-token")
+
+        // 当前会话保持 Authenticated，存储未被清空
+        assertTrue(session.isAuthenticated)
+        assertEquals("new-token", session.currentToken)
+        assertEquals(0, tokenManager.clearTokenCalls)
+
+        // 匹配当前 token 的失效通知则正常清理
+        session.notifyTokenExpired(triggeredToken = "new-token")
+        assertFalse(session.isAuthenticated)
+        assertEquals(1, tokenManager.clearTokenCalls)
+    }
+
+    @Test
     fun 账号登录成功_切换已认证并持久化凭据() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.routeWhen(

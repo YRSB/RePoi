@@ -28,17 +28,14 @@ import com.nobody.repoi.data.remote.model.CollectSimilarityPayload
 import com.nobody.repoi.data.remote.model.UserHistoryItem
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -121,9 +118,7 @@ class UserRepository(
      * 新代码应直接订阅 [UserSession.state]；第二阶段随领域仓储剥离一并删除。
      */
     @Deprecated("Use UserSession directly")
-    val tokenFlow: Flow<String> = userSession.state
-        .map { (it as? SessionState.Authenticated)?.token.orEmpty() }
-        .distinctUntilChanged()
+    val tokenFlow: Flow<String> = userSession.tokenFlow
 
     /** 兼容桥：请改用 [UserSession.currentToken]。 */
     @Deprecated("Use UserSession directly")
@@ -145,22 +140,26 @@ class UserRepository(
 
     /**
      * 兼容桥：档案镜像 `Authenticated.profile`，与状态变更同步可见。
-     * 由会话状态单向驱动，不再由仓储自行发请求回填。
+     * 由会话状态单向驱动，无需启动无管理的后台协程。
      */
-    private val _currentUserProfile = MutableStateFlow<UserProfile?>(null)
-    val currentUserProfile: StateFlow<UserProfile?> = _currentUserProfile.asStateFlow()
+    val currentUserProfile: StateFlow<UserProfile?> = object : StateFlow<UserProfile?> {
+        override val value: UserProfile?
+            get() = (userSession.state.value as? SessionState.Authenticated)?.profile
+
+        override val replayCache: List<UserProfile?>
+            get() = listOf(value)
+
+        override suspend fun collect(collector: FlowCollector<UserProfile?>): Nothing {
+            userSession.state
+                .map { (it as? SessionState.Authenticated)?.profile }
+                .distinctUntilChanged()
+                .collect(collector)
+            error("StateFlow collection never terminates")
+        }
+    }
 
     private val _friendChangeEvent = MutableSharedFlow<FriendChangeEvent>(extraBufferCapacity = 64)
     val friendChangeEvent: SharedFlow<FriendChangeEvent> = _friendChangeEvent.asSharedFlow()
-
-    init {
-        // Unconfined：状态变更当场同步镜像，测试断言无需等待调度器。
-        CoroutineScope(Dispatchers.Unconfined).launch {
-            userSession.state.collect { state ->
-                _currentUserProfile.value = (state as? SessionState.Authenticated)?.profile
-            }
-        }
-    }
 
     suspend fun login(account: String, password: String): Result<LoginData> =
         userSession.login(account = account, password = password)
@@ -308,10 +307,19 @@ class UserRepository(
     /**
      * 并发聚合拉取个人中心所有数据（self -> fellow + orderStatic + preorder + buy + care + album + checkIn + mp）。
      */
-    suspend fun loadFullProfile(): Result<FullProfileData> = runCatching {
-        // 1. 优先复用会话中已刷新的档案，缺失时再触发一次刷新
-        val profile = (userSession.state.value as? SessionState.Authenticated)?.profile
-            ?: getUserProfile().getOrThrow()
+    /**
+     * 并发聚合拉取个人中心所有数据（self -> fellow + orderStatic + preorder + buy + care + album + checkIn + mp）。
+     *
+     * @param forceRefresh 是否强制向服务端刷新基础用户档案；为 false 时优先复用当前会话内存档案。
+     */
+    suspend fun loadFullProfile(forceRefresh: Boolean = false): Result<FullProfileData> = runCatching {
+        // 1. 优先复用会话中已刷新的档案，若指定 forceRefresh 或档案缺失时再拉取服务端最新档案
+        val profile = if (forceRefresh) {
+            getUserProfile().getOrThrow()
+        } else {
+            (userSession.state.value as? SessionState.Authenticated)?.profile
+                ?: getUserProfile().getOrThrow()
+        }
         val userId = profile.id
 
         // 2. 并发拉取社交统计、订单统计、手办展柜、相册展柜及签到积分
@@ -466,12 +474,13 @@ class UserRepository(
                 put("tag", tag)
             }
         }
+        val snapshotToken = userSession.currentToken
         val response = api.getUserCollectHobby(params)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取收藏列表失败")
         }
@@ -523,12 +532,13 @@ class UserRepository(
                 }
             }
         }
+        val snapshotToken = userSession.currentToken
         val response = api.getUserCollectCommon(params)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取通用实体收藏列表失败")
         }
@@ -556,12 +566,13 @@ class UserRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
+        val snapshotToken = userSession.currentToken
         val response = api.getUserCollectAlbum(params)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取相册收藏列表失败")
         }
@@ -590,12 +601,13 @@ class UserRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
+        val snapshotToken = userSession.currentToken
         val response = api.getUserCollectPic(params)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取图片收藏列表失败")
         }
@@ -642,6 +654,7 @@ class UserRepository(
      * 更新用户关注/好友状态 (api/user/friend/upd)。
      */
     suspend fun updateFriend(userId: Long, state: FriendState): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.updateFriend(userId = userId, state = state.code)
         if (response.isSuccess) {
             _friendChangeEvent.emit(
@@ -653,7 +666,7 @@ class UserRepository(
             )
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "更新用户关注状态失败")
         }
@@ -680,12 +693,13 @@ class UserRepository(
         page: Int,
         pageSize: Int = 20
     ): Result<List<UserFellowItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getUserFellow(userId = userId, type = type, page = page, pageSize = pageSize)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取好友列表失败")
         }
@@ -702,12 +716,13 @@ class UserRepository(
         page: Int,
         pageSize: Int = 20
     ): Result<List<UserPraiseItem>> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.getUserPraiseForUser(userId = userId, page = page, pageSize = pageSize)
         if (response.isSuccess || (response.success && response.data != null)) {
             response.data?.list ?: emptyList()
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取获赞列表失败")
         }
@@ -720,6 +735,7 @@ class UserRepository(
      * @param autoRefresh 是否在单次成功后立即刷新个人资料状态流（批量更新时置为 false 并在最后统一刷新）
      */
     suspend fun updateUserBase(key: String, value: String, autoRefresh: Boolean = true): Result<Unit> = runCatching {
+        val snapshotToken = userSession.currentToken
         val response = api.updateUserBase(key = key, value = value)
         if (response.isSuccess) {
             if (autoRefresh) {
@@ -727,7 +743,7 @@ class UserRepository(
             }
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "更新用户资料失败")
         }
@@ -738,6 +754,7 @@ class UserRepository(
      * 优先尝试主节点 ID (id)，若未匹配则回退尝试账号 ID (userId)，双重保障兼顾节点 ID 与历史账号 ID。
      */
     suspend fun getUserInfo(userId: Long): Result<UserProfile> = runCatching {
+        val snapshotToken = userSession.currentToken
         // 先尝试以主节点 ID (id) 查询
         val idResponse = try {
             api.getUserInfo(id = userId)
@@ -754,7 +771,7 @@ class UserRepository(
             response.data?.user ?: throw ApiException(response.code, "用户信息为空")
         } else {
             if (response.isTokenExpired) {
-                userSession.notifyTokenExpired()
+                userSession.notifyTokenExpired(snapshotToken)
             }
             throw ApiException(response.code, response.msg ?: "获取用户信息失败")
         }

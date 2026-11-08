@@ -5,13 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.AccountCheckResult
 import com.nobody.repoi.data.remote.model.UserPrivacyPayload
 import com.nobody.repoi.data.repository.SettingsRepository
-import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,16 +49,13 @@ class SettingsAccountViewModel(
 
     init {
         viewModelScope.launch {
-            userSession.state
-                .map { (it as? SessionState.Authenticated)?.token.orEmpty() }
-                .distinctUntilChanged()
-                .collect { token ->
-                    if (token.isNotBlank()) {
-                        refresh()
-                    } else {
-                        _uiState.value = SettingsAccountSecurityUiState(isLoading = false)
-                    }
+            userSession.tokenFlow.collect { token ->
+                if (token.isNotBlank()) {
+                    refresh()
+                } else {
+                    _uiState.value = SettingsAccountSecurityUiState(isLoading = false)
                 }
+            }
         }
     }
 
@@ -93,7 +87,7 @@ class SettingsAccountViewModel(
         }
     }
 
-    val activeToken: String get() = settingsRepository.activeToken
+    val activeToken: String get() = userSession.exportActiveToken()
 
     fun openExportDialog() {
         _uiState.update { it.copy(showExportDialog = true, exportTokenRevealed = false) }

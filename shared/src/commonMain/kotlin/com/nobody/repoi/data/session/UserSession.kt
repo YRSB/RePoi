@@ -2,7 +2,10 @@ package com.nobody.repoi.data.session
 
 import com.nobody.repoi.data.remote.model.LoginData
 import com.nobody.repoi.data.remote.model.UserProfile
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * 用户会话深模块契约：单一职责的鉴权接缝。
@@ -17,6 +20,12 @@ interface UserSession {
 
     /** 会话状态流；初始为 [SessionState.Prewarming]，预热完成后流转为未认证或已认证。 */
     val state: StateFlow<SessionState>
+
+    /** 活跃登录令牌流；未认证时发射空字符串，已去重。 */
+    val tokenFlow: Flow<String>
+        get() = state
+            .map { (it as? SessionState.Authenticated)?.token.orEmpty() }
+            .distinctUntilChanged()
 
     /** 是否处于已认证态（凭据可用）。 */
     val isAuthenticated: Boolean
@@ -46,8 +55,13 @@ interface UserSession {
      */
     suspend fun refreshProfile(): Result<UserProfile>
 
-    /** 令牌失效自愈：原子清空存储凭据、内存令牌与缓存档案；幂等。 */
-    suspend fun notifyTokenExpired()
+    /**
+     * 令牌失效自愈：原子清空存储凭据、内存令牌与缓存档案；幂等。
+     *
+     * @param triggeredToken 触发 4001 的在途请求所携带的凭据。
+     * 若传入且与当前活跃凭据不匹配（说明期间用户已切换会话），则忽略该过期通知，避免误伤新会话。
+     */
+    suspend fun notifyTokenExpired(triggeredToken: String? = null)
 
     /** 导出当前活跃令牌；未认证返回空串。 */
     fun exportActiveToken(): String

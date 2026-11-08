@@ -18,8 +18,8 @@ class CommentRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Triple<MockApi, CommentRepository, FakeUserSession> {
         val mock = MockApi()
-        val tokenManager = FakeUserSession(token)
-        return Triple(mock, CommentRepository(mock.api(), tokenManager), tokenManager)
+        val userSession = FakeUserSession(token)
+        return Triple(mock, CommentRepository(mock.api(), userSession), userSession)
     }
 
     @Test

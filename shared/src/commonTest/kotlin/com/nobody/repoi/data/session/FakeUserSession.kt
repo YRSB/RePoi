@@ -137,8 +137,11 @@ class FakeUserSession(
         _state.value = SessionState.Unauthenticated
     }
 
-    override suspend fun notifyTokenExpired() {
+    override suspend fun notifyTokenExpired(triggeredToken: String?) {
         tokenExpiredCalls++
+        if (triggeredToken != null && currentToken != triggeredToken) {
+            return
+        }
         _state.value = SessionState.Unauthenticated
     }
 

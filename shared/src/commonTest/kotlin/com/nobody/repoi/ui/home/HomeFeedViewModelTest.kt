@@ -93,7 +93,7 @@ class HomeFeedViewModelTest {
             HomeRepository(feedMock.api(dispatcher)),
             zoneRepository,
             preferences,
-            if (accounts) userSession else null,
+            if (accounts) userSession else FakeUserSession(),
             if (accounts) messageRepository else null
         )
 
