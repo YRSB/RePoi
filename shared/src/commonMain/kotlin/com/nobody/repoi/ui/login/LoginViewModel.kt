@@ -2,7 +2,7 @@ package com.nobody.repoi.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +25,7 @@ data class LoginUiState(
 )
 
 class LoginViewModel(
-    private val userRepository: UserRepository
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -70,7 +70,7 @@ class LoginViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            userRepository.loginWithToken(candidate).onSuccess {
+            userSession.loginWithToken(candidate).onSuccess {
                 _uiState.update { it.copy(isLoading = false, isSuccess = true, errorMessage = null) }
                 onSuccess()
             }.onFailure { e ->
@@ -88,7 +88,7 @@ class LoginViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val result = userRepository.login(
+            val result = userSession.login(
                 account = current.account.trim(),
                 password = current.password
             )
