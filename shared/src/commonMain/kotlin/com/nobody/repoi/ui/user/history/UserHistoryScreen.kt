@@ -41,12 +41,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,7 +66,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,24 +74,20 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.UserHistoryItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.UserAvatar
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -618,8 +609,6 @@ private fun HobbyHistoryGridCard(
 ) {
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
     val isSelected = isSelectedProvider()
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrl(item.actualCover) }
-    val imageRequest = rememberListImageRequest(item.actualCover, coverUrl, "history_hobby")
 
     Box(
         modifier = modifier
@@ -633,23 +622,14 @@ private fun HobbyHistoryGridCard(
             ),
         contentAlignment = Alignment.Center
     ) {
-        var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-        if (coverUrl.isNotBlank() && !loadFailed) {
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = item.actualTitle,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                onError = { loadFailed = true }
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Filled.BrokenImage,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
-        }
+        // 固定 9:13 海报格，不参与纵横比自适应；空路径/缺省图与失败态均由基元统一呈现
+        PoiAsyncImage(
+            path = item.actualCover,
+            category = MediaCategory.HOBBY,
+            purpose = ImagePurpose.CARD_STANDARD,
+            contentDescription = item.actualTitle,
+            modifier = Modifier.fillMaxSize()
+        )
 
         // 管理模式下遮罩与勾选图标（对齐原版 Hpoi）
         if (isManageMode) {
@@ -704,12 +684,6 @@ private fun AlbumHistoryWaterfallCard(
 ) {
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
     val isSelected = isSelectedProvider()
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSrUrl(item.actualCover) }
-    val ratioKey = listImageKey(item.actualCover, coverUrl, "sr")
-    val coverRequest = rememberListImageRequest(item.actualCover, coverUrl, "sr:history_album")
-    var aspectRatio by remember(ratioKey) {
-        mutableFloatStateOf(ImageAspectRatioCache[ratioKey] ?: 1.0f)
-    }
 
     ElevatedCard(
         onClick = onClick,
@@ -729,42 +703,17 @@ private fun AlbumHistoryWaterfallCard(
     ) {
         Box {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(aspectRatio)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                    contentAlignment = Alignment.Center
-                ) {
-                    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-                    if (coverUrl.isNotBlank() && !loadFailed) {
-                        AsyncImage(
-                            model = coverRequest,
-                            contentDescription = item.actualTitle,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            onSuccess = { state ->
-                                val size = state.painter.intrinsicSize
-                                if (size.width > 0 && size.height > 0) {
-                                    val ratio = (size.width / size.height).coerceIn(0.6f, 1.8f)
-                                    aspectRatio = ratio
-                                    ImageAspectRatioCache[ratioKey] = ratio
-                                }
-                            },
-                            onError = {
-                                loadFailed = true
-                                aspectRatio = 1.0f
-                            }
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Filled.PhotoLibrary,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
+                // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/；
+                // 高度交给基元的自适应纵横比撑开，失败态由基元渲染破损图标
+                PoiAsyncImage(
+                    path = item.actualCover,
+                    category = MediaCategory.ALBUM,
+                    purpose = ImagePurpose.ADAPTIVE_GRID,
+                    contentDescription = item.actualTitle,
+                    modifier = Modifier.fillMaxWidth(),
+                    adaptiveRatio = true,
+                    fallbackRatio = 1.0f
+                )
 
                 Column(
                     modifier = Modifier
