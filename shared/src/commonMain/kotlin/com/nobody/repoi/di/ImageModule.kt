@@ -7,6 +7,8 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import coil3.util.Logger as CoilLogger
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.media.DefaultMediaPipeline
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.platform.cacheDirPath
 import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.util.CorruptCacheRecoveryInterceptor
@@ -31,8 +33,14 @@ import org.koin.dsl.module
  *
  * 平台差异收敛到 [platformCoilContext] + [ImageLoader.Builder.poiShelfPlatformComponents]
  *（PodAura `PodAuraImage` 同形；gif/video 解码器不在本模块依赖内，android 实际为空实现）。
+ *
+ * 另注册 [MediaPipeline] 单例（[DefaultMediaPipeline]）：纯计算、无状态、不触碰任何缓存配置，
+ * 供业务层与呈现基元共享同一套 CDN 变体与 404 避坑规则；无 DI 场景直接用 `MediaPipeline.Default`。
  */
 val imageModule = module {
+    // 多媒体管道单例：无状态纯计算深服务，与 MediaPipeline.Default 为同一对象。
+    single<MediaPipeline> { DefaultMediaPipeline }
+
     single<DiskCache> {
         val viewPrefs = get<ViewPreferencesManager>()
         val maxBytes = runCatching {
