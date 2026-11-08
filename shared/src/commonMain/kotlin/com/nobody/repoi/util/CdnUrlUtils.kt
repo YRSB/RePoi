@@ -1,11 +1,26 @@
 package com.nobody.repoi.util
 
+import com.nobody.repoi.data.media.DefaultMediaPipeline
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
+
 /**
- * Hpoi 资源 CDN URL 静态补全工具。
+ * Hpoi 资源 CDN URL 静态补全工具（**过渡期兼容桥接层**）。
+ *
+ * 全部函数已迁移至 [MediaPipeline] / [DefaultMediaPipeline]：CDN 变体拼装、404 避坑规则、
+ * 官方缺省图判定与纵横比缓存已收敛到管道深服务内一处生效。本对象保留全部既有签名并标注
+ * [Deprecated]，函数体单行委托，保证既有调用点零破坏；新代码请直接使用
+ * `MediaPipeline.Default` 或 `PoiAsyncImage`。
+ *
+ * 常量 [CDN_BASE_URL]、[CoverVariant]、[PicVariant]、[DEFAULT_COVER_PATH]、
+ * [EXHOBBY_CDN_BASE_URL] 仍保留可用，供回归测试与路径清理逻辑引用。
  */
 object CdnUrlUtils {
-    const val CDN_BASE_URL = "https://rfx.hpoi.net/gk/"
+    /** Hpoi 主 CDN 根（与 [DefaultMediaPipeline.CDN_BASE_URL] 同源）。 */
+    const val CDN_BASE_URL = DefaultMediaPipeline.CDN_BASE_URL
 
+    /** 手办/条目封面变体（`sr` 保留纵横比、`s` 方形缩略、`n` 标准、`raw` 原图）。 */
     enum class CoverVariant(val prefix: String) {
         SR("cover/sr/"),
         SMALL("cover/s/"),
@@ -17,6 +32,7 @@ object CdnUrlUtils {
         }
     }
 
+    /** 用户相片变体（服务端无 `pic/sr/`）。 */
     enum class PicVariant(val prefix: String) {
         SMALL("pic/s/"),
         NORMAL("pic/n/"),
@@ -27,172 +43,250 @@ object CdnUrlUtils {
         }
     }
 
-    /**
-     * 清理资源路径中的已知变体前缀，提取纯相对路径或文件名。
-     */
-    fun cleanVariantPath(path: String, prefixes: List<String>): String {
-        var clean = path.removePrefix("/")
-        for (prefix in prefixes) {
-            if (clean.startsWith(prefix)) {
-                clean = clean.removePrefix(prefix)
-                break
-            }
-        }
-        return clean
-    }
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.cleanVariantPath）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.cleanVariantPath(path, prefixes)")
+    )
+    fun cleanVariantPath(path: String, prefixes: List<String>): String =
+        DefaultMediaPipeline.cleanVariantPath(path, prefixes)
 
-    /**
-     * 统一的 CDN URL 变体构建与协议完整性转换方法。
-     */
-    fun buildVariantUrl(path: String?, prefixes: List<String>, targetPrefix: String): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            var result: String = path
-            for (prefix in prefixes) {
-                if (prefix != targetPrefix) {
-                    result = result.replace("/$prefix", "/$targetPrefix")
-                }
-            }
-            return result
-        }
-        val clean = cleanVariantPath(path, prefixes)
-        return "$CDN_BASE_URL$targetPrefix$clean"
-    }
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.buildVariantUrl）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.buildVariantUrl(path, prefixes, targetPrefix)")
+    )
+    fun buildVariantUrl(path: String?, prefixes: List<String>, targetPrefix: String): String =
+        DefaultMediaPipeline.buildVariantUrl(path, prefixes, targetPrefix)
 
-    fun cleanCoverPath(path: String): String = cleanVariantPath(path, CoverVariant.allPrefixes)
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.cleanCoverPath）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.cleanCoverPath(path)")
+    )
+    fun cleanCoverPath(path: String): String = DefaultMediaPipeline.cleanCoverPath(path)
 
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.buildCoverUrl）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.buildCoverUrl(path, variant.prefix)")
+    )
     fun buildCoverUrl(path: String?, variant: CoverVariant): String =
-        buildVariantUrl(path, CoverVariant.allPrefixes, variant.prefix)
+        DefaultMediaPipeline.buildCoverUrl(path, variant.prefix)
 
-    /**
-     * 获取手办/相册封面自适应比例缩略图（/sr 变体，保留原始纵横比，适合瀑布流展示）。
-     */
-    fun getCoverSrUrl(path: String?): String = buildCoverUrl(path, CoverVariant.SR)
+    /** 手办/相册封面自适应比例缩略图（`cover/sr/`，保留原始纵横比，适合瀑布流）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverSrUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID)
 
-    /**
-     * 获取手办/条目封面小图（/s 变体，强制 1:1 正方形缩略图）。
-     */
-    fun getCoverSmallUrl(path: String?): String = buildCoverUrl(path, CoverVariant.SMALL)
+    /** 手办/条目封面小图（`cover/s/`，强制 1:1 正方形缩略图）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverSmallUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)
 
-    /**
-     * 获取手办/条目封面标准图（/n 变体，适合详情页与列表展示）。
-     */
-    fun getCoverUrl(path: String?): String = buildCoverUrl(path, CoverVariant.NORMAL)
+    /** 手办/条目封面标准图（`cover/n/`，适合详情页与列表展示）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
-    /**
-     * 获取手办/条目封面高清原图（/raw 变体，适合全屏看图等）。
-     */
-    fun getRawCoverUrl(path: String?): String = buildCoverUrl(path, CoverVariant.RAW)
+    /** 手办/条目封面高清原图（`cover/raw/`，适合全屏看图）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveRawUrl(path, MediaCategory.HOBBY)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveRawUrl(path, MediaCategory.HOBBY)",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getRawCoverUrl(path: String?): String =
+        MediaPipeline.Default.resolveRawUrl(path, MediaCategory.HOBBY)
 
     /**
      * Hpoi 官方缺省封面相对路径。
      * 当条目没有上传独立封面时，服务端 CDN 部署了固定的 "none.jpg"（绿发吉祥物“暂无封面”插画）。
      */
-    const val DEFAULT_COVER_PATH = "none.jpg"
+    const val DEFAULT_COVER_PATH = DefaultMediaPipeline.DEFAULT_COVER_PATH
 
-    /**
-     * 校验给定封面路径是否为空、空白、字符串 "null" 或官方缺省占位符。
-     */
-    fun isNoCover(path: String?): Boolean {
-        if (path.isNullOrBlank()) return true
-        val trimmed = path.trim().lowercase()
-        if (trimmed == "null" || trimmed == "none" || trimmed == "none.jpg") return true
-        val clean = cleanCoverPath(trimmed).removePrefix("/")
-        if (clean.isEmpty() || clean == "none.jpg" || clean == "none" || clean == "null") return true
-        val filename = clean.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
-        return filename == "none.jpg" || filename == "none" || filename == "null" || filename.isEmpty()
-    }
+    /** 校验给定封面路径是否为空、空白、字符串 "null" 或官方缺省占位符。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.isPlaceholder(path)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.isPlaceholder(path)",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun isNoCover(path: String?): Boolean = MediaPipeline.Default.isPlaceholder(path)
 
-    /**
-     * 获取指定变体的官方缺省封面完整 CDN URL。
-     */
+    /** 获取指定变体的官方缺省封面完整 CDN URL。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.getDefaultCoverUrl(purpose)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.getDefaultCoverUrl(ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
     fun getDefaultCoverUrl(variant: CoverVariant = CoverVariant.NORMAL): String =
-        "$CDN_BASE_URL${variant.prefix}$DEFAULT_COVER_PATH"
+        DefaultMediaPipeline.getDefaultCoverUrlByPrefix(variant.prefix)
 
-    /**
-     * 获取手办/条目封面标准图（/n 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
-     */
-    fun getCoverUrlOrDefault(path: String?): String {
-        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.NORMAL) else getCoverUrl(path)
-    }
+    /** 手办/条目封面标准图（`cover/n/`），路径为空或占位符时回退官方缺省封面。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverUrlOrDefault(path: String?): String =
+        DefaultMediaPipeline.resolveCoverUrlOrDefault(path, ImagePurpose.CARD_STANDARD)
 
-    /**
-     * 获取手办/条目封面小图（/s 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
-     */
-    fun getCoverSmallUrlOrDefault(path: String?): String {
-        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.SMALL) else getCoverSmallUrl(path)
-    }
+    /** 手办/条目封面小图（`cover/s/`），路径为空或占位符时回退官方缺省封面。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.THUMBNAIL)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverSmallUrlOrDefault(path: String?): String =
+        DefaultMediaPipeline.resolveCoverUrlOrDefault(path, ImagePurpose.THUMBNAIL)
 
-    /**
-     * 获取手办/相册封面自适应比例缩略图（/sr 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
-     */
-    fun getCoverSrUrlOrDefault(path: String?): String {
-        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.SR) else getCoverSrUrl(path)
-    }
+    /** 手办/相册封面自适应比例缩略图（`cover/sr/`），路径为空或占位符时回退官方缺省封面。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.ADAPTIVE_GRID)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.ADAPTIVE_GRID)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getCoverSrUrlOrDefault(path: String?): String =
+        DefaultMediaPipeline.resolveCoverUrlOrDefault(path, ImagePurpose.ADAPTIVE_GRID)
 
-    /**
-     * 获取手办/条目高清原图（/raw 变体），并在路径为空或为缺省占位符时安全回退至官方缺省封面图。
-     */
-    fun getRawCoverUrlOrDefault(path: String?): String {
-        return if (isNoCover(path)) getDefaultCoverUrl(CoverVariant.RAW) else getRawCoverUrl(path)
-    }
+    /** 手办/条目高清原图（`cover/raw/`），路径为空或占位符时回退官方缺省封面。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.FULLSCREEN_RAW)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveCoverUrlOrDefault(path, ImagePurpose.FULLSCREEN_RAW)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getRawCoverUrlOrDefault(path: String?): String =
+        DefaultMediaPipeline.resolveCoverUrlOrDefault(path, ImagePurpose.FULLSCREEN_RAW)
 
-    fun cleanPicPath(path: String): String = cleanVariantPath(path, PicVariant.allPrefixes)
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.cleanPicPath）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.cleanPicPath(path)")
+    )
+    fun cleanPicPath(path: String): String = DefaultMediaPipeline.cleanPicPath(path)
 
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.buildPicUrl）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.buildPicUrl(path, variant.prefix)")
+    )
     fun buildPicUrl(path: String?, variant: PicVariant): String =
-        buildVariantUrl(path, PicVariant.allPrefixes, variant.prefix)
+        DefaultMediaPipeline.buildPicUrl(path, variant.prefix)
 
-    /**
-     * 获取用户头像小图缩略图（head/s/ 变体，适合列表项等小尺寸展示）。
-     */
-    fun getHeadSmallUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val cleanPath = path.removePrefix("/").removePrefix("head/s/").removePrefix("head/n/").removePrefix("head/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}head/s/$cleanPath"
-    }
+    /** 用户头像小图（`head/s/`，适合列表项等小尺寸展示）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.THUMBNAIL)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getHeadSmallUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.THUMBNAIL)
 
-    /**
-     * 获取用户头像标准图（head/n/ 变体，高清大头像，适合个人中心、资料页、主页头部）。
-     */
-    fun getHeadUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val cleanPath = path.removePrefix("/").removePrefix("head/s/").removePrefix("head/n/").removePrefix("head/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}head/n/$cleanPath"
-    }
+    /** 用户头像标准图（`head/n/`，个人中心、资料页、主页头部）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getHeadUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
 
-    /**
-     * 获取用户头像高清原图（head/raw/ 变体，适合全屏看图）。
-     */
-    fun getRawHeadUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val cleanPath = path.removePrefix("/").removePrefix("head/s/").removePrefix("head/n/").removePrefix("head/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}head/raw/$cleanPath"
-    }
+    /** 用户头像高清原图（`head/raw/`，适合全屏看图）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveRawUrl(path, MediaCategory.AVATAR)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveRawUrl(path, MediaCategory.AVATAR)",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getRawHeadUrl(path: String?): String =
+        MediaPipeline.Default.resolveRawUrl(path, MediaCategory.AVATAR)
 
-    /**
-     * 获取讨论贴图片标准缩略图（posts/n/ 变体，适合列表多图平铺展示）。
-     */
-    fun getPostsUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val cleanPath = path.removePrefix("/").removePrefix("posts/n/").removePrefix("posts/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}posts/n/$cleanPath"
-    }
+    /** 讨论贴图片标准缩略图（`posts/n/`，适合列表多图平铺展示）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.POST, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.POST, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getPostsUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.POST, ImagePurpose.CARD_STANDARD)
 
     /**
      * 获取讨论贴图片高清原图。
      * 说明：Hpoi CDN 对讨论帖图片仅部署了 `posts/n/` 路径（单规格标准图），不存在 `posts/raw/` 独立目录（请求会报 404）。
-     * 因此全屏大图查看器查看讨论帖图片时统一使用 [getPostsUrl]（`posts/n/`）。
      */
-    fun getPostsRawUrl(path: String?): String = getPostsUrl(path)
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveRawUrl(path, MediaCategory.POST)（管道内已强制降级 posts/n/）",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveRawUrl(path, MediaCategory.POST)",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getPostsRawUrl(path: String?): String =
+        MediaPipeline.Default.resolveRawUrl(path, MediaCategory.POST)
 
-    /**
-     * 获取用户相片小图缩略图（/s 变体，1:1 方形最小档，适合列表附图九宫格）。
-     */
-    fun getPicSmallUrl(path: String?): String = buildPicUrl(path, PicVariant.SMALL)
+    /** 用户相片小图缩略图（`pic/s/`，1:1 方形最小档，适合列表附图九宫格）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.THUMBNAIL)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getPicSmallUrl(path: String?): String =
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.THUMBNAIL)
 
     /**
      * 兼容别名：默认返回小图缩略图。
@@ -204,103 +298,138 @@ object CdnUrlUtils {
     )
     fun getPicUrl(path: String?): String = getPicSmallUrl(path)
 
-    /**
-     * 获取用户相片中图/大图（/n 变体，高清晰度自适应图，适合动态流主图与全屏大图初次加载）。
-     */
-    fun getPicNUrl(path: String?): String = buildPicUrl(path, PicVariant.NORMAL)
+    /** 用户相片中图/大图（`pic/n/`，动态流主图与全屏大图初次加载）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getPicNUrl(path: String?): String =
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.CARD_STANDARD)
 
-    /**
-     * 获取用户相片高清原图（/raw 变体，未经压缩全量图，适合全屏看图点击“查看原图”）。
-     */
-    fun getRawPicUrl(path: String?): String = buildPicUrl(path, PicVariant.RAW)
+    /** 用户相片高清原图（`pic/raw/`，未经压缩全量图）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.FULLSCREEN_RAW)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.FULLSCREEN_RAW)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getRawPicUrl(path: String?): String =
+        MediaPipeline.Default.resolvePictureUrl(path, ImagePurpose.FULLSCREEN_RAW)
 
-    /**
-     * 获取用户主页横幅图片 URL（bnr/n/ 变体）。
-     */
-    fun getBannerUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val cleanPath = path.removePrefix("/").removePrefix("bnr/n/").removePrefix("bnr/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}bnr/n/$cleanPath"
-    }
+    /** 用户主页横幅图片 URL（`bnr/n/` 变体）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getBannerUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
 
     /**
      * 获取用户主页横幅高清原图。
-     * 说明：Hpoi CDN 对横幅背景图仅部署了 `bnr/n/` 路径（单规格标准图），不存在 `bnr/raw/` 独立目录（请求会报 404）。
-     * 因此全屏大图查看器查看横幅时直接使用 `bnr/n/`。
+     * 说明：Hpoi CDN 对横幅背景图仅部署了 `bnr/n/` 路径，不存在 `bnr/raw/` 独立目录（请求会报 404）。
      */
-    fun getRawBannerUrl(path: String?): String = getBannerUrl(path)
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveRawUrl(path, MediaCategory.BANNER)（管道内已强制降级 bnr/n/）",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveRawUrl(path, MediaCategory.BANNER)",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getRawBannerUrl(path: String?): String =
+        MediaPipeline.Default.resolveRawUrl(path, MediaCategory.BANNER)
 
-    /**
-     * 获取二手交易卖家上传的实物照片 URL（resale/n/ 变体，100% 对齐 Hpoi 原版逆向 pe/c.p 规则）。
-     */
-    fun getResalePicUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        val trimmed = path.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
-        val cleanPath = trimmed.removePrefix("/").removePrefix("resale/n/").removePrefix("resale/raw/").removePrefix("/")
-        return "${CDN_BASE_URL}resale/n/$cleanPath"
-    }
+    /** 二手交易卖家上传的实物照片 URL（`resale/n/`，100% 对齐 Hpoi 原版逆向 pe/c.p 规则）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.RESALE, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.RESALE, ImagePurpose.CARD_STANDARD)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getResalePicUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.RESALE, ImagePurpose.CARD_STANDARD)
 
-    fun getStickerUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        return "${CDN_BASE_URL}sticker/item/${path.trimStart('/')}"
-    }
+    /** 表情贴纸 URL（`sticker/item/` 目录，非通用媒体变体家族，仅此处使用）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.resolveStickerUrl）",
+        replaceWith = ReplaceWith("DefaultMediaPipeline.resolveStickerUrl(path)")
+    )
+    fun getStickerUrl(path: String?): String = DefaultMediaPipeline.resolveStickerUrl(path)
 
-    const val EXHOBBY_CDN_BASE_URL = "https://res.e39x.com/pic/"
+    /** ExHobby 扩展图库 CDN 根（与 [DefaultMediaPipeline.EX_HOBBY_CDN_BASE_URL] 同源）。 */
+    const val EXHOBBY_CDN_BASE_URL = DefaultMediaPipeline.EX_HOBBY_CDN_BASE_URL
 
-    /**
-     * 获取 ExHobby 扩展图库缩略图 URL（/s 变体，用于列表与横滑流）。
-     */
-    fun getExHobbyThumbUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val clean = path.removePrefix("/").removePrefix("pic/s/").removePrefix("pic/n/").removePrefix("/")
-        return "${EXHOBBY_CDN_BASE_URL}s/$clean"
-    }
+    /** ExHobby 扩展图库缩略图 URL（`s/` 变体，用于列表与横滑流）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.THUMBNAIL)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getExHobbyThumbUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.THUMBNAIL)
 
-    /**
-     * 获取 ExHobby 扩展图库中/大图与高清全屏画廊 URL（/n 变体，供列表卡片与大图画廊共享缓存以实现点击秒开）。
-     */
-    fun getExHobbyFullUrl(path: String?): String {
-        if (path.isNullOrBlank()) return ""
-        if (path.startsWith("http://") || path.startsWith("https://")) return path
-        val clean = path.removePrefix("/").removePrefix("pic/s/").removePrefix("pic/n/").removePrefix("/")
-        return "${EXHOBBY_CDN_BASE_URL}n/$clean"
-    }
+    /** ExHobby 扩展图库中/大图与高清全屏画廊 URL（`n/` 变体）。 */
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW)",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getExHobbyFullUrl(path: String?): String =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW)
 
     /**
      * 获取专区图标 CDN URL（对齐 Hpoi 原版逆向规则）：
      * - 若以 "zone/" 开头，使用 https://rfx.hpoi.net/gk/
      * - 否则回退使用 cover/s/ 缩略图变体 https://rfx.hpoi.net/gk/cover/s/
      */
-    fun getZoneIconUrl(path: String?): String? {
-        if (path.isNullOrBlank()) return null
-        val trimmed = path.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
-        val clean = trimmed.removePrefix("/")
-        return if (clean.startsWith("zone/")) {
-            "${CDN_BASE_URL}$clean"
-        } else {
-            "${CDN_BASE_URL}cover/s/$clean"
-        }
-    }
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.THUMBNAIL)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.THUMBNAIL).ifEmpty { null }",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getZoneIconUrl(path: String?): String? =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.THUMBNAIL).ifEmpty { null }
 
     /**
      * 获取专区封面背景大图 CDN URL（对齐 Hpoi 原版逆向规则）：
      * - 若以 "zone/" 开头，使用 https://rfx.hpoi.net/gk/
      * - 否则回退使用 cover/n/ 标准图变体 https://rfx.hpoi.net/gk/cover/n/
      */
-    fun getZoneCoverUrl(path: String?): String? {
-        if (path.isNullOrBlank()) return null
-        val trimmed = path.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
-        val clean = trimmed.removePrefix("/")
-        return if (clean.startsWith("zone/")) {
-            "${CDN_BASE_URL}$clean"
-        } else {
-            "${CDN_BASE_URL}cover/n/$clean"
-        }
-    }
+    @Deprecated(
+        message = "请迁移至 MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.CARD_STANDARD)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.CARD_STANDARD).ifEmpty { null }",
+            "com.nobody.repoi.data.media.ImagePurpose",
+            "com.nobody.repoi.data.media.MediaCategory",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
+    )
+    fun getZoneCoverUrl(path: String?): String? =
+        MediaPipeline.Default.resolveUrl(path, MediaCategory.ZONE, ImagePurpose.CARD_STANDARD).ifEmpty { null }
 }

@@ -5,14 +5,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,7 +54,6 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,23 +63,19 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import coil3.ImageLoader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.platform.LocalAppMessages
@@ -96,6 +85,8 @@ import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
+import com.nobody.repoi.ui.common.POI_DEFAULT_MAX_DECODE_WIDTH_PX
+import com.nobody.repoi.ui.common.PoiZoomableImage
 import kotlin.math.roundToInt
 import com.nobody.repoi.ui.theme.largeCard
 
@@ -159,13 +150,14 @@ fun PictureGalleryScreen(
     val messages = LocalAppMessages.current
     val imageLoader: ImageLoader = koinInject()
     val coroutineScope = rememberCoroutineScope()
-    // 超长图保护用的解码高度上限：取自当前窗口自适应信息（KMP 无 android Configuration）
-    val screenHeightPx = with(LocalDensity.current) {
-        currentWindowAdaptiveInfoV2().windowSizeClass.run { null }.let {
-            // 回退：以窗口高度下限断点估算（桌面/手机均可用，精确值由 Density 换算）
-            800.dp.toPx()
-        }
-    }.roundToInt()
+    // 超长图保护用的解码高度上限：优先取真实窗口高度（KMP 无 android Configuration，
+    // 但 LocalWindowInfo 在双端均给出容器像素尺寸；桌面缩放窗口、分屏时会实时变化），
+    // 取不到（初始帧为 0）时回落 800dp 估算值，保证解码上限始终有限、巨图不会 OOM
+    val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    val screenHeightPx = remember(windowSize, density) {
+        windowSize.height.takeIf { it > 0 } ?: with(density) { 800.dp.toPx().roundToInt() }
+    }
 
     var isCurrentPageZoomed by remember { mutableStateOf(false) }
     var chromeVisible by remember { mutableStateOf(true) }
@@ -213,7 +205,7 @@ fun PictureGalleryScreen(
             if (url.isNotBlank()) {
                 val request = ImageRequest.Builder(platformContext)
                     .data(url)
-                    .size(MAX_DECODE_WIDTH_PX, screenHeightPx)
+                    .size(POI_DEFAULT_MAX_DECODE_WIDTH_PX, screenHeightPx)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .build()
@@ -236,23 +228,17 @@ fun PictureGalleryScreen(
         ) { page ->
             val item = items.getOrNull(page) ?: return@HorizontalPager
             val url = viewModel.currentDisplayUrl(item, uiState.showRaw)
-            GalleryZoomableImage(
+            PoiZoomableImage(
                 imageUrl = url,
-                isCurrentPage = pagerState.currentPage == page,
+                isActive = pagerState.currentPage == page,
                 maxDecodeHeightPx = screenHeightPx,
                 onZoomChanged = { zoomed ->
                     if (pagerState.currentPage == page) {
                         isCurrentPageZoomed = zoomed
                     }
                 },
-                onSingleTap = {
-                    // 单击切换操作层显隐；放大态下单击先复位缩放
-                    if (isCurrentPageZoomed) {
-                        isCurrentPageZoomed = false
-                    } else {
-                        chromeVisible = !chromeVisible
-                    }
-                },
+                // 放大态单击由基元内部只复位缩放、不冒泡；此处仅处理未放大态的 chrome 切换
+                onSingleTap = { chromeVisible = !chromeVisible },
                 onLongPress = { showActionSheet = true },
                 onDetectLongImage = { viewModel.markLongImage() }
             )
@@ -522,133 +508,6 @@ private fun GalleryIconButton(
         }
     }
 }
-
-// ── 缩放大图 ────────────────────────────────────────────────
-
-/**
- * 可缩放大图：捏合缩放（1–4x）、放大态单指平移、双击缩放、长按回调。
- *
- * 与 `ui/common/ImageViewerDialog.kt` 的 `ZoomableImage` 同源实现，
- * **未修改该文件**（其它页面仍在使用），此处独立承载画廊的额外回调。
- *
- * @param maxDecodeHeightPx 超长图保护用的解码高度上限（按屏幕高度换算，见 [maxDecodeHeightPx]）
- * @param onDetectLongImage 解码后发现图片远高于屏幕时回调，UI 据此给出提示
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun GalleryZoomableImage(
-    imageUrl: String,
-    isCurrentPage: Boolean,
-    maxDecodeHeightPx: Int,
-    onZoomChanged: (Boolean) -> Unit,
-    onSingleTap: () -> Unit,
-    onLongPress: () -> Unit,
-    onDetectLongImage: () -> Unit
-) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    LaunchedEffect(isCurrentPage) {
-        if (!isCurrentPage) {
-            scale = 1f
-            offset = Offset.Zero
-            onZoomChanged(false)
-        }
-    }
-
-    val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
-        val newScale = (scale * zoomChange).coerceIn(1f, 4f)
-        scale = newScale
-        if (newScale > 1f) {
-            offset += panChange
-            onZoomChanged(true)
-        } else {
-            scale = 1f
-            offset = Offset.Zero
-            onZoomChanged(false)
-        }
-    }
-
-    val isZoomed = scale > 1.05f
-    var isImageLoading by remember(imageUrl) { mutableStateOf(true) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(
-                if (isZoomed) {
-                    Modifier.pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            offset += dragAmount
-                        }
-                    }
-                } else {
-                    Modifier
-                }
-            )
-            .transformable(state = transformableState, canPan = { scale > 1.05f })
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onSingleTap,
-                onLongClick = onLongPress,
-                onDoubleClick = {
-                    if (scale > 1f) {
-                        scale = 1f
-                        offset = Offset.Zero
-                        onZoomChanged(false)
-                    } else {
-                        scale = 2.5f
-                        onZoomChanged(true)
-                    }
-                }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalPlatformContext.current)
-                .data(imageUrl)
-                .crossfade(true)
-                // 超长图保护（P2）：按屏幕高度夹取解码尺寸，避免 Coil 一次性解码整张巨图导致 OOM
-                .size(MAX_DECODE_WIDTH_PX, maxDecodeHeightPx)
-                .build(),
-            contentDescription = "高清大图",
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                ),
-            contentScale = ContentScale.Fit,
-            onSuccess = { state ->
-                isImageLoading = false
-                // 图片高度远超一屏时提示「已按屏幕高度优化显示」
-                val size = state.painter.intrinsicSize
-                if (size.height > maxDecodeHeightPx * LONG_IMAGE_THRESHOLD) {
-                    onDetectLongImage()
-                }
-            },
-            onError = { isImageLoading = false }
-        )
-
-        if (isImageLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(36.dp),
-                color = Color.White.copy(alpha = 0.7f),
-                strokeWidth = 3.dp
-            )
-        }
-    }
-}
-
-/** 解码宽度上限（不随屏幕宽度限制，只按高度夹取，避免超长图 OOM） */
-private const val MAX_DECODE_WIDTH_PX = 4096
-
-/** 图片高度超过屏幕高度的该倍数即判定为超长图 */
-private const val LONG_IMAGE_THRESHOLD = 3f
 
 // ── 底部面板：备注 + 关联条目 ────────────────────────────────
 

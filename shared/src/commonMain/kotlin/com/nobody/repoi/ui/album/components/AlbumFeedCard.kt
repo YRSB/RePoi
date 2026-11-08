@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.album.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,26 +22,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import com.nobody.repoi.ui.common.listImageKey
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.ui.common.UserAvatar
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.platform.DateTimeFormats
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.UserAvatar
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -128,19 +121,13 @@ fun AlbumFeedCard(
 
 @Composable
 private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifier = Modifier) {
-    val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.cover)
-    val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.cover)
-    val ratioKey = listImageKey(item.cover, coverUrl, "sr")
-    val coverRequest = rememberListImageRequest(item.cover, coverUrl, "sr:waterfall")
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    var aspectRatio by remember(ratioKey, isNoCover) {
-        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
-    }
+    // 无封面判定统一交给管道：显式 hasCover 为假，或路径为空/官方缺省吉祥物（none.jpg）时走纯文本卡
+    val isNoCover = !item.hasCover || MediaPipeline.Default.isPlaceholder(item.cover)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(aspectRatio)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            // 文本卡沿用历史 17:24 黄金比例；有封面时高度由 PoiAsyncImage 的 adaptiveRatio 撑开
+            .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
     ) {
         if (isNoCover) {
             AlbumTextCover(
@@ -148,19 +135,15 @@ private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifie
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            AsyncImage(
-                model = coverRequest,
+            // 相册无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/
+            PoiAsyncImage(
+                path = item.cover,
+                category = MediaCategory.ALBUM,
+                purpose = ImagePurpose.ADAPTIVE_GRID,
                 contentDescription = item.displayName.ifBlank { "相册封面" },
-                contentScale = ContentScale.Crop,
-                onSuccess = { state ->
-                    val size = state.painter.intrinsicSize
-                    if (size.width > 0 && size.height > 0) {
-                        val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                        aspectRatio = ratio
-                        ImageAspectRatioCache[ratioKey] = ratio
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth(),
+                adaptiveRatio = true,
+                fallbackRatio = 1.0f
             )
         }
         if (rank != null) {

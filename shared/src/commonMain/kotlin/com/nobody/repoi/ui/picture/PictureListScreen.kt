@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.picture
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,7 +18,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
@@ -50,31 +47,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.navigation.PictureListNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.foundation.shape.CircleShape
 
 /**
@@ -96,9 +85,15 @@ fun PictureListScreen(
 
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // 提取所有高清原图链接，供全屏画廊查看
+    // 提取所有高清原图链接，供全屏画廊查看：
+    // 画廊消费的是纯 URL 字符串（非 PoiAsyncImage 下游），故此处保留 Pipeline 直调，
+    // 由 `pic/` 家族解析落到 `pic/raw/` 原图档
     val allRawUrls = remember(uiState.items) {
-        uiState.items.mapNotNull { it.imagePath?.let { path -> CdnUrlUtils.getRawPicUrl(path) } }
+        uiState.items.mapNotNull { pic ->
+            pic.imagePath
+                ?.let { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
+                ?.takeIf { it.isNotBlank() }
+        }
     }
 
     val imageViewer = LocalImageViewer.current
@@ -204,9 +199,15 @@ fun PictureListScreen(
                                 pic = pic,
                                 index = index,
                                 onClick = {
-                                    val rawUrl = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
+                                    // 与画廊列表同源：用同一套 `pic/raw/` 解析结果定位当前图下标
+                                    val rawUrl = pic.imagePath
+                                        ?.let {
+                                            MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW)
+                                        }
+                                        ?.takeIf { it.isNotBlank() }
                                     val targetIndex = if (rawUrl != null) {
-                                        allRawUrls.indexOf(rawUrl).takeIf { it >= 0 } ?: index.coerceIn(0, allRawUrls.size - 1)
+                                        allRawUrls.indexOf(rawUrl).takeIf { it >= 0 }
+                                            ?: index.coerceIn(0, allRawUrls.size - 1)
                                     } else {
                                         index.coerceIn(0, allRawUrls.size - 1)
                                     }
@@ -223,7 +224,11 @@ fun PictureListScreen(
 
                         // 底部状态指示
                         if (uiState.isAppending || uiState.loadMoreError != null || !uiState.hasMore) {
-                            item(span = StaggeredGridItemSpan.FullLine, key = "footer_state") {
+                            item(
+                                span = StaggeredGridItemSpan.FullLine,
+                                key = "footer_state",
+                                contentType = "picture_footer"
+                            ) {
                                 PictureListFooter(
                                     isAppending = uiState.isAppending,
                                     loadMoreError = uiState.loadMoreError,
@@ -240,7 +245,7 @@ fun PictureListScreen(
 }
 
 /**
- * 极简瀑布流相片卡片项（对齐相册页自适应纵横比与 ImageAspectRatioCache 策略，100% 对齐 Hpoi 原版使用 /pic/n/ 规格展示）。
+ * 极简瀑布流相片卡片项（100% 对齐 Hpoi 原版使用 `pic/n/` 规格展示，高度按真实纵横比自适应）。
  */
 @Composable
 private fun PictureGridCard(
@@ -249,13 +254,11 @@ private fun PictureGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val imageUrl = remember(pic.imagePath) {
-        pic.imagePath?.let { CdnUrlUtils.getPicNUrl(it) }.orEmpty()
+    // 缩略图走 `pic/n/`（`pic/` 家族无 `sr` 档），先解析成绝对 URL 再交给基元通用重载；
+    // 服务端返回的已知宽高优先作为首帧回退比例，避免解码前抖动
+    val thumbnailUrl = remember(pic.imagePath) {
+        MediaPipeline.Default.resolvePictureUrl(pic.imagePath, ImagePurpose.CARD_STANDARD)
     }
-    val ratioKey = listImageKey(pic.imagePath, imageUrl, "n")
-    val initialRatio = pic.aspectRatio ?: ImageAspectRatioCache[ratioKey] ?: 1.0f
-    var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
-    val imageRequest = rememberListImageRequest(pic.imagePath, imageUrl, "n:waterfall")
 
     Card(
         modifier = modifier
@@ -269,32 +272,18 @@ private fun PictureGridCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(aspectRatio)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
-            if (imageUrl.isNotBlank()) {
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = "第 ${index + 1} 张图片",
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.4f, 2.5f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.BrokenImage,
-                    contentDescription = "图片损坏",
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            }
+            // 空路径/缺省图由基元直接落官方缺省图，失败态由基元渲染破损图标
+            PoiAsyncImage(
+                model = thumbnailUrl,
+                contentDescription = "第 ${index + 1} 张图片",
+                modifier = Modifier.fillMaxWidth(),
+                adaptiveRatio = true,
+                ratioKey = pic.imagePath,
+                fallbackRatio = pic.aspectRatio ?: 1.0f
+            )
         }
     }
 }
@@ -385,7 +374,11 @@ private fun PictureListSkeleton(
         modifier = modifier.fillMaxSize(),
         userScrollEnabled = false
     ) {
-        items(6) { index ->
+        items(
+            count = 6,
+            key = { "picture_skeleton_$it" },
+            contentType = { "skeleton" }
+        ) { index ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

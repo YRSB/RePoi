@@ -1,5 +1,8 @@
 package com.nobody.repoi.util
 
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ActionItem
 
 /**
@@ -13,11 +16,20 @@ data class FeedMediaDisplayInfo(
     val isAlbumNoCover: Boolean = false
 )
 
+/**
+ * 动态流媒体解析器：保留动态流卡片展示信息拼装模型，底层统一委托 [MediaPipeline]。
+ *
+ * 默认消费 [MediaPipeline.Default]（无状态纯计算）；需要替换实现（测试替身/未来策略切换）时
+ * 直接调用接受 [MediaPipeline] 参数的重载，避免引入全局可变状态。
+ */
 object FeedMediaResolver {
     /**
      * 100% 对齐 Hpoi 官方规范 (ActionListAdapter.java:534-574 & FollowAdapter.java:21-36) 解析动态条目的媒体展示数据。
      */
-    fun resolve(actionItem: ActionItem): FeedMediaDisplayInfo {
+    fun resolve(actionItem: ActionItem): FeedMediaDisplayInfo = resolve(actionItem, MediaPipeline.Default)
+
+    /** 以指定管道解析（测试注入用）。 */
+    fun resolve(actionItem: ActionItem, media: MediaPipeline): FeedMediaDisplayInfo {
         val relateItem = actionItem.relateItem
         val extraImages = actionItem.relateData?.mapNotNull { it.path }?.filter { it.isNotBlank() } ?: emptyList()
 
@@ -25,55 +37,50 @@ object FeedMediaResolver {
 
         val rawPath = relateItem?.path?.trim()
         val rawCover = relateItem?.cover?.trim()
+        val hasCoverPath = !rawCover.isNullOrBlank() && !media.isPlaceholder(rawCover)
 
         // 官方判定逻辑（ActionListAdapter.java 536-574 & FollowAdapter.java 21-36）：
-        // 1. 若 relateItem 具有 path 属性（picture 类/手办随像）：
-        //    直接使用 pic/n/ + path；原图使用 pic/raw/ + path。
+        // 1. 若 relateItem 具有 path 属性（picture 类/手办随像）：直接使用 pic/n/ + path；原图使用 pic/raw/ + path。
         // 2. 若为相册（isAlbum）：
-        //    - 若 cover 为空或为 none.jpg，显示纯文本卡片（isAlbumNoCover = true，coverUrl = ""）；
-        //    - 若有封面，官方必须走 cover/sr/ + cover（CDN 上相册无 cover/n/ 规格，请求会报 404！）；
-        //      原图查看器使用 cover/raw/ + cover。
+        //    - cover 为空或为 none.jpg → 纯文本卡片（isAlbumNoCover = true，coverUrl = ""）；
+        //    - 有封面 → 官方必须走 cover/sr/（CDN 上相册无 cover/n/ 规格，请求会 404！）。
         // 3. 否则为常规条目（hobby / article 等）：
-        //    - 若 cover 为空或为 none.jpg，回退到官方缺省图 cover/n/none.jpg；
-        //    - 若有封面，走 cover/n/ + cover；原图查看器使用 cover/raw/ + cover。
-
+        //    - cover 为空或 none.jpg → 回退首张附图（pic/n/），无附图则 cover/n/none.jpg 缺省图；
+        //    - 有封面 → cover/n/ + cover。
         val hasPath = !rawPath.isNullOrBlank()
-        val isAlbumNoCover = isAlbum && (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover))
+        val isAlbumNoCover = isAlbum && !hasCoverPath
 
         data class CoverPick(val url: String, val rawUrl: String, val showLeft: Boolean, val dedupPath: String?)
 
-        // 官方判定逻辑（ActionListAdapter.java 536-574 & FollowAdapter.java 21-36）：
-        // 存在 path 用 pic/n/；相册有封面走 cover/sr/（无 cover/n/ 规格，请求报 404），无封面走纯文本卡；
-        // 常规有封面走 cover/n/，无封面回退首张附图或 cover/n/none.jpg。
         val pick = when {
             hasPath -> CoverPick(
-                CdnUrlUtils.getPicNUrl(rawPath),
-                CdnUrlUtils.getRawPicUrl(rawPath),
+                media.resolvePictureUrl(rawPath, ImagePurpose.CARD_STANDARD),
+                media.resolvePictureUrl(rawPath, ImagePurpose.FULLSCREEN_RAW),
                 true,
                 rawPath
             )
-            isAlbum && isAlbumNoCover -> CoverPick("", "", true, null)
+            isAlbumNoCover -> CoverPick("", "", true, null)
             isAlbum -> CoverPick(
-                CdnUrlUtils.getCoverSrUrl(rawCover),
-                CdnUrlUtils.getRawCoverUrl(rawCover),
+                media.resolveUrl(rawCover, MediaCategory.ALBUM, ImagePurpose.ADAPTIVE_GRID),
+                media.resolveRawUrl(rawCover, MediaCategory.ALBUM),
                 true,
                 rawCover
             )
-            (rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover)) && extraImages.isNotEmpty() -> CoverPick(
-                CdnUrlUtils.getPicNUrl(extraImages.first()),
-                CdnUrlUtils.getRawPicUrl(extraImages.first()),
+            !hasCoverPath && extraImages.isNotEmpty() -> CoverPick(
+                media.resolvePictureUrl(extraImages.first(), ImagePurpose.CARD_STANDARD),
+                media.resolvePictureUrl(extraImages.first(), ImagePurpose.FULLSCREEN_RAW),
                 relateItem != null,
                 extraImages.first()
             )
-            rawCover.isNullOrBlank() || CdnUrlUtils.isNoCover(rawCover) -> CoverPick(
-                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.NORMAL),
-                CdnUrlUtils.getDefaultCoverUrl(CdnUrlUtils.CoverVariant.RAW),
+            !hasCoverPath -> CoverPick(
+                media.getDefaultCoverUrl(ImagePurpose.CARD_STANDARD),
+                media.getDefaultCoverUrl(ImagePurpose.FULLSCREEN_RAW),
                 relateItem != null,
                 null
             )
             else -> CoverPick(
-                CdnUrlUtils.getCoverUrl(rawCover),
-                CdnUrlUtils.getRawCoverUrl(rawCover),
+                media.resolveUrl(rawCover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD),
+                media.resolveRawUrl(rawCover, MediaCategory.HOBBY),
                 true,
                 rawCover
             )
@@ -92,7 +99,7 @@ object FeedMediaResolver {
             if (nonCoverImages.isNotEmpty() || extraImages.size <= 1) nonCoverImages else extraImages
         }
         // 原图列表全量收集（供全屏大图查看器）
-        val extraRawUrls = displayExtraImages.map { CdnUrlUtils.getRawPicUrl(it) }
+        val extraRawUrls = displayExtraImages.map { media.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
         val allRawUrls = buildList {
             if (coverRawUrl.isNotBlank() && shouldShowLeftCover && !isAlbumNoCover) {
                 add(coverRawUrl)

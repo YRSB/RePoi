@@ -27,8 +27,10 @@ import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.data.local.orAvailable
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.LocalMediaPipeline
 import com.nobody.repoi.ui.common.rememberImageViewerState
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import org.koin.compose.koinInject
@@ -81,6 +83,9 @@ private fun RePoiNavHost() {
     val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
+    // 多媒体管道来自 Koin 单例（与 MediaPipeline.Default 同一对象），经 CompositionLocal 下发给
+    // PoiAsyncImage 等呈现基元；提前取出，避免在 Provider 参数里直接调用可组合注入函数
+    val mediaPipeline: MediaPipeline = koinInject()
 
     val savedStateConfiguration = remember {
         SavedStateConfiguration { serializersModule = RePoiSerializersModule }
@@ -110,7 +115,8 @@ private fun RePoiNavHost() {
 
     CompositionLocalProvider(
         LocalImageViewer provides imageViewerState,
-        LocalAppMessages provides appMessages
+        LocalAppMessages provides appMessages,
+        LocalMediaPipeline provides mediaPipeline
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             val atMainRoot = rootBackStack.size <= 1

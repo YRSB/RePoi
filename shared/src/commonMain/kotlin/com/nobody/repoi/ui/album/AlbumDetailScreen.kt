@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -50,7 +49,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -81,7 +79,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,10 +96,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.rememberTextSharing
 import org.koin.compose.viewmodel.koinViewModel
@@ -121,6 +117,7 @@ import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import com.nobody.repoi.ui.common.ExpressiveToolbarButton
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.comment.AdaptiveDetailCommentScaffold
 import com.nobody.repoi.ui.common.comment.CommentFeedState
 import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
@@ -133,9 +130,7 @@ import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.HtmlRichTextParser
-import com.nobody.repoi.util.ImageAspectRatioCache
 import com.nobody.repoi.ui.theme.largeCard
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
@@ -233,9 +228,10 @@ fun AlbumDetailScreen(
         }
     }
 
+    // 全屏查看器只接受绝对 URL：此处结果直接喂给查看器（非 AsyncImage 下游），故保留管道解析
     val allPictureUrls = remember(uiState.pictures) {
         uiState.pictures.mapNotNull { pic ->
-            pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
+            pic.imagePath?.let { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
         }
     }
 
@@ -540,7 +536,14 @@ fun AlbumDetailScreen(
                         ExHobbyPreviewSection(
                             pics = uiState.exHobbyPics,
                             onPicClick = { index: Int ->
-                                val allFullUrls = uiState.exHobbyPics.map { CdnUrlUtils.getExHobbyFullUrl(it.path) }
+                                // 查看器消费绝对 URL，保留管道解析（ExHobby 无 raw 档，FULLSCREEN_RAW 落 n/）
+                                val allFullUrls = uiState.exHobbyPics.map {
+                                    MediaPipeline.Default.resolveUrl(
+                                        it.path,
+                                        MediaCategory.EX_HOBBY,
+                                        ImagePurpose.FULLSCREEN_RAW
+                                    )
+                                }
                                 if (allFullUrls.isNotEmpty()) {
                                     imageViewer.show(allFullUrls, index)
                                 }
@@ -632,15 +635,15 @@ private fun AlbumHeaderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    val avatarUrl = CdnUrlUtils.getHeadUrl(album?.user?.header)
-                    AsyncImage(
-                        model = avatarUrl,
+                    // 头像沿用旧 getHeadUrl 的 head/n/ 档位（AVATAR + CARD_STANDARD），失败态由组件承担
+                    PoiAsyncImage(
+                        path = album?.user?.header,
+                        category = MediaCategory.AVATAR,
+                        purpose = ImagePurpose.CARD_STANDARD,
                         contentDescription = album?.userNickname,
-                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                     )
 
@@ -804,23 +807,13 @@ private fun AlbumPictureItem(
     index: Int,
     onImageClick: (Int) -> Unit
 ) {
-    val imageUrl = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) } ?: ""
+    // 相册图片走 pic/ 家族（MediaCategory 无 pic 槽位），详情页主图用 CARD_STANDARD 落 pic/n/，
+    // 点击后由外层全屏查看器取 raw 档
     val pictureRatio = pic.pictureInfo?.let { info ->
         val w = info.width ?: 0
         val h = info.height ?: 0
         if (w > 0 && h > 0) w.toFloat() / h else null
     }
-    val placeholderRatio = pictureRatio ?: 1.33f
-    val imageModifier = if (pictureRatio != null) {
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(pictureRatio)
-    } else {
-        Modifier.fillMaxWidth()
-    }
-
-    var isImageLoading by remember(imageUrl) { mutableStateOf(imageUrl.isNotBlank()) }
-    var isImageError by remember(imageUrl) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -835,59 +828,15 @@ private fun AlbumPictureItem(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            // 加载中微光骨架占位
-            if (isImageLoading) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(placeholderRatio)
-                            .shimmerBackground()
-                    )
-                }
-            }
-
-            if (imageUrl.isNotBlank() && !isImageError) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(imageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "相册摄影作品第 ${index + 1} 张",
-                    modifier = imageModifier,
-                    contentScale = ContentScale.FillWidth,
-                    onSuccess = {
-                        isImageLoading = false
-                        isImageError = false
-                    },
-                    onError = {
-                        isImageLoading = false
-                        isImageError = true
-                    }
-                )
-            } else if (isImageError || imageUrl.isBlank()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(placeholderRatio)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "图片加载失败",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
+            // 自适应高度由基元负责：已知尺寸时以服务端宽高比为首帧占位，未知时回退 4:3
+            PoiAsyncImage(
+                model = MediaPipeline.Default.resolvePictureUrl(pic.imagePath, ImagePurpose.CARD_STANDARD),
+                contentDescription = "相册摄影作品第 ${index + 1} 张",
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth,
+                adaptiveRatio = true,
+                fallbackRatio = pictureRatio ?: 1.33f
+            )
         }
     }
 }
@@ -944,11 +893,6 @@ private fun RelatedHobbyCard(
     hobby: RelatedHobbyItem,
     onClick: () -> Unit
 ) {
-    val coverUrl = remember(hobby.cover) {
-        CdnUrlUtils.getCoverSmallUrl(hobby.cover)
-    }
-    var loadFailed by remember(hobby.cover) { mutableStateOf(false) }
-
     Card(
         onClick = onClick,
         modifier = Modifier.size(120.dp),
@@ -957,35 +901,14 @@ private fun RelatedHobbyCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            contentAlignment = Alignment.Center
-        ) {
-            if (coverUrl.isNotBlank() && !loadFailed) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = hobby.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    onError = { loadFailed = true }
-                )
-            } else if (coverUrl.isBlank()) {
-                Text(
-                    text = "暂无封面",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.BrokenImage,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            }
-        }
+        // 方块缩略图：固定尺寸由外层卡片给定，组件只负责填满与缺省/失败态
+        PoiAsyncImage(
+            path = hobby.cover,
+            category = MediaCategory.HOBBY,
+            purpose = ImagePurpose.THUMBNAIL,
+            contentDescription = hobby.displayName,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -1043,14 +966,8 @@ private fun RelatedAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
-    val coverUrl = remember(album.cover, isNoCover) {
-        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
-    }
-    val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
-    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
+    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+    val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
         onClick = onClick,
@@ -1063,7 +980,7 @@ private fun RelatedAlbumCard(
         Box(
             modifier = Modifier
                 .height(160.dp)
-                .aspectRatio(aspectRatio)
+                .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             if (isNoCover) {
@@ -1072,22 +989,16 @@ private fun RelatedAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverUrl)
-                        .crossfade(true)
-                        .build(),
+                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
+                // 高度由 adaptiveRatio 按真实比例撑开，替换原先手写的纵横比缓存回写
+                PoiAsyncImage(
+                    path = album.cover,
+                    category = MediaCategory.ALBUM,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = album.displayName,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.6f, 2.2f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    adaptiveRatio = true,
+                    fallbackRatio = 1.0f
                 )
             }
 

@@ -73,7 +73,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -86,7 +85,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import com.nobody.repoi.util.HtmlRichTextParser
@@ -95,21 +93,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import androidx.window.core.layout.WindowSizeClass.Companion.HEIGHT_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.platform.LocalAppMessages
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.ThumbUp
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.data.remote.model.HobbyDetailData
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.InfoListEntry
@@ -128,8 +125,6 @@ import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
@@ -199,13 +194,16 @@ fun HobbyDetailScreen(
     } else {
         val detail = uiState.detail
         val initialSkeleton = uiState.isInitialLoading && detail == null
+        // 查看器消费绝对 URL（非 AsyncImage 下游）：保留管道解析，原图档位落 cover/raw/
         val heroImages = buildList {
             val rawCover = detail?.cover ?: navParam.initialCover
-            if (!rawCover.isNullOrBlank() && !CdnUrlUtils.isNoCover(rawCover)) {
-                add(CdnUrlUtils.getRawCoverUrl(rawCover))
+            if (!MediaPipeline.Default.isPlaceholder(rawCover)) {
+                add(MediaPipeline.Default.resolveRawUrl(rawCover, MediaCategory.HOBBY))
             }
             uiState.officialPics.take(8).forEach { pic ->
-                val url = pic.imagePath?.let { CdnUrlUtils.getRawPicUrl(it) }
+                val url = pic.imagePath?.let {
+                    MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW)
+                }
                 if (!url.isNullOrBlank() && !contains(url)) {
                     add(url)
                 }
@@ -326,7 +324,11 @@ fun HobbyDetailScreen(
                                 }
                             },
                             onPicClick = { index ->
-                                val allPicUrls = uiState.officialPics.mapNotNull { it.imagePath?.let { p -> CdnUrlUtils.getRawPicUrl(p) } }
+                                val allPicUrls = uiState.officialPics.mapNotNull { pic ->
+                                    pic.imagePath?.let {
+                                        MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW)
+                                    }
+                                }
                                 if (allPicUrls.isNotEmpty()) {
                                     imageViewer.show(allPicUrls, index)
                                 }
@@ -466,7 +468,8 @@ fun HobbyDetailScreen(
                                     if (onNavigateToAlbum != null && album.id > 0) {
                                         onNavigateToAlbum(album.id)
                                     } else {
-                                        val coverUrl = CdnUrlUtils.getRawCoverUrl(album.cover)
+                                        // 无跳转目标时退化为原地全屏查看，仍需绝对原图 URL
+                                        val coverUrl = MediaPipeline.Default.resolveRawUrl(album.cover, MediaCategory.ALBUM)
                                         if (coverUrl.isNotBlank()) {
                                             imageViewer.show(coverUrl)
                                         }
@@ -494,7 +497,14 @@ fun HobbyDetailScreen(
                             ExHobbyPreviewSection(
                                 pics = uiState.exHobbyPics,
                                 onPicClick = { index: Int ->
-                                    val allFullUrls = uiState.exHobbyPics.map { CdnUrlUtils.getExHobbyFullUrl(it.path) }
+                                    // 查看器消费绝对 URL；ExHobby 无 raw 档，管道把 FULLSCREEN_RAW 落到 n/
+                                    val allFullUrls = uiState.exHobbyPics.map {
+                                        MediaPipeline.Default.resolveUrl(
+                                            it.path,
+                                            MediaCategory.EX_HOBBY,
+                                            ImagePurpose.FULLSCREEN_RAW
+                                        )
+                                    }
                                     if (allFullUrls.isNotEmpty()) {
                                         imageViewer.show(allFullUrls, index)
                                     }
@@ -556,23 +566,19 @@ private fun HobbyHeaderOfficialSection(
     isPicsLoading: Boolean = false
 ) {
     val rawCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
-    val coverUrl = when {
-        detail == null && initialCover.isNullOrBlank() -> ""
-        else -> CdnUrlUtils.getCoverUrlOrDefault(rawCover)
-    }
+    // 详情主图（含模糊背景与前景封面）属「详情大图展示」档位，走 cover/n/ 而非瀑布流 sr/
+    val hasCover = !(detail == null && initialCover.isNullOrBlank()) && !MediaPipeline.Default.isPlaceholder(rawCover)
 
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
         // 1. 底层封面图高斯模糊背景 (Atmospheric Frosted Backdrop)
-        if (coverUrl.isNotBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalPlatformContext.current)
-                    .data(coverUrl)
-                    .crossfade(true)
-                    .build(),
+        if (hasCover) {
+            PoiAsyncImage(
+                path = rawCover,
+                category = MediaCategory.HOBBY,
+                purpose = ImagePurpose.CARD_STANDARD,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .matchParentSize()
@@ -634,41 +640,16 @@ private fun HobbyHeaderOfficialSection(
                         )
                         .clickable(onClick = onCoverClick)
                 ) {
-                    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
+                    // 加载失败态由基元承担（柔和底色 + 破损图标），此处只保留骨架屏与「暂无封面」语义
                     when {
-                        coverUrl.isNotBlank() && !loadFailed -> {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data(coverUrl)
-                                    .crossfade(true)
-                                    .build(),
+                        hasCover -> {
+                            PoiAsyncImage(
+                                path = rawCover,
+                                category = MediaCategory.HOBBY,
+                                purpose = ImagePurpose.CARD_STANDARD,
                                 contentDescription = "手办完整封面",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                onError = { loadFailed = true }
+                                modifier = Modifier.fillMaxSize()
                             )
-                        }
-                        coverUrl.isNotBlank() && loadFailed -> {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.BrokenImage,
-                                    contentDescription = "封面加载失败",
-                                    tint = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "加载失败",
-                                    fontSize = 11.sp,
-                                    color = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f)
-                                )
-                            }
                         }
                         detail == null -> {
                             ShimmerHost {
@@ -740,12 +721,13 @@ private fun HobbyHeaderOfficialSection(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            val logoUrl = makerCover?.let { CdnUrlUtils.getRawCoverUrl(it) }.orEmpty()
-                            if (logoUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = logoUrl,
+                            if (!makerCover.isNullOrBlank()) {
+                                // 厂商 logo 属标准卡片展示档位，走 cover/n/
+                                PoiAsyncImage(
+                                    path = makerCover,
+                                    category = MediaCategory.HOBBY,
+                                    purpose = ImagePurpose.CARD_STANDARD,
                                     contentDescription = makerName,
-                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(4.dp))
@@ -875,7 +857,6 @@ private fun HobbyHeaderOfficialSection(
                             },
                             contentType = { _, _ -> "official_pic" }
                         ) { index, pic ->
-                            val url = pic.imagePath?.let { CdnUrlUtils.getPicSmallUrl(it) } ?: ""
                             Card(
                                 onClick = { onPicClick(index) },
                                 modifier = Modifier.size(130.dp),
@@ -884,13 +865,13 @@ private fun HobbyHeaderOfficialSection(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 )
                             ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                                        .data(url)
-                                        .crossfade(true)
-                                        .build(),
+                                // 横滑缩略条：pic/ 家族（MediaCategory 无 pic 槽位），缩略档位对齐 pic/s/
+                                PoiAsyncImage(
+                                    model = MediaPipeline.Default.resolvePictureUrl(
+                                        pic.imagePath,
+                                        ImagePurpose.THUMBNAIL
+                                    ),
                                     contentDescription = "官方定妆照 $index",
-                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -1377,8 +1358,7 @@ private fun HobbyRelatedHobbyCard(
     isDark: Boolean,
     onClick: () -> Unit
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
-    var loadFailed by remember(item.cover) { mutableStateOf(false) }
+    val hasCover = !MediaPipeline.Default.isPlaceholder(item.cover)
 
     Card(
         onClick = onClick,
@@ -1401,26 +1381,19 @@ private fun HobbyRelatedHobbyCard(
                     .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2)),
                 contentAlignment = Alignment.Center
             ) {
-                if (coverUrl.isNotBlank() && !loadFailed) {
-                    AsyncImage(
-                        model = coverUrl,
+                if (hasCover) {
+                    PoiAsyncImage(
+                        path = item.cover,
+                        category = MediaCategory.HOBBY,
+                        purpose = ImagePurpose.CARD_STANDARD,
                         contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
+                        modifier = Modifier.fillMaxSize()
                     )
-                } else if (coverUrl.isBlank()) {
+                } else {
                     Text(
                         text = "暂无封面",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.outline
                     )
                 }
 
@@ -1535,7 +1508,11 @@ private fun HobbyUserAlbumsSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(4) { index ->
+                items(
+                    count = 4,
+                    key = { "hobby_album_skeleton_$it" },
+                    contentType = { "skeleton" }
+                ) { index ->
                     val shimmerWidth = when (index % 3) {
                         0 -> 140.dp
                         1 -> 160.dp
@@ -1622,14 +1599,8 @@ private fun HobbyUserAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
-    val coverUrl = remember(album.cover, isNoCover) {
-        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
-    }
-    val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
-    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
+    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+    val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
         onClick = onClick,
@@ -1642,7 +1613,7 @@ private fun HobbyUserAlbumCard(
         Box(
             modifier = Modifier
                 .height(160.dp)
-                .aspectRatio(aspectRatio)
+                .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             if (isNoCover) {
@@ -1651,22 +1622,16 @@ private fun HobbyUserAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverUrl)
-                        .crossfade(true)
-                        .build(),
+                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
+                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+                PoiAsyncImage(
+                    path = album.cover,
+                    category = MediaCategory.ALBUM,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = album.displayName,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.6f, 2.2f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    adaptiveRatio = true,
+                    fallbackRatio = 1.0f
                 )
             }
 

@@ -4,14 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -29,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,30 +31,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import coil3.request.CachePolicy
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import coil3.ImageLoader
+import kotlin.math.roundToInt
 
 /**
  * 全局大图画廊弹窗宿主，统一挂载在根部脚手架 (RePoiApp) 中。
@@ -104,6 +95,13 @@ fun ImageViewerDialog(
     val platformContext = LocalPlatformContext.current
     val imageLoader: ImageLoader = koinInject()
     val coroutineScope = rememberCoroutineScope()
+    // 与 PictureGalleryScreen 同源的解码高度上限估算：窗口像素高度优先，取不到回落 800dp，
+    // 避免巨图全尺寸解码导致 OOM（此前这里完全未设上限）
+    val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    val decodeHeightPx = remember(windowSize, density) {
+        windowSize.height.takeIf { it > 0 } ?: with(density) { 800.dp.toPx().roundToInt() }
+    }
 
     // 追踪当前页面是否处于放大状态，放大状态下禁用 Pager 滑动以支持拖拽平移
     var isCurrentPageZoomed by remember { mutableStateOf(false) }
@@ -132,6 +130,9 @@ fun ImageViewerDialog(
                 if (url.isNotBlank()) {
                     val request = ImageRequest.Builder(platformContext)
                         .data(url)
+                        // 与 [PoiZoomableImage] 的解码尺寸保持一致：既避免巨图全尺寸解码导致 OOM，
+                        // 也让预取结果与主图请求命中同一份内存缓存（否则尺寸不同会缓存串味、失去秒开）
+                        .size(POI_DEFAULT_MAX_DECODE_WIDTH_PX, decodeHeightPx)
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .build()
@@ -162,9 +163,10 @@ fun ImageViewerDialog(
                 userScrollEnabled = !isCurrentPageZoomed,
                 beyondViewportPageCount = 1
             ) { page ->
-                ZoomableImage(
+                PoiZoomableImage(
                     imageUrl = imageUrls[page],
-                    isCurrentPage = pagerState.currentPage == page,
+                    isActive = pagerState.currentPage == page,
+                    maxDecodeHeightPx = decodeHeightPx,
                     onZoomChanged = { isZoomed ->
                         if (pagerState.currentPage == page) {
                             isCurrentPageZoomed = isZoomed
@@ -287,111 +289,6 @@ private fun BoxScope.ViewerNavigationButton(
                     modifier = if (iconRotation != 0f) Modifier.graphicsLayer(rotationZ = iconRotation) else Modifier
                 )
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ZoomableImage(
-    imageUrl: String,
-    isCurrentPage: Boolean,
-    onZoomChanged: (Boolean) -> Unit,
-    onSingleTap: () -> Unit
-) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    // 页面切走时重置缩放和偏移
-    LaunchedEffect(isCurrentPage) {
-        if (!isCurrentPage) {
-            scale = 1f
-            offset = Offset.Zero
-            onZoomChanged(false)
-        }
-    }
-
-    // 双指捏合缩放与平移 (transformable 原生仅监听多指手势，不拦截单指滑动，让单指滑动流畅交由 HorizontalPager 翻页)
-    val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
-        val newScale = (scale * zoomChange).coerceIn(1f, 4f)
-        scale = newScale
-        if (newScale > 1f) {
-            offset += panChange
-            onZoomChanged(true)
-        } else {
-            scale = 1f
-            offset = Offset.Zero
-            onZoomChanged(false)
-        }
-    }
-
-    val isZoomed = scale > 1.05f
-    var isImageLoading by remember(imageUrl) { mutableStateOf(true) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            // 放大状态下：启用单指拖拽自由平移以浏览放大细节；未放大时不拦截滑动事件以保留 Pager 左右滑动手势
-            .then(
-                if (isZoomed) {
-                    Modifier.pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            offset += dragAmount
-                        }
-                    }
-                } else {
-                    Modifier
-                }
-            )
-            .transformable(
-                state = transformableState,
-                canPan = { scale > 1.05f }
-            )
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    onSingleTap()
-                },
-                onDoubleClick = {
-                    if (scale > 1f) {
-                        scale = 1f
-                        offset = Offset.Zero
-                        onZoomChanged(false)
-                    } else {
-                        scale = 2.5f
-                        onZoomChanged(true)
-                    }
-                }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalPlatformContext.current)
-                .data(imageUrl)
-                .crossfade(true)
-                .build(),
-            contentDescription = "高清大图",
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                ),
-            contentScale = ContentScale.Fit,
-            onSuccess = { isImageLoading = false },
-            onError = { isImageLoading = false }
-        )
-
-        if (isImageLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(36.dp),
-                color = Color.White.copy(alpha = 0.7f),
-                strokeWidth = 3.dp
-            )
         }
     }
 }

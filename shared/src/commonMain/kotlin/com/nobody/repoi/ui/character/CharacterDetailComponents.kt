@@ -54,25 +54,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.home.components.ShimmerHost
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.AlbumData
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.CharacterData
@@ -82,9 +77,8 @@ import com.nobody.repoi.data.remote.model.CharacterWorksItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
 import androidx.compose.material3.ElevatedCard
 
 // ─────────────────────────────────────────────────────────────
@@ -109,7 +103,6 @@ internal fun CharacterHeaderSection(
     val displayName = character?.displayName?.ifBlank { null } ?: initialName ?: "角色详情"
     val subName = character?.subName
     val cover = character?.cover?.ifBlank { null } ?: initialCover
-    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(cover)
     val intro = character?.detailPlainText.orEmpty()
 
     ElevatedCard(
@@ -127,7 +120,7 @@ internal fun CharacterHeaderSection(
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 角色封面（黄金比例微缩卡，点击可查看原图大图）
+                // 角色封面（详情主图档位，走 cover/n/，点击可查看原图大图）
                 Box(
                     modifier = Modifier
                         .width(105.dp)
@@ -136,14 +129,13 @@ internal fun CharacterHeaderSection(
                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                         .clickable(onClick = onCoverClick)
                 ) {
-                    if (coverUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = coverUrl,
-                            contentDescription = displayName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    PoiAsyncImage(
+                        path = cover,
+                        category = MediaCategory.HOBBY,
+                        purpose = ImagePurpose.CARD_STANDARD,
+                        contentDescription = displayName,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 // 角色标题与元信息徽章
@@ -338,7 +330,6 @@ internal fun CharacterWorksSection(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     works.take(5).forEach { work ->
-                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(work.wCover)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.large,
@@ -357,14 +348,13 @@ internal fun CharacterWorksSection(
                                             .clip(MaterialTheme.shapes.small)
                                             .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                     ) {
-                                        if (coverUrl.isNotBlank()) {
-                                            AsyncImage(
-                                                model = coverUrl,
-                                                contentDescription = work.displayName,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                        }
+                                        PoiAsyncImage(
+                                            path = work.wCover,
+                                            category = MediaCategory.HOBBY,
+                                            purpose = ImagePurpose.CARD_STANDARD,
+                                            contentDescription = work.displayName,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
                                     }
 
                                     Column(
@@ -449,7 +439,6 @@ private fun PerformerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val avatarUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(performer.pCover)
     Surface(
         onClick = onClick,
         shape = CircleShape,
@@ -467,14 +456,14 @@ private fun PerformerPill(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                if (avatarUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                // 演职员头像沿用旧 getCoverSmallUrlOrDefault 的 cover/s/ 档位（HOBBY THUMBNAIL）
+                PoiAsyncImage(
+                    path = performer.pCover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             Text(
                 text = "${performer.careerLabel}：${performer.displayName}",
@@ -558,7 +547,6 @@ private fun CharacterHobbyCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(hobby.cover)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -573,14 +561,13 @@ private fun CharacterHobbyCard(
                     .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
             ) {
-                if (coverUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = coverUrl,
-                        contentDescription = hobby.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                PoiAsyncImage(
+                    path = hobby.cover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.CARD_STANDARD,
+                    contentDescription = hobby.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -699,14 +686,8 @@ private fun CharacterAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = CdnUrlUtils.isNoCover(album.cover)
-    val coverUrl = remember(album.cover, isNoCover) {
-        if (isNoCover) "" else album.cover?.let { CdnUrlUtils.getCoverSrUrl(it) }.orEmpty()
-    }
-    val ratioKey = remember(coverUrl) { "album_cover:$coverUrl" }
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    val initialRatio = if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f)
-    var aspectRatio by remember(ratioKey, isNoCover) { mutableFloatStateOf(initialRatio) }
+    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+    val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
         onClick = onClick,
@@ -719,7 +700,7 @@ private fun CharacterAlbumCard(
         Box(
             modifier = Modifier
                 .height(160.dp)
-                .aspectRatio(aspectRatio)
+                .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             if (isNoCover) {
@@ -728,22 +709,16 @@ private fun CharacterAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverUrl)
-                        .crossfade(true)
-                        .build(),
+                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
+                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+                PoiAsyncImage(
+                    path = album.cover,
+                    category = MediaCategory.ALBUM,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = album.name,
-                    contentScale = ContentScale.Crop,
-                    onSuccess = { state ->
-                        val size = state.painter.intrinsicSize
-                        if (size.width > 0 && size.height > 0) {
-                            val ratio = (size.width / size.height).coerceIn(0.6f, 2.2f)
-                            aspectRatio = ratio
-                            ImageAspectRatioCache[ratioKey] = ratio
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    adaptiveRatio = true,
+                    fallbackRatio = 1.0f
                 )
             }
 
@@ -878,7 +853,6 @@ private fun CharacterRelevantCard(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverSmallUrlOrDefault(item.cover)
     Surface(
         modifier = modifier.width(108.dp),
         shape = MaterialTheme.shapes.large,
@@ -893,14 +867,14 @@ private fun CharacterRelevantCard(
                     .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
             ) {
-                if (coverUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = coverUrl,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                // 方形小缩略图沿用旧 getCoverSmallUrlOrDefault 的 cover/s/ 档位
+                PoiAsyncImage(
+                    path = item.cover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(

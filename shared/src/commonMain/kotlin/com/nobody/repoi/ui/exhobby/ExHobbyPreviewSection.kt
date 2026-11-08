@@ -1,13 +1,10 @@
 package com.nobody.repoi.ui.exhobby
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,28 +21,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.common.PoiAsyncImage
 
 /**
  * ExHobby 扩展图库横滑预览组件（供手办详情页与相册详情页单流平铺挂载）。
  *
- * 采用 /pic/n/ 大图变体与大图画廊共享缓存，点击卡片即时呈现大图，利用 ImageAspectRatioCache 动态维持图片长宽比。
+ * 采用 `n/` 大图变体（ExHobby 仅 `s/` 与 `n/` 两档，无 `raw/`），纵横比由
+ * [PoiAsyncImage] 的自适应比例统一维护，不再手写比例缓存。
  */
 @Composable
 fun ExHobbyPreviewSection(
@@ -59,8 +49,6 @@ fun ExHobbyPreviewSection(
 
     val hasMore = pics.size > 9
     val displayPics = if (hasMore) pics.take(9) else pics
-    // 图片请求上下文屏级取一次下传，避免逐项查询重复订阅
-    val imageContext = LocalPlatformContext.current
 
     Column(
         modifier = modifier
@@ -92,10 +80,6 @@ fun ExHobbyPreviewSection(
                 key = { index, item -> "exhobby_${item.path}_$index" },
                 contentType = { _, _ -> "exhobby_pic" }
             ) { index, item ->
-                val ratioKey = remember(item.path) { "exhobby:${item.path}" }
-                val initialRatio = ImageAspectRatioCache[ratioKey] ?: 1.0f
-                var aspectRatio by remember(ratioKey) { mutableFloatStateOf(initialRatio) }
-
                 Card(
                     onClick = { onPicClick(index) },
                     modifier = Modifier.height(160.dp),
@@ -104,31 +88,15 @@ fun ExHobbyPreviewSection(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .height(160.dp)
-                            .aspectRatio(aspectRatio)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(imageContext)
-                                .data(CdnUrlUtils.getExHobbyFullUrl(item.path))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "ExHobby 扩展图 $index",
-                            contentScale = ContentScale.Crop,
-                            onSuccess = { state ->
-                                val size = state.painter.intrinsicSize
-                                if (size.width > 0 && size.height > 0) {
-                                    val ratio = (size.width / size.height).coerceIn(0.5f, 2.2f)
-                                    aspectRatio = ratio
-                                    ImageAspectRatioCache[ratioKey] = ratio
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    PoiAsyncImage(
+                        path = item.path,
+                        category = MediaCategory.EX_HOBBY,
+                        purpose = ImagePurpose.CARD_STANDARD,
+                        contentDescription = "ExHobby 扩展图 $index",
+                        modifier = Modifier.height(160.dp),
+                        adaptiveRatio = true,
+                        fallbackRatio = 1.0f
+                    )
                 }
             }
 

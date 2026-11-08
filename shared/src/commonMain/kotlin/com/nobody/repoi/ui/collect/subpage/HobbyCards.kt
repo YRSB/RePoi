@@ -17,35 +17,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
-import com.nobody.repoi.ui.common.rememberListImageRequest
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
-import com.nobody.repoi.util.CdnUrlUtils
 import com.nobody.repoi.util.PriceFormatter
 import androidx.compose.material3.ElevatedCard
 
@@ -274,8 +268,6 @@ internal fun HobbyCollectGridCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverUrlOrDefault(item.actualCover) }
-    val gridImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "grid")
     val bottomScrim = remember {
         Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x66000000)))
     }
@@ -298,33 +290,15 @@ internal fun HobbyCollectGridCard(
             .aspectRatio(9f / 13f),
         shape = MaterialTheme.shapes.small
     ) {
-        val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
         Box(modifier = Modifier.fillMaxSize()) {
-            var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
-            if (!loadFailed) {
-                AsyncImage(
-                    model = gridImageRequest,
-                    contentDescription = item.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    onError = { loadFailed = true }
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
+            // 封面 9:13 海报铺满整卡，缺省/失败态由基元内置（官方缺省图 / 破损图标）
+            PoiAsyncImage(
+                path = item.actualCover,
+                category = MediaCategory.HOBBY,
+                purpose = ImagePurpose.CARD_STANDARD,
+                contentDescription = item.displayName,
+                modifier = Modifier.fillMaxSize()
+            )
 
             // 右上角状态自适应徽章
             if (badgeContent.isNotBlank()) {
@@ -394,9 +368,6 @@ internal fun HobbyCollectListCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrlOrDefault(item.actualCover) }
-    val thumbImageRequest = rememberListImageRequest(item.actualCover, coverUrl, "thumb")
-
     ElevatedCard(
         modifier = modifier
             .combinedClickable(
@@ -414,9 +385,6 @@ internal fun HobbyCollectListCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 左侧封面缩略图（68dp 方形，圆角 SmallCardShape）
-            val isNoCover = CdnUrlUtils.isNoCover(item.actualCover)
-            var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -424,22 +392,13 @@ internal fun HobbyCollectListCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
-                if (!loadFailed) {
-                    AsyncImage(
-                        model = thumbImageRequest,
-                        contentDescription = item.displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { loadFailed = true }
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isNoCover) Icons.Filled.PhotoLibrary else Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (isNoCover) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline
-                    )
-                }
+                PoiAsyncImage(
+                    path = item.actualCover,
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
 
                 if (selectionMode) {
                     SelectionOverlay(

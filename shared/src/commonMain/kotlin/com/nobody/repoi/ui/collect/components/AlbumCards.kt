@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,28 +24,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.collect.MediaOrderOption
-import com.nobody.repoi.ui.common.listImageKey
-import com.nobody.repoi.ui.common.rememberListImageRequest
-import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.ImageAspectRatioCache
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.CardDefaults
 
@@ -56,7 +49,7 @@ import androidx.compose.material3.CardDefaults
  * 收藏页（category key=70000）专用相册卡片。
  *
  * 与相册主页面 `ui/album/components/AlbumFeedCard.kt` 的差异（本文件独立实现，**不改 AlbumFeedCard**）：
- * 1. **封面 CDN 变体用 `cover/sr/`**（`CdnUrlUtils.getCoverSrUrl`）——
+ * 1. **封面 CDN 变体走 `cover/sr/`**（`MediaCategory.ALBUM` + `ImagePurpose.ADAPTIVE_GRID`）——
  *    原版收藏相册页封面取 `pe/c.java:158` 的 `cover/sr/` 自适应长宽比变体，
  *    而主页面卡片用的是 `/n`。瀑布流与相册场景按 AGENTS.md 规范必须走 `/sr`。
  * 2. **时间字段与排序档联动**（交付项 #5）：
@@ -122,11 +115,8 @@ internal fun CollectAlbumCard(
                 val timeText = remember(currentOrder, item.id) {
                     formatCollectAlbumTime(item, currentOrder)
                 }
-                val avatarUrl = remember(item.id) {
-                    CdnUrlUtils.getHeadUrl(item.actualUserAvatar)
-                }
                 val hasAuthor = !item.actualUserNickName.isNullOrBlank()
-                val hasAvatar = avatarUrl.isNotBlank()
+                val hasAvatar = !item.actualUserAvatar.isNullOrBlank()
 
                 if (hasAuthor || hasAvatar || timeText != null) {
                     Row(
@@ -134,15 +124,20 @@ internal fun CollectAlbumCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (hasAvatar) {
-                            AsyncImage(
-                                model = avatarUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            Box(
                                 modifier = Modifier
                                     .size(18.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                            )
+                            ) {
+                                PoiAsyncImage(
+                                    path = item.actualUserAvatar,
+                                    category = MediaCategory.AVATAR,
+                                    purpose = ImagePurpose.CARD_STANDARD,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
                         }
                         if (hasAuthor) {
@@ -174,7 +169,7 @@ internal fun CollectAlbumCard(
 }
 
 /**
- * 收藏页相册封面：`cover/sr/` 变体 + 自适应长宽比（跨项缓存 [ImageAspectRatioCache]，比例夹取 [0.4, 2.0]）。
+ * 收藏页相册封面：`cover/sr/` 变体 + 自适应长宽比（比例缓存与夹取由 [PoiAsyncImage] 统一承担）。
  */
 @Composable
 private fun CollectAlbumCover(
@@ -183,21 +178,13 @@ private fun CollectAlbumCover(
     isSelectionMode: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.actualCover)
-    val coverUrl = remember(item.id, item.actualCover, isNoCover) {
-        if (isNoCover) "" else CdnUrlUtils.getCoverSrUrl(item.actualCover)
-    }
-    val ratioKey = listImageKey(item.actualCover, coverUrl, "sr")
-    val coverRequest = rememberListImageRequest(item.actualCover, coverUrl, "sr:collect")
-    val defaultRatio = if (isNoCover) 17f / 24f else 1.0f
-    var aspectRatio by remember(ratioKey, isNoCover) {
-        mutableFloatStateOf(if (isNoCover) defaultRatio else (ImageAspectRatioCache[ratioKey] ?: 1.0f))
-    }
+    // 无封面（含官方缺省吉祥物）沿用历史 17:24 纯文本卡
+    val isNoCover = !item.hasCover || MediaPipeline.Default.isPlaceholder(item.actualCover)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(aspectRatio)
+            .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
         if (isNoCover) {
@@ -206,19 +193,15 @@ private fun CollectAlbumCover(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            AsyncImage(
-                model = coverRequest,
+            // 相册无 cover/n/ 目录：瀑布流缩略统一由管道裁决到保留纵横比的 cover/sr/
+            PoiAsyncImage(
+                path = item.actualCover,
+                category = MediaCategory.ALBUM,
+                purpose = ImagePurpose.ADAPTIVE_GRID,
                 contentDescription = item.actualTitle.ifBlank { "相册封面" },
-                contentScale = ContentScale.Crop,
-                onSuccess = { state ->
-                    val size = state.painter.intrinsicSize
-                    if (size.width > 0 && size.height > 0) {
-                        val ratio = (size.width / size.height).coerceIn(0.4f, 2.0f)
-                        aspectRatio = ratio
-                        ImageAspectRatioCache[ratioKey] = ratio
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth(),
+                adaptiveRatio = true,
+                fallbackRatio = 1.0f
             )
         }
 
