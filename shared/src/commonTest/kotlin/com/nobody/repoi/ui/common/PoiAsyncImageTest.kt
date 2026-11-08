@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.common
 
-import androidx.compose.ui.layout.ContentScale
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
