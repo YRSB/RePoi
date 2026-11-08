@@ -31,6 +31,7 @@ import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.ui.follow.FollowViewModel
@@ -38,6 +39,7 @@ import com.nobody.repoi.ui.home.HomeFeedViewModel
 import com.nobody.repoi.ui.login.LoginViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
 import com.nobody.repoi.util.CollectInvalidationBus
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.Json
 import org.koin.core.qualifier.named
@@ -79,8 +81,10 @@ class KoinModuleVerificationTest {
             koin.getOrNull<HpoiApi>().shouldNotBeNull()
             koin.getOrNull<ExHobbyApi>().shouldNotBeNull()
 
-            // 2. 本地状态与业务管理器
-            koin.getOrNull<TokenManager>().shouldNotBeNull()
+            // 2. 会话接缝与本地状态管理器
+            koin.getOrNull<UserSession>().shouldNotBeNull()
+            // 存储适配器不得作为独立单例被解析（ADR-0005 单一鉴权出口）
+            koin.getOrNull<TokenManager>().shouldBeNull()
             koin.getOrNull<ThemeManager>().shouldNotBeNull()
             koin.getOrNull<SearchHistoryManager>().shouldNotBeNull()
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()

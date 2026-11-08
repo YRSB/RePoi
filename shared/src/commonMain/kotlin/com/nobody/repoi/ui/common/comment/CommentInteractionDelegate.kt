@@ -1,6 +1,6 @@
 package com.nobody.repoi.ui.common.comment
 
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
@@ -9,7 +9,6 @@ import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.DeletedComment
 import com.nobody.repoi.data.repository.StickerRepository
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.ListPaging
 import com.nobody.repoi.util.buildEmoticonParam
@@ -33,23 +32,23 @@ typealias CommentPageFetch = suspend (nodeId: Long, type: String?, page: Int, pa
  * 3. 子评论回复发表（接口调用、本地追加、广播与失败处理，返回 Boolean 表明成功与否）；
  * 4. 主楼评论发表（接口调用与失败处理，成功后由调用方刷新列表，返回 Boolean 表明成功与否）；
  * 5. 消费操作反馈提示。
+ *
+ * 身份判定统一走 [UserSession]，档案缺失时由 [UserSession.refreshProfile] 在会话内补齐。
  */
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class CommentInteractionDelegate(
     private val commentRepository: CommentRepository,
     private val stickerRepository: StickerRepository,
-    private val tokenManager: TokenManager,
-    private val userRepository: UserRepository
+    private val userSession: UserSession
 ) {
 
     val currentUserId: Long
-        get() = tokenManager.currentUserId
+        get() = userSession.currentUserId
 
     suspend fun resolveCurrentUserId(): Long {
-        val cached = tokenManager.currentUserId
-        if (cached > 0L || tokenManager.currentToken.isBlank()) return cached
-        userRepository.getUserProfile()
-        return tokenManager.currentUserId
+        val cached = userSession.currentUserId
+        if (cached > 0L || userSession.currentToken.isBlank()) return cached
+        userSession.refreshProfile()
+        return userSession.currentUserId
     }
 
     fun isOwnComment(user: CommentUser?, currentId: Long = currentUserId): Boolean {

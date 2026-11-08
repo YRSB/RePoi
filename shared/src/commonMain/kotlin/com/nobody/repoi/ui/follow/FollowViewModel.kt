@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.repository.FollowRepository
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +37,12 @@ data class FollowUiState(
 
 /**
  * 关注屏状态机（顶层关注目的地，复用关注条目/用户接口）。
+ *
+ * 登录判定读取 [UserSession.currentToken]，与底层凭据存储语义等价。
  */
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class FollowViewModel(
     private val followRepository: FollowRepository,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) : ViewModel() {
 
     val filters = listOf(
@@ -85,7 +86,7 @@ class FollowViewModel(
     }
 
     fun loadInitial() {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             feedJob?.cancel()
             resetScrollPosition()
             _uiState.update {
@@ -159,7 +160,7 @@ class FollowViewModel(
     }
 
     private fun loadFeedPage(refreshing: Boolean, appending: Boolean) {
-        if (tokenManager.currentToken.isBlank()) {
+        if (userSession.currentToken.isBlank()) {
             _uiState.update {
                 it.copy(
                     isInitialLoading = false,

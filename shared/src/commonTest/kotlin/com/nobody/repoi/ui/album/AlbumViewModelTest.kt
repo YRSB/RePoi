@@ -4,8 +4,8 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
 import com.nobody.repoi.data.repository.AlbumRepository
-import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  * 相册列表 ViewModel 测试（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `AlbumViewModelTest`（逐用例；Mockito `mock(AlbumRepository/TokenManager)` →
- * 真实 AlbumRepository 背后 [MockApi] MockEngine + [FakeTokenManager]；
+ * 真实 AlbumRepository 背后 [MockApi] MockEngine + [FakeUserSession] 会话替身；
  * `stubRecommendPage(page, items, hasMore)` → routeWhen 按表单
  * (order+page) 匹配；`java.time.LocalDateTime` → kotlinx-datetime；
  * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
@@ -87,7 +87,7 @@ class AlbumViewModelTest {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1, 2))))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         val state = viewModel.uiState.value
@@ -104,7 +104,7 @@ class AlbumViewModelTest {
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))
         mock.stubAlbums(order = "updTime", page = 1, bodies = listOf(pageJson(listOf(9))))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         viewModel.selectOrder(AlbumOrder.Latest)
@@ -123,7 +123,7 @@ class AlbumViewModelTest {
         val page1 = (1L..24L).toList()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(page1)))
         mock.stubAlbums(order = "top", page = 2, bodies = listOf(pageJson(listOf(24L, 25L, 26L))))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         viewModel.loadMore()
@@ -137,7 +137,7 @@ class AlbumViewModelTest {
     @Test
     fun followZoneWithoutToken_showsLoginGuide() = runTest(testDispatcher) {
         val mock = MockApi()
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager(""))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession(""))
         viewModel.selectZone(AlbumZoneTab.FOLLOW)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.loginRequired)
@@ -153,7 +153,7 @@ class AlbumViewModelTest {
         mock.stubPraiseTop("", listOf(pageJson(listOf(6))))
         mock.stubPraiseTop("week", listOf(pageJson(listOf(7))))
         mock.stubPraiseTop("month", listOf(mock.failure(500, "榜单失败")))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         viewModel.enterRanking()
@@ -170,7 +170,7 @@ class AlbumViewModelTest {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(mock.failure(4001, "登录过期")))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         val state = viewModel.uiState.value
@@ -183,7 +183,7 @@ class AlbumViewModelTest {
         val mock = MockApi()
         mock.route("api/album/tabs", mock.failure(500, "分区失败"))
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         val state = viewModel.uiState.value
@@ -199,7 +199,7 @@ class AlbumViewModelTest {
             order = "top", page = 1,
             bodies = listOf(mock.failure(4001, "登录过期"), pageJson(listOf(2)))
         )
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.loginRequired)
@@ -223,7 +223,7 @@ class AlbumViewModelTest {
         val mock = MockApi()
         mock.stubTabsOk()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(listOf(1))))
-        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeTokenManager("tok"))
+        val viewModel = AlbumViewModel(AlbumRepository(mock.api()), FakeUserSession("tok"))
         viewModel.loadInitial()
         advanceUntilIdle()
         viewModel.saveScrollPosition(12, 34)

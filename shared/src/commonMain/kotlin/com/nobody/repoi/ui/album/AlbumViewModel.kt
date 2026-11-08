@@ -7,7 +7,7 @@ import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.repository.AlbumRepository
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.pagedChunkLoader
@@ -92,10 +92,9 @@ data class AlbumUiState(
     val isFollowEmpty: Boolean = false
 )
 
-@Suppress("EXPOSED_PARAMETER_TYPE")
 class AlbumViewModel(
     private val repository: AlbumRepository,
-    private val tokenManager: TokenManager
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlbumUiState())
@@ -284,7 +283,7 @@ class AlbumViewModel(
     }
 
     private fun isFollowGated(tab: AlbumZoneTab): Boolean =
-        tab.key == "follow" && tokenManager.currentToken.isBlank()
+        tab.key == "follow" && userSession.currentToken.isBlank()
 
     private fun refreshRanking() {
         rankingJob?.cancel()

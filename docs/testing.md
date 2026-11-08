@@ -15,7 +15,7 @@
 fun loadsBindingStatus() = runTest {
     val mock = MockApi()
     mock.enqueue(mock.ok("""{...}"""))
-    val repository = SettingsRepository(mock.api(), FakeTokenManager("utoken-test"))
+    val repository = SettingsRepository(mock.api(), FakeUserSession("utoken-test"))
 
     val result = repository.checkAccount()
 

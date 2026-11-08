@@ -56,5 +56,5 @@ val repositoryModule = module {
     single { VendorDetailRepository(get(), get()) }
     single { WorksDetailRepository(get()) }
     single { ZoneRepository(get(), get()) }
-    factory { CommentInteractionDelegate(get(), get(), get(), get()) }
+    factory { CommentInteractionDelegate(get(), get(), get()) }
 }

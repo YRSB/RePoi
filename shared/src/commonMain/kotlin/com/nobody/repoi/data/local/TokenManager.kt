@@ -27,9 +27,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * 内存镜像经 `kotlin.concurrent.atomics` 实现（common 无 `@Volatile`）。
  *
  * 可见性：本适配器为 [com.nobody.repoi.data.session.UserSessionImpl] 的内部实现细节，
- * 全局仅注册给会话模块使用，不再作为公开接缝（ADR-0005 单一鉴权出口）。
- * 过渡期存量仓储 / ViewModel 构造器仍持有本类型，暂以
- * `@Suppress("EXPOSED_PARAMETER_TYPE")` 保持编译；对应依赖迁移完成后一并移除。
+ * 仅由 [com.nobody.repoi.data.session.createUserSession] 组合根构造，
+ * 不注册为可独立注入的单例，也不再作为公开接缝（ADR-0005 单一鉴权出口）。
  * `prewarmOnCreate` 仅供测试替身关闭真实 DataStore 预读。
  */
 @OptIn(ExperimentalAtomicApi::class)

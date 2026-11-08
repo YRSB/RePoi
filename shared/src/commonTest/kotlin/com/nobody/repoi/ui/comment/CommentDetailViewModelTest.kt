@@ -4,10 +4,8 @@ import app.cash.turbine.test
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.repository.CommentRepository
-import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -42,20 +40,17 @@ class CommentDetailViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun setup(): Triple<MockApi, CommentDetailViewModel, FakeTokenManager> {
+    private fun setup(): Triple<MockApi, CommentDetailViewModel, FakeUserSession> {
         val mockApi = MockApi()
-        val tokenManager = FakeTokenManager("test-token")
         val session = FakeUserSession("test-token")
         val commentRepo = CommentRepository(mockApi.api(), session)
         val stickerRepo = StickerRepository(mockApi.api())
-        val userRepo = UserRepository(mockApi.api(), session)
         val viewModel = CommentDetailViewModel(
             repository = commentRepo,
             stickerRepository = stickerRepo,
-            tokenManager = tokenManager,
-            userRepository = userRepo,
+            userSession = session,
         )
-        return Triple(mockApi, viewModel, tokenManager)
+        return Triple(mockApi, viewModel, session)
     }
 
     @Test

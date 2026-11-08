@@ -2,7 +2,7 @@ package com.nobody.repoi.ui.user.creation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nobody.repoi.data.local.TokenManager
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.CreationPageResult
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
@@ -12,10 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-@Suppress("EXPOSED_PARAMETER_TYPE")
+/**
+ * 用户投稿页 ViewModel；是否为本人由 [UserSession.currentUserId] 判定。
+ */
 class UserCreationViewModel(
     private val userRepository: UserRepository,
-    private val tokenManager: TokenManager,
+    private val userSession: UserSession,
     initialCategory: Int? = null,
 ) : ViewModel() {
 
@@ -42,7 +44,7 @@ class UserCreationViewModel(
         }
         isInitialized = true
 
-        val currentUserId = tokenManager.currentUserId
+        val currentUserId = userSession.currentUserId
         val isSelf = currentUserId > 0L && currentUserId == param.userId
         val initialCategory = UserCreationCategory.fromKey(param.initialCategory)
 

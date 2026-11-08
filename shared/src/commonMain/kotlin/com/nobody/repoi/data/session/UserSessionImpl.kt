@@ -1,5 +1,7 @@
 package com.nobody.repoi.data.session
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
@@ -198,3 +200,14 @@ internal class UserSessionImpl(
         else -> e
     }
 }
+
+/**
+ * 会话组合根工厂：[TokenManager] 的唯一构造出口。
+ *
+ * 存储适配器仅在本文件内被实例化，DI 与其他业务代码只经 [UserSession] 获取会话能力，
+ * 从而保证「底层存储适配器零公开泄漏」（ADR-0005）。
+ */
+internal fun createUserSession(
+    api: HpoiApi,
+    dataStore: DataStore<Preferences>,
+): UserSession = UserSessionImpl(api, TokenManager(dataStore))

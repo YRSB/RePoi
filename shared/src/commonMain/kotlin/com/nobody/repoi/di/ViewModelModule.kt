@@ -2,7 +2,6 @@ package com.nobody.repoi.di
 
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.ThemeManager
-import com.nobody.repoi.data.local.TokenManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.album.AlbumDetailViewModel
 import com.nobody.repoi.ui.album.AlbumRankListViewModel
@@ -74,7 +73,7 @@ val viewModelModule = module {
     viewModel { CollectEditViewModel(get()) }
     viewModel { UserCollectViewModel(get(), get(), get(), get(), get()) }
     viewModel { WorksCollectEditViewModel(get()) }
-    viewModel { CommentDetailViewModel(get(), get(), get(), get()) }
+    viewModel { CommentDetailViewModel(get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }
     viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { HobbyAlbumListViewModel(get()) }
