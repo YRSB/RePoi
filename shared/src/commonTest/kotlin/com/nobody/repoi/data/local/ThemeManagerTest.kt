@@ -1,16 +1,18 @@
 package com.nobody.repoi.data.local
 
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.nobody.repoi.platform.isDynamicSeedAvailable
+import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
-import androidx.datastore.preferences.core.booleanPreferencesKey
+import com.nobody.repoi.platform.isDynamicSeedAvailable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -19,116 +21,151 @@ import kotlin.test.assertTrue
  * 对齐 PoiShelf `ThemeManagerTest`（逐用例；JUnit4 → kotlin.test，
  * Robolectric → [TestDataStore] 真实 DataStore 隔离目录；
  * legacy 字节扫描已在 shared 删除，不在此覆盖）。
+ *
+ * 六维配置已合并为单一 `settings: StateFlow<ThemeSettings?>`：
+ * `null` 表示首次读盘未完成，因此每个用例都先 [awaitSettings] 再断言。
  */
 class ThemeManagerTest {
 
     private fun manager(): ThemeManager = ThemeManager(TestDataStore.themePrefs())
 
-    @Test
-    fun setThemeMode_updatesMemoryFlowAndInitialValue() = runTest {
-        val manager = manager()
-        manager.themeModeFlow.first()
-        manager.dynamicColorFlow.first()
-        manager.setThemeMode(ThemeMode.DARK)
+    /** 等首次读盘落定（成功或回落默认值）。 */
+    private suspend fun ThemeManager.awaitSettings(): ThemeSettings =
+        assertNotNull(settings.first { it != null }, "主题配置应在一轮读盘后落定")
 
-        assertEquals(ThemeMode.DARK, manager.themeMode)
-        assertEquals(ThemeMode.DARK, manager.getInitialThemeMode())
-        assertEquals(ThemeMode.DARK, manager.themeModeFlow.first())
+    @Test
+    fun settings_resolvesFromDiskAndNeverStaysNull() = runTest {
+        val manager = manager()
+
+        val resolved = manager.awaitSettings()
+
+        // 落定后所有字段都必须有值，且与无持久化配置时的平台默认值一致
+        assertEquals(defaultThemeSettings(), resolved)
     }
 
     @Test
-    fun setDynamicColor_updatesMemoryFlowAndInitialValue() = runTest {
+    fun persistedValues_areLoadedIntoSnapshot() = runTest {
+        val dataStore = TestDataStore.themePrefs()
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("app_theme_mode")] = ThemeMode.DARK.name
+            prefs[booleanPreferencesKey("app_dynamic_color")] = false
+            prefs[stringPreferencesKey("app_theme_seed")] = ThemeSeed.Amber.name
+            prefs[booleanPreferencesKey("app_amoled")] = true
+            prefs[stringPreferencesKey("app_palette_style")] = PaletteStyle.Vibrant.name
+            prefs[stringPreferencesKey("app_spec_version")] = ColorSpec.SpecVersion.SPEC_2021.name
+        }
+        val manager = ThemeManager(dataStore)
+
+        val resolved = manager.awaitSettings()
+
+        assertEquals(ThemeMode.DARK, resolved.themeMode)
+        assertFalse(resolved.dynamicColor)
+        assertEquals(ThemeSeed.Amber, resolved.themeSeed)
+        assertTrue(resolved.amoled)
+        assertEquals(PaletteStyle.Vibrant, resolved.paletteStyle)
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, resolved.specVersion)
+    }
+
+    @Test
+    fun setThemeMode_updatesStateAndPersists() = runTest {
         val manager = manager()
-        manager.themeModeFlow.first()
-        manager.dynamicColorFlow.first()
+        manager.awaitSettings()
+
+        manager.setThemeMode(ThemeMode.DARK)
+
+        assertEquals(ThemeMode.DARK, manager.awaitSettings().themeMode)
+    }
+
+    @Test
+    fun setDynamicColor_updatesStateAndPersists() = runTest {
+        val manager = manager()
+        manager.awaitSettings()
+
         manager.setDynamicColor(false)
 
-        assertFalse(manager.dynamicColor)
-        assertFalse(manager.getInitialDynamicColor())
-        assertFalse(manager.dynamicColorFlow.first())
+        assertFalse(manager.awaitSettings().dynamicColor)
     }
 
     @Test
     fun lightModeAndDynamicColor_roundTrip() = runTest {
         val manager = manager()
-        manager.themeModeFlow.first()
-        manager.dynamicColorFlow.first()
+        manager.awaitSettings()
+
         manager.setThemeMode(ThemeMode.LIGHT)
         manager.setDynamicColor(true)
 
-        assertEquals(ThemeMode.LIGHT, manager.themeModeFlow.first())
-        assertTrue(manager.dynamicColorFlow.first())
+        val resolved = manager.awaitSettings()
+        assertEquals(ThemeMode.LIGHT, resolved.themeMode)
+        assertTrue(resolved.dynamicColor)
     }
 
     @Test
-    fun setThemeSeed_updatesMemoryFlowAndInitialValue() = runTest {
+    fun setThemeSeed_updatesStateAndPersists() = runTest {
         val manager = manager()
-        manager.themeSeedFlow.first()
+        manager.awaitSettings()
+
         manager.setThemeSeed(ThemeSeed.Amber)
 
-        assertEquals(ThemeSeed.Amber, manager.themeSeed)
-        assertEquals(ThemeSeed.Amber, manager.getInitialThemeSeed())
-        assertEquals(ThemeSeed.Amber, manager.themeSeedFlow.first())
+        assertEquals(ThemeSeed.Amber, manager.awaitSettings().themeSeed)
     }
 
     @Test
     fun selectTheme_static_updatesSeedAndDynamicColorAtomically() = runTest {
         val manager = manager()
+        manager.awaitSettings()
         manager.setDynamicColor(true)
-        assertTrue(manager.dynamicColorFlow.first())
+        assertTrue(manager.awaitSettings().dynamicColor)
 
         manager.selectTheme(ThemeSeed.Lotus)
-        assertEquals(ThemeSeed.Lotus, manager.themeSeed)
-        assertFalse(manager.dynamicColor)
-        assertEquals(ThemeSeed.Lotus, manager.themeSeedFlow.first())
-        assertFalse(manager.dynamicColorFlow.first())
+
+        val resolved = manager.awaitSettings()
+        assertEquals(ThemeSeed.Lotus, resolved.themeSeed)
+        assertFalse(resolved.dynamicColor)
     }
 
     @Test
     fun setDynamicColor_falseWhenDynamic_fallsBackToLotusAtomically() = runTest {
         if (!isDynamicSeedAvailable) return@runTest
         val manager = manager()
+        manager.awaitSettings()
         manager.setThemeSeed(ThemeSeed.Dynamic)
-        assertTrue(manager.dynamicColorFlow.first())
+        assertTrue(manager.awaitSettings().dynamicColor)
 
         manager.setDynamicColor(false)
-        assertFalse(manager.dynamicColor)
-        assertEquals(ThemeSeed.Lotus, manager.themeSeed)
-        assertFalse(manager.dynamicColorFlow.first())
-        assertEquals(ThemeSeed.Lotus, manager.themeSeedFlow.first())
+
+        val resolved = manager.awaitSettings()
+        assertFalse(resolved.dynamicColor)
+        assertEquals(ThemeSeed.Lotus, resolved.themeSeed)
     }
 
     @Test
-    fun setAmoled_updatesMemoryFlowAndInitialValue() = runTest {
+    fun setAmoled_updatesStateAndPersists() = runTest {
         val manager = manager()
-        manager.amoledFlow.first()
+        manager.awaitSettings()
+
         manager.setAmoled(true)
 
-        assertTrue(manager.amoled)
-        assertTrue(manager.getInitialAmoled())
-        assertTrue(manager.amoledFlow.first())
+        assertTrue(manager.awaitSettings().amoled)
     }
 
     @Test
-    fun setPaletteStyle_updatesMemoryFlowAndInitialValue() = runTest {
+    fun setPaletteStyle_updatesStateAndPersists() = runTest {
         val manager = manager()
-        manager.paletteStyleFlow.first()
+        manager.awaitSettings()
+
         manager.setPaletteStyle(PaletteStyle.Vibrant)
 
-        assertEquals(PaletteStyle.Vibrant, manager.paletteStyle)
-        assertEquals(PaletteStyle.Vibrant, manager.getInitialPaletteStyle())
-        assertEquals(PaletteStyle.Vibrant, manager.paletteStyleFlow.first())
+        assertEquals(PaletteStyle.Vibrant, manager.awaitSettings().paletteStyle)
     }
 
     @Test
-    fun setSpecVersion_updatesMemoryFlowAndInitialValue() = runTest {
+    fun setSpecVersion_updatesStateAndPersists() = runTest {
         val manager = manager()
-        manager.specVersionFlow.first()
+        manager.awaitSettings()
+
         manager.setSpecVersion(ColorSpec.SpecVersion.SPEC_2021)
 
-        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.specVersion)
-        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.getInitialSpecVersion())
-        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.specVersionFlow.first())
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, manager.awaitSettings().specVersion)
     }
 
     @Test
@@ -140,9 +177,7 @@ class ThemeManagerTest {
         val manager = ThemeManager(dataStore)
 
         // 遗留布尔标志只作为一次性迁移来源，统一收敛到 paletteStyle（issue #82 顺带清理）
-        // 迁移在 init 的后台协程内完成，paletteStyleFlow 是唯一确定性观测点；
-        // getInitialPaletteStyle() 由同一协程写入，在此断言会与协程调度赛跑（CI 实测 flake）
-        assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
+        assertEquals(PaletteStyle.Expressive, manager.awaitSettings().paletteStyle)
     }
 
     @Test
@@ -152,25 +187,26 @@ class ThemeManagerTest {
             prefs[booleanPreferencesKey("app_expressive_color")] = true
         }
         val manager = ThemeManager(dataStore)
+        manager.awaitSettings()
 
         manager.setPaletteStyle(PaletteStyle.Vibrant)
 
         val prefs = dataStore.data.first()
         assertEquals(null, prefs[booleanPreferencesKey("app_expressive_color")])
-        assertEquals(PaletteStyle.Vibrant, manager.paletteStyleFlow.first())
+        assertEquals(PaletteStyle.Vibrant, manager.awaitSettings().paletteStyle)
     }
 
     @Test
     fun themeSeed_toColors_returnsExpectedPalette() {
         val (lotusPrimary, lotusSecondary, lotusTertiary) = ThemeSeed.Lotus.toColors()
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF006EBE), lotusPrimary)
+        assertEquals(Color(0xFF006EBE), lotusPrimary)
         assertEquals(null, lotusSecondary)
         assertEquals(null, lotusTertiary)
 
         val (triPrimary, triSecondary, triTertiary) = ThemeSeed.Tricolor.toColors()
-        assertEquals(androidx.compose.ui.graphics.Color(0xFFEAD4CE), triPrimary)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF7D859D), triSecondary)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFFEC9CA8), triTertiary)
+        assertEquals(Color(0xFFEAD4CE), triPrimary)
+        assertEquals(Color(0xFF7D859D), triSecondary)
+        assertEquals(Color(0xFFEC9CA8), triTertiary)
     }
 
     @Test
@@ -180,7 +216,7 @@ class ThemeManagerTest {
         val manager = ThemeManager(dataStore)
 
         val expected = if (isDynamicSeedAvailable) ThemeSeed.Dynamic else ThemeSeed.Pink
-        assertEquals(expected, manager.themeSeedFlow.first())
+        assertEquals(expected, manager.awaitSettings().themeSeed)
     }
 
     @Test

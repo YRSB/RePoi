@@ -25,6 +25,7 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.defaultThemeSettings
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.data.media.MediaPipeline
@@ -48,31 +49,30 @@ fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
-    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
-    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
-    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
-    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
-    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
+    // 单一主题流：null 表示首次读盘未完成，此时直接用平台默认值渲染，不插入任何占位。
+    // 代价是冷启动会出现一次「默认配色 → 真实配色」的切换（已知问题，后续单独解决）；
+    // 收益是首帧永远有真实界面，不会出现黑屏或空白。
+    val settings by themeManager.settings.collectAsStateWithLifecycle()
+    val current = settings ?: defaultThemeSettings()
 
-    val darkTheme = when (themeMode) {
+    val darkTheme = when (current.themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val effectiveSeed = when {
-        themeSeed != ThemeSeed.Dynamic -> themeSeed.orAvailable()
-        !dynamicColor -> ThemeSeed.Lotus
+        current.themeSeed != ThemeSeed.Dynamic -> current.themeSeed.orAvailable()
+        !current.dynamicColor -> ThemeSeed.Lotus
         else -> null
     }
 
     PoiShelfTheme(
         darkTheme = darkTheme,
-        dynamicColor = dynamicColor,
+        dynamicColor = current.dynamicColor,
         themeSeed = effectiveSeed,
-        amoled = amoled,
-        paletteStyle = paletteStyle,
-        specVersion = specVersion
+        amoled = current.amoled,
+        paletteStyle = current.paletteStyle,
+        specVersion = current.specVersion
     ) {
         RePoiNavHost()
     }

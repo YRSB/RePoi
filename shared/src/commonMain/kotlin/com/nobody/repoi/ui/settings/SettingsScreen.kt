@@ -36,6 +36,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.nobody.repoi.data.local.ThemeManager
+import com.nobody.repoi.data.local.defaultThemeSettings
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
 import com.nobody.repoi.platform.AppInfo
@@ -82,12 +83,16 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
-    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
-    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
-    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
-    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
-    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
-    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
+    // 与根组合共用同一条主题流；设置页比根界面晚出现，通常已落定，
+    // 万一仍为 null 则用平台默认值兜底（此时用户还没改动过任何设置）
+    val themeSettings by themeManager.settings.collectAsStateWithLifecycle()
+    val currentTheme = themeSettings ?: defaultThemeSettings()
+    val themeMode = currentTheme.themeMode
+    val dynamicColor = currentTheme.dynamicColor
+    val themeSeed = currentTheme.themeSeed
+    val amoled = currentTheme.amoled
+    val paletteStyle = currentTheme.paletteStyle
+    val specVersion = currentTheme.specVersion
     val isExHobbyEnabled by settingsViewModel.isExHobbyEnabled.collectAsStateWithLifecycle()
     val cacheState by cacheViewModel.uiState.collectAsStateWithLifecycle()
     val privacyState by privacyViewModel.uiState.collectAsStateWithLifecycle()

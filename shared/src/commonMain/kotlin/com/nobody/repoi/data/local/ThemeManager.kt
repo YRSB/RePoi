@@ -14,13 +14,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.theme.warmUpThemeCardColors
-import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.AtomicReference
+import com.nobody.repoi.util.AppLogger
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 enum class ThemeSeed(val title: String, val argb: Long?) {
@@ -51,149 +51,133 @@ enum class ThemeMode(val title: String) {
     DARK("深色模式")
 }
 
+/**
+ * 主题配置快照：六维设置的完整取值。
+ *
+ * 为什么要打成一个整体而不是六条独立流：六条流各自带 `initialValue` 时，
+ * 冷启动会先拿六个内存默认值渲染一帧，DataStore 读完再逐个跳到真实值。
+ * 配合 `ColorScheme.animateAsState`，这段跳变会被渲染成一段可见渐变。
+ * 合成一条流后，**「未就绪」由 `null` 表达**，首帧门禁成为类型系统的自然结果，
+ * 不再需要额外的 `getInitialXxx()` 与启动快照。
+ */
+data class ThemeSettings(
+    val themeMode: ThemeMode,
+    val dynamicColor: Boolean,
+    val themeSeed: ThemeSeed,
+    val amoled: Boolean,
+    val paletteStyle: PaletteStyle,
+    val specVersion: ColorSpec.SpecVersion,
+)
+
+/** 无持久化配置时的平台默认值（动态取色能力与可用种子随平台不同）。 */
+fun defaultThemeSettings(): ThemeSettings = ThemeSettings(
+    themeMode = ThemeMode.SYSTEM,
+    dynamicColor = supportsDynamicColor,
+    themeSeed = defaultThemeSeed(),
+    amoled = false,
+    paletteStyle = PaletteStyle.TonalSpot,
+    specVersion = ColorSpec.SpecVersion.SPEC_2025,
+)
+
 @OptIn(ExperimentalAtomicApi::class)
 class ThemeManager(
     private val dataStore: DataStore<Preferences>,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val themeModeRef = AtomicReference(ThemeMode.SYSTEM)
-    private val dynamicColorRef = AtomicBoolean(supportsDynamicColor)
-    private val themeSeedRef = AtomicReference(defaultThemeSeed())
-    private val amoledRef = AtomicBoolean(false)
-    private val paletteStyleRef = AtomicReference<PaletteStyle>(PaletteStyle.TonalSpot)
-    private val specVersionRef = AtomicReference<ColorSpec.SpecVersion>(ColorSpec.SpecVersion.SPEC_2025)
+    /**
+     * 唯一的主题状态流。
+     *
+     * `null` 表示**首次读盘尚未完成**，UI 必须停在启动占位而不是拿默认值先画一帧；
+     * 一旦读出（成功或回落默认值）就只可能是非空。
+     */
+    private val state = MutableStateFlow<ThemeSettings?>(null)
 
-    var themeMode: ThemeMode
-        get() = themeModeRef.load()
-        private set(value) { themeModeRef.store(value) }
-
-    var dynamicColor: Boolean
-        get() = dynamicColorRef.load()
-        private set(value) { dynamicColorRef.store(value) }
-
-    var themeSeed: ThemeSeed
-        get() = themeSeedRef.load()
-        private set(value) { themeSeedRef.store(value) }
-
-    var amoled: Boolean
-        get() = amoledRef.load()
-        private set(value) { amoledRef.store(value) }
-
-    var paletteStyle: PaletteStyle
-        get() = paletteStyleRef.load()
-        private set(value) { paletteStyleRef.store(value) }
-
-    var specVersion: ColorSpec.SpecVersion
-        get() = specVersionRef.load()
-        private set(value) { specVersionRef.store(value) }
-
-    val themeModeFlow: Flow<ThemeMode> = dataStore.data.map { prefs ->
-        when (prefs[THEME_MODE_KEY]) {
-            ThemeMode.LIGHT.name -> ThemeMode.LIGHT
-            ThemeMode.DARK.name -> ThemeMode.DARK
-            else -> ThemeMode.SYSTEM
-        }
-    }
-
-    val dynamicColorFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[DYNAMIC_COLOR_KEY] ?: supportsDynamicColor
-    }
-
-    val themeSeedFlow: Flow<ThemeSeed> = dataStore.data.map { prefs ->
-        prefs[THEME_SEED_KEY]?.let { runCatching { ThemeSeed.valueOf(it) }.getOrNull() }?.orAvailable()
-            ?: defaultThemeSeed()
-    }
-
-    val amoledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[AMOLED_KEY] ?: false
-    }
-
-    val paletteStyleFlow: Flow<PaletteStyle> = dataStore.data.map { prefs ->
-        parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
-            ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
-    }
-
-    val specVersionFlow: Flow<ColorSpec.SpecVersion> = dataStore.data.map { prefs ->
-        parseSpecVersion(prefs[SPEC_VERSION_KEY])
-            ?: ColorSpec.SpecVersion.SPEC_2025
-    }
+    val settings: StateFlow<ThemeSettings?> = state.asStateFlow()
 
     init {
-        runCatching {
-            scope.launch {
-                val prefs = dataStore.data.first()
-                prefs[THEME_MODE_KEY]?.let {
-                    themeMode = when (it) {
-                        ThemeMode.LIGHT.name -> ThemeMode.LIGHT
-                        ThemeMode.DARK.name -> ThemeMode.DARK
-                        else -> ThemeMode.SYSTEM
-                    }
-                }
-                prefs[DYNAMIC_COLOR_KEY]?.let {
-                    dynamicColor = it
-                }
-                prefs[THEME_SEED_KEY]?.let {
-                    runCatching { ThemeSeed.valueOf(it) }.getOrNull()?.orAvailable()?.let { seed -> themeSeed = seed }
-                }
-                prefs[AMOLED_KEY]?.let {
-                    amoled = it
-                }
-                val savedStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
-                    ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else null
-                if (savedStyle != null) paletteStyle = savedStyle
-                val savedSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
-                if (savedSpecVersion != null) {
-                    specVersion = savedSpecVersion
-                }
-            }
-        }
+        scope.launch { ensureLoaded() }
         scope.launch(Dispatchers.Default) {
             warmUpThemeCardColors()
         }
     }
 
-    fun getInitialThemeMode(): ThemeMode = themeMode
+    /**
+     * 确保首次读盘已落定；失败时回落默认值，避免 `settings` 永远停在 `null`。
+     *
+     * 幂等且并发安全：`compareAndSet(null, ...)` 保证只有第一个调用者写入，
+     * 其余调用者直接返回（此时 `state` 已非空）。
+     */
+    private suspend fun ensureLoaded() {
+        if (state.value != null) return
+        val loaded = runCatching { readSettings(dataStore.data.first()) }
+            .getOrElse { error ->
+                AppLogger.w("ThemeManager", "读取主题配置失败，沿用平台默认值：${error.message}")
+                defaultThemeSettings()
+            }
+        state.compareAndSet(null, loaded)
+    }
 
-    fun getInitialDynamicColor(): Boolean = dynamicColor
+    private fun readSettings(prefs: Preferences): ThemeSettings {
+        val mode = when (prefs[THEME_MODE_KEY]) {
+            ThemeMode.LIGHT.name -> ThemeMode.LIGHT
+            ThemeMode.DARK.name -> ThemeMode.DARK
+            else -> ThemeMode.SYSTEM
+        }
+        val seed = prefs[THEME_SEED_KEY]
+            ?.let { runCatching { ThemeSeed.valueOf(it) }.getOrNull() }
+            ?.orAvailable()
+            ?: defaultThemeSeed()
+        val style = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
+            ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else PaletteStyle.TonalSpot
+        return ThemeSettings(
+            themeMode = mode,
+            dynamicColor = prefs[DYNAMIC_COLOR_KEY] ?: supportsDynamicColor,
+            themeSeed = seed,
+            amoled = prefs[AMOLED_KEY] ?: false,
+            paletteStyle = style,
+            specVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY]) ?: ColorSpec.SpecVersion.SPEC_2025,
+        )
+    }
 
-    fun getInitialThemeSeed(): ThemeSeed = themeSeed
-
-    fun getInitialAmoled(): Boolean = amoled
-
-    fun getInitialPaletteStyle(): PaletteStyle = paletteStyle
-
-    fun getInitialSpecVersion(): ColorSpec.SpecVersion = specVersion
+    /**
+     * 乐观更新内存状态并返回新值：UI 立即生效，DataStore 只负责持久化。
+     *
+     * 先等首次读盘落定再改，否则改动会以默认值为基底，把其他已持久化字段一起冲掉。
+     */
+    private suspend fun update(transform: (ThemeSettings) -> ThemeSettings): ThemeSettings {
+        ensureLoaded()
+        val next = transform(state.value ?: defaultThemeSettings())
+        state.value = next
+        return next
+    }
 
     suspend fun setThemeMode(mode: ThemeMode) {
-        themeMode = mode
+        update { it.copy(themeMode = mode) }
         dataStore.edit { prefs ->
             prefs[THEME_MODE_KEY] = mode.name
         }
     }
 
     suspend fun setDynamicColor(enabled: Boolean) {
-
-        val targetSeed = if (enabled) {
-            ThemeSeed.Dynamic
-        } else if (themeSeed == ThemeSeed.Dynamic) {
-            ThemeSeed.Lotus
-        } else {
-            themeSeed
+        val next = update { current ->
+            val targetSeed = when {
+                enabled -> ThemeSeed.Dynamic
+                current.themeSeed == ThemeSeed.Dynamic -> ThemeSeed.Lotus
+                else -> current.themeSeed
+            }
+            current.copy(dynamicColor = enabled, themeSeed = targetSeed)
         }
-        dynamicColor = enabled
-        themeSeed = targetSeed
         dataStore.edit { prefs ->
             prefs[DYNAMIC_COLOR_KEY] = enabled
-            prefs[THEME_SEED_KEY] = targetSeed.name
+            prefs[THEME_SEED_KEY] = next.themeSeed.name
         }
     }
 
     suspend fun setThemeSeed(seed: ThemeSeed) {
-        val targetDynamic = (seed == ThemeSeed.Dynamic && supportsDynamicColor)
         val targetSeed = seed.orAvailable()
-        themeSeed = targetSeed
-        dynamicColor = targetDynamic
+        val targetDynamic = (seed == ThemeSeed.Dynamic && supportsDynamicColor)
+        update { it.copy(themeSeed = targetSeed, dynamicColor = targetDynamic) }
         dataStore.edit { prefs ->
             prefs[THEME_SEED_KEY] = targetSeed.name
             prefs[DYNAMIC_COLOR_KEY] = targetDynamic
@@ -203,14 +187,14 @@ class ThemeManager(
     suspend fun selectTheme(seed: ThemeSeed) = setThemeSeed(seed)
 
     suspend fun setAmoled(enabled: Boolean) {
-        amoled = enabled
+        update { it.copy(amoled = enabled) }
         dataStore.edit { prefs ->
             prefs[AMOLED_KEY] = enabled
         }
     }
 
     suspend fun setPaletteStyle(style: PaletteStyle) {
-        paletteStyle = style
+        update { it.copy(paletteStyle = style) }
         dataStore.edit { prefs ->
             prefs[PALETTE_STYLE_KEY] = style.name
             // 遗留键仅作一次性迁移来源，写入新键后清除
@@ -219,7 +203,7 @@ class ThemeManager(
     }
 
     suspend fun setSpecVersion(version: ColorSpec.SpecVersion) {
-        specVersion = version
+        update { it.copy(specVersion = version) }
         dataStore.edit { prefs ->
             prefs[SPEC_VERSION_KEY] = version.name
         }
