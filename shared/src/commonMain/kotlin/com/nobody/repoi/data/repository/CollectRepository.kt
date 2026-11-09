@@ -13,11 +13,8 @@ import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.remote.model.WorksCollectData
 import com.nobody.repoi.data.session.UserSession
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
@@ -37,7 +34,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * 另含图片画廊的关联条目查询 (`api/pic/relate`) 与收藏中心 4 类列表查询
  * (`api/collect/hobby-v2|common-v3|album-v2|pic-v2`)。
  *
- * 条目收藏状态经 [observeCollectState] 以状态流对外暴露：写操作成功后**只**更新内部状态池，
+ * 条目收藏状态经 [observeCollectState] 以状态流对外暴露：**状态池是唯一真相源**，
+ * 读（[refreshCollectState]）与写（保存/取消/收藏项增删）都只落到池内对应的 `MutableStateFlow`，
  * 消费端靠 `StateFlow` 观察获得原子更新（状态驱动，不是事件驱动）。
  *
  * 状态池并发模型（ADR-0011）：
@@ -46,22 +44,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * - 读路径直接取 `stateFlows.value` 快照（无锁）；未命中时用 `update` 的 CAS 语义把新流并入快照，
  *   并发首访同一 `nodeId` 也只落一个实例，从而保证幂等（同 `nodeId` 恒返回同一 `StateFlow`）；
  * - `MutableStateFlow.update` 内部是 CAS 重试，闭包内严禁再嵌套 `update`。
- *
- * 旧接口 [collectUpdates]（`SharedFlow<Pair<Long, CollectData?>>`）已停止发射任何事件，
- * 仅作为过渡残留保留至消费端迁移完成，新代码禁止订阅。
  */
 class CollectRepository(
     private val api: HpoiApi,
     private val json: Json,
     private val userSession: UserSession,
 ) {
-    // 旧事件广播残留：已停止发射，等待消费端迁移后物理删除，新代码禁止订阅
-    @Deprecated("收藏状态改由 observeCollectState 状态流承载，该广播已停止发射")
-    private val _collectUpdates = MutableSharedFlow<Pair<Long, CollectData?>>(extraBufferCapacity = 16)
-
-    @Deprecated("收藏状态改由 observeCollectState 状态流承载，该广播已停止发射")
-    val collectUpdates: SharedFlow<Pair<Long, CollectData?>> = _collectUpdates.asSharedFlow()
-
     /** 条目状态池：nodeId → 该条目的收藏状态流（不可变 map 快照，写入走 CAS） */
     private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData?>>>(emptyMap())
 
