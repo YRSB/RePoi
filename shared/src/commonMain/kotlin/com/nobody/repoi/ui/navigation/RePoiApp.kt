@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.navigation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -27,6 +25,7 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ThemeMode
 import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.defaultThemeSettings
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.data.media.MediaPipeline
@@ -50,18 +49,11 @@ fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    // 单一主题流：null 表示首次读盘未完成，此时不能拿默认值先画一帧
+    // 单一主题流：null 表示首次读盘未完成，此时直接用平台默认值渲染，不插入任何占位。
+    // 代价是冷启动会出现一次「默认配色 → 真实配色」的切换（已知问题，后续单独解决）；
+    // 收益是首帧永远有真实界面，不会出现黑屏或空白。
     val settings by themeManager.settings.collectAsStateWithLifecycle()
-    val current = settings
-    if (current == null) {
-        // 占位只跟随系统深浅取纯黑白，不套任何主题配色，避免「先看到默认取色」
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(if (isSystemInDarkTheme()) Color.Black else Color.White)
-        )
-        return
-    }
+    val current = settings ?: defaultThemeSettings()
 
     val darkTheme = when (current.themeMode) {
         ThemeMode.LIGHT -> false

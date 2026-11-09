@@ -21,6 +21,8 @@
 | [ADR-0007](0007-media-pipeline-async-image.md) | 多媒体管道 (MediaPipeline) 与自适应图片呈现基元架构深化 | **多媒体/呈现/防抖/手势**：纯计算 MediaPipeline、404 防御闭环、PoiAsyncImage 内置宽高比防抖、跨平台 PoiZoomableImage、渐进桥接 | 已采纳 (Accepted) - 2026-11-08 |
 | [ADR-0008](0008-dynamic-theme-style-spec.md) | 动态主题下的色彩风格 / 色彩标准重推导 | **主题/取色系统/可测性**：壁纸主色作锚点重推导、纯决策树 `resolveSchemeSource`、`systemSchemeProvider` 注入缝、收敛 expressiveColor 重复维度 | 已采纳 (Accepted) - 2026-11-09 |
 | [ADR-0009](0009-theme-color-motion.md) | 主题切换的颜色弹簧过渡 | **主题/动效**：逐角色 animateColorAsState、首帧与深浅模式切换不补间、走 ColorScheme.copy | 已采纳 (Accepted) - 2026-11-09 |
+| [ADR-0010](0010-theme-settings-single-flow.md) | 六维主题配置合并为单一状态流 | **主题/状态管理**：StateFlow<ThemeSettings?>、
+ull 表达未就绪、nsureLoaded 幂等并发安全、删除六个 getInitialXxx | 已采纳 (Accepted) - 2026-11-09 |
 
 ---
 
