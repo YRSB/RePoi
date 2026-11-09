@@ -48,6 +48,13 @@ sealed interface UserCollectIntent {
     /** 控制周边筛选抽屉显隐（打开时懒加载标签候选池） */
     data class SetFilterSheetVisible(val visible: Boolean) : UserCollectIntent
 
+    /**
+     * 懒加载周边标签候选池。
+     *
+     * 抽屉打开时由 ViewModel 内部自动触发；[force] 为 true 时无视已有缓存强制重拉。
+     */
+    data class LoadHobbyTags(val force: Boolean) : UserCollectIntent
+
     // ===== 各大类排序 =====
 
     /** 切换相册排序 */
@@ -83,6 +90,9 @@ sealed interface UserCollectIntent {
 
     /** 控制作品筛选弹层显隐（打开时懒加载作品标签候选池） */
     data class SetWorksFilterSheetVisible(val visible: Boolean) : UserCollectIntent
+
+    /** 懒加载作品页标签候选池（[force] 为 true 时无视已有缓存强制重拉） */
+    data class LoadWorksTags(val force: Boolean) : UserCollectIntent
 
     // ===== 分页装载 =====
 

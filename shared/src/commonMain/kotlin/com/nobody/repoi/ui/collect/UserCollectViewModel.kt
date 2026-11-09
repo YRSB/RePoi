@@ -301,6 +301,7 @@ class UserCollectViewModel(
             is UserCollectIntent.SelectTag -> applyTag(intent.tag)
             UserCollectIntent.ResetFilter -> resetFilterInternal()
             is UserCollectIntent.SetFilterSheetVisible -> applyFilterSheetVisible(intent.visible)
+            is UserCollectIntent.LoadHobbyTags -> loadHobbyTags(intent.force)
             is UserCollectIntent.SwitchAlbumOrder -> applyAlbumOrder(intent.order)
             is UserCollectIntent.SwitchAlbumType -> applyAlbumType(intent.type)
             is UserCollectIntent.SwitchPicOrder -> applyPicOrder(intent.order)
@@ -310,6 +311,7 @@ class UserCollectViewModel(
             is UserCollectIntent.SelectWorksTag -> applyWorksTag(intent.tag)
             UserCollectIntent.ResetWorksTag -> resetWorksTagInternal()
             is UserCollectIntent.SetWorksFilterSheetVisible -> applyWorksFilterSheetVisible(intent.visible)
+            is UserCollectIntent.LoadWorksTags -> loadWorksTags(intent.force)
             is UserCollectIntent.LoadFirstPage -> loadFirstPage(intent.category)
             is UserCollectIntent.Refresh -> refresh(intent.category)
             is UserCollectIntent.LoadNextPage -> loadNextPage(intent.category)
@@ -622,7 +624,7 @@ class UserCollectViewModel(
     private fun applyFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showFilterSheet = visible) }
         if (visible) {
-            loadAvailableTags(force = true)
+            loadHobbyTags(force = true)
         }
     }
 
@@ -631,7 +633,7 @@ class UserCollectViewModel(
      *
      * @param force 为 true 时无视已有缓存强制重拉（开筛选弹层时使用）。
      */
-    fun loadAvailableTags(force: Boolean = false) {
+    private fun loadHobbyTags(force: Boolean) {
         if (_uiState.value.isTagPoolLoading) return
         if (!force && _uiState.value.availableTags.isNotEmpty()) return
         val categoryId = _uiState.value.subCategoryId ?: DEFAULT_HOBBY_KEY
@@ -652,7 +654,7 @@ class UserCollectViewModel(
      */
     private fun refreshTagPoolIfSheetOpen() {
         if (_uiState.value.showFilterSheet) {
-            loadAvailableTags(force = true)
+            loadHobbyTags(force = true)
         }
     }
 
@@ -663,7 +665,7 @@ class UserCollectViewModel(
      * 白名单外（含历史遗留的 `orderTime`）一律拒绝。
      *
      * 排序维度被 4 页共享，故其余 3 页的缓存随之失效（重置为空），
-     * 下次切到该 Tab 时由 [switchCategory] 触发首屏装载。
+     * 下次切到该 Tab 时由 [UserCollectIntent.SwitchCategory] 触发首屏装载。
      */
     private fun applyCommonOrder(newOrder: String) {
         if (!CommonOrderOption.isValid(newOrder)) return
@@ -816,14 +818,14 @@ class UserCollectViewModel(
     private fun applyWorksFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showWorksFilterSheet = visible) }
         if (visible) {
-            loadWorksAvailableTags(force = true)
+            loadWorksTags(force = true)
         }
     }
 
     /**
      * 懒加载作品页标签候选池。
      */
-    fun loadWorksAvailableTags(force: Boolean = false) {
+    private fun loadWorksTags(force: Boolean) {
         if (_uiState.value.isWorksTagPoolLoading) return
         if (!force && _uiState.value.worksAvailableTags.isNotEmpty()) return
         _uiState.update { it.copy(isWorksTagPoolLoading = true) }
@@ -837,16 +839,6 @@ class UserCollectViewModel(
                 }
         }
     }
-
-    /**
-     * 加载作品页第一页（独立于通用 4 页的请求形态：`type="works"` + `state` + `isAsc` + `tagValue`）。
-     */
-    fun loadWorksFirstPage() = loadFirstPage(UserCollectCategory.WORKS)
-
-    /**
-     * 加载作品页下一页。
-     */
-    fun loadWorksNextPage() = loadNextPage(UserCollectCategory.WORKS)
 
     // ==================== 批量取消收藏 ====================
 
@@ -981,36 +973,26 @@ class UserCollectViewModel(
 
     // ==================== 分页装载 ====================
 
-    /**
-     * 加载指定大类（默认当前）的第一页。
-     */
-    fun loadFirstPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
+    /** 加载指定大类的第一页（首次进入 / 重试），用户态入口见 [UserCollectIntent.LoadFirstPage] */
+    private fun loadFirstPage(category: UserCollectCategory) {
         if (userId <= 0L) return
         dispatchToLoader(category) { it.loadInitial() }
     }
 
-    /**
-     * 下拉刷新指定大类（默认当前）的数据。
-     */
-    fun refresh(category: UserCollectCategory = _uiState.value.selectedCategory) {
+    /** 下拉刷新指定大类，用户态入口见 [UserCollectIntent.Refresh] */
+    private fun refresh(category: UserCollectCategory) {
         if (userId <= 0L) return
         dispatchToLoader(category) { it.refresh() }
     }
 
-    /**
-     * 加载指定大类（默认当前）的下一页。
-     *
-     * 并发守卫、`hasMore` 判定与首屏错误短路由 loader 内部完成。
-     */
-    fun loadNextPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
+    /** 加载指定大类下一页，用户态入口见 [UserCollectIntent.LoadNextPage] */
+    private fun loadNextPage(category: UserCollectCategory) {
         if (userId <= 0L) return
         dispatchToLoader(category) { it.loadMore() }
     }
 
-    /**
-     * 清除指定大类（默认当前）的错误提示。
-     */
-    fun dismissError(category: UserCollectCategory = _uiState.value.selectedCategory) {
+    /** 清除指定大类错误提示，用户态入口见 [UserCollectIntent.DismissError] */
+    private fun dismissError(category: UserCollectCategory) {
         dispatchToLoader(category) { it.clearError() }
     }
 
@@ -1183,57 +1165,6 @@ class UserCollectViewModel(
             runCatching { viewPreferencesManager.setCollectHobbyOrder(state, order, sortType) }
         }
     }
-
-    // ==================== 过渡期薄转发（UI 调用点保持不变）====================
-    // 目标形态是视图层只发 Intent；这些方法仅为避免一次性改写 8 个子页的回调签名而保留。
-
-    fun switchCategory(category: UserCollectCategory) = onIntent(UserCollectIntent.SwitchCategory(category))
-
-    fun toggleViewMode() = onIntent(UserCollectIntent.ToggleViewMode)
-
-    fun switchCollectState(newState: String) = onIntent(UserCollectIntent.SwitchCollectState(newState))
-
-    fun switchOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchOrder(newOrder))
-
-    fun switchSortDirection(newSortType: Int) = onIntent(UserCollectIntent.SwitchSortDirection(newSortType))
-
-    fun selectSubCategory(subCategoryId: Int?) = onIntent(UserCollectIntent.SelectSubCategory(subCategoryId))
-
-    fun selectTag(tag: String?) = onIntent(UserCollectIntent.SelectTag(tag))
-
-    fun resetFilter() = onIntent(UserCollectIntent.ResetFilter)
-
-    fun setFilterSheetVisible(visible: Boolean) = onIntent(UserCollectIntent.SetFilterSheetVisible(visible))
-
-    fun switchCommonOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchCommonOrder(newOrder))
-
-    fun switchAlbumOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchAlbumOrder(newOrder))
-
-    fun switchAlbumType(newType: String) = onIntent(UserCollectIntent.SwitchAlbumType(newType))
-
-    fun switchPicOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchPicOrder(newOrder))
-
-    fun switchWorksState(newState: Int) = onIntent(UserCollectIntent.SwitchWorksState(newState))
-
-    fun switchWorksOrderAsc(isAsc: Boolean) = onIntent(UserCollectIntent.SwitchWorksOrderAsc(isAsc))
-
-    fun selectWorksTag(tag: String?) = onIntent(UserCollectIntent.SelectWorksTag(tag))
-
-    fun resetWorksTag() = onIntent(UserCollectIntent.ResetWorksTag)
-
-    fun setWorksFilterSheetVisible(visible: Boolean) = onIntent(UserCollectIntent.SetWorksFilterSheetVisible(visible))
-
-    fun toggleSelectionMode() = onIntent(UserCollectIntent.ToggleSelectionMode(_uiState.value.selectedCategory))
-
-    fun toggleSelect(id: Long) = onIntent(UserCollectIntent.ToggleSelect(id))
-
-    fun selectAll() = onIntent(UserCollectIntent.SelectAll(_uiState.value.selectedCategory))
-
-    fun clearSelection() = onIntent(UserCollectIntent.ClearSelection(_uiState.value.selectedCategory))
-
-    fun cancelSelectedCollect() = onIntent(UserCollectIntent.ConfirmBatchCancel)
-
-    fun dismissBatchCancelError() = onIntent(UserCollectIntent.DismissBatchCancelError)
 
     companion object {
         const val PAGE_SIZE = 20
