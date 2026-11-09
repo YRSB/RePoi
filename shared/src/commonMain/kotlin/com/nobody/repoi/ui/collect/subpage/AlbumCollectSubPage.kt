@@ -17,6 +17,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
+import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.SubPageData
 import com.nobody.repoi.ui.collect.components.CollectAlbumCard
 import com.nobody.repoi.ui.collect.components.CollectAlbumPictureOrderTabs
@@ -49,6 +53,48 @@ import androidx.compose.foundation.shape.CircleShape
 /** 原版相册页空态文案 `R.string.text_empty_collect_album` */
 internal const val COLLECT_ALBUM_EMPTY_TEXT = "暂无相册~"
 
+/** 「我创建的」档空态文案（与收藏档区分，避免暗示「没有收藏」） */
+internal const val COLLECT_CREATED_ALBUM_EMPTY_TEXT = "暂无创建的相册~"
+
+/** 相册页语料档位分段控件的展示项：`标签 to 档位值` */
+internal val CollectAlbumTypeTabs: List<Pair<String, String>> = listOf(
+    "我收藏的" to AlbumTypeOption.FAV,
+    "我创建的" to AlbumTypeOption.UPLOAD
+)
+
+/**
+ * 相册页语料档位分段控件（M3 [SingleChoiceSegmentedButtonRow]）。
+ *
+ * 单选项语义：点击已选档位不重复派发，避免无意义的重载请求。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AlbumTypeSegmentedRow(
+    albumType: String,
+    onSwitchAlbumType: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            CollectAlbumTypeTabs.forEachIndexed { index, (label, type) ->
+                SegmentedButton(
+                    selected = albumType == type,
+                    onClick = { onSwitchAlbumType(type) },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = CollectAlbumTypeTabs.size),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = label, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
 /**
  * 收藏页「相册」子页（category key=70000，接口 `api/collect/album-v2`）。
  *
@@ -58,11 +104,12 @@ internal const val COLLECT_ALBUM_EMPTY_TEXT = "暂无相册~"
  * - 批量取消收藏提交**外层收藏节点 id**（`UserCollectAlbumItem.id`），提交前二次确认。
  *
  * @param currentOrder 当前排序档（`addTime` / `actionDate` / `praiseCount`）
- * @param albumType 相册查询类型（`fav` = 收藏的相册，其余值 = 我创建的相册）
+ * @param albumType 相册语料档位（`fav` = 我收藏的，`upload` = 我创建的），见 [AlbumTypeOption]
  * @param isSelectionMode 是否处于多选模式
  * @param selectedIds 已选中的**外层收藏节点 id**集合
  * @param isSelf 是否浏览自己的收藏（批量取消收藏仅本人可用）
  * @param isCancellingBatch 批量取消收藏请求进行中（用于确认按钮 loading 与防重复提交）
+ * @param onSwitchAlbumType 切换语料档位（分段控件回调）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +125,7 @@ internal fun AlbumCollectSubPage(
     onRefresh: () -> Unit,
     onLoadNextPage: () -> Unit,
     onSwitchOrder: (String) -> Unit,
+    onSwitchAlbumType: (String) -> Unit,
     onItemClick: (UserCollectAlbumItem) -> Unit,
     onToggleSelect: (Long) -> Unit,
     onSelectAll: () -> Unit,
@@ -89,9 +137,9 @@ internal fun AlbumCollectSubPage(
     // 切换相册类型或排序时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
     // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
     //
-    // albumType 必须进键：它是 `api/collect/album-v2` 的 type 参数（fav = 收藏的相册，
-    // 其余 = 我创建的相册），两种语料内容完全不同；漏掉该维度会让两种语料共用一份
-    // 滚动位置并互相串位（切类型后残留旧下标，或本应回顶却沿用旧位置）。
+    // albumType 必须进键：`fav`（我收藏的）走 `api/collect/album-v2`，`upload`（我创建的）走
+    // `api/album/user-v2`，两套语料内容完全不同；漏掉该维度会让两种语料共用一份滚动位置
+    // 并互相串位（切类型后残留旧下标，或本应回顶却沿用旧位置）。
     val gridState = rememberKeyedLazyStaggeredGridState("album_staggered", albumType, currentOrder)
     // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
     // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
@@ -117,6 +165,12 @@ internal fun AlbumCollectSubPage(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // 语料档位分段控件（issue #97 Story 5）：我收藏的 / 我创建的
+            AlbumTypeSegmentedRow(
+                albumType = albumType,
+                onSwitchAlbumType = onSwitchAlbumType
+            )
+
             // 顶部 3 档二级排序 Tab（等价原版 UserCollectSubPagerFragment）
             CollectOrderTabRow(
                 titles = CollectAlbumPictureOrderTabs,
@@ -144,7 +198,14 @@ internal fun AlbumCollectSubPage(
                     }
 
                     subPageData.items.isEmpty() -> {
-                        EmptyCollectView(title = COLLECT_ALBUM_EMPTY_TEXT)
+                        // 「我创建的」与「我收藏的」是两份不同语料，空态文案各自独立
+                        EmptyCollectView(
+                            title = if (albumType == AlbumTypeOption.UPLOAD) {
+                                COLLECT_CREATED_ALBUM_EMPTY_TEXT
+                            } else {
+                                COLLECT_ALBUM_EMPTY_TEXT
+                            }
+                        )
                     }
 
                     else -> {
@@ -176,7 +237,8 @@ internal fun AlbumCollectSubPage(
                                         if (isSelectionMode) onToggleSelect(item.id) else onItemClick(item)
                                     },
                                     // 长按任意子区域（封面/标题/头像）进入多选
-                                    onLongClick = { onToggleSelect(item.id) }
+                                    onLongClick = { onToggleSelect(item.id) },
+                                    albumType = albumType
                                 )
                             }
 

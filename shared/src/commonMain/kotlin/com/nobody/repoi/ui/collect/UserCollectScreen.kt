@@ -257,10 +257,16 @@ fun UserCollectScreen(
                             onRefresh = { viewModel.refresh(UserCollectCategory.ALBUM) },
                             onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.ALBUM) },
                             onSwitchOrder = { viewModel.switchAlbumOrder(it) },
+                            onSwitchAlbumType = { viewModel.switchAlbumType(it) },
                             onItemClick = { item ->
                                 onNavigateToAlbum?.invoke(
                                     AlbumNavParam(
-                                        albumId = item.actualAlbumId,
+                                        // 「我收藏的」用内层真实相册 id；「我创建的」接口的 id 本身就是相册 id
+                                        albumId = if (uiState.albumType == AlbumTypeOption.UPLOAD) {
+                                            item.id
+                                        } else {
+                                            item.actualAlbumId
+                                        },
                                         initialTitle = item.actualTitle,
                                         initialCover = item.actualCover
                                     )

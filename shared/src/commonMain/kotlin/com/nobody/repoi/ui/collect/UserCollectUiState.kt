@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.collect
+package com.nobody.repoi.ui.collect
 
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -108,6 +108,21 @@ object CommonOrderOption {
 }
 
 /**
+ * 相册页语料档位：`fav` = 我收藏的（`api/collect/album-v2`）/ `upload` = 我创建的（`api/album/user-v2`）。
+ *
+ * 两档是**两套接口**，内容与分页语义都不同；[UserCollectUiState.albumType] 只允许这两个取值。
+ */
+object AlbumTypeOption {
+    const val FAV = "fav"
+    const val UPLOAD = "upload"
+
+    val ALL_TYPES = listOf(FAV, UPLOAD)
+    const val DEFAULT = FAV
+
+    fun isValid(type: String): Boolean = type in ALL_TYPES
+}
+
+/**
  * 相册页与图片页共用的 3 档排序值域（原版 `UserCollectActivity.java:110, 139`）。
  */
 object MediaOrderOption {
@@ -166,8 +181,8 @@ data class UserCollectUiState(
     val showFilterSheet: Boolean = false,
 
     // ===== 相册页 =====
-    /** 相册查询类型：fav = 收藏的相册，其余值表示「我创建的相册」 */
-    val albumType: String = "fav",
+    /** 相册语料档位，见 [AlbumTypeOption]：fav = 我收藏的，upload = 我创建的 */
+    val albumType: String = AlbumTypeOption.DEFAULT,
     val albumOrder: String = MediaOrderOption.DEFAULT,
 
     // ===== 图片页 =====

@@ -100,7 +100,8 @@ class UserCollectViewModel(
             collectState = initialCollectState,
             order = HobbyOrderOption.effective(initialCollectState, initialOrder),
             isListView = !viewPreferencesManager.isCollectListGridMode,
-            isSelf = resolveIsSelf(userId)
+            isSelf = resolveIsSelf(userId),
+            albumType = resolveAlbumType(stateGet<String>("albumType"))
         )
     )
     val uiState: StateFlow<UserCollectUiState> = _uiState.asStateFlow()
@@ -182,14 +183,7 @@ class UserCollectViewModel(
         pageSize = PAGE_SIZE,
         keySelector = { item: UserCollectAlbumItem -> item.id }
     ) { page, size ->
-        val state = _uiState.value
-        collectRepository.getUserCollectAlbumList(
-            userId = userId,
-            type = state.albumType,
-            order = state.albumOrder,
-            page = page,
-            pageSize = size
-        )
+        fetchAlbumPage(page, size)
     }
 
     private val picLoader: PagedListLoader<UserCollectPicItem> = pagedListLoader(
@@ -308,6 +302,7 @@ class UserCollectViewModel(
             UserCollectIntent.ResetFilter -> resetFilterInternal()
             is UserCollectIntent.SetFilterSheetVisible -> applyFilterSheetVisible(intent.visible)
             is UserCollectIntent.SwitchAlbumOrder -> applyAlbumOrder(intent.order)
+            is UserCollectIntent.SwitchAlbumType -> applyAlbumType(intent.type)
             is UserCollectIntent.SwitchPicOrder -> applyPicOrder(intent.order)
             is UserCollectIntent.SwitchCommonOrder -> applyCommonOrder(intent.order)
             is UserCollectIntent.SwitchWorksState -> applyWorksState(intent.state)
@@ -350,6 +345,8 @@ class UserCollectViewModel(
         // 注意：applyInitParam 内的归一化守卫会被排序记忆漂移误判，故门禁必须用原始 param。
         if (appliedNavParam == param) return
         appliedNavParam = param
+        // 相册语料档位只在档位确实变化时重载：NavKey 默认 fav 不能覆盖用户在页内切过的「我创建的」
+        reloadAlbumIfTypeChanged(resolveAlbumType(param.albumType))
         // 归一化必须排在持久化读回之后，否则首屏会用默认排序白发一次请求
         viewModelScope.launch {
             persistedSortReady.await()
@@ -383,6 +380,8 @@ class UserCollectViewModel(
         stateSet("initialCollectState", if (targetCategory == UserCollectCategory.WORKS) targetWorksState.toString() else targetState)
         stateSet("initialOrder", targetOrder)
         stateSet("initialCategory", targetCategory.key)
+        // 相册语料档位同样进恢复槽：Nav3 重建 Entry 后仍停在用户选过的那一档
+        stateSet("albumType", resolveAlbumType(param.albumType))
         if (targetCategory == UserCollectCategory.WORKS) {
             stateSet("worksState", targetWorksState)
         }
@@ -405,7 +404,7 @@ class UserCollectViewModel(
                 sortType = if (targetCategory == UserCollectCategory.HOBBY) restoredSortType else it.sortType,
                 subCategoryId = targetSubCategory,
                 selectedTag = targetTag,
-                albumType = param.albumType,
+                albumType = resolveAlbumType(param.albumType),
                 albumOrder = if (targetCategory == UserCollectCategory.ALBUM) targetOrder else it.albumOrder,
                 picOrder = if (targetCategory == UserCollectCategory.PICTURE) targetOrder else it.picOrder,
                 commonOrder = if (targetCategory in COMMON_CATEGORIES) targetOrder else it.commonOrder
@@ -415,6 +414,27 @@ class UserCollectViewModel(
         resetAllLoaders()
         loadFirstPage(targetCategory)
     }
+
+    /**
+     * 相册语料档位变化时重载相册列表（保留 AppRoute 已有的 albumType 入口语义）。
+     *
+     * 仅在档位确实不同时动作：NavKey 默认 `fav` 不得把页内切到的「我创建的」顶回去。
+     */
+    private fun reloadAlbumIfTypeChanged(targetType: String) {
+        if (_uiState.value.albumType == targetType) return
+        stateSet("albumType", targetType)
+        _uiState.update { it.copy(albumType = targetType) }
+        resetLoader(UserCollectCategory.ALBUM)
+        if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
+            loadFirstPage(UserCollectCategory.ALBUM)
+        }
+    }
+
+    /**
+     * 解析相册语料档位：NavKey 透传值 / 进程恢复槽值，白名单外一律回落 [AlbumTypeOption.DEFAULT]。
+     */
+    private fun resolveAlbumType(raw: String?): String =
+        if (raw != null && AlbumTypeOption.isValid(raw)) raw else AlbumTypeOption.DEFAULT
 
     /**
      * 解析作品页深链收藏状态：支持 "1"/"2"/"3" 或语义别名（want/watching/watched 等），默认想看 (1)。
@@ -671,6 +691,53 @@ class UserCollectViewModel(
         resetLoader(UserCollectCategory.ALBUM)
         if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
             loadFirstPage(UserCollectCategory.ALBUM)
+        }
+    }
+
+    // ==================== 相册页语料（我收藏的 / 我创建的）====================
+
+    /**
+     * 切换相册语料档位（[AlbumTypeOption.FAV] / [AlbumTypeOption.UPLOAD]）。
+     *
+     * 两档走两套接口，切换即等于换了一份列表：必须重置 loader（清掉旧页码与 hasMore）
+     * 再装载首屏，否则「我创建的」会沿用「我收藏的」的页码继续翻页。
+     * 滚动位置由相册子页按 `albumType + order` 绑定新键自动回顶。
+     */
+    private fun applyAlbumType(newType: String) {
+        if (!AlbumTypeOption.isValid(newType)) return
+        if (_uiState.value.albumType == newType) return
+        stateSet("albumType", newType)
+        _uiState.update { it.copy(albumType = newType) }
+        resetLoader(UserCollectCategory.ALBUM)
+        if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
+            loadFirstPage(UserCollectCategory.ALBUM)
+        }
+    }
+
+    /**
+     * 相册页分页请求：按运行时 [UserCollectUiState.albumType] 分流到两套接口。
+     *
+     * - `fav` → [CollectRepository.getUserCollectAlbumList]（`api/collect/album-v2`）；
+     * - `upload` → [CollectRepository.getUserCreationAlbumList]（`api/album/user-v2`，点击需改用 `actualAlbumId`）。
+     */
+    private suspend fun fetchAlbumPage(page: Int, pageSize: Int): Result<List<UserCollectAlbumItem>> {
+        val state = _uiState.value
+        return when (state.albumType) {
+            AlbumTypeOption.UPLOAD ->
+                collectRepository.getUserCreationAlbumList(
+                    userId = userId,
+                    page = page,
+                    pageSize = pageSize,
+                    order = state.albumOrder
+                ).map { it.items }
+            else ->
+                collectRepository.getUserCollectAlbumList(
+                    userId = userId,
+                    type = state.albumType,
+                    order = state.albumOrder,
+                    page = page,
+                    pageSize = pageSize
+                )
         }
     }
 
@@ -1141,6 +1208,8 @@ class UserCollectViewModel(
     fun switchCommonOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchCommonOrder(newOrder))
 
     fun switchAlbumOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchAlbumOrder(newOrder))
+
+    fun switchAlbumType(newType: String) = onIntent(UserCollectIntent.SwitchAlbumType(newType))
 
     fun switchPicOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchPicOrder(newOrder))
 
