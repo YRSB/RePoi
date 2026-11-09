@@ -15,6 +15,7 @@ import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import kotlin.test.AfterTest
@@ -32,7 +33,7 @@ import kotlinx.coroutines.test.setMain
  * 用户全量收藏中枢 ViewModel 状态机单测（Turbine + Kotest）。
  *
  * 验证大类切换（手办/周边/相册/图片/作品）、收藏状态变更、批量管理多选模式流转，
- * 以及統一收藏事件 [CollectEvent] 触发的内存过滤与精准刷新自愈（ADR-0011/T3）。
+ * 以及统一收藏事件 [CollectEvent] 触发的内存过滤与精准刷新自愈（ADR-0011/T3）。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserCollectViewModelTest {
@@ -85,24 +86,8 @@ class UserCollectViewModelTest {
     @Test
     fun initialSetup_matchesNavParameters() = runTest(testDispatcher) {
         // 首屏 hobby-v2 先回空列表，避免初始化请求悬空
-        val mock = MockApi()
-        val session = FakeUserSession(
-            SessionState.Authenticated(userId = 888L, token = "test-token", profile = UserProfile(id = 888L))
-        )
-        val followRepo = FollowRepository(mock.api(testDispatcher), mock.json, session)
-        val financeRepo = UserFinanceRepository(mock.api(testDispatcher))
-        val userRepo = UserRepository(mock.api(testDispatcher), session, followRepo, financeRepo)
-        val collectRepo = CollectRepository(mock.api(testDispatcher), mock.json)
-        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        val (mock, _, _, viewModel) = fixture(userId = 888L)
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
-
-        val viewModel = UserCollectViewModel(
-            userRepository = userRepo,
-            collectRepository = collectRepo,
-            viewPreferencesManager = preferences,
-            userSession = session,
-            navUserId = 888L,
-        )
         testScheduler.advanceUntilIdle()
 
         viewModel.userId shouldBe 888L
@@ -168,15 +153,15 @@ class UserCollectViewModelTest {
     fun hobbyCancelEvent_removesItemFromMemoryWithoutNetwork() = runTest(testDispatcher) {
         val (mock, _, collectRepo, viewModel) = fixture()
         mock.enqueue(
-            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"},{"id":1002,"itemId":2002,"nameCN":"手办B"}]}}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"itemNodeId":7001,"nameCN":"手办A"},{"id":1002,"itemId":2002,"itemNodeId":7002,"nameCN":"手办B"}]}}"""
         )
         testScheduler.advanceUntilIdle()
         viewModel.uiState.value.hobbyData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(1001L, 1002L))
         val requestsBefore = mock.requestCount
 
-        // 手办取消：服务端成功后仓储内生发射 HobbyCollectChanged(nodeId, null)
+        // 手办取消：写侧传的是手办节点 id（外层收藏记录 id 与节点 id 不同），须走实体口径命中
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        collectRepo.deleteCollect(1001L, CollectData(id = 1001L, state = CollectConstants.STATE_BUY))
+        collectRepo.deleteCollect(7001L, CollectData(id = 7001L, state = CollectConstants.STATE_BUY))
         testScheduler.advanceUntilIdle()
 
         viewModel.uiState.value.hobbyData.items.map { it.id } shouldBe listOf(1002L)
@@ -185,7 +170,7 @@ class UserCollectViewModelTest {
     }
 
     @Test
-    fun hobbyAddEvent_refreshesHobbyCategory() = runTest(testDispatcher) {
+    fun hobbyAddEvent_onActiveCategory_refreshesImmediately() = runTest(testDispatcher) {
         val (mock, _, collectRepo, viewModel) = fixture()
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"}]}}"""
@@ -193,7 +178,7 @@ class UserCollectViewModelTest {
         testScheduler.advanceUntilIdle()
         val requestsBefore = mock.requestCount
 
-        // 新增/修改：仓储发射 HobbyCollectChanged(nodeId, data) 后触发对应分类 refresh
+        // 新增/修改：手办是当前活跃分类，事件到达后应立即精准刷新
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"},{"id":1003,"itemId":2003,"nameCN":"新手办"}]}}"""
@@ -205,6 +190,38 @@ class UserCollectViewModelTest {
         viewModel.uiState.value.hobbyData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(1001L, 1003L))
         // 写操作 1 次 + 刷新拉取 1 次
         mock.requestCount shouldBe requestsBefore + 2
+    }
+
+    @Test
+    fun hobbyAddEvent_onInactiveCategory_marksStaleWithoutNetwork() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        // 切到图片页签：手办离开活跃态（但已加载过）
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.saveCollect(1003L, CollectData(id = 1003L, state = CollectConstants.STATE_BUY))
+        testScheduler.advanceUntilIdle()
+
+        // 非活跃分类不得发刷新请求，只登记脏标记
+        mock.requestCount shouldBe requestsBefore + 1
+        viewModel.uiState.value.staleCategories.shouldContain(UserCollectCategory.HOBBY)
+
+        // 切回手办时补一次刷新，列表带出新增项
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"},{"id":1003,"itemId":2003,"nameCN":"新手办"}]}}"""
+        )
+        viewModel.switchCategory(UserCollectCategory.HOBBY)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.hobbyData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(1001L, 1003L))
+        viewModel.uiState.value.staleCategories shouldBe emptySet()
     }
 
     @Test
@@ -315,6 +332,47 @@ class UserCollectViewModelTest {
 
         viewModel.uiState.value.albumData.items.map { it.id } shouldBe listOf(7002L)
         mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun albumCancelEvent_matchesActualAlbumIdOnSingleCancel() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.ALBUM)
+        // 双层结构：外层收藏记录 id 与真实相册 id 不同（相册详情写侧传 actualAlbumId）
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":7001,"itemId":8001,"item":{"id":8001}},{"id":7002,"itemId":8002,"item":{"id":8002}}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.albumData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(7001L, 7002L))
+        val requestsBefore = mock.requestCount
+
+        // 相册详情页取消收藏传的是 actualAlbumId(8001)，外层收藏 id(7001) 不同
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(8001L, UserCollectCategory.ALBUM)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.albumData.items.map { it.id } shouldBe listOf(7002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun switchCategory_loadedEmptyPage_doesNotRequestAgain() = runTest(testDispatcher) {
+        val (mock, _, _, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        // 已加载过的空列表不应因「items 为空」而反复请求
+        viewModel.switchCategory(UserCollectCategory.HOBBY)
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+
+        mock.requestCount shouldBe requestsBefore
     }
 
     @Test

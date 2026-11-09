@@ -11,6 +11,7 @@ import com.nobody.repoi.data.remote.model.PicItem
  * 分页子页状态容器（按大类隔离列表与分页状态，支持独立懒加载与缓存）。
  *
  * @param isContentHidden 后端返回「用户已隐藏内容」语义时置位，供 UI 渲染专用空态而非通用错误态。
+ * @param isLoaded 首屏是否已成功加载过（懒加载判定与脏标记应用的前提）。
  */
 data class SubPageData<T>(
     val items: List<T> = emptyList(),
@@ -20,7 +21,8 @@ data class SubPageData<T>(
     val hasMore: Boolean = true,
     val page: Int = 1,
     val errorMessage: String? = null,
-    val isContentHidden: Boolean = false
+    val isContentHidden: Boolean = false,
+    val isLoaded: Boolean = false
 )
 
 /**
@@ -191,6 +193,12 @@ data class UserCollectUiState(
     val albumSelectedIds: Set<Long> = emptySet(),
     val isCancellingBatch: Boolean = false,
     val batchCancelError: String? = null,
+
+    /**
+     * 脏分类集合：某大类被收藏事件变更、但当时并非活跃分类时登记于此。
+     * 切回该大类时先刷新一次再展示，兼顾「不为隐藏页签发请求」与「切回看到最新数据」。
+     */
+    val staleCategories: Set<UserCollectCategory> = emptySet()
 
     // ===== 8 大类独立数据容器 =====
     val hobbyData: SubPageData<UserCollectHobbyItem> = SubPageData(),

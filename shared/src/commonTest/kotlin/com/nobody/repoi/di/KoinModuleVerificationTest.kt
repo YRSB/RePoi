@@ -48,6 +48,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import kotlin.test.Test
+import kotlin.test.assertSame
 
 /**
  * Koin 依赖注入完整性与依赖图验证测试。
@@ -91,7 +92,9 @@ class KoinModuleVerificationTest {
             koin.getOrNull<SearchHistoryManager>().shouldNotBeNull()
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
-            // 收藏失效总线已删除：收藏同步唯一事实来源为 CollectRepository.collectEvents
+            // 收藏失效总线（CollectInvalidationBus）已按 ADR-0011 物理删除，图内不应再有对应定义。
+            // 以「收藏仓储必须为单例」作为替代守卫：多实例会让统一事件流重新分裂成双轨。
+            assertSame(koin.get<CollectRepository>(), koin.get<CollectRepository>())
 
             // 3. 全量 25 个 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()

@@ -142,34 +142,31 @@ class UserCollectViewModel(
             }
         }
 
-        // 统一收藏事件自愈（ADR-0011）：取消类就地内存过滤（零网络），新增/修改类精准刷新对应分类。
+        // 统一收藏事件自愈（ADR-0011）：取消类就地内存过滤（零网络）；新增/修改类只在目标分类
+        // 活跃（即当前选中）时精准刷新，非活跃分类仅登记脏标记，切回时再拉一次。
         viewModelScope.launch {
             collectRepository.collectEvents.collect { event ->
                 when (event) {
-                    is CollectEvent.HobbyCollectChanged -> {
+                    is CollectEvent.HobbyCollectChanged ->
                         if (event.data == null) {
-                            removeHobbyFromMemory(event.nodeId)
+                            onCollectRemoved(UserCollectCategory.HOBBY, setOf(event.nodeId), matchEntityId = true)
                         } else {
-                            refresh(UserCollectCategory.HOBBY)
+                            onCollectAdded(UserCollectCategory.HOBBY)
                         }
-                    }
-                    is CollectEvent.ItemCollectChanged -> {
+                    is CollectEvent.ItemCollectChanged ->
                         if (event.isCollected) {
-                            refresh(event.category)
+                            onCollectAdded(event.category)
                         } else {
-                            removeCategoryItemsFromMemory(event.category, setOf(event.nodeId))
+                            onCollectRemoved(event.category, setOf(event.nodeId), matchEntityId = true)
                         }
-                    }
-                    is CollectEvent.WorksCollectChanged -> {
+                    is CollectEvent.WorksCollectChanged ->
                         if (event.data == null) {
-                            removeWorksFromMemory(event.worksId)
+                            onCollectRemoved(UserCollectCategory.WORKS, setOf(event.worksId), matchEntityId = true)
                         } else {
-                            refresh(UserCollectCategory.WORKS)
+                            onCollectAdded(UserCollectCategory.WORKS)
                         }
-                    }
-                    is CollectEvent.BatchCollectCancelled -> {
-                        removeCategoryItemsFromMemory(event.category, event.ids, matchEntityId = false)
-                    }
+                    is CollectEvent.BatchCollectCancelled ->
+                        onCollectRemoved(event.category, event.ids, matchEntityId = false)
                 }
             }
         }
@@ -272,6 +269,7 @@ class UserCollectViewModel(
                 albumOrder = if (targetCategory == UserCollectCategory.ALBUM) targetOrder else it.albumOrder,
                 picOrder = if (targetCategory == UserCollectCategory.PICTURE) targetOrder else it.picOrder,
                 commonOrder = if (targetCategory in COMMON_CATEGORIES) targetOrder else it.commonOrder,
+                staleCategories = emptySet(),
                 hobbyData = SubPageData(),
                 albumData = SubPageData(),
                 picData = SubPageData(),
@@ -348,8 +346,14 @@ class UserCollectViewModel(
     fun switchCategory(category: UserCollectCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
-        val hasData = _uiState.value.subPageData(category).items.isNotEmpty()
-        if (!hasData) {
+        val page = _uiState.value.subPageData(category)
+        // 脏标记优先：静置期间收到过该分类的收藏变更，先刷新再展示
+        if (category in _uiState.value.staleCategories) {
+            refresh(category)
+            return
+        }
+        // 仅「从未成功加载过」才走首屏，已加载的空列表不重复请求
+        if (!page.isLoaded) {
             loadFirstPage(category)
         }
     }
@@ -983,12 +987,14 @@ class UserCollectViewModel(
                         onSuccess = { items ->
                             _uiState.update {
                                 it.copy(
+                                    staleCategories = it.staleCategories - UserCollectCategory.HOBBY,
                                     hobbyData = SubPageData(
                                         items = items,
                                         isLoading = false,
                                         isRefreshing = false,
                                         hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
+                                        page = 1,
+                                        isLoaded = true
                                     )
                                 )
                             }
@@ -1019,12 +1025,14 @@ class UserCollectViewModel(
                         onSuccess = { items ->
                             _uiState.update {
                                 it.copy(
+                                    staleCategories = it.staleCategories - UserCollectCategory.ALBUM,
                                     albumData = SubPageData(
                                         items = items,
                                         isLoading = false,
                                         isRefreshing = false,
                                         hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
+                                        page = 1,
+                                        isLoaded = true
                                     )
                                 )
                             }
@@ -1054,12 +1062,14 @@ class UserCollectViewModel(
                         onSuccess = { items ->
                             _uiState.update {
                                 it.copy(
+                                    staleCategories = it.staleCategories - UserCollectCategory.PICTURE,
                                     picData = SubPageData(
                                         items = items,
                                         isLoading = false,
                                         isRefreshing = false,
                                         hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
+                                        page = 1,
+                                        isLoaded = true
                                     )
                                 )
                             }
@@ -1091,9 +1101,11 @@ class UserCollectViewModel(
                                     isLoading = false,
                                     isRefreshing = false,
                                     hasMore = items.size >= PAGE_SIZE,
-                                    page = 1
+                                    page = 1,
+                                    isLoaded = true
                                 )
                             }
+                            _uiState.update { it.copy(staleCategories = it.staleCategories - category) }
                         },
                         onFailure = { error ->
                             updateCommonData(category) { current ->
@@ -1129,9 +1141,11 @@ class UserCollectViewModel(
                             isLoading = false,
                             isRefreshing = false,
                             hasMore = items.size >= PAGE_SIZE,
-                            page = 1
+                            page = 1,
+                            isLoaded = true
                         )
                     }
+                    _uiState.update { it.copy(staleCategories = it.staleCategories - UserCollectCategory.WORKS) }
                 },
                 onFailure = { error ->
                     updateCommonData(UserCollectCategory.WORKS) { current ->
@@ -1178,48 +1192,86 @@ class UserCollectViewModel(
     // ==================== 统一事件自愈（ADR-0011） ====================
 
     /**
-     * 收藏中心内存过滤：外层收藏节点 `id` 必比；单项取消事件另兼容真实实体 `actualItemId`。
+     * 新增/修改类事件：仅在目标分类活跃（当前选中）时精准刷新。
      *
-     * 单项取消写侧传的是实体条目 id（如作品 `deleteWorksCollect(worksId)`），而列表条目
-     * 的外层 `id` 是收藏记录 id，两者不一致时只比外层必 miss（B1），故默认双口径兼容。
-     * 批量取消的 `ids` 本就是外层 id 语义（`idArr` 同源），调用方传 `matchEntityId = false`
-     * 关闭实体口径，避免收藏记录 id 与他条实体 id 巧合碰撞时误删。
+     * 非活跃但已加载过的分类只登记脏标记，切回时由 [switchCategory] 触发一次刷新；
+     * 从未加载过的分类不登记，切过去自然走首屏加载。这样既不为后台隐藏页签发请求，
+     * 也不会让用户切回时看到静置期间的旧数据。
      */
-    private fun removeHobbyFromMemory(nodeId: Long) {
-        removeCategoryItemsFromMemory(UserCollectCategory.HOBBY, setOf(nodeId))
+    private fun onCollectAdded(category: UserCollectCategory) {
+        if (_uiState.value.selectedCategory == category) {
+            refresh(category)
+            return
+        }
+        if (!_uiState.value.subPageData(category).isLoaded) return
+        _uiState.update { it.copy(staleCategories = it.staleCategories + category) }
     }
 
-    private fun removeWorksFromMemory(worksId: Long) {
-        removeCategoryItemsFromMemory(UserCollectCategory.WORKS, setOf(worksId))
-    }
-
-    private fun removeCategoryItemsFromMemory(category: UserCollectCategory, ids: Set<Long>, matchEntityId: Boolean = true) {
-        if (ids.isEmpty()) return
+    /**
+     * 取消类事件：内存就地剔除，零网络开销。
+     *
+     * id 口径由 [matchEntityId] 二选一，不做「两个都比」：
+     * - 单项取消（`matchEntityId = true`）写侧传真实实体 id（手办节点 id、相册 `actualAlbumId`、
+     *   作品 `worksId`、通用条目 `actualItemId`），故只比实体 id；实体 id 缺失（为 0）时才回落外层 `id`。
+     * - 批量取消（`matchEntityId = false`）的 `ids` 本就是外层收藏记录 id（`idArr` 同源），只比外层 `id`。
+     *
+     * 只比一个口径可避免「收藏记录 id 恰好等于他条实体 id」时误删两条。
+     * 若本次一条都没命中（脏列表缺项/字段缺失），非活跃但已加载的分类登记脏标记，切回时补刷。
+     */
+    private fun onCollectRemoved(
+        category: UserCollectCategory,
+        ids: Set<Long>,
+        matchEntityId: Boolean
+    ) {
+        // 非正 id 不参与匹配（与原总线 `nodeId <= 0L` 直接忽略的行为一致）
+        val targets = ids.filterTo(mutableSetOf()) { it > 0L }
+        if (targets.isEmpty()) return
+        val before = _uiState.value.subPageData(category).items.size
         when (category) {
             UserCollectCategory.HOBBY -> _uiState.update { state ->
-                val filtered = state.hobbyData.items.filterNot { it.id in ids }
-                if (filtered.size == state.hobbyData.items.size) state
-                else state.copy(hobbyData = state.hobbyData.copy(items = filtered))
+                val page = state.hobbyData
+                val filtered = page.items.filterNot {
+                    if (matchEntityId && it.itemNodeId > 0L) it.itemNodeId in targets else it.id in targets
+                }
+                if (filtered.size == page.items.size) state else state.copy(hobbyData = page.copy(items = filtered))
             }
             UserCollectCategory.ALBUM -> _uiState.update { state ->
-                val filtered = state.albumData.items.filterNot { it.id in ids }
-                if (filtered.size == state.albumData.items.size) state
-                else state.copy(albumData = state.albumData.copy(items = filtered))
+                val page = state.albumData
+                val filtered = page.items.filterNot {
+                    if (matchEntityId) it.actualAlbumId in targets else it.id in targets
+                }
+                if (filtered.size == page.items.size) state else state.copy(albumData = page.copy(items = filtered))
             }
             UserCollectCategory.PICTURE -> _uiState.update { state ->
-                val filtered = state.picData.items.filterNot { it.id in ids }
-                if (filtered.size == state.picData.items.size) state
-                else state.copy(picData = state.picData.copy(items = filtered))
+                val page = state.picData
+                val filtered = page.items.filterNot {
+                    if (matchEntityId) it.actualId in targets else it.id in targets
+                }
+                if (filtered.size == page.items.size) state else state.copy(picData = page.copy(items = filtered))
             }
             UserCollectCategory.VENDOR,
             UserCollectCategory.SERIES,
             UserCollectCategory.WORKS,
             UserCollectCategory.CHARACTER,
             UserCollectCategory.PERSON -> updateCommonData(category) { current ->
-                val filtered = current.items.filterNot { it.id in ids || (matchEntityId && it.actualItemId in ids) }
+                val filtered = current.items.filterNot {
+                    if (matchEntityId) it.actualItemId in targets else it.id in targets
+                }
                 if (filtered.size == current.items.size) current else current.copy(items = filtered)
             }
         }
+        markStaleIfMissed(category, before)
+    }
+
+    /**
+     * 内存剔除一条都没命中时，非活跃但已加载过的分类可能与服务端不一致：
+     * 登记脏标记，等用户切回该分类时补一次刷新。
+     */
+    private fun markStaleIfMissed(category: UserCollectCategory, sizeBefore: Int) {
+        if (_uiState.value.subPageData(category).items.size != sizeBefore) return
+        if (_uiState.value.selectedCategory == category) return
+        if (!_uiState.value.subPageData(category).isLoaded) return
+        _uiState.update { it.copy(staleCategories = it.staleCategories + category) }
     }
 
 
