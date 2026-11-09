@@ -51,13 +51,15 @@ data class CreationPageResult<T>(
  *
  * 会话职责已全面收敛至 [UserSession]，足迹划归 [UserHistoryRepository]，
  * 社交关注划归 [FollowRepository]，订单财务划归 [UserFinanceRepository]。
- * 本仓储专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
+ * 收藏列表读写已归属 [CollectRepository]（收藏数据唯一真相源），本仓储保留同名方法仅作过渡委托，
+ * 待调用方迁移完成后删除；自身专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
  */
 class UserRepository(
     private val api: HpoiApi,
     private val userSession: UserSession,
     private val followRepository: FollowRepository,
-    private val userFinanceRepository: UserFinanceRepository
+    private val userFinanceRepository: UserFinanceRepository,
+    private val collectRepository: CollectRepository
 ) {
     /**
      * 获取用户收藏顶置/展柜条目 (api/user/collect/top)。
@@ -218,13 +220,11 @@ class UserRepository(
         }
     }
 
+    // ── 收藏列表过渡委托：数据读取已归属 CollectRepository，此处仅保留同名入口以免牵动调用方（T4 删除） ──
+
     /**
      * 查询用户全量手办收藏列表 (api/collect/hobby-v2, GET)。
-     *
-     * @param category 周边细分类，「全部」传 [CollectConstants.CATEGORY_ALL]（10000，原版不用 null）
-     * @param sortType 升降序：1 升序 / 2 降序
-     * @param order 排序 key，白名单 actionDate/release/rating/myRating/updateDate；
-     *   `orderTime`（入手时间）语义上仅 `collectState == "buy"` 时可用，其余状态自动回落 actionDate
+     * @see CollectRepository.getUserCollectHobbyList
      */
     suspend fun getUserCollectHobbyList(
         userId: Long,
@@ -235,49 +235,20 @@ class UserRepository(
         sortType: Int = SORT_TYPE_DESC,
         page: Int,
         pageSize: Int = 20
-    ): Result<List<UserCollectHobbyItem>> = runCatching {
-        val params = buildMap {
-            put("userId", userId.toString())
-            put("userNodeId", userId.toString())
-            if (collectState.isNotEmpty()) {
-                put("collectState", collectState)
-            }
-            put("order", CollectConstants.normalizeHobbyOrder(order, collectState))
-            put("category", category.toString())
-            put("sortType", sortType.toString())
-            put("page", page.toString())
-            put("limit", pageSize.toString())
-            put("pageSize", pageSize.toString())
-            if (!tag.isNullOrBlank()) {
-                put("tag", tag)
-            }
-        }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectHobby(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取收藏列表失败")
-        }
-    }
+    ): Result<List<UserCollectHobbyItem>> = collectRepository.getUserCollectHobbyList(
+        userId = userId,
+        collectState = collectState,
+        category = category,
+        tag = tag,
+        order = order,
+        sortType = sortType,
+        page = page,
+        pageSize = pageSize
+    )
 
     /**
      * 查询用户通用实体收藏列表 (厂商/系列/作品/角色/人物) (api/collect/common-v3, GET)。
-     *
-     * @param type 分类查询的唯一载体，取值见 [UserCollectCategory.apiType]
-     *   （works/company/series/charactar/person）。
-     *   ⚠️ 原版从不传 `categoryId`，`type` 才是分类维度；此处为兼容服务端双条件支持仍保留 categoryId。
-     * @param order 排序 key，白名单仅 `actionDate` / `collect`（原版 `UserCollectItemSubPageFragment.java:55-64`），
-     *   越界值统一回落 `actionDate`
-     * @param state 作品三态：1 想看 / 2 在看 / 3 看过；null 时不下发
-     * @param isAsc 作品页收藏时间升降序；null 时不下发
-     * @param tagValue 作品页标签筛选；null 或空串时不下发
-     *
-     * ⚠️ [state] / [isAsc] / [tagValue] 是作品页**独立于 order 的正交维度**，
-     * 且仅在 `type == "works"` 时下发，厂商/系列/角色/人物 4 页的请求参数保持原样。
+     * @see CollectRepository.getUserCollectCommonList
      */
     suspend fun getUserCollectCommonList(
         userId: Long,
@@ -289,44 +260,21 @@ class UserRepository(
         state: Int? = null,
         isAsc: Boolean? = null,
         tagValue: String? = null
-    ): Result<List<UserCollectCommonItem>> = runCatching {
-        val resolvedType = type.ifBlank {
-            UserCollectCategory.fromKey(categoryId)?.apiType.orEmpty()
-        }
-        val params = buildMap {
-            put("userId", userId.toString())
-            put("userNodeId", userId.toString())
-            put("categoryId", categoryId.toString())
-            put("type", resolvedType)
-            put("order", CollectConstants.normalizeCommonOrder(order))
-            put("page", page.toString())
-            put("limit", pageSize.toString())
-            put("pageSize", pageSize.toString())
-            if (resolvedType == UserCollectCategory.WORKS.apiType) {
-                state?.let { put("state", it.toString()) }
-                isAsc?.let { put("isAsc", it.toString()) }
-                if (!tagValue.isNullOrBlank()) {
-                    put("tagValue", tagValue)
-                }
-            }
-        }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectCommon(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取通用实体收藏列表失败")
-        }
-    }
+    ): Result<List<UserCollectCommonItem>> = collectRepository.getUserCollectCommonList(
+        userId = userId,
+        categoryId = categoryId,
+        type = type,
+        order = order,
+        page = page,
+        pageSize = pageSize,
+        state = state,
+        isAsc = isAsc,
+        tagValue = tagValue
+    )
 
     /**
      * 查询用户相册收藏列表 (api/collect/album-v2, GET)。
-     *
-     * @param type 相册归属，默认 fav（我收藏的）
-     * @param order 排序 key，白名单 addTime（发布时间）/ actionDate（收藏时间）/ praiseCount（点赞量）
+     * @see CollectRepository.getUserCollectAlbumList
      */
     suspend fun getUserCollectAlbumList(
         userId: Long,
@@ -334,34 +282,17 @@ class UserRepository(
         order: String = CollectConstants.ORDER_ADD_TIME,
         page: Int,
         pageSize: Int = 20
-    ): Result<List<UserCollectAlbumItem>> = runCatching {
-        val params = buildMap {
-            put("userId", userId.toString())
-            put("userNodeId", userId.toString())
-            put("type", type)
-            put("order", CollectConstants.normalizeMediaOrder(order))
-            put("page", page.toString())
-            put("limit", pageSize.toString())
-            put("pageSize", pageSize.toString())
-        }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectAlbum(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取相册收藏列表失败")
-        }
-    }
+    ): Result<List<UserCollectAlbumItem>> = collectRepository.getUserCollectAlbumList(
+        userId = userId,
+        type = type,
+        order = order,
+        page = page,
+        pageSize = pageSize
+    )
 
     /**
      * 查询用户图片收藏列表 (api/collect/pic-v2, GET)。
-     *
-     * @param collectState 收藏状态，默认 collect（图片页原版硬编码）
-     * @param order 排序 key，白名单 addTime（发布时间）/ actionDate（收藏时间）/ praiseCount（点赞量），
-     *   与相册页共用同一套排序组件
+     * @see CollectRepository.getUserCollectPicList
      */
     suspend fun getUserCollectPicList(
         userId: Long,
@@ -369,27 +300,13 @@ class UserRepository(
         order: String = CollectConstants.ORDER_ADD_TIME,
         page: Int,
         pageSize: Int = 20
-    ): Result<List<UserCollectPicItem>> = runCatching {
-        val params = buildMap {
-            put("userId", userId.toString())
-            put("userNodeId", userId.toString())
-            put("collectState", collectState)
-            put("order", CollectConstants.normalizeMediaOrder(order))
-            put("page", page.toString())
-            put("limit", pageSize.toString())
-            put("pageSize", pageSize.toString())
-        }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectPic(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取图片收藏列表失败")
-        }
-    }
+    ): Result<List<UserCollectPicItem>> = collectRepository.getUserCollectPicList(
+        userId = userId,
+        collectState = collectState,
+        order = order,
+        page = page,
+        pageSize = pageSize
+    )
 
     /**
      * 获取用户收藏相似度 (api/user/collect/similarity)。
