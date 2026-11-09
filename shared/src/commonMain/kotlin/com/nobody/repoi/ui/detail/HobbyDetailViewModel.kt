@@ -14,6 +14,7 @@ import com.nobody.repoi.data.remote.model.InfoListEntry
 import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
