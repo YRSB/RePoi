@@ -55,7 +55,8 @@ class UserRepositoryTest {
         val session = FakeUserSession(token)
         val followRepo = FollowRepository(mock.api(), json, session)
         val financeRepo = UserFinanceRepository(mock.api(), json)
-        return Triple(mock, session, UserRepository(mock.api(), session, followRepo, financeRepo))
+        val collectRepo = CollectRepository(mock.api(), json, session)
+        return Triple(mock, session, UserRepository(mock.api(), session, followRepo, financeRepo, collectRepo))
     }
 
     @Test

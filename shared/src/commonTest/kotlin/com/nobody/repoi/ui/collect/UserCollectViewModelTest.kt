@@ -50,8 +50,8 @@ class UserCollectViewModelTest {
         val session = FakeUserSession("test-token")
         val followRepo = FollowRepository(mockApi.api(), mockApi.json, session)
         val financeRepo = UserFinanceRepository(mockApi.api())
-        val userRepo = UserRepository(mockApi.api(), session, followRepo, financeRepo)
-        val collectRepo = CollectRepository(mockApi.api(), mockApi.json)
+        val collectRepo = CollectRepository(mockApi.api(), mockApi.json, session)
+        val userRepo = UserRepository(mockApi.api(), session, followRepo, financeRepo, collectRepo)
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
         val bus = CollectInvalidationBus()
 

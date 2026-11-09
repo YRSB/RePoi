@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,7 +20,7 @@ class VendorDetailRepositoryTest {
     private fun setup(): Triple<MockApi, MockApi, VendorDetailRepository> {
         val mock = MockApi()
         val collectMock = MockApi()
-        val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
+        val collectRepository = CollectRepository(collectMock.api(), collectMock.json, FakeUserSession("utoken-test"))
         return Triple(mock, collectMock, VendorDetailRepository(mock.api(), collectRepository))
     }
 

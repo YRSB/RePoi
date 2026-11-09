@@ -34,6 +34,11 @@ import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.user.history.UserHistoryViewModel
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
@@ -121,6 +126,13 @@ class KoinModuleVerificationTest {
             koin.getOrNull<WorksDetailRepository>().shouldNotBeNull()
             koin.getOrNull<ZoneRepository>().shouldNotBeNull()
             koin.getOrNull<CommentInteractionDelegate>().shouldNotBeNull()
+
+            // 4. 收藏写侧 Domain UseCases（factory）
+            koin.getOrNull<ToggleItemCollectUseCase>().shouldNotBeNull()
+            koin.getOrNull<SaveHobbyCollectUseCase>().shouldNotBeNull()
+            koin.getOrNull<DeleteHobbyCollectUseCase>().shouldNotBeNull()
+            koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
+            koin.getOrNull<SaveWorksCollectUseCase>().shouldNotBeNull()
         } finally {
             app.close()
         }

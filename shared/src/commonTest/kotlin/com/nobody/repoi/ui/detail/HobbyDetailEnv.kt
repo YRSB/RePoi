@@ -46,7 +46,7 @@ class HobbyDetailEnv(
     }
 
     val detailRepository = HobbyDetailRepository(detailMock.api())
-    val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
+    val collectRepository = CollectRepository(collectMock.api(), collectMock.json, session)
     val commentRepository = CommentRepository(commentMock.api(), session)
     val stickerRepository = StickerRepository(detailMock.api())
     val userHistoryRepository = UserHistoryRepository(userMock.api(), session)

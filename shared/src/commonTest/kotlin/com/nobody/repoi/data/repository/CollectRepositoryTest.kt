@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
+import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +21,7 @@ class CollectRepositoryTest {
 
     private fun setup(): Pair<MockApi, CollectRepository> {
         val mock = MockApi()
-        return mock to CollectRepository(mock.api(), mock.json)
+        return mock to CollectRepository(mock.api(), mock.json, FakeUserSession("utoken-test"))
     }
 
     @Test
