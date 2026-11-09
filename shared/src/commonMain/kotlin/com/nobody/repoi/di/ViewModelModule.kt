@@ -65,14 +65,14 @@ import org.koin.dsl.module
  */
 val viewModelModule = module {
     viewModel { AlbumViewModel(get(), get()) }
-    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AlbumRankListViewModel(get()) }
     viewModel { CharacterDetailViewModel(get(), get()) }
     viewModel { CharacterAlbumListViewModel(get()) }
     viewModel { CharacterWorksListViewModel(get()) }
-    viewModel { CollectEditViewModel(get()) }
+    viewModel { CollectEditViewModel(get(), get(), get()) }
     viewModel { UserCollectViewModel(get(), get(), get(), get(), get()) }
-    viewModel { WorksCollectEditViewModel(get()) }
+    viewModel { WorksCollectEditViewModel(get(), get()) }
     viewModel { CommentDetailViewModel(get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }
     viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get()) }
@@ -82,7 +82,7 @@ val viewModelModule = module {
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
-    viewModel { PictureGalleryViewModel(get(), get(), get(), get(named("download"))) }
+    viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
     viewModel { HomeFeedViewModel(get(), get(), get(), get(), get()) }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
@@ -91,14 +91,14 @@ val viewModelModule = module {
     viewModel { MessageNoticeViewModel(get()) }
     viewModel { MessageChatViewModel(get()) }
     viewModel { MessageBlockViewModel(get()) }
-    viewModel { PersonDetailViewModel(get(), get()) }
+    viewModel { PersonDetailViewModel(get(), get(), get()) }
     viewModel { PictureListViewModel(get()) }
     viewModel { PostDetailViewModel(get(), get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }
-    viewModel { SeriesDetailViewModel(get(), get()) }
+    viewModel { SeriesDetailViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { SettingsAccountViewModel(get(), get()) }
     viewModel { SettingsShieldViewModel(get()) }
@@ -108,7 +108,7 @@ val viewModelModule = module {
     viewModel { UserInfoViewModel(get(), get(), get(), get()) }
     viewModel { UserCreationViewModel(get(), get()) }
     viewModel { UserHistoryViewModel(get()) }
-    viewModel { VendorDetailViewModel(get(), get(), get()) }
+    viewModel { VendorDetailViewModel(get(), get(), get(), get()) }
     viewModel { VendorActionsViewModel(get()) }
     viewModel { WorksDetailViewModel(get(), get()) }
     viewModel { ZoneBrowseViewModel(get()) }

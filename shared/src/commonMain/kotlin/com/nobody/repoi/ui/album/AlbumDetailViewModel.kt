@@ -18,6 +18,7 @@ import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.util.ListPaging
 import com.nobody.repoi.data.repository.FriendState
 import kotlinx.coroutines.Job
@@ -131,6 +132,7 @@ data class AlbumDetailUiState(
 class AlbumDetailViewModel(
     private val repository: AlbumDetailRepository,
     private val collectRepository: CollectRepository,
+    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val userSession: UserSession,
     private val followRepository: FollowRepository,
     private val userHistoryRepository: UserHistoryRepository,
@@ -516,11 +518,8 @@ class AlbumDetailViewModel(
         }
 
         viewModelScope.launch {
-            val result = if (nextCollected) {
-                collectRepository.collectItemAdd(albumId)
-            } else {
-                collectRepository.collectItemDel(albumId)
-            }
+            // 写侧委托用例：成功即由 CollectRepository 更新状态池，其他页面经状态流同步
+            val result = toggleItemCollectUseCase(albumId, previousCollected)
 
             result.fold(
                 onSuccess = {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.WorksCollectData
 import com.nobody.repoi.data.repository.CollectRepository
+import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,7 +106,8 @@ data class WorksCollectEditUiState(
  * 与周边收藏（`api/collect` 系列接口）**完全是两套接口**。
  */
 class WorksCollectEditViewModel(
-    private val collectRepository: CollectRepository
+    private val collectRepository: CollectRepository,
+    private val saveWorksCollectUseCase: SaveWorksCollectUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WorksCollectEditUiState())
@@ -296,10 +298,11 @@ class WorksCollectEditViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             val fresh = _uiState.value
-            collectRepository.saveWorksCollect(
+            // 写侧委托用例：三态白名单校验与标签串清洗统一在用例层完成
+            saveWorksCollectUseCase(
                 worksId = fresh.worksId,
                 state = fresh.selectedState,
-                tagStr = fresh.myTags.joinToString(","),
+                tags = fresh.myTags,
                 comment = fresh.comment.trim()
             ).fold(
                 onSuccess = {

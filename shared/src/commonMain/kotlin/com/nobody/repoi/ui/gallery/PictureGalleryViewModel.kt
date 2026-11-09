@@ -5,10 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.platform.saveImageBytesToGallery
 import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.CollectInvalidationBus
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -85,8 +84,7 @@ data class PictureGalleryListState(
  */
 class PictureGalleryViewModel(
     private val collectRepository: CollectRepository,
-    private val userRepository: UserRepository,
-    private val collectInvalidationBus: CollectInvalidationBus,
+    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val downloadClient: HttpClient,
 ) : ViewModel() {
 
@@ -181,7 +179,7 @@ class PictureGalleryViewModel(
             var failure: String? = null
             var reachedEnd = false
             while (page <= MAX_LOCATE_PAGE) {
-                val result = userRepository.getUserCollectPicList(
+                val result = collectRepository.getUserCollectPicList(
                     userId = userId,
                     order = effectiveOrder,
                     page = page,
@@ -242,7 +240,7 @@ class PictureGalleryViewModel(
         _listState.update { it.copy(isLoadingMore = true) }
         listJob = viewModelScope.launch {
             val nextPage = loadedPage + 1
-            val result = userRepository.getUserCollectPicList(
+            val result = collectRepository.getUserCollectPicList(
                 userId = listUserId,
                 order = listOrder ?: CollectConstants.ORDER_ADD_TIME,
                 page = nextPage,
@@ -339,17 +337,11 @@ class PictureGalleryViewModel(
         }
 
         viewModelScope.launch {
-            val result = if (nowCollected) {
-                collectRepository.collectItemAdd(item.id)
-            } else {
-                collectRepository.collectItemDel(item.id)
-            }
+            // 写侧统一委托用例：成功后由 CollectRepository 原子更新状态池，无需任何手动广播
+            val result = toggleItemCollectUseCase(item.id, wasCollected)
             result.onSuccess {
-                if (nowCollected) {
-                    collectInvalidationBus.notifyCollected(item.id)
-                } else {
-                    collectInvalidationBus.notifyUncollected(item.id)
-                }
+                // 记录画廊脏位：收藏中心列表恢复时据此静默刷新
+                collectRepository.markGalleryMutated()
             }
             result.onFailure { error ->
                 // 回滚到请求前状态

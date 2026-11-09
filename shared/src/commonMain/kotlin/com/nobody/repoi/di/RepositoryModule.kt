@@ -45,7 +45,7 @@ val repositoryModule = module {
     single { CollectRepository(get(), get(), get()) }
     single { AlbumRepository(get()) }
     single { AlbumDetailRepository(get()) }
-    single { CharacterDetailRepository(get()) }
+    single { CharacterDetailRepository(get(), get()) }
     single { CommentRepository(get(), get()) }
     single { ExHobbyRepository(get()) }
     single { FollowRepository(get(), get(), get()) }
