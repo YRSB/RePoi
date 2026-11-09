@@ -11,6 +11,7 @@ import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -26,8 +27,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 
 /**
  * 收藏中心 ViewModel 的 MVI 行为测试（只测公开接缝：`onIntent` + `uiState`）。
@@ -93,20 +92,19 @@ class UserCollectViewModelTest {
     /**
      * 等待 ViewModel 完成入口初始化。
      *
-     * 排序记忆要真实读 DataStore（内部跑 IO 线程），虚拟调度器推不动；
-     * 因此每次推进后让出一次真实线程，直到 `isInitialized` 置位或超时。
+     * 排序记忆要真实读 DataStore（内部跑真实 IO 线程），虚拟时间推不动它；
+     * 因此每轮推进后让出一小段**真实**时间，直到 `isInitialized` 置位或超时（最长约 2 秒）。
      */
     private suspend fun TestScope.awaitInitialized(viewModel: UserCollectViewModel) {
-        val deadline = TimeSource.Monotonic.markNow() + 20.seconds
-        while (!viewModel.uiState.value.isInitialized) {
+        repeat(200) {
             advanceUntilIdle()
-            withContext(Dispatchers.Default) { }
-            advanceUntilIdle()
-            if (deadline.hasPassedNow()) {
-                throw AssertionError("ViewModel 初始化超时：排序记忆未能从 DataStore 读回")
-            }
+            if (viewModel.uiState.value.isInitialized) return
+            withContext(Dispatchers.Default) { delay(10) }
         }
         advanceUntilIdle()
+        if (!viewModel.uiState.value.isInitialized) {
+            throw AssertionError("ViewModel 初始化超时：排序记忆未能从 DataStore 读回")
+        }
     }
 
     // ==================== 响应体构造 ====================
@@ -184,7 +182,7 @@ class UserCollectViewModelTest {
             mock = MockApi().apply {
                 enqueue(hobbies(1))
                 enqueue(albums(1))
-                enqueue(listJson(commons(1)))
+                enqueue(commons(1))
             }
         )
         awaitInitialized(env.viewModel)

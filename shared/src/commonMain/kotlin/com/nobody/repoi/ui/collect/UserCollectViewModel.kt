@@ -298,15 +298,15 @@ class UserCollectViewModel(
      */
     fun onIntent(intent: UserCollectIntent) {
         when (intent) {
-            is UserCollectIntent.SwitchCategory -> switchCategory(intent.category)
-            UserCollectIntent.ToggleViewMode -> toggleViewMode()
+            is UserCollectIntent.SwitchCategory -> applyCategorySwitch(intent.category)
+            UserCollectIntent.ToggleViewMode -> applyToggleViewMode()
             is UserCollectIntent.SwitchCollectState -> applyCollectState(intent.state)
             is UserCollectIntent.SwitchOrder -> applyHobbyOrder(intent.order)
             is UserCollectIntent.SwitchSortDirection -> applyHobbySortType(intent.sortType)
             is UserCollectIntent.SelectSubCategory -> applySubCategory(intent.id)
             is UserCollectIntent.SelectTag -> applyTag(intent.tag)
             UserCollectIntent.ResetFilter -> resetFilterInternal()
-            is UserCollectIntent.SetFilterSheetVisible -> setFilterSheetVisible(intent.visible)
+            is UserCollectIntent.SetFilterSheetVisible -> applyFilterSheetVisible(intent.visible)
             is UserCollectIntent.SwitchAlbumOrder -> applyAlbumOrder(intent.order)
             is UserCollectIntent.SwitchPicOrder -> applyPicOrder(intent.order)
             is UserCollectIntent.SwitchCommonOrder -> applyCommonOrder(intent.order)
@@ -314,17 +314,17 @@ class UserCollectViewModel(
             is UserCollectIntent.SwitchWorksOrderAsc -> applyWorksOrderAsc(intent.asc)
             is UserCollectIntent.SelectWorksTag -> applyWorksTag(intent.tag)
             UserCollectIntent.ResetWorksTag -> resetWorksTagInternal()
-            is UserCollectIntent.SetWorksFilterSheetVisible -> setWorksFilterSheetVisible(intent.visible)
+            is UserCollectIntent.SetWorksFilterSheetVisible -> applyWorksFilterSheetVisible(intent.visible)
             is UserCollectIntent.LoadFirstPage -> loadFirstPage(intent.category)
             is UserCollectIntent.Refresh -> refresh(intent.category)
             is UserCollectIntent.LoadNextPage -> loadNextPage(intent.category)
             is UserCollectIntent.DismissError -> dismissError(intent.category)
             is UserCollectIntent.ToggleSelectionMode -> toggleSelectionMode(intent.category)
-            is UserCollectIntent.ToggleSelect -> toggleSelect(intent.id)
+            is UserCollectIntent.ToggleSelect -> applyToggleSelect(intent.id)
             is UserCollectIntent.SelectAll -> selectAll(intent.category)
             is UserCollectIntent.ClearSelection -> clearSelection(intent.category)
             UserCollectIntent.ConfirmBatchCancel -> confirmBatchCancel()
-            UserCollectIntent.DismissBatchCancelError -> dismissBatchCancelError()
+            UserCollectIntent.DismissBatchCancelError -> applyDismissBatchCancelError()
             UserCollectIntent.OnResume -> handleResume()
         }
     }
@@ -476,7 +476,7 @@ class UserCollectViewModel(
     /**
      * 切换大类（若目标大类尚未加载数据，自动触发首屏加载）。
      */
-    private fun switchCategory(category: UserCollectCategory) {
+    private fun applyCategorySwitch(category: UserCollectCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
         if (isLoaderIdleAndEmpty(category)) {
@@ -487,7 +487,7 @@ class UserCollectViewModel(
     /**
      * 切换手办视图模式（网格/列表），并持久化偏好。
      */
-    private fun toggleViewMode() {
+    private fun applyToggleViewMode() {
         val newIsList = !_uiState.value.isListView
         _uiState.update { it.copy(isListView = newIsList) }
         viewModelScope.launch {
@@ -599,7 +599,7 @@ class UserCollectViewModel(
      * 控制筛选抽屉显隐。**打开时按当前收藏状态与细分类懒加载标签候选池**
      * （原版 `UserCollectHobbyFragment.java:593-611` 每次开弹层带 `categoryId` + `collectState` 重拉）。
      */
-    private fun setFilterSheetVisible(visible: Boolean) {
+    private fun applyFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showFilterSheet = visible) }
         if (visible) {
             loadAvailableTags(force = true)
@@ -746,7 +746,7 @@ class UserCollectViewModel(
      * 控制作品页筛选弹层显隐，打开时懒加载作品标签候选池
      * （原版池来自 `api/user/glean/textTag/get`，与手办池不是同一个）。
      */
-    private fun setWorksFilterSheetVisible(visible: Boolean) {
+    private fun applyWorksFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showWorksFilterSheet = visible) }
         if (visible) {
             loadWorksAvailableTags(force = true)
@@ -805,7 +805,7 @@ class UserCollectViewModel(
      *
      * @param id **外层收藏节点 id**（不是 `actualItemId`/`actualAlbumId`）。
      */
-    private fun toggleSelect(id: Long) {
+    private fun applyToggleSelect(id: Long) {
         when (_uiState.value.selectedCategory) {
             UserCollectCategory.HOBBY -> _uiState.update {
                 val newSet = it.hobbySelectedIds.toggle(id)
@@ -904,7 +904,7 @@ class UserCollectViewModel(
     /**
      * 清除批量取消收藏的错误提示。
      */
-    private fun dismissBatchCancelError() {
+    private fun applyDismissBatchCancelError() {
         _uiState.update { it.copy(batchCancelError = null) }
     }
 
@@ -1073,7 +1073,7 @@ class UserCollectViewModel(
         return listState.stage == LoadStage.Idle && listState.items.isEmpty()
     }
 
-    private fun fetchCommonPage(
+    private suspend fun fetchCommonPage(
         category: UserCollectCategory,
         page: Int,
         pageSize: Int,
@@ -1087,7 +1087,7 @@ class UserCollectViewModel(
         pageSize = pageSize
     )
 
-    private fun fetchWorksPage(
+    private suspend fun fetchWorksPage(
         page: Int,
         pageSize: Int,
         worksState: Int,
