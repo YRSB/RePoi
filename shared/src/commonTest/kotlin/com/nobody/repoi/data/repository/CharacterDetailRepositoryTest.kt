@@ -17,7 +17,16 @@ class CharacterDetailRepositoryTest {
 
     private fun setup(): Pair<MockApi, CharacterDetailRepository> {
         val mock = MockApi()
-        return mock to CharacterDetailRepository(mock.api())
+        val collectMock = MockApi()
+        val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
+        return mock to CharacterDetailRepository(mock.api(), collectRepository)
+    }
+
+    private fun setupWithCollect(): Triple<MockApi, MockApi, CharacterDetailRepository> {
+        val characterMock = MockApi()
+        val collectMock = MockApi()
+        val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
+        return Triple(characterMock, collectMock, CharacterDetailRepository(characterMock.api(), collectRepository))
     }
 
     @Test
@@ -142,21 +151,21 @@ class CharacterDetailRepositoryTest {
     }
 
     @Test
-    fun toggleCollect_picksAddOrDelEndpointAndInvertsState() = runTest {
-        val (mock, repository) = setup()
-        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
+    fun toggleCollect_delegatesToCollectRepositoryWithCharacterCategory() = runTest {
+        val (_, collectMock, repository) = setupWithCollect()
+        collectMock.enqueue("""{"success":true,"code":200,"data":{}}""")
         assertTrue(repository.toggleCollect(7L, isCollected = false).getOrThrow())
-        val addRecorded = mock.takeRequest()
+        val addRecorded = collectMock.takeRequest()
         assertEquals("/api/collect/item/add", addRecorded.encodedPath)
         assertEquals("7", addRecorded.formEntries()["id"])
 
-        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
+        collectMock.enqueue("""{"success":true,"code":200,"data":{}}""")
         assertFalse(repository.toggleCollect(7L, isCollected = true).getOrThrow())
-        val delRecorded = mock.takeRequest()
+        val delRecorded = collectMock.takeRequest()
         assertEquals("/api/collect/del", delRecorded.encodedPath)
         assertEquals("7", delRecorded.formEntries()["id"])
 
-        mock.enqueue(mock.failure(401, "请先登录"))
+        collectMock.enqueue(collectMock.failure(401, "请先登录"))
         val failure = repository.toggleCollect(7L, isCollected = false)
         assertTrue(failure.isFailure)
         assertEquals(401, (failure.exceptionOrNull() as ApiException).code)

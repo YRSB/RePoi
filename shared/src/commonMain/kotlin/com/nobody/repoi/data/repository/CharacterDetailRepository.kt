@@ -8,13 +8,18 @@ import com.nobody.repoi.data.remote.model.CharacterRelevantItem
 import com.nobody.repoi.data.remote.model.CharacterWorksItem
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
+import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.ZoneItem
 
 /**
  * 角色/要素详情多端点聚合数据仓储。
+ *
+ * 收藏切换委托 [CollectRepository]（透传 [UserCollectCategory.CHARACTER]），消除直调 `api` 的收藏旁路；
+ * 成功后由收藏仓储内生发射统一事件流，消费端无需手动广播。
  */
 class CharacterDetailRepository(
-    private val api: HpoiApi
+    private val api: HpoiApi,
+    private val collectRepository: CollectRepository
 ) {
     /**
      * 获取角色主体详情 (api/charactar/get)
@@ -113,21 +118,18 @@ class CharacterDetailRepository(
     }
 
     /**
-     * 切换收藏/想买状态 (api/collect/item/add, api/collect/del)
+     * 切换收藏/想买状态：委托 [CollectRepository]，透传 [UserCollectCategory.CHARACTER]。
      * @param isCollected 当前是否已收藏，true 表示操作取消收藏，false 表示操作新增收藏
      * @return 切换后的最新收藏状态
      */
     suspend fun toggleCollect(nodeId: Long, isCollected: Boolean): Result<Boolean> = runCatching {
-        val response = if (isCollected) {
-            api.collectItemDel(id = nodeId)
+        val result = if (isCollected) {
+            collectRepository.collectItemDel(nodeId, UserCollectCategory.CHARACTER)
         } else {
-            api.collectItemAdd(id = nodeId)
+            collectRepository.collectItemAdd(nodeId, UserCollectCategory.CHARACTER)
         }
-        if (response.isSuccess) {
-            !isCollected
-        } else {
-            throw ApiException(response.code, response.msg ?: "收藏操作失败")
-        }
+        result.getOrThrow()
+        !isCollected
     }
 
     /**

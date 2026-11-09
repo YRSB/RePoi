@@ -9,7 +9,6 @@ import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.platform.saveImageBytesToGallery
 import com.nobody.repoi.util.CdnUrlUtils
-import com.nobody.repoi.util.CollectInvalidationBus
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -87,7 +86,6 @@ data class PictureGalleryListState(
 class PictureGalleryViewModel(
     private val collectRepository: CollectRepository,
     private val userRepository: UserRepository,
-    private val collectInvalidationBus: CollectInvalidationBus,
     private val downloadClient: HttpClient,
 ) : ViewModel() {
 
@@ -339,18 +337,12 @@ class PictureGalleryViewModel(
             )
         }
 
+        // 仅做乐观更新与失败回滚：跨页刷新由仓储内生发射的统一事件流驱动，禁止手动通知总线
         viewModelScope.launch {
             val result = if (nowCollected) {
                 collectRepository.collectItemAdd(item.id, UserCollectCategory.PICTURE)
             } else {
                 collectRepository.collectItemDel(item.id, UserCollectCategory.PICTURE)
-            }
-            result.onSuccess {
-                if (nowCollected) {
-                    collectInvalidationBus.notifyCollected(item.id)
-                } else {
-                    collectInvalidationBus.notifyUncollected(item.id)
-                }
             }
             result.onFailure { error ->
                 // 回滚到请求前状态
