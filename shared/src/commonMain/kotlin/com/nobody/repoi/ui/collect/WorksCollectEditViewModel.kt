@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.WorksCollectData
 import com.nobody.repoi.data.repository.CollectRepository
+import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,6 +109,7 @@ data class WorksCollectEditUiState(
 class WorksCollectEditViewModel(
     private val collectRepository: CollectRepository,
     private val saveWorksCollectUseCase: SaveWorksCollectUseCase,
+    private val deleteWorksCollectUseCase: DeleteWorksCollectUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WorksCollectEditUiState())
@@ -317,7 +319,11 @@ class WorksCollectEditViewModel(
         }
     }
 
-    /** 取消作品收藏（`api/works/glean/del`）。 */
+    /**
+     * 取消作品收藏（`api/works/glean/del`）。
+     *
+     * 写侧统一委托 [DeleteWorksCollectUseCase]：`worksId` 缺失时由用例直接失败、不发请求。
+     */
     fun deleteCollect() {
         val snapshot = _uiState.value
         if (snapshot.isDeleting || snapshot.worksId <= 0L) return
@@ -325,7 +331,7 @@ class WorksCollectEditViewModel(
             _uiState.update {
                 it.copy(isDeleting = true, showDeleteConfirmDialog = false, errorMessage = null)
             }
-            collectRepository.deleteWorksCollect(snapshot.worksId).fold(
+            deleteWorksCollectUseCase(snapshot.worksId).fold(
                 onSuccess = {
                     _uiState.update {
                         it.copy(isDeleting = false, deleteSuccess = true, isAlreadyCollected = false, hasDelete = false)

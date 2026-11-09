@@ -28,6 +28,7 @@ import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
@@ -76,4 +77,5 @@ val repositoryModule = module {
     factory { DeleteHobbyCollectUseCase(get()) }
     factory { BatchCancelCollectUseCase(get(), get()) }
     factory { SaveWorksCollectUseCase(get()) }
+    factory { DeleteWorksCollectUseCase(get()) }
 }
