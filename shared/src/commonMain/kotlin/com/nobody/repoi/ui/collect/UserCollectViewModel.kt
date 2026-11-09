@@ -780,7 +780,7 @@ class UserCollectViewModel(
 
         _uiState.update { it.copy(isCancellingBatch = true, batchCancelError = null) }
         viewModelScope.launch {
-            collectRepository.cancelCollectBatch(ids.toList())
+            collectRepository.cancelCollectBatch(ids.toList(), category)
                 .onSuccess {
                     val cancelled = ids
                     _uiState.update { state ->

@@ -9,6 +9,7 @@ import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.data.remote.model.RelatedAlbumItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
+import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
@@ -517,9 +518,9 @@ class AlbumDetailViewModel(
 
         viewModelScope.launch {
             val result = if (nextCollected) {
-                collectRepository.collectItemAdd(albumId)
+                collectRepository.collectItemAdd(albumId, UserCollectCategory.ALBUM)
             } else {
-                collectRepository.collectItemDel(albumId)
+                collectRepository.collectItemDel(albumId, UserCollectCategory.ALBUM)
             }
 
             result.fold(
