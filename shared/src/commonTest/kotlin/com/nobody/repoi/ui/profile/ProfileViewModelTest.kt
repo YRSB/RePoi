@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.profile
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.FollowRepository
@@ -68,7 +69,8 @@ class ProfileViewModelTest {
         val api = mock.api(testDispatcher)
         val followRepo = FollowRepository(api, mock.json, session)
         val financeRepo = UserFinanceRepository(api)
-        val userRepo = UserRepository(api, session, followRepo, financeRepo)
+        val collectRepo = CollectRepository(api, mock.json, session)
+        val userRepo = UserRepository(api, session, followRepo, financeRepo, collectRepo)
         val viewModel = ProfileViewModel(
             userRepo,
             MessageRepository(api, session),
