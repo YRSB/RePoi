@@ -6,7 +6,9 @@ import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectCountData
 import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.remote.model.PictureRelateItem
+import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.WorksCollectData
+import kotlinx.coroutines.flow.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -18,16 +20,34 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
-
 /**
  * 收藏模块聚合数据仓储：
  * 管理条目收藏状态的获取、分类人数统计、备选标签以及收藏的保存与删除。
  * 同时承载收藏页的两条写侧链路——批量取消收藏 (`api/collect/batch/cancel`)
  * 与作品收藏整链 (`api/works/glean/get|add|del`、`api/user/glean/textTag/get`)，
  * 另含图片画廊的关联条目查询 (`api/pic/relate`)。
- * 暴露 [collectUpdates] 响应流，在收藏状态发生增删改时向全应用广播最新状态，
- * 驱动手办详情页等界面爱心状态与计数的原子更新。
+ * 暴露 [collectUpdates] 旧版弱类型广播（T2 迁移时删除），以及统一多态事件流
+ * [CollectRepository.collectEvents]（ADR-0011），所有写操作成功后内生自动发射。
+ *
+ * 收藏领域统一多态事件契约（ADR-0011）见 [CollectEvent]：
+ * 全站手办、通用条目、作品与批量取消的收藏状态变更统一经此密封层次表达，
+ * 由仓储写操作在服务端成功后内生自动发射，严禁外部手动触发。
  */
+sealed interface CollectEvent {
+    /** 手办收藏变更：删除时 [data] 为 null */
+    data class HobbyCollectChanged(val nodeId: Long, val data: CollectData?) : CollectEvent
+    /** 通用条目收藏切换（相册/图片/厂商/系列/角色/人物等） */
+    data class ItemCollectChanged(
+        val nodeId: Long,
+        val category: UserCollectCategory,
+        val isCollected: Boolean
+    ) : CollectEvent
+    /** 作品收藏变更：删除时 [data] 为 null */
+    data class WorksCollectChanged(val worksId: Long, val data: WorksCollectData?) : CollectEvent
+    /** 批量取消收藏：[ids] 为外层收藏节点 id 集合 */
+    data class BatchCollectCancelled(val ids: Set<Long>, val category: UserCollectCategory) : CollectEvent
+}
+
 class CollectRepository(
     private val api: HpoiApi,
     private val json: Json
@@ -35,6 +55,13 @@ class CollectRepository(
     // 广播 (nodeId, CollectData?) 更新事件：CollectData 为 null 或 state=="delete" 时代表取消收藏
     private val _collectUpdates = MutableSharedFlow<Pair<Long, CollectData?>>(extraBufferCapacity = 16)
     val collectUpdates: SharedFlow<Pair<Long, CollectData?>> = _collectUpdates.asSharedFlow()
+    // 统一多态事件流：replay=0 杜绝新订阅者收到陈旧事件，64 缓冲 + DROP_OLDEST 避免高并发挂起
+    private val _collectEvents = MutableSharedFlow<CollectEvent>(
+        replay = 0,
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val collectEvents: SharedFlow<CollectEvent> = _collectEvents.asSharedFlow()
 
     /**
      * 获取指定条目的收藏状态信息 (api/collect/state)。
@@ -84,6 +111,7 @@ class CollectRepository(
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
             _collectUpdates.tryEmit(nodeId to collectData)
+            _collectEvents.tryEmit(CollectEvent.HobbyCollectChanged(nodeId, collectData))
         } else {
             throw ApiException(response.code, response.msg ?: "保存收藏失败")
         }
@@ -98,29 +126,33 @@ class CollectRepository(
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
             _collectUpdates.tryEmit(nodeId to null)
+            _collectEvents.tryEmit(CollectEvent.HobbyCollectChanged(nodeId, null))
         } else {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")
         }
     }
-
     /**
      * 添加通用条目/相册收藏 (api/collect/item/add)。
+     * 成功后自动发射 [CollectEvent.ItemCollectChanged]（[category] 标识业务分类）。
      */
-    suspend fun collectItemAdd(nodeId: Long): Result<Unit> = runCatching {
+    suspend fun collectItemAdd(nodeId: Long, category: UserCollectCategory): Result<Unit> = runCatching {
         val response = api.collectItemAdd(id = nodeId)
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "收藏失败")
         }
+        _collectEvents.tryEmit(CollectEvent.ItemCollectChanged(nodeId, category, true))
     }
 
     /**
      * 取消通用条目/相册收藏 (api/collect/del)。
+     * 成功后自动发射 [CollectEvent.ItemCollectChanged]（[category] 标识业务分类）。
      */
-    suspend fun collectItemDel(nodeId: Long): Result<Unit> = runCatching {
+    suspend fun collectItemDel(nodeId: Long, category: UserCollectCategory): Result<Unit> = runCatching {
         val response = api.collectItemDel(id = nodeId)
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")
         }
+        _collectEvents.tryEmit(CollectEvent.ItemCollectChanged(nodeId, category, false))
     }
 
     /**
@@ -131,7 +163,7 @@ class CollectRepository(
      * 仅登录用户本人的收藏中心可用（原版 isSelf 门控）。
      * 空集合直接短路返回成功，避免向服务端提交空的 `[]`。
      */
-    suspend fun cancelCollectBatch(ids: List<Long>): Result<Unit> = runCatching {
+    suspend fun cancelCollectBatch(ids: List<Long>, category: UserCollectCategory): Result<Unit> = runCatching {
         if (ids.isEmpty()) return@runCatching Unit
         // 服务端要求 JSON 数组字符串，如 "[1,2,3]"
         val idArr = ids.joinToString(prefix = "[", postfix = "]", separator = ",")
@@ -139,6 +171,7 @@ class CollectRepository(
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "批量取消收藏失败")
         }
+        _collectEvents.tryEmit(CollectEvent.BatchCollectCancelled(ids.toSet(), category))
     }
 
     /**
@@ -196,10 +229,17 @@ class CollectRepository(
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "保存作品收藏失败")
         }
+        _collectEvents.tryEmit(
+            CollectEvent.WorksCollectChanged(
+                worksId,
+                WorksCollectData(itemId = worksId, itemType = CollectConstants.WORKS_ITEM_TYPE, state = state, comment = comment)
+            )
+        )
     }
 
     /**
      * 取消作品收藏 (api/works/glean/del)。
+     * 成功后自动发射 [CollectEvent.WorksCollectChanged]（data 为 null）。
      */
     suspend fun deleteWorksCollect(worksId: Long): Result<Unit> = runCatching {
         val response = api.deleteWorksCollect(
@@ -209,6 +249,7 @@ class CollectRepository(
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消作品收藏失败")
         }
+        _collectEvents.tryEmit(CollectEvent.WorksCollectChanged(worksId, null))
     }
 
     /**

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
+import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.platform.saveImageBytesToGallery
@@ -340,9 +341,9 @@ class PictureGalleryViewModel(
 
         viewModelScope.launch {
             val result = if (nowCollected) {
-                collectRepository.collectItemAdd(item.id)
+                collectRepository.collectItemAdd(item.id, UserCollectCategory.PICTURE)
             } else {
-                collectRepository.collectItemDel(item.id)
+                collectRepository.collectItemDel(item.id, UserCollectCategory.PICTURE)
             }
             result.onSuccess {
                 if (nowCollected) {

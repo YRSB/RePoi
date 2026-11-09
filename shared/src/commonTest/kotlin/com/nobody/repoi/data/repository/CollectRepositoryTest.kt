@@ -2,6 +2,10 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
+import com.nobody.repoi.data.remote.model.CollectData
+import com.nobody.repoi.data.remote.model.UserCollectCategory
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,6 +15,7 @@ import kotlin.test.assertTrue
 
 /**
  * 收藏写侧链路单测：批量取消收藏、作品收藏整链（标签池/读取/保存/取消）、图片关联条目（KMP commonTest 移植）。
+ * T1 新增：手办/通用条目/作品/批量取消全部写操作的 collectEvents 成功发射与失败零发射断言。
  *
  * 对齐 PoiShelf `CollectRepositoryTest`（逐用例；Retrofit+MockWebServer →
  * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test；
@@ -28,7 +33,7 @@ class CollectRepositoryTest {
         val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"取消成功","data":{}}""")
 
-        val result = repository.cancelCollectBatch(listOf(1L, 2L, 3L))
+        val result = repository.cancelCollectBatch(listOf(1L, 2L, 3L), UserCollectCategory.ALBUM)
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
@@ -40,7 +45,7 @@ class CollectRepositoryTest {
     @Test
     fun cancelCollectBatch_emptyIds_shortCircuitsWithoutRequest() = runTest {
         val (mock, repository) = setup()
-        val result = repository.cancelCollectBatch(emptyList())
+        val result = repository.cancelCollectBatch(emptyList(), UserCollectCategory.ALBUM)
         assertTrue(result.isSuccess)
         assertEquals(0, mock.requestCount)
     }
@@ -50,7 +55,7 @@ class CollectRepositoryTest {
         val (mock, repository) = setup()
         mock.enqueue(mock.failure(500, "请稍后再试"))
 
-        val result = repository.cancelCollectBatch(listOf(9L))
+        val result = repository.cancelCollectBatch(listOf(9L), UserCollectCategory.ALBUM)
 
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull()
@@ -250,5 +255,184 @@ class CollectRepositoryTest {
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is ApiException)
         assertEquals(0, mock.requestCount)
+    }
+
+    // ── T1：collectEvents 成功发射与失败零发射 ──
+
+    /** 订阅收集器：后台收集 collectEvents，调用方按序取事件。 */
+    private fun collectEventsOf(repository: CollectRepository): MutableList<CollectEvent> {
+        val events = mutableListOf<CollectEvent>()
+        // UnconfinedTestDispatcher 让发射与收集同调度同步执行
+        backgroundScope.launch(UnconfinedTestDispatcher()) { repository.collectEvents.collect { events.add(it) } }
+        return events
+    }
+
+    @Test
+    fun saveCollect_emitsHobbyCollectChanged() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+        val data = CollectData(id = 100L, state = CollectConstants.STATE_BUY)
+
+        assertTrue(repository.saveCollect(100L, data).isSuccess)
+
+        assertEquals(listOf(CollectEvent.HobbyCollectChanged(100L, data)), events)
+    }
+
+    @Test
+    fun saveCollect_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.saveCollect(100L, CollectData(id = 100L)).isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun deleteCollect_emitsHobbyCollectChangedWithNullData() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.deleteCollect(100L, CollectData(id = 100L, state = CollectConstants.STATE_BUY)).isSuccess)
+
+        assertEquals(listOf(CollectEvent.HobbyCollectChanged(100L, null)), events)
+    }
+
+    @Test
+    fun deleteCollect_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.deleteCollect(100L, CollectData(id = 100L)).isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun collectItemAdd_emitsItemCollectChangedCollected() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.collectItemAdd(70001L, UserCollectCategory.ALBUM).isSuccess)
+
+        assertEquals(listOf(CollectEvent.ItemCollectChanged(70001L, UserCollectCategory.ALBUM, true)), events)
+    }
+
+    @Test
+    fun collectItemAdd_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.collectItemAdd(70001L, UserCollectCategory.ALBUM).isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun collectItemDel_emitsItemCollectChangedUncollected() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.collectItemDel(90001L, UserCollectCategory.PICTURE).isSuccess)
+
+        assertEquals(listOf(CollectEvent.ItemCollectChanged(90001L, UserCollectCategory.PICTURE, false)), events)
+    }
+
+    @Test
+    fun collectItemDel_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.collectItemDel(90001L, UserCollectCategory.PICTURE).isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun cancelCollectBatch_emitsBatchCollectCancelled() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.cancelCollectBatch(listOf(1L, 2L), UserCollectCategory.HOBBY).isSuccess)
+
+        assertEquals(listOf(CollectEvent.BatchCollectCancelled(setOf(1L, 2L), UserCollectCategory.HOBBY)), events)
+    }
+
+    @Test
+    fun cancelCollectBatch_emptyIds_emitsNothing() = runTest {
+        val (_, repository) = setup()
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.cancelCollectBatch(emptyList(), UserCollectCategory.HOBBY).isSuccess)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun cancelCollectBatch_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.cancelCollectBatch(listOf(9L), UserCollectCategory.HOBBY).isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun saveWorksCollect_emitsWorksCollectChanged() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.saveWorksCollect(20001L, 2, "热血", "追番中").isSuccess)
+
+        assertEquals(1, events.size)
+        val event = events.single() as CollectEvent.WorksCollectChanged
+        assertEquals(20001L, event.worksId)
+        assertEquals(2, event.data?.state)
+        assertEquals("追番中", event.data?.comment)
+    }
+
+    @Test
+    fun saveWorksCollect_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.saveWorksCollect(20001L, 2, "热血", "追番中").isFailure)
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun deleteWorksCollect_emitsWorksCollectChangedWithNullData() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.deleteWorksCollect(20001L).isSuccess)
+
+        assertEquals(listOf(CollectEvent.WorksCollectChanged(20001L, null)), events)
+    }
+
+    @Test
+    fun deleteWorksCollect_onApiFailure_emitsNothing() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "请稍后再试"))
+        val events = collectEventsOf(repository)
+
+        assertTrue(repository.deleteWorksCollect(20001L).isFailure)
+
+        assertTrue(events.isEmpty())
     }
 }
