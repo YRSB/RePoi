@@ -34,6 +34,10 @@ import kotlin.test.assertTrue
  *
  * 修复前的等价实测见 `shared/build/diagnose-82/Probe82.java` 步骤 [1]：
  * 8 种组合的 distinct outputs = 1（完全忽略设置）。
+ *
+ * 注：`runComposeUiTest` 的 v2 新 API 改用 `StandardTestDispatcher`，会改变
+ * `mutableIntStateOf` 驱动的重组时序；这里只需「改状态 → 等空闲 → 读配色」的同步语义，
+ * 故沿用旧 API，与 `PoiAsyncImageLayoutTest` 的处理保持一致。
  */
 @OptIn(ExperimentalTestApi::class)
 class ThemeDynamicRegressionTest {
