@@ -4,8 +4,10 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.remote.model.UserCollectCategory
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -259,11 +261,15 @@ class CollectRepositoryTest {
 
     // ── T1：collectEvents 成功发射与失败零发射 ──
 
-    /** 订阅收集器：后台收集 collectEvents，调用方按序取事件。 */
-    private fun collectEventsOf(repository: CollectRepository): MutableList<CollectEvent> {
+    /** 订阅收集器：后台收集 collectEvents，调用方按序取事件（backgroundScope 随 runTest 结束自动取消）。 */
+    private fun kotlinx.coroutines.test.TestScope.collectEventsOf(
+        repository: CollectRepository
+    ): MutableList<CollectEvent> {
         val events = mutableListOf<CollectEvent>()
-        // UnconfinedTestDispatcher 让发射与收集同调度同步执行
-        backgroundScope.launch(UnconfinedTestDispatcher()) { repository.collectEvents.collect { events.add(it) } }
+        // Unconfined 让发射与收集同调度同步执行；backgroundScope 不阻塞测试完成、结束时自动取消
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED, context = UnconfinedTestDispatcher()) {
+            repository.collectEvents.collect { events.add(it) }
+        }
         return events
     }
 
@@ -275,8 +281,9 @@ class CollectRepositoryTest {
         val data = CollectData(id = 100L, state = CollectConstants.STATE_BUY)
 
         assertTrue(repository.saveCollect(100L, data).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.HobbyCollectChanged(100L, data)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.HobbyCollectChanged(100L, data)), events)
     }
 
     @Test
@@ -286,6 +293,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.saveCollect(100L, CollectData(id = 100L)).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -297,8 +305,9 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.deleteCollect(100L, CollectData(id = 100L, state = CollectConstants.STATE_BUY)).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.HobbyCollectChanged(100L, null)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.HobbyCollectChanged(100L, null)), events)
     }
 
     @Test
@@ -308,6 +317,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.deleteCollect(100L, CollectData(id = 100L)).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -319,8 +329,9 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.collectItemAdd(70001L, UserCollectCategory.ALBUM).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.ItemCollectChanged(70001L, UserCollectCategory.ALBUM, true)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.ItemCollectChanged(70001L, UserCollectCategory.ALBUM, true)), events)
     }
 
     @Test
@@ -330,6 +341,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.collectItemAdd(70001L, UserCollectCategory.ALBUM).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -341,8 +353,9 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.collectItemDel(90001L, UserCollectCategory.PICTURE).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.ItemCollectChanged(90001L, UserCollectCategory.PICTURE, false)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.ItemCollectChanged(90001L, UserCollectCategory.PICTURE, false)), events)
     }
 
     @Test
@@ -352,6 +365,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.collectItemDel(90001L, UserCollectCategory.PICTURE).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -363,8 +377,9 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.cancelCollectBatch(listOf(1L, 2L), UserCollectCategory.HOBBY).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.BatchCollectCancelled(setOf(1L, 2L), UserCollectCategory.HOBBY)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.BatchCollectCancelled(setOf(1L, 2L), UserCollectCategory.HOBBY)), events)
     }
 
     @Test
@@ -373,6 +388,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.cancelCollectBatch(emptyList(), UserCollectCategory.HOBBY).isSuccess)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -384,6 +400,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.cancelCollectBatch(listOf(9L), UserCollectCategory.HOBBY).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -395,6 +412,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.saveWorksCollect(20001L, 2, "热血", "追番中").isSuccess)
+        runCurrent()
 
         assertEquals(1, events.size)
         val event = events.single() as CollectEvent.WorksCollectChanged
@@ -410,6 +428,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.saveWorksCollect(20001L, 2, "热血", "追番中").isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }
@@ -421,8 +440,9 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.deleteWorksCollect(20001L).isSuccess)
+        runCurrent()
 
-        assertEquals(listOf(CollectEvent.WorksCollectChanged(20001L, null)), events)
+        assertEquals<List<CollectEvent>>(listOf(CollectEvent.WorksCollectChanged(20001L, null)), events)
     }
 
     @Test
@@ -432,6 +452,7 @@ class CollectRepositoryTest {
         val events = collectEventsOf(repository)
 
         assertTrue(repository.deleteWorksCollect(20001L).isFailure)
+        runCurrent()
 
         assertTrue(events.isEmpty())
     }

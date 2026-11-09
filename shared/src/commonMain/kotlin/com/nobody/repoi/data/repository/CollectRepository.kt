@@ -8,7 +8,7 @@ import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.WorksCollectData
-import kotlinx.coroutines.flow.BufferOverflow
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

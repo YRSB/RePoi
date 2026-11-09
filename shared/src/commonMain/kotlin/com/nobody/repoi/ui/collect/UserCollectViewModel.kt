@@ -9,6 +9,7 @@ import com.nobody.repoi.data.repository.CollectEvent
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
