@@ -198,7 +198,7 @@ data class UserCollectUiState(
      * 脏分类集合：某大类被收藏事件变更、但当时并非活跃分类时登记于此。
      * 切回该大类时先刷新一次再展示，兼顾「不为隐藏页签发请求」与「切回看到最新数据」。
      */
-    val staleCategories: Set<UserCollectCategory> = emptySet()
+    val staleCategories: Set<UserCollectCategory> = emptySet(),
 
     // ===== 8 大类独立数据容器 =====
     val hobbyData: SubPageData<UserCollectHobbyItem> = SubPageData(),
