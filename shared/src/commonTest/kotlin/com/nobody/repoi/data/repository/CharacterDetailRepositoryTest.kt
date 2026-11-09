@@ -1,10 +1,13 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -15,9 +18,15 @@ import kotlin.test.assertTrue
  */
 class CharacterDetailRepositoryTest {
 
+    /** 收藏切换已收口到 `ToggleItemCollectUseCase`，仓储需注入用例 + 收藏仓储。 */
     private fun setup(): Pair<MockApi, CharacterDetailRepository> {
         val mock = MockApi()
-        return mock to CharacterDetailRepository(mock.api())
+        val collectRepository = CollectRepository(
+            mock.api(),
+            mock.json,
+            FakeUserSession("utoken-test")
+        )
+        return mock to CharacterDetailRepository(mock.api(), ToggleItemCollectUseCase(collectRepository))
     }
 
     @Test
@@ -161,6 +170,26 @@ class CharacterDetailRepositoryTest {
         assertTrue(failure.isFailure)
         assertEquals(401, (failure.exceptionOrNull() as ApiException).code)
         assertEquals("请先登录", failure.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun toggleCollect_writesCollectStatePool() = runTest {
+        val mock = MockApi()
+        val collectRepository = CollectRepository(
+            mock.api(),
+            mock.json,
+            FakeUserSession("utoken-test")
+        )
+        val repository = CharacterDetailRepository(mock.api(), ToggleItemCollectUseCase(collectRepository))
+
+        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
+        assertTrue(repository.toggleCollect(7L, isCollected = false).getOrThrow())
+        // 写侧成功后状态池同步更新，其他页面经状态流可见
+        assertTrue(collectRepository.observeCollectState(7L).value?.isCollected == true)
+
+        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
+        assertFalse(repository.toggleCollect(7L, isCollected = true).getOrThrow())
+        assertNull(collectRepository.observeCollectState(7L).value)
     }
 
     @Test

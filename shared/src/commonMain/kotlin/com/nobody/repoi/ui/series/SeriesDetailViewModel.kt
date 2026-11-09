@@ -11,6 +11,7 @@ import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.data.repository.SeriesDetailRepository
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -124,6 +125,7 @@ data class SeriesDetailUiState(
 
 class SeriesDetailViewModel(
     private val repository: SeriesDetailRepository,
+    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -294,18 +296,46 @@ class SeriesDetailViewModel(
     }
 
     /**
-     * 切换收藏状态。
+     * 切换收藏状态（乐观更新 + 失败回滚）。
+     *
+     * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
+     * [ToggleItemCollectUseCase]，成功即写入收藏仓储状态池。
      */
     fun toggleCollect() {
+        val state = _uiState.value
+        val nodeId = state.seriesNodeId
+        if (nodeId <= 0L) return
+        val previousCollected = state.isCollected
+        val nextCollected = !previousCollected
+
+        // 乐观更新
         _uiState.update {
-            val nextCollected = !it.isCollected
-            val delta = when {
-                it.originalCollected && !nextCollected -> -1
-                !it.originalCollected && nextCollected -> 1
-                else -> 0
-            }
-            it.copy(isCollected = nextCollected, collectCountDelta = delta)
+            it.copy(
+                isCollected = nextCollected,
+                collectCountDelta = collectDeltaOf(it.originalCollected, nextCollected)
+            )
         }
+
+        viewModelScope.launch {
+            val result = toggleItemCollectUseCase(nodeId, previousCollected)
+            if (result.isFailure) {
+                // 失败回滚
+                _uiState.update {
+                    it.copy(
+                        isCollected = previousCollected,
+                        collectCountDelta = collectDeltaOf(it.originalCollected, previousCollected),
+                        commentActionMessage = result.exceptionOrNull()?.message ?: "收藏状态更新失败"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 计数增量以「服务端原始收藏态」为基准，不做逐次累加。 */
+    private fun collectDeltaOf(originalCollected: Boolean, currentCollected: Boolean): Int = when {
+        originalCollected && !currentCollected -> -1
+        !originalCollected && currentCollected -> 1
+        else -> 0
     }
 
     /**
