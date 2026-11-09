@@ -13,6 +13,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.nobody.repoi.data.local.ThemeSeed
+import com.nobody.repoi.data.local.toColors
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -91,7 +92,7 @@ class ThemeMotionTest {
 
     @Test
     fun styleChange_animatesThenSettlesOnTarget() = runComposeUiTest {
-        val style = mutableStateOf(PaletteStyle.TonalSpot)
+        val style = mutableStateOf<PaletteStyle>(PaletteStyle.TonalSpot)
         var animated: Triple<Color, Color, Color>? = null
         var target: Triple<Color, Color, Color>? = null
 
