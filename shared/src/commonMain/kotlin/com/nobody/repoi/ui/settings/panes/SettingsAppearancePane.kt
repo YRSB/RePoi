@@ -68,6 +68,7 @@ import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.theme.ThemeCardColors
 import com.nobody.repoi.ui.theme.getOrCreateThemeCardColors
 import com.nobody.repoi.ui.theme.PoiSchemeSource
+import com.nobody.repoi.ui.theme.effectiveFor
 import com.nobody.repoi.ui.theme.resolveSchemeSource
 import com.nobody.repoi.ui.theme.seedColorScheme
 import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
@@ -136,22 +137,25 @@ fun SettingsAppearancePane(
             darkTheme = false,
             amoled = false,
             style = paletteStyle,
-            specVersion = specVersion
+            // 与根主题同一套收敛规则，避免色卡与真实配色不一致
+            specVersion = specVersion.effectiveFor(paletteStyle)
         )
 
         else -> null
     }
-    val dynamicCardColors = remember(previewScheme, paletteStyle, specVersion) {
+    // 色卡缓存键统一使用收敛后的标准，避免"切了没反应"时还缓存出两份等价结果
+    val effectiveSpec = specVersion.effectiveFor(paletteStyle)
+    val dynamicCardColors = remember(previewScheme, paletteStyle, effectiveSpec) {
         if (previewScheme != null) {
             themeCardColorsFromScheme(previewScheme)
         } else {
-            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
+            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, effectiveSpec)
         }
     }
 
-    val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, specVersion) {
+    val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, effectiveSpec) {
         seeds.filter { it != ThemeSeed.Dynamic }.associateWith { seed ->
-            getOrCreateThemeCardColors(seed, paletteStyle, specVersion)
+            getOrCreateThemeCardColors(seed, paletteStyle, effectiveSpec)
         }
     }
 

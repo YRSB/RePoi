@@ -45,6 +45,16 @@ val baseScheme = seedScheme ?: dynamicScheme ?: (if (darkTheme) DarkColorScheme 
   实测 6 组壁纸种子中 4 组逐值相同，其余 2 组仅差 1 个 RGB 步进（tone 量化舍入，
   例 `#FF006EBE` → `#FF38608F` vs `#FF39608F`），未自定义外观的用户不会察觉主色跳变。
 
+### 1.1 「色彩标准」需按风格收敛（抄 KernelSU 的正确性门控）
+material-kolor 6.0.0 只有 TonalSpot / Neutral / Vibrant / Expressive 实现了 SPEC_2025，
+其余 5 种（Rainbow / FruitSalad / Monochrome / Fidelity / Content）在 SPEC_2025 下
+**静默回退**到 2021 —— 实测这 5 种风格的 48 个颜色角色与 SPEC_2021 逐一相同。
+
+若不拦下，用户切「色彩标准」同样毫无反应，与本 issue 症状完全一致。因此增加
+PaletteStyle.supportsSpec2025 + ColorSpec.SpecVersion.effectiveFor(style)，
+判定与 [KernelSU manager 的同名实现](https://github.com/tiann/KernelSU/blob/main/manager/app/src/main/java/me/weishu/kernelsu/ui/theme/Theme.kt) 一致：
+静态分支、动态分支、设置页色卡缓存键全部使用收敛后的版本。
+
 ### 2. 决策树抽成纯函数，并加注入缝
 - [`resolveSchemeSource`](../../shared/src/commonMain/kotlin/com/nobody/repoi/ui/theme/ThemeSchemeResolver.kt)
   是无 Compose 依赖的纯判定：`Seed` / `Dynamic` / `Fallback` 三态；

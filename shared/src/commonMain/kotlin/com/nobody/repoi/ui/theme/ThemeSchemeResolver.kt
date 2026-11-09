@@ -7,6 +7,28 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 
 /**
+ * 该色彩风格是否实现了 SPEC_2025。
+ *
+ * material-kolor 6.0.0 只有 TonalSpot / Neutral / Vibrant / Expressive 实现了 2025 规范，
+ * 其余 5 种风格在 SPEC_2025 下会**静默回退**到 2021——实测这 5 种的 48 个颜色角色
+ * 与 SPEC_2021 逐一相同。若不拦下，用户切「色彩标准」同样会毫无反应，
+ * 与本 issue 报告的症状一模一样。判定依据同 KernelSU manager 的 supportsSpec2025。
+ */
+internal val PaletteStyle.supportsSpec2025: Boolean
+    get() = this == PaletteStyle.TonalSpot ||
+        this == PaletteStyle.Neutral ||
+        this == PaletteStyle.Vibrant ||
+        this == PaletteStyle.Expressive
+
+/** 把用户选择的色彩标准收敛到该风格真正支持的版本，避免静默回退。 */
+internal fun ColorSpec.SpecVersion.effectiveFor(style: PaletteStyle): ColorSpec.SpecVersion =
+    if (this == ColorSpec.SpecVersion.SPEC_2025 && !style.supportsSpec2025) {
+        ColorSpec.SpecVersion.SPEC_2021
+    } else {
+        this
+    }
+
+/**
  * 配色来源判定结果。
  *
  * 这是 issue #82 的核心不变式：只要用户开着动态主题且平台给得出壁纸配色，
@@ -68,26 +90,31 @@ internal fun resolvePoiColorScheme(
     paletteStyle: PaletteStyle,
     specVersion: ColorSpec.SpecVersion,
     staticFallback: ColorScheme,
-): ColorScheme = when (
-    val source = resolveSchemeSource(dynamicColor, seedPrimary, seedSecondary, seedTertiary, wallpaperPrimary)
-) {
-    is PoiSchemeSource.Seed -> seedColorScheme(
-        seedColor = source.primary,
-        darkTheme = darkTheme,
-        amoled = amoled,
-        secondary = source.secondary,
-        tertiary = source.tertiary,
-        style = paletteStyle,
-        specVersion = specVersion
-    )
+): ColorScheme {
+    // 「色彩标准」先按风格收敛：未实现 SPEC_2025 的风格会被 material-kolor 静默回退，
+    // 不拦下的话用户切标准会毫无反应（实测 Rainbow/FruitSalad/Monochrome/Fidelity/Content）
+    val effectiveSpec = specVersion.effectiveFor(paletteStyle)
+    return when (
+        val source = resolveSchemeSource(dynamicColor, seedPrimary, seedSecondary, seedTertiary, wallpaperPrimary)
+    ) {
+        is PoiSchemeSource.Seed -> seedColorScheme(
+            seedColor = source.primary,
+            darkTheme = darkTheme,
+            amoled = amoled,
+            secondary = source.secondary,
+            tertiary = source.tertiary,
+            style = paletteStyle,
+            specVersion = effectiveSpec
+        )
 
-    is PoiSchemeSource.Dynamic -> seedColorScheme(
-        seedColor = source.anchor,
-        darkTheme = darkTheme,
-        amoled = amoled,
-        style = paletteStyle,
-        specVersion = specVersion
-    )
+        is PoiSchemeSource.Dynamic -> seedColorScheme(
+            seedColor = source.anchor,
+            darkTheme = darkTheme,
+            amoled = amoled,
+            style = paletteStyle,
+            specVersion = effectiveSpec
+        )
 
-    PoiSchemeSource.Fallback -> staticFallback
+        PoiSchemeSource.Fallback -> staticFallback
+    }
 }

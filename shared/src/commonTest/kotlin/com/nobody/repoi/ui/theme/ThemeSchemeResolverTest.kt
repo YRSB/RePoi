@@ -1,6 +1,8 @@
 package com.nobody.repoi.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -65,6 +67,50 @@ class ThemeSchemeResolverTest {
         )
 
         assertEquals(PoiSchemeSource.Seed(primary = Color(0xFF006EBE), secondary = null, tertiary = null), source)
+    }
+
+    @Test
+    fun spec2025_isDowngradedForStylesWithout2025Implementation() {
+        // material-kolor 6.0.0 对这 5 种风格会静默回退到 2021（实测 48 个颜色角色全等），
+        // 必须显式收敛，否则用户切「色彩标准」毫无反应
+        val unsupported = listOf(
+            PaletteStyle.Rainbow,
+            PaletteStyle.FruitSalad,
+            PaletteStyle.Monochrome,
+            PaletteStyle.Fidelity,
+            PaletteStyle.Content,
+        )
+
+        unsupported.forEach { style ->
+            assertEquals(
+                ColorSpec.SpecVersion.SPEC_2021,
+                ColorSpec.SpecVersion.SPEC_2025.effectiveFor(style),
+                "{style.name} 未实现 SPEC_2025，应回落到 SPEC_2021",
+            )
+            assertEquals(
+                ColorSpec.SpecVersion.SPEC_2021,
+                ColorSpec.SpecVersion.SPEC_2021.effectiveFor(style),
+                "用户本就选择 SPEC_2021 时不应被改写",
+            )
+        }
+    }
+
+    @Test
+    fun spec2025_isKeptForSupportingStyles() {
+        val supported = listOf(
+            PaletteStyle.TonalSpot,
+            PaletteStyle.Neutral,
+            PaletteStyle.Vibrant,
+            PaletteStyle.Expressive,
+        )
+
+        supported.forEach { style ->
+            assertEquals(
+                ColorSpec.SpecVersion.SPEC_2025,
+                ColorSpec.SpecVersion.SPEC_2025.effectiveFor(style),
+                "{style.name} 实现了 SPEC_2025，不应被降级",
+            )
+        }
     }
 
     @Test
