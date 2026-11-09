@@ -21,8 +21,8 @@ import kotlin.test.assertTrue
  * 手办详情收藏链路 ViewModel 测试（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `HobbyDetailViewModelCollectTest`（逐用例；Mockito 仓储/代理 mock →
- * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；`collectUpdates MutableSharedFlow`
- * 桩 → 真实广播（`saveCollect`/`deleteCollect` 成功即 `tryEmit`）；
+ * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；`collectEvents` 统一事件流桩 → 真实广播
+ *（`saveCollect`/`deleteCollect` 成功即发射 `HobbyCollectChanged`）；
  * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -68,7 +68,7 @@ class HobbyDetailViewModelCollectTest {
     }
 
     @Test
-    fun collectUpdates_broadcastSync_updatesFavoriteAndCountDelta() = runTest(testDispatcher) {
+    fun hobbyCollectChanged_broadcastSync_updatesFavoriteAndCountDelta() = runTest(testDispatcher) {
         val env = HobbyDetailEnv()
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
