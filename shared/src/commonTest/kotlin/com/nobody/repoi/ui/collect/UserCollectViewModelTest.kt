@@ -263,12 +263,36 @@ class UserCollectViewModelTest {
         testScheduler.advanceUntilIdle()
         viewModel.uiState.value.worksData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(20001L, 20002L))
         val requestsBefore = mock.requestCount
-
+        // 取消写侧传的是实体条目 id（外层 id=20001 与之不同，回归 B1 口径错配）
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        collectRepo.deleteWorksCollect(20001L)
+        collectRepo.deleteWorksCollect(30001L)
         testScheduler.advanceUntilIdle()
 
         viewModel.uiState.value.worksData.items.map { it.id } shouldBe listOf(20002L)
+        viewModel.uiState.value.worksData.items.map { it.actualItemId } shouldBe listOf(30002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun characterCancelEvent_matchesEntityIdWhenOuterIdDiffers() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.CHARACTER)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":50001,"itemId":60001,"nameCN":"角色A"},{"id":50002,"itemId":60002,"nameCN":"角色B"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.characterData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(50001L, 50002L))
+        val requestsBefore = mock.requestCount
+
+        // 通用分类同样兼容实体 id：外层 50001 与实体 60001 不一致仍能过滤（建议 2）
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(60001L, UserCollectCategory.CHARACTER)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.characterData.items.map { it.id } shouldBe listOf(50002L)
+        viewModel.uiState.value.characterData.items.map { it.actualItemId } shouldBe listOf(60002L)
         mock.requestCount shouldBe requestsBefore + 1
     }
 
@@ -290,6 +314,26 @@ class UserCollectViewModelTest {
         testScheduler.advanceUntilIdle()
 
         viewModel.uiState.value.albumData.items.map { it.id } shouldBe listOf(7002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun batchCancelEvent_ignoresEntityIdCollision() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.CHARACTER)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":50001,"itemId":60001,"nameCN":"角色A"},{"id":50002,"itemId":60002,"nameCN":"角色B"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        // 批量取消是外层 id 语义：60002 只与条目 B 的实体 id 相同（外层均不命中），不得误删 B
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.cancelCollectBatch(listOf(60002L), UserCollectCategory.CHARACTER)
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.characterData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(50001L, 50002L))
         mock.requestCount shouldBe requestsBefore + 1
     }
 

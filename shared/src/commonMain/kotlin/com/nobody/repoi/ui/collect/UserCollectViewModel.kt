@@ -168,7 +168,7 @@ class UserCollectViewModel(
                         }
                     }
                     is CollectEvent.BatchCollectCancelled -> {
-                        removeCategoryItemsFromMemory(event.category, event.ids)
+                        removeCategoryItemsFromMemory(event.category, event.ids, matchEntityId = false)
                     }
                 }
             }
@@ -1178,10 +1178,12 @@ class UserCollectViewModel(
     // ==================== 统一事件自愈（ADR-0011） ====================
 
     /**
-     * 收藏中心内存过滤：按外层收藏节点 id 剔除，命中任一 id 即移除。
+     * 收藏中心内存过滤：外层收藏节点 `id` 必比；单项取消事件另兼容真实实体 `actualItemId`。
      *
-     * id 口径统一为收藏列表的外层 `id`（批量取消接口的 `idArr` 同源）：
-     * 手办编辑页的 `nodeId` 即列表 `id`；图片/通用条目复用列表 `id`（画廊以 pic-v2 扁平 `id` 为准）。
+     * 单项取消写侧传的是实体条目 id（如作品 `deleteWorksCollect(worksId)`），而列表条目
+     * 的外层 `id` 是收藏记录 id，两者不一致时只比外层必 miss（B1），故默认双口径兼容。
+     * 批量取消的 `ids` 本就是外层 id 语义（`idArr` 同源），调用方传 `matchEntityId = false`
+     * 关闭实体口径，避免收藏记录 id 与他条实体 id 巧合碰撞时误删。
      */
     private fun removeHobbyFromMemory(nodeId: Long) {
         removeCategoryItemsFromMemory(UserCollectCategory.HOBBY, setOf(nodeId))
@@ -1191,7 +1193,7 @@ class UserCollectViewModel(
         removeCategoryItemsFromMemory(UserCollectCategory.WORKS, setOf(worksId))
     }
 
-    private fun removeCategoryItemsFromMemory(category: UserCollectCategory, ids: Set<Long>) {
+    private fun removeCategoryItemsFromMemory(category: UserCollectCategory, ids: Set<Long>, matchEntityId: Boolean = true) {
         if (ids.isEmpty()) return
         when (category) {
             UserCollectCategory.HOBBY -> _uiState.update { state ->
@@ -1214,7 +1216,7 @@ class UserCollectViewModel(
             UserCollectCategory.WORKS,
             UserCollectCategory.CHARACTER,
             UserCollectCategory.PERSON -> updateCommonData(category) { current ->
-                val filtered = current.items.filterNot { it.id in ids }
+                val filtered = current.items.filterNot { it.id in ids || (matchEntityId && it.actualItemId in ids) }
                 if (filtered.size == current.items.size) current else current.copy(items = filtered)
             }
         }
