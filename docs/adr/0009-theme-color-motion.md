@@ -42,9 +42,11 @@ MaterialExpressiveTheme(colorScheme = animatedScheme, ...)
 
 三条刻意加上的边界（KernelSU 版本没有，属于本地适配）：
 
-1. **首帧不过渡**：`animateColorAsState` 首次组合即取目标值，冷启动不会从默认色淡入。
-2. **深浅模式切换不过渡**：整屏明暗反转若逐角色补间，中间帧会经过一串灰，
-   既脏又慢。判定方式是记住上一帧的 `darkTheme`。
+1. **深浅模式切换不过渡**：以 `darkTheme` 作为 `key(...)`，模式一变就重建全部动画节点，
+   新节点以目标色初始化，整屏明暗反转立即生效；否则逐角色补间会经过一串灰，既脏又慢。
+2. **首帧不过渡**：`animateColorAsState` 首次组合即以目标值初始化，冷启动不会从默认色淡入。
+   顺带解决了另一个坑——若在首帧提前返回，动画节点根本没被创建过，
+   启动后第一次改主题反而没有过渡。
 3. **`ColorScheme` 的 48 参主构造是 private**（material3 1.12.0-alpha03 实测），
    公开的整份替换入口只有 `copy(...)`，因此走 `copy` 而不是像 KernelSU 那样直接 `ColorScheme(...)`。
 

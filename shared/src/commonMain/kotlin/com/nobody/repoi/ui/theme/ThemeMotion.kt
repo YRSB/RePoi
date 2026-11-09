@@ -5,7 +5,7 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -15,9 +15,12 @@ import androidx.compose.ui.graphics.Color
  * 48 个颜色角色瞬间跳变，观感上像闪一下。这里为每个角色套一条 animateColorAsState，
  * 让新旧配色之间弹簧过渡。
  *
- * 两条边界：
- * 1. 首帧不过渡：animateColorAsState 首次组合即取目标值，冷启动不会从默认色淡入；
- * 2. 深浅模式切换不过渡：那是整屏明暗反转，逐角色补间会经过一串中间灰，反而更脏更慢。
+ * 以 [darkTheme] 作为 [key]：深浅模式一变就重建全部动画节点，新节点以目标色初始化，
+ * 于是整屏明暗反转立即生效。这一手同时解决两件事——
+ * 1. 深浅模式切换不补间（否则中间帧会经过一串灰，既脏又慢）；
+ * 2. 启动后第一次改风格仍有过渡（若首帧提前返回，动画节点就根本没被创建过）。
+ *
+ * 首帧也不会淡入：animateColorAsState 首次组合即以目标值初始化。
  *
  * 正确性不受影响：动画只作用于最终呈现的配色对象，取色决策仍在
  * [resolvePoiColorScheme] 内完成，回归测试读到的目标值不变。
@@ -29,18 +32,13 @@ import androidx.compose.ui.graphics.Color
  * 注：ColorScheme 的 48 参主构造在 material3 1.12.0-alpha03 里是 private，
  * 公开的整份替换入口只有 [ColorScheme.copy]，故此处统一走 copy。
  *
- * @param darkTheme 当前深浅模式，用于抑制模式切换时的补间
+ * @param darkTheme 当前深浅模式；变化时重建动画节点，不补间
  */
 @Composable
 internal fun ColorScheme.animateAsState(
     darkTheme: Boolean,
     animationSpec: AnimationSpec<Color> = spring(),
-): ColorScheme {
-    // 必须先于提前返回调用，保证组合结构稳定
-    val previousDarkTheme = rememberPrevious(darkTheme)
-    // 深浅模式变化是整屏明暗反转，逐角色补间会经过中间灰，观感反而更差
-    if (previousDarkTheme != darkTheme) return this
-
+): ColorScheme = key(darkTheme) {
     @Composable
     fun animateColor(target: Color): Color = animateColorAsState(
         targetValue = target,
@@ -48,7 +46,7 @@ internal fun ColorScheme.animateAsState(
         label = "poi_theme_color"
     ).value
 
-    return copy(
+    copy(
         primary = animateColor(primary),
         onPrimary = animateColor(onPrimary),
         primaryContainer = animateColor(primaryContainer),
@@ -98,22 +96,4 @@ internal fun ColorScheme.animateAsState(
         onTertiaryFixed = animateColor(onTertiaryFixed),
         onTertiaryFixedVariant = animateColor(onTertiaryFixedVariant)
     )
-}
-
-/**
- * 返回上一帧的 [value]，首次组合返回空。
- *
- * 用 remember 只记一个值、在组合体内就地更新，而不是 LaunchedEffect：
- * 后者要多跑一轮重组才能拿到上一次的值，深浅模式切换那一帧会误开动画。
- */
-@Composable
-private fun <T : Any> rememberPrevious(value: T): T? {
-    val holder = remember { PreviousValue<T>() }
-    val previous = holder.value
-    holder.value = value
-    return previous
-}
-
-private class PreviousValue<T : Any> {
-    var value: T? = null
 }
