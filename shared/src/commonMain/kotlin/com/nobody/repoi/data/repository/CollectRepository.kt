@@ -72,7 +72,13 @@ class CollectRepository(
     /**
      * 观察指定条目的收藏状态流；同 [nodeId] 恒返回同一实例（幂等），未拉取前值为 `null`。
      */
-    fun observeCollectState(nodeId: Long): StateFlow<CollectData?> {
+    fun observeCollectState(nodeId: Long): StateFlow<CollectData?> = mutableStateFlowOf(nodeId)
+
+    /**
+     * 取出（必要时创建）条目状态流的可变句柄，供仓储内部写入；
+     * 对外一律以只读 [StateFlow] 暴露，避免调用方绕过写侧语义直接改值。
+     */
+    private fun mutableStateFlowOf(nodeId: Long): MutableStateFlow<CollectData?> {
         // 快路径：已存在的流无锁直接返回
         stateFlows.value[nodeId]?.let { return it }
         // 慢路径：CAS 合并；getOrPut 必须与写入处于同一闭包，避免并发首访产生双实例
@@ -101,7 +107,7 @@ class CollectRepository(
         val response = api.getCollectState(nodeId)
         if (response.isSuccess) {
             val collectData = response.data?.collect
-            observeCollectState(nodeId).value = collectData
+            mutableStateFlowOf(nodeId).value = collectData
             collectData
         } else {
             throw ApiException(response.code, response.msg ?: "获取收藏状态失败")
@@ -149,7 +155,7 @@ class CollectRepository(
         val jsonPayload = json.encodeToString(collectData)
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
-            observeCollectState(nodeId).value = collectData
+            mutableStateFlowOf(nodeId).value = collectData
         } else {
             throw ApiException(response.code, response.msg ?: "保存收藏失败")
         }
@@ -163,7 +169,7 @@ class CollectRepository(
         val jsonPayload = json.encodeToString(deletedData)
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
-            observeCollectState(nodeId).value = null
+            mutableStateFlowOf(nodeId).value = null
         } else {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")
         }
@@ -181,8 +187,8 @@ class CollectRepository(
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "收藏失败")
         }
-        val previous = observeCollectState(nodeId).value ?: CollectData()
-        observeCollectState(nodeId).value = previous.copy(state = CollectConstants.STATE_CARE)
+        val previous = mutableStateFlowOf(nodeId).value ?: CollectData()
+        mutableStateFlowOf(nodeId).value = previous.copy(state = CollectConstants.STATE_CARE)
     }
 
     /**
@@ -193,7 +199,7 @@ class CollectRepository(
         if (!response.isSuccess) {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")
         }
-        observeCollectState(nodeId).value = null
+        mutableStateFlowOf(nodeId).value = null
     }
 
     /**

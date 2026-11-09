@@ -11,7 +11,6 @@ import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
-import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
