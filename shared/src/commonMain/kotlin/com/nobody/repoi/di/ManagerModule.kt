@@ -6,15 +6,17 @@ import com.nobody.repoi.data.local.ThemeManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.session.createUserSession
-import com.nobody.repoi.util.CollectInvalidationBus
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * 管理器模块：5 managers（DataStore 由平台 `dataStoreModule` 具名提供）+ 跨路由失效事件总线。
+ * 管理器模块：5 managers（DataStore 由平台 `dataStoreModule` 具名提供）。
  *
  * [UserSession] 是唯一对外鉴权接缝；底层凭据存储仅由会话层工厂内部构造，
  * 不再注册为可独立注入的单例。
+ *
+ * 收藏状态的跨路由一致性由 `CollectRepository` 状态池（`observeCollectState`）承载，
+ * 本模块不注册任何事件总线。
  */
 val managerModule = module {
     single<UserSession> { createUserSession(get(), get(named("user_prefs"))) }
@@ -22,5 +24,4 @@ val managerModule = module {
     single { SearchHistoryManager(get(named("search_history_prefs")), get()) }
     single { ViewPreferencesManager(get(named("view_prefs"))) }
     single { CategoryManager(get()) }
-    single { CollectInvalidationBus() }
 }

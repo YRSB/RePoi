@@ -64,7 +64,7 @@ val repositoryModule = module {
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get()) }
     single { UserFinanceRepository(get(), get()) }
-    single { UserRepository(get(), get(), get(), get(), get()) }
+    single { UserRepository(get(), get(), get(), get()) }
     single { VendorDetailRepository(get(), get()) }
     single { WorksDetailRepository(get()) }
     single { ZoneRepository(get(), get()) }

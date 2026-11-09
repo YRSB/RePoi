@@ -5,14 +5,11 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CheckInStatusPayload
-import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectTopItem
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
-import com.nobody.repoi.data.remote.model.UserCollectCommonItem
-import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.remote.model.UserPraiseItem
@@ -49,16 +46,15 @@ data class CreationPageResult<T>(
  * 用户档案、展柜与个人创作数据仓储。
  *
  * 会话职责已全面收敛至 [UserSession]，足迹划归 [UserHistoryRepository]，
- * 社交关注划归 [FollowRepository]，订单财务划归 [UserFinanceRepository]。
- * 收藏列表读写已归属 [CollectRepository]（收藏数据唯一真相源），本仓储保留同名方法仅作过渡委托，
- * 待调用方迁移完成后删除；自身专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
+ * 社交关注划归 [FollowRepository]，订单财务划归 [UserFinanceRepository]，
+ * 收藏列表与收藏状态读写一律归属 [CollectRepository]（收藏数据唯一真相源）。
+ * 本仓储自身专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
  */
 class UserRepository(
     private val api: HpoiApi,
     private val userSession: UserSession,
     private val followRepository: FollowRepository,
     private val userFinanceRepository: UserFinanceRepository,
-    private val collectRepository: CollectRepository
 ) {
     /**
      * 获取用户收藏顶置/展柜条目 (api/user/collect/top)。
@@ -219,94 +215,6 @@ class UserRepository(
         }
     }
 
-    // ── 收藏列表过渡委托：数据读取已归属 CollectRepository，此处仅保留同名入口以免牵动调用方（T4 删除） ──
-
-    /**
-     * 查询用户全量手办收藏列表 (api/collect/hobby-v2, GET)。
-     * @see CollectRepository.getUserCollectHobbyList
-     */
-    suspend fun getUserCollectHobbyList(
-        userId: Long,
-        collectState: String,
-        category: Int = CollectConstants.CATEGORY_ALL,
-        tag: String? = null,
-        order: String = CollectConstants.ORDER_ACTION_DATE,
-        sortType: Int = SORT_TYPE_DESC,
-        page: Int,
-        pageSize: Int = 20
-    ): Result<List<UserCollectHobbyItem>> = collectRepository.getUserCollectHobbyList(
-        userId = userId,
-        collectState = collectState,
-        category = category,
-        tag = tag,
-        order = order,
-        sortType = sortType,
-        page = page,
-        pageSize = pageSize
-    )
-
-    /**
-     * 查询用户通用实体收藏列表 (厂商/系列/作品/角色/人物) (api/collect/common-v3, GET)。
-     * @see CollectRepository.getUserCollectCommonList
-     */
-    suspend fun getUserCollectCommonList(
-        userId: Long,
-        categoryId: Int,
-        type: String,
-        order: String = CollectConstants.ORDER_ACTION_DATE,
-        page: Int,
-        pageSize: Int = 20,
-        state: Int? = null,
-        isAsc: Boolean? = null,
-        tagValue: String? = null
-    ): Result<List<UserCollectCommonItem>> = collectRepository.getUserCollectCommonList(
-        userId = userId,
-        categoryId = categoryId,
-        type = type,
-        order = order,
-        page = page,
-        pageSize = pageSize,
-        state = state,
-        isAsc = isAsc,
-        tagValue = tagValue
-    )
-
-    /**
-     * 查询用户相册收藏列表 (api/collect/album-v2, GET)。
-     * @see CollectRepository.getUserCollectAlbumList
-     */
-    suspend fun getUserCollectAlbumList(
-        userId: Long,
-        type: String = "fav",
-        order: String = CollectConstants.ORDER_ADD_TIME,
-        page: Int,
-        pageSize: Int = 20
-    ): Result<List<UserCollectAlbumItem>> = collectRepository.getUserCollectAlbumList(
-        userId = userId,
-        type = type,
-        order = order,
-        page = page,
-        pageSize = pageSize
-    )
-
-    /**
-     * 查询用户图片收藏列表 (api/collect/pic-v2, GET)。
-     * @see CollectRepository.getUserCollectPicList
-     */
-    suspend fun getUserCollectPicList(
-        userId: Long,
-        collectState: String = "collect",
-        order: String = CollectConstants.ORDER_ADD_TIME,
-        page: Int,
-        pageSize: Int = 20
-    ): Result<List<UserCollectPicItem>> = collectRepository.getUserCollectPicList(
-        userId = userId,
-        collectState = collectState,
-        order = order,
-        page = page,
-        pageSize = pageSize
-    )
-
     /**
      * 获取用户收藏相似度 (api/user/collect/similarity)。
      */
@@ -399,13 +307,5 @@ class UserRepository(
             }
             throw ApiException(response.code, response.msg ?: "获取用户信息失败")
         }
-    }
-
-    companion object {
-        /** 周边列表排序：升序 */
-        const val SORT_TYPE_ASC = 1
-
-        /** 周边列表排序：降序（原版默认值） */
-        const val SORT_TYPE_DESC = 2
     }
 }

@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
  * 手办详情收藏链路 ViewModel 测试（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `HobbyDetailViewModelCollectTest`（逐用例；Mockito 仓储/代理 mock →
- * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；旧 `collectUpdates` 广播桩 →
+ * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；旧事件广播桩 →
  * 真实状态驱动（写仓储后由 `observeCollectState` 状态流推送）；
  * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
  *
