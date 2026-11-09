@@ -5,7 +5,7 @@
 
 ## 上下文与问题陈述
 
-ADR-0002 建立的 7 维主题模型中，`ThemeManager` 为每个维度各提供一条 Flow：
+ADR-0002 建立的六维主题模型中（原为 7 维，`ExpressiveColor` 已由 ADR-0008 删除），`ThemeManager` 为每个维度各提供一条 Flow：
 
 ```kotlin
 val themeModeFlow: Flow<ThemeMode>
