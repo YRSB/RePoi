@@ -56,7 +56,7 @@ val repositoryModule = module {
     single { MessageRepository(get(), get()) }
     single { PersonDetailRepository(get(), get()) }
     single { PictureListRepository(get()) }
-    single { PostRepository(get()) }
+    single { PostRepository(get(), get()) }
     single { ResaleRepository(get()) }
     single { SearchRepository(get(), get()) }
     single { SeriesDetailRepository(get(), get()) }
