@@ -19,10 +19,15 @@ import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -90,6 +95,7 @@ data class HobbyDetailUiState(
     // 互动状态（收藏爱心与详情）
     val isFavorite: Boolean = false,
     val currentCollectData: CollectData? = null,
+    /** 收藏数增量：语义为「当前值 - 最近一次网络基线」，取值仅 -1/0/1，非累加计数 */
     val collectCountDelta: Int = 0
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     override fun copyWithComments(
@@ -156,29 +162,79 @@ class HobbyDetailViewModel(
     private var activeJob: Job? = null
     private var loadCommentsJob: Job? = null
 
+    /** 当前条目最近一次网络收藏结果（「基线 + delta」里的基线，只由本页主动拉取写入） */
+    private var collectBaselineCollected: Boolean = false
+
+    /** 当前条目是否已拿到过一次网络收藏结果；未拿到前状态池里的 `null` 不代表「未收藏」 */
+    private var hasCollectNetworkResult: Boolean = false
+
+    /**
+     * 状态驱动订阅当前条目的收藏状态流。
+     *
+     * 要点：
+     * - 节点 id 保留回退链 `detail.actualNodeId ?: itemId`（`itemId` 是 Nav 参数，`actualNodeId` 才是收藏节点）；
+     * - `refreshCollectState` 是唯一拉取入口，拉到结果后由 [CollectRepository] 把值推入状态池，
+     *   本订阅只负责把池内值映射到 UI 状态；
+     * - 首次 `null` 不能被当成「未收藏」：本页拿到首个网络结果之前一律忽略状态池的 `null`，
+     *   避免爱心闪回未收藏；拿到过结果后的 `null`（取消收藏）则正常生效；
+     * - `collectCountDelta` 采用「基线 + delta」语义：基线是状态池最近一次网络结果驱动出的
+     *   `isFavorite`，delta 恒为 `当前值 - 基线值`（±1 / 0），不再逐次累加，重复发射也不会重复计数。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeCollectState() {
+        viewModelScope.launch {
+            uiState
+                .map { it.detail?.actualNodeId ?: it.itemId }
+                .distinctUntilChanged()
+                .flatMapLatest { id ->
+                    if (id > 0L) {
+                        // 带上 id：切条目后迟到的旧发射会被下面的 id 比对丢弃
+                        collectRepository.observeCollectState(id).map { id to it }
+                    } else {
+                        flowOf(id to null)
+                    }
+                }
+                .collect { (nodeId, collectData) ->
+                    // 首个网络结果之前的 null 只是状态池默认值，不代表「未收藏」
+                    if (collectData == null && !hasCollectNetworkResult) return@collect
+                    _uiState.update { current ->
+                        // 切条目后迟到的旧发射直接丢弃
+                        if (currentNodeIdOf(current) != nodeId) return@update current
+                        applyCollectState(current, collectData)
+                    }
+                }
+        }
+    }
+
+    /** 把状态池值映射进 UI 状态：爱心与计数只看状态池，不做任何本地推断。 */
+    private fun applyCollectState(
+        current: HobbyDetailUiState,
+        collectData: CollectData?
+    ): HobbyDetailUiState {
+        val isCollected = collectData != null && collectData.isCollected
+        return current.copy(
+            isFavorite = isCollected,
+            currentCollectData = collectData,
+            collectCountDelta = collectCountDeltaOf(isCollected, collectBaselineCollected)
+        )
+    }
+
+    /** 当前条目收藏节点 id（回退链：详情实际节点 → Nav 参数 itemId）。 */
+    private fun currentNodeIdOf(state: HobbyDetailUiState): Long =
+        state.detail?.actualNodeId ?: state.itemId
+
+    /** 「基线 + delta」：delta 恒为当前收藏态相对基线的差值。 */
+    private fun collectCountDeltaOf(isCollected: Boolean, baseline: Boolean): Int = when {
+        isCollected && !baseline -> 1
+        !isCollected && baseline -> -1
+        else -> 0
+    }
+
     init {
         // 合并评论详情页回写的主楼更新（点赞/回复）
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
-        // 监听全局收藏状态变更广播，实时原子更新详情页的爱心高亮与计数值
-        viewModelScope.launch {
-            collectRepository.collectUpdates.collect { (nodeId, collectData) ->
-                _uiState.update { current ->
-                    val currentNodeId = current.detail?.actualNodeId ?: current.itemId
-                    if (currentNodeId != nodeId) return@update current
-                    val isCollected = collectData != null && collectData.isCollected
-                    val deltaChange = when {
-                        isCollected && !current.isFavorite -> 1
-                        !isCollected && current.isFavorite -> -1
-                        else -> 0
-                    }
-                    current.copy(
-                        isFavorite = isCollected,
-                        currentCollectData = collectData,
-                        collectCountDelta = current.collectCountDelta + deltaChange
-                    )
-                }
-            }
-        }
+        // 状态驱动：订阅当前条目的收藏状态流，原子更新爱心高亮与计数值
+        observeCollectState()
         // 监听全局 ExHobby 扩展图库开关，动态同步状态并按需触发补录
         viewModelScope.launch {
             viewPreferencesManager.isExHobbyEnabledFlow.collect { enabled ->
@@ -205,6 +261,9 @@ class HobbyDetailViewModel(
         activeJob?.cancel()
         activeJob = viewModelScope.launch {
             val currentExHobbyEnabled = _uiState.value.isExHobbyEnabled
+            // 换条目即重置收藏基线与就绪标记，避免把上一条目的结果当成新条目的基线
+            collectBaselineCollected = false
+            hasCollectNetworkResult = false
             _uiState.value = HobbyDetailUiState(
                 itemId = param.itemId,
                 itemType = param.itemType,
@@ -280,15 +339,20 @@ class HobbyDetailViewModel(
     }
 
     /**
-     * 拉取当前条目的用户收藏状态。
+     * 主动拉取当前条目的用户收藏状态。
+     *
+     * 只负责触发网络拉取：成功后由 [CollectRepository] 把结果写入状态池，
+     * 再经 [observeCollectState] 订阅回填 UI（单一数据流，不再在此处二次写入）。
+     * 失败保持静默——既不清空 `isFavorite` 也不写基线，避免把「网络异常」误报成「未收藏」。
      */
     private suspend fun loadCollectState(nodeId: Long) {
-        collectRepository.getCollectState(nodeId).onSuccess { collectData ->
-            _uiState.update {
-                it.copy(
-                    isFavorite = collectData?.isCollected == true,
-                    currentCollectData = collectData
-                )
+        collectRepository.refreshCollectState(nodeId).onSuccess {
+            hasCollectNetworkResult = true
+            // 基线取自本次网络结果；随后按状态池当前值回填一次，保证「已确认未收藏」能显式生效
+            collectBaselineCollected = collectRepository.observeCollectState(nodeId).value?.isCollected == true
+            _uiState.update { current ->
+                if (currentNodeIdOf(current) != nodeId) return@update current
+                applyCollectState(current, collectRepository.observeCollectState(nodeId).value)
             }
         }
     }
