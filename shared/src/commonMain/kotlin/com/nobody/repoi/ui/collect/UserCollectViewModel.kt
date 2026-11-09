@@ -875,6 +875,7 @@ class UserCollectViewModel(
                 .onSuccess {
                     if (isHobby) {
                         hobbyLoader.removeItem { it.id in ids }
+                        syncCategory(UserCollectCategory.HOBBY)
                         _uiState.update {
                             it.copy(
                                 isCancellingBatch = false,
@@ -884,6 +885,7 @@ class UserCollectViewModel(
                         }
                     } else {
                         albumLoader.removeItem { it.id in ids }
+                        syncCategory(UserCollectCategory.ALBUM)
                         _uiState.update {
                             it.copy(
                                 isCancellingBatch = false,
@@ -917,16 +919,7 @@ class UserCollectViewModel(
      */
     fun loadFirstPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
         if (userId <= 0L) return
-        when (category) {
-            UserCollectCategory.HOBBY -> hobbyLoader.loadInitial()
-            UserCollectCategory.ALBUM -> albumLoader.loadInitial()
-            UserCollectCategory.PICTURE -> picLoader.loadInitial()
-            UserCollectCategory.WORKS -> worksLoader.loadInitial()
-            UserCollectCategory.VENDOR -> vendorLoader.loadInitial()
-            UserCollectCategory.SERIES -> seriesLoader.loadInitial()
-            UserCollectCategory.CHARACTER -> characterLoader.loadInitial()
-            UserCollectCategory.PERSON -> personLoader.loadInitial()
-        }
+        dispatchToLoader(category) { it.loadInitial() }
     }
 
     /**
@@ -934,16 +927,7 @@ class UserCollectViewModel(
      */
     fun refresh(category: UserCollectCategory = _uiState.value.selectedCategory) {
         if (userId <= 0L) return
-        when (category) {
-            UserCollectCategory.HOBBY -> hobbyLoader.refresh()
-            UserCollectCategory.ALBUM -> albumLoader.refresh()
-            UserCollectCategory.PICTURE -> picLoader.refresh()
-            UserCollectCategory.WORKS -> worksLoader.refresh()
-            UserCollectCategory.VENDOR -> vendorLoader.refresh()
-            UserCollectCategory.SERIES -> seriesLoader.refresh()
-            UserCollectCategory.CHARACTER -> characterLoader.refresh()
-            UserCollectCategory.PERSON -> personLoader.refresh()
-        }
+        dispatchToLoader(category) { it.refresh() }
     }
 
     /**
@@ -953,32 +937,14 @@ class UserCollectViewModel(
      */
     fun loadNextPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
         if (userId <= 0L) return
-        when (category) {
-            UserCollectCategory.HOBBY -> hobbyLoader.loadMore()
-            UserCollectCategory.ALBUM -> albumLoader.loadMore()
-            UserCollectCategory.PICTURE -> picLoader.loadMore()
-            UserCollectCategory.WORKS -> worksLoader.loadMore()
-            UserCollectCategory.VENDOR -> vendorLoader.loadMore()
-            UserCollectCategory.SERIES -> seriesLoader.loadMore()
-            UserCollectCategory.CHARACTER -> characterLoader.loadMore()
-            UserCollectCategory.PERSON -> personLoader.loadMore()
-        }
+        dispatchToLoader(category) { it.loadMore() }
     }
 
     /**
      * 清除指定大类（默认当前）的错误提示。
      */
     fun dismissError(category: UserCollectCategory = _uiState.value.selectedCategory) {
-        when (category) {
-            UserCollectCategory.HOBBY -> hobbyLoader.clearError()
-            UserCollectCategory.ALBUM -> albumLoader.clearError()
-            UserCollectCategory.PICTURE -> picLoader.clearError()
-            UserCollectCategory.WORKS -> worksLoader.clearError()
-            UserCollectCategory.VENDOR -> vendorLoader.clearError()
-            UserCollectCategory.SERIES -> seriesLoader.clearError()
-            UserCollectCategory.CHARACTER -> characterLoader.clearError()
-            UserCollectCategory.PERSON -> personLoader.clearError()
-        }
+        dispatchToLoader(category) { it.clearError() }
     }
 
     // ==================== 恢复感知 ====================
@@ -1000,7 +966,7 @@ class UserCollectViewModel(
             picState.items.isNotEmpty() ||
             picState.stage != LoadStage.Idle
         if (shouldRefreshPic) {
-            picLoader.refresh()
+            dispatchToLoader(UserCollectCategory.PICTURE) { it.refresh() }
         }
     }
 
@@ -1048,6 +1014,17 @@ class UserCollectViewModel(
             errorMessage = rawError,
             isContentHidden = rawError?.contains(CONTENT_HIDDEN_KEYWORD) == true
         )
+    }
+
+    /**
+     * 对指定大类的 loader 执行一次动作，并**同步**把结果投影进 [uiState]。
+     *
+     * loader 自身的状态流由后台协程转发；若不做同步投影，UI 会先看到一帧旧状态
+     * （典型症状：清除错误后 snackbar 又按旧值弹一次、点重试后没有立即出现 loading）。
+     */
+    private fun dispatchToLoader(category: UserCollectCategory, action: (PagedListLoader<*>) -> Unit) {
+        action(loaders.getValue(category))
+        syncCategory(category)
     }
 
     /**
