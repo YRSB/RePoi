@@ -24,4 +24,4 @@ Accepted
 消费端的「精准刷新」在初版实现中缺少活跃判定，且取消事件只有 5 类兼容实体 id。评审后补充两条约束：
 
 1. **仅活跃分类立即刷新，其余登记脏标记**：`UserCollectViewModel` 收到新增/修改事件时，若目标分类是当前选中分类则立即 `refresh`；否则仅在**该分类已加载过**（`SubPageData.isLoaded`）时登记到 `UserCollectUiState.staleCategories`，用户切回该分类时由 `switchCategory` 触发一次刷新。这样既不为后台隐藏页签发请求，也不会让切回的列表停留在静置期间的旧数据。
-2. **id 口径二选一，不做「两个都比」**：单项取消（`matchEntityId = true`）只比真实实体 id（手办节点 id、相册 `actualAlbumId`、图片 `actualId`、通用条目 `actualItemId`），实体 id 缺失时才回落外层收藏记录 `id`；批量取消（`matchEntityId = false`）只比外层 `id`。避免收藏记录 id 与他条实体 id 数值相同导致误删两条。若内存剔除一条未命中且该分类非活跃，同样登记脏标记兜底。
+2. **id 口径二选一，不做「两个都比」**：单项取消（`matchEntityId = true`）只比真实实体 id（手办节点 id、相册 `actualAlbumId`、图片 `actualId`、通用条目 `actualItemId`），实体 id 缺失时才回落外层收藏记录 `id`；批量取消（`matchEntityId = false`）只比外层 `id`。避免收藏记录 id 与他条实体 id 数值相同导致误删两条。若内存剔除一条未命中且该分类非活跃，同样登记脏标记兜底。图片是特例：`pic-v2` 扁平结构无外层-实体双 id，`actualId` 即图片记录主键 `id`（与画廊写侧同源），`itemId` 只是 `hpoi_item` 溯源键不参与匹配；内存剔除后页码回退一页与服务端分页前移对齐。

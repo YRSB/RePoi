@@ -230,6 +230,8 @@ class UserCollectViewModelTest {
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         testScheduler.advanceUntilIdle()
         viewModel.switchCategory(UserCollectCategory.PICTURE)
+        // pic-v2 扁平结构：图片记录主键 `id` 即收藏/取消的唯一口径，无外层-实体双 id；
+        // `itemId` 是 hpoi_item 溯源键，写侧与过滤都不比它（回归口径误用 itemId）。
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"categoryId":80001,"itemId":4235086,"itemType":"picture","collect":2,"path":"2026/09/a.jpg"},{"id":9002,"categoryId":80001,"itemId":4235087,"itemType":"picture","collect":2,"path":"2026/09/b.jpg"}]}}"""
         )
@@ -243,6 +245,12 @@ class UserCollectViewModelTest {
 
         viewModel.uiState.value.picData.items.map { it.id } shouldBe listOf(9002L)
         mock.requestCount shouldBe requestsBefore + 1
+
+        // 若误用溯源 itemId 口径（如传 4235087），实体主键 9002 不得被误删
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(4235087L, UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.picData.items.map { it.id } shouldBe listOf(9002L)
     }
 
     @Test
@@ -411,5 +419,55 @@ class UserCollectViewModelTest {
 
         viewModel.uiState.value.hobbyData.items.map { it.id } shouldBe listOf(1001L)
         mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun singleCancelEvent_fallsBackToOuterIdWhenEntityIdMissing() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.CHARACTER)
+        // 角色 B 的实体 id 恰好等于角色 A 的外层 id（50001）：旧「只比实体」实现会误删 B 而漏掉 A
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":50001,"itemId":0,"nameCN":"角色A"},{"id":50002,"itemId":50001,"nameCN":"角色B"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(50001L, UserCollectCategory.CHARACTER)
+        testScheduler.advanceUntilIdle()
+
+        // 实体缺失的 A 按外层 id 命中剔除，实体碰撞的 B 不得误删
+        viewModel.uiState.value.characterData.items.map { it.id } shouldBe listOf(50002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun pictureCancelEvent_onSecondPage_rebasesCursor() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        // 首屏满 20 条才有 hasMore，从而翻到第二页
+        val firstPage = (9001L..9020L).joinToString(",") {
+            """{"id":$it,"categoryId":80001,"itemId":${it + 4226085},"itemType":"picture","collect":2,"path":"2026/09/$it.jpg"}"""
+        }
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[$firstPage]}}""")
+        testScheduler.advanceUntilIdle()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9021,"categoryId":80001,"itemId":4235107,"itemType":"picture","collect":2,"path":"2026/09/c.jpg"}]}}"""
+        )
+        viewModel.loadNextPage(UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.picData.page shouldBe 2
+
+        // 服务端前移一位后客户端游标须回退，否则续拉跳过一项
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(9001L, UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.picData.items.none { it.id == 9001L } shouldBe true
+        viewModel.uiState.value.picData.page shouldBe 1
     }
 }

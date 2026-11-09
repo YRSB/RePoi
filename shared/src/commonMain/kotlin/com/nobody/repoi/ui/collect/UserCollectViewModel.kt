@@ -1095,8 +1095,8 @@ class UserCollectViewModel(
                     val result = fetchCommon(category, page = 1)
                     result.fold(
                         onSuccess = { items ->
-                            updateCommonData(category) {
-                                SubPageData(
+                            _uiState.update { state ->
+                                val page = SubPageData(
                                     items = items,
                                     isLoading = false,
                                     isRefreshing = false,
@@ -1104,8 +1104,14 @@ class UserCollectViewModel(
                                     page = 1,
                                     isLoaded = true
                                 )
+                                state.copy(
+                                    staleCategories = state.staleCategories - category,
+                                    vendorData = if (category == UserCollectCategory.VENDOR) page else state.vendorData,
+                                    seriesData = if (category == UserCollectCategory.SERIES) page else state.seriesData,
+                                    characterData = if (category == UserCollectCategory.CHARACTER) page else state.characterData,
+                                    personData = if (category == UserCollectCategory.PERSON) page else state.personData
+                                )
                             }
-                            _uiState.update { it.copy(staleCategories = it.staleCategories - category) }
                         },
                         onFailure = { error ->
                             updateCommonData(category) { current ->
@@ -1135,17 +1141,19 @@ class UserCollectViewModel(
             setSubPageLoading(UserCollectCategory.WORKS, isLoading = !isRefresh, isRefreshing = isRefresh)
             fetchWorks(page = 1).fold(
                 onSuccess = { items ->
-                    updateCommonData(UserCollectCategory.WORKS) {
-                        SubPageData(
-                            items = items,
-                            isLoading = false,
-                            isRefreshing = false,
-                            hasMore = items.size >= PAGE_SIZE,
-                            page = 1,
-                            isLoaded = true
+                    _uiState.update {
+                        it.copy(
+                            staleCategories = it.staleCategories - UserCollectCategory.WORKS,
+                            worksData = SubPageData(
+                                items = items,
+                                isLoading = false,
+                                isRefreshing = false,
+                                hasMore = items.size >= PAGE_SIZE,
+                                page = 1,
+                                isLoaded = true
+                            )
                         )
                     }
-                    _uiState.update { it.copy(staleCategories = it.staleCategories - UserCollectCategory.WORKS) }
                 },
                 onFailure = { error ->
                     updateCommonData(UserCollectCategory.WORKS) { current ->
@@ -1212,11 +1220,14 @@ class UserCollectViewModel(
      *
      * id 口径由 [matchEntityId] 二选一，不做「两个都比」：
      * - 单项取消（`matchEntityId = true`）写侧传真实实体 id（手办节点 id、相册 `actualAlbumId`、
-     *   作品 `worksId`、通用条目 `actualItemId`），故只比实体 id；实体 id 缺失（为 0）时才回落外层 `id`。
+     *   图片 `actualId`（`pic-v2` 扁平结构即图片记录主键 `id`）、通用条目 `actualItemId`），故只比
+     *   实体 id；实体 id 缺失（为 0）时才回落外层收藏记录 `id`。
      * - 批量取消（`matchEntityId = false`）的 `ids` 本就是外层收藏记录 id（`idArr` 同源），只比外层 `id`。
      *
      * 只比一个口径可避免「收藏记录 id 恰好等于他条实体 id」时误删两条。
-     * 若本次一条都没命中（脏列表缺项/字段缺失），非活跃但已加载的分类登记脏标记，切回时补刷。
+     * 剔除后页码回退一页与服务端分页前移对齐，避免续拉跳过一项形成空洞；下次续拉与之前
+     * 已加载页重叠的部分由主键去重过滤。若本次一条都没命中（脏列表缺项/字段缺失），
+     * 非活跃但已加载的分类登记脏标记，切回时补刷。
      */
     private fun onCollectRemoved(
         category: UserCollectCategory,
@@ -1233,21 +1244,24 @@ class UserCollectViewModel(
                 val filtered = page.items.filterNot {
                     if (matchEntityId && it.itemNodeId > 0L) it.itemNodeId in targets else it.id in targets
                 }
-                if (filtered.size == page.items.size) state else state.copy(hobbyData = page.copy(items = filtered))
+                if (filtered.size == page.items.size) state
+                else state.copy(hobbyData = page.copy(items = filtered).rebasedAfterRemoval())
             }
             UserCollectCategory.ALBUM -> _uiState.update { state ->
                 val page = state.albumData
                 val filtered = page.items.filterNot {
-                    if (matchEntityId) it.actualAlbumId in targets else it.id in targets
+                    if (matchEntityId && it.actualAlbumId > 0L) it.actualAlbumId in targets else it.id in targets
                 }
-                if (filtered.size == page.items.size) state else state.copy(albumData = page.copy(items = filtered))
+                if (filtered.size == page.items.size) state
+                else state.copy(albumData = page.copy(items = filtered).rebasedAfterRemoval())
             }
             UserCollectCategory.PICTURE -> _uiState.update { state ->
                 val page = state.picData
                 val filtered = page.items.filterNot {
-                    if (matchEntityId) it.actualId in targets else it.id in targets
+                    if (matchEntityId && it.actualId > 0L) it.actualId in targets else it.id in targets
                 }
-                if (filtered.size == page.items.size) state else state.copy(picData = page.copy(items = filtered))
+                if (filtered.size == page.items.size) state
+                else state.copy(picData = page.copy(items = filtered).rebasedAfterRemoval())
             }
             UserCollectCategory.VENDOR,
             UserCollectCategory.SERIES,
@@ -1255,9 +1269,10 @@ class UserCollectViewModel(
             UserCollectCategory.CHARACTER,
             UserCollectCategory.PERSON -> updateCommonData(category) { current ->
                 val filtered = current.items.filterNot {
-                    if (matchEntityId) it.actualItemId in targets else it.id in targets
+                    if (matchEntityId && it.actualItemId > 0L) it.actualItemId in targets else it.id in targets
                 }
-                if (filtered.size == current.items.size) current else current.copy(items = filtered)
+                if (filtered.size == current.items.size) current
+                else current.copy(items = filtered).rebasedAfterRemoval()
             }
         }
         markStaleIfMissed(category, before)
@@ -1401,6 +1416,13 @@ class UserCollectViewModel(
             UserCollectCategory.PERSON
         )
     }
+
+    /**
+     * 内存剔除后页码回退一页：服务端列表前移一位，客户端游标对齐后下次续拉不跳项；
+     * 与之前已加载页重叠的部分由 [appendPagedItems] 主键去重过滤。
+     */
+    private fun <T> SubPageData<T>.rebasedAfterRemoval(): SubPageData<T> =
+        copy(page = (page - 1).coerceAtLeast(1))
 
     /**
      * 合并分页新数据：执行主键去重、更新当前页码并根据批次容量判定是否还有更多数据。

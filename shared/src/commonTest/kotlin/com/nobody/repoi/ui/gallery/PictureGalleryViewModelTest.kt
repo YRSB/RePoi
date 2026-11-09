@@ -1,6 +1,8 @@
 package com.nobody.repoi.ui.gallery
 
+import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
+import com.nobody.repoi.data.repository.CollectEvent
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.MockApi
@@ -13,11 +15,15 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -30,10 +36,11 @@ import kotlin.test.assertTrue
 /**
  * 大图画廊收藏联动测试（规格 #86「Testing Decisions」要求的画廊套件）。
  *
- * 覆盖三件事：
+ * 覆盖四件事：
  * 1. 写侧正确区分收藏（`collect/item/add`）与取消（`collect/del`）；
  * 2. 成功后不再手动广播——整条链路只有一次写请求，跨页刷新由仓储内生事件流驱动；
- * 3. 网络失败回滚星标与收藏人数，并给出提示。
+ * 3. 写侧透传图片分类，成功后仓储发射带 PICTURE 分类的统一事件；
+ * 4. 收藏/取消的网络失败均回滚星标与收藏人数，并给出提示。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PictureGalleryViewModelTest {
@@ -69,13 +76,38 @@ class PictureGalleryViewModelTest {
             userRepository = userRepo,
             downloadClient = downloadClient
         )
-        return Fixture(mock, viewModel)
+        return Fixture(mock, collectRepo, viewModel)
+    }
+
+    /** 订阅收集器：后台收集 collectEvents，调用方按序取事件（随 runTest 结束自动取消）。 */
+    private fun kotlinx.coroutines.test.TestScope.collectEventsOf(
+        repository: CollectRepository
+    ): MutableList<CollectEvent> {
+        val events = mutableListOf<CollectEvent>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED, context = UnconfinedTestDispatcher()) {
+            repository.collectEvents.collect { events.add(it) }
+        }
+        return events
+    }
+
+    /** 预置已收藏态：切页回填 collect/state（500ms 延迟由 advanceUntilIdle 推进）。 */
+    private suspend fun kotlinx.coroutines.test.TestScope.presetCollected(
+        mock: MockApi,
+        viewModel: PictureGalleryViewModel,
+        item: UserCollectPicItem
+    ) {
+        mock.route("api/collect/state", mock.ok("""{"collect":{"id":${item.id},"state":"care","type":2}}"""))
+        mock.route("api/pic/relate", mock.ok("""{"list":[]}"""))
+        viewModel.onPageChanged(item, 0)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isCollected, "预置：当前图应处于已收藏态")
     }
 
     @Test
     fun toggleCollect_whenUncollected_sendsAddAndRollsForward() = runTest(testDispatcher) {
-        val (mock, viewModel) = fixture()
+        val (mock, collectRepo, viewModel) = fixture()
         mock.route("api/collect/item/add", mock.ok("{}"))
+        val events = collectEventsOf(collectRepo)
 
         val nowCollected = viewModel.toggleCollect(picItem(id = 9001L))
         advanceUntilIdle()
@@ -89,19 +121,21 @@ class PictureGalleryViewModelTest {
         val request = mock.takeRequest()
         assertTrue(request.encodedPath!!.contains("api/collect/item/add"), "收藏应走 api/collect/item/add")
         assertTrue(request.bodyContains("id=9001"))
+        // 分类不进网络请求：断言仓储发射带 PICTURE 分类的统一事件，回归分类误传
+        runCurrent()
+        assertEquals(
+            listOf(CollectEvent.ItemCollectChanged(9001L, UserCollectCategory.PICTURE, true)),
+            events
+        )
     }
 
     @Test
     fun toggleCollect_whenCollected_sendsDel() = runTest(testDispatcher) {
-        val (mock, viewModel) = fixture()
+        val (mock, collectRepo, viewModel) = fixture()
         val item = picItem(id = 9002L)
-        // 预置已收藏态：切页回填 collect/state
-        mock.route("api/collect/state", mock.ok("""{"collect":{"id":9002,"state":"care","type":2}}"""))
-        mock.route("api/pic/relate", mock.ok("""{"list":[]}"""))
         mock.route("api/collect/del", mock.ok("{}"))
-        viewModel.onPageChanged(item, 0)
-        advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.isCollected, "预置：当前图应处于已收藏态")
+        val events = collectEventsOf(collectRepo)
+        presetCollected(mock, viewModel, item)
 
         val nowCollected = viewModel.toggleCollect(item)
         advanceUntilIdle()
@@ -116,11 +150,16 @@ class PictureGalleryViewModelTest {
         }
         assertTrue(write.encodedPath!!.contains("api/collect/del"), "取消收藏应走 api/collect/del")
         assertTrue(write.bodyContains("id=9002"))
+        runCurrent()
+        assertEquals(
+            listOf(CollectEvent.ItemCollectChanged(9002L, UserCollectCategory.PICTURE, false)),
+            events
+        )
     }
 
     @Test
     fun toggleCollect_whenNetworkFails_rollsBackAndShowsMessage() = runTest(testDispatcher) {
-        val (mock, viewModel) = fixture()
+        val (mock, _, viewModel) = fixture()
         mock.route("api/collect/item/add", mock.failure(500, "网络异常"))
 
         viewModel.toggleCollect(picItem(id = 9003L))
@@ -132,8 +171,24 @@ class PictureGalleryViewModelTest {
     }
 
     @Test
+    fun toggleCollect_whenDelFails_rollsBackToCollected() = runTest(testDispatcher) {
+        val (mock, _, viewModel) = fixture()
+        val item = picItem(id = 9005L)
+        mock.route("api/collect/del", mock.failure(500, "网络异常"))
+        presetCollected(mock, viewModel, item)
+        val collectedCount = viewModel.uiState.value.collectCount
+
+        viewModel.toggleCollect(item)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isCollected, "取消失败必须回滚到已收藏态")
+        assertEquals(collectedCount, viewModel.uiState.value.collectCount, "取消失败必须回滚计数")
+        assertEquals("网络异常", viewModel.uiState.value.toastMessage)
+    }
+
+    @Test
     fun toggleCollect_success_emitsExactlyOneWriteRequest() = runTest(testDispatcher) {
-        val (mock, viewModel) = fixture()
+        val (mock, _, viewModel) = fixture()
         mock.route("api/collect/item/add", mock.ok("{}"))
 
         viewModel.toggleCollect(picItem(id = 9004L))
@@ -151,5 +206,9 @@ class PictureGalleryViewModelTest {
         collect = 2
     )
 
-    private data class Fixture(val mock: MockApi, val viewModel: PictureGalleryViewModel)
+    private data class Fixture(
+        val mock: MockApi,
+        val collectRepo: CollectRepository,
+        val viewModel: PictureGalleryViewModel
+    )
 }
