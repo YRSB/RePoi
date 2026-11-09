@@ -422,24 +422,24 @@ class UserCollectViewModelTest {
     }
 
     @Test
-    fun singleCancelEvent_fallsBackToOuterIdWhenEntityIdMissing() = runTest(testDispatcher) {
+    fun albumCancelEvent_fallsBackToOuterIdWhenInnerEntityEmpty() = runTest(testDispatcher) {
         val (mock, _, collectRepo, viewModel) = fixture()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         testScheduler.advanceUntilIdle()
-        viewModel.switchCategory(UserCollectCategory.CHARACTER)
-        // 角色 B 的实体 id 恰好等于角色 A 的外层 id（50001）：旧「只比实体」实现会误删 B 而漏掉 A
+        viewModel.switchCategory(UserCollectCategory.ALBUM)
+        // 相册 A 内层实体为空（item={} → actualAlbumId=0）：单项取消须回落外层 id 匹配；
+        // 旧「只比实体」实现 0 必然未命中，A 会作为幽灵项残留
         mock.enqueue(
-            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":50001,"itemId":0,"nameCN":"角色A"},{"id":50002,"itemId":50001,"nameCN":"角色B"}]}}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":7001,"itemId":0,"item":{}},{"id":7002,"itemId":8002,"item":{"id":8002}}]}}"""
         )
         testScheduler.advanceUntilIdle()
         val requestsBefore = mock.requestCount
 
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
-        collectRepo.collectItemDel(50001L, UserCollectCategory.CHARACTER)
+        collectRepo.collectItemDel(7001L, UserCollectCategory.ALBUM)
         testScheduler.advanceUntilIdle()
 
-        // 实体缺失的 A 按外层 id 命中剔除，实体碰撞的 B 不得误删
-        viewModel.uiState.value.characterData.items.map { it.id } shouldBe listOf(50002L)
+        viewModel.uiState.value.albumData.items.map { it.id } shouldBe listOf(7002L)
         mock.requestCount shouldBe requestsBefore + 1
     }
 

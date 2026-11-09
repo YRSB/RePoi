@@ -123,7 +123,7 @@ class PictureGalleryViewModelTest {
         assertTrue(request.bodyContains("id=9001"))
         // 分类不进网络请求：断言仓储发射带 PICTURE 分类的统一事件，回归分类误传
         runCurrent()
-        assertEquals(
+        assertEquals<List<CollectEvent>>(
             listOf(CollectEvent.ItemCollectChanged(9001L, UserCollectCategory.PICTURE, true)),
             events
         )
@@ -151,7 +151,7 @@ class PictureGalleryViewModelTest {
         assertTrue(write.encodedPath!!.contains("api/collect/del"), "取消收藏应走 api/collect/del")
         assertTrue(write.bodyContains("id=9002"))
         runCurrent()
-        assertEquals(
+        assertEquals<List<CollectEvent>>(
             listOf(CollectEvent.ItemCollectChanged(9002L, UserCollectCategory.PICTURE, false)),
             events
         )
