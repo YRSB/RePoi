@@ -115,12 +115,6 @@ class CollectRepository(
     }
 
     /**
-     * 获取指定条目的收藏状态信息 (api/collect/state)。
-     * 语义等同 [refreshCollectState]：网络成功即写入状态池，失败保持池内原值。
-     */
-    suspend fun getCollectState(nodeId: Long): Result<CollectData?> = refreshCollectState(nodeId)
-
-    /**
      * 获取指定条目的 5 种分类统计人数 (api/hobby/collectCount)。
      */
     suspend fun getCollectCount(nodeId: Long): Result<CollectCountData> = runCatching {

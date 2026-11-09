@@ -38,12 +38,12 @@ class CollectRepositoryStateTest {
     }
 
     @Test
-    fun getCollectState_onSuccess_publishesToStatePool() = runTest {
+    fun refreshCollectState_onSuccess_publishesToStatePool() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(mock.ok("""{"collect":{"id":100,"state":"care"}}"""))
         val observed = repository.observeCollectState(100L)
 
-        val result = repository.getCollectState(100L)
+        val result = repository.refreshCollectState(100L)
 
         assertTrue(result.isSuccess)
         assertEquals("care", observed.value?.state)

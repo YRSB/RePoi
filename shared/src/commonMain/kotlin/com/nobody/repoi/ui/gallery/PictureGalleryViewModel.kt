@@ -297,7 +297,7 @@ class PictureGalleryViewModel(
         collectStateJob = viewModelScope.launch {
             delay(COLLECT_STATE_REFRESH_DELAY_MS)
             if (currentIndex != index) return@launch
-            collectRepository.getCollectState(item.id)
+            collectRepository.refreshCollectState(item.id)
                 .onSuccess { data ->
                     if (currentIndex != index) return@onSuccess
                     val collected = data?.isCollected == true
