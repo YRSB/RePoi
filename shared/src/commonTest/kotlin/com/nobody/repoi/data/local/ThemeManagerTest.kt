@@ -110,19 +110,6 @@ class ThemeManagerTest {
     }
 
     @Test
-    fun setExpressiveColor_updatesMemoryFlowAndInitialValue() = runTest {
-        val manager = manager()
-        manager.expressiveColorFlow.first()
-        manager.setExpressiveColor(true)
-
-        assertTrue(manager.expressiveColor)
-        assertTrue(manager.getInitialExpressiveColor())
-        assertTrue(manager.expressiveColorFlow.first())
-        assertEquals(PaletteStyle.Expressive, manager.paletteStyle)
-        assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
-    }
-
-    @Test
     fun setPaletteStyle_updatesMemoryFlowAndInitialValue() = runTest {
         val manager = manager()
         manager.paletteStyleFlow.first()
@@ -152,8 +139,25 @@ class ThemeManagerTest {
         }
         val manager = ThemeManager(dataStore)
 
+        // 遗留布尔标志只作为一次性迁移来源，统一收敛到 paletteStyle（issue #82 顺带清理）
+        // 迁移在 init 的后台协程内完成，paletteStyleFlow 是唯一确定性观测点；
+        // getInitialPaletteStyle() 由同一协程写入，在此断言会与协程调度赛跑（CI 实测 flake）
         assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
-        assertTrue(manager.expressiveColorFlow.first())
+    }
+
+    @Test
+    fun setPaletteStyle_clearsLegacyExpressiveKey() = runTest {
+        val dataStore = TestDataStore.themePrefs()
+        dataStore.edit { prefs ->
+            prefs[booleanPreferencesKey("app_expressive_color")] = true
+        }
+        val manager = ThemeManager(dataStore)
+
+        manager.setPaletteStyle(PaletteStyle.Vibrant)
+
+        val prefs = dataStore.data.first()
+        assertEquals(null, prefs[booleanPreferencesKey("app_expressive_color")])
+        assertEquals(PaletteStyle.Vibrant, manager.paletteStyleFlow.first())
     }
 
     @Test

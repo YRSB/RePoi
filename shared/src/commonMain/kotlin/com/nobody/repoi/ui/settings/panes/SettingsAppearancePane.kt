@@ -67,6 +67,10 @@ import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.theme.ThemeCardColors
 import com.nobody.repoi.ui.theme.getOrCreateThemeCardColors
+import com.nobody.repoi.ui.theme.PoiSchemeSource
+import com.nobody.repoi.ui.theme.effectiveFor
+import com.nobody.repoi.ui.theme.resolveSchemeSource
+import com.nobody.repoi.ui.theme.seedColorScheme
 import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
 
 /**
@@ -117,17 +121,41 @@ fun SettingsAppearancePane(
             )
         }
     }
-    val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
-    val dynamicCardColors = remember(systemDynamicScheme, paletteStyle, specVersion) {
-        if (systemDynamicScheme != null) {
-            themeCardColorsFromScheme(systemDynamicScheme)
+    // 动态色卡必须与真实主题走同一条取色路径，否则切换色彩风格/标准时色卡不跟随（issue #82）
+    // 预览刻意固定浅色：该圆盘表示「动态主题会长什么样」，与当前深浅模式无关
+    val previewSource = resolveSchemeSource(
+        dynamicColor = true,
+        seedPrimary = null,
+        seedSecondary = null,
+        seedTertiary = null,
+        wallpaperPrimary = dynamicPoiShelfColorScheme(darkTheme = false)?.primary
+    )
+    // seedColorScheme 是 @Composable：必须在组合内先算出配色，再按值记忆化卡片色
+    val previewScheme = when (previewSource) {
+        is PoiSchemeSource.Dynamic -> seedColorScheme(
+            seedColor = previewSource.anchor,
+            darkTheme = false,
+            amoled = false,
+            style = paletteStyle,
+            // 与根主题同一套收敛规则，避免色卡与真实配色不一致
+            specVersion = specVersion.effectiveFor(paletteStyle)
+        )
+
+        else -> null
+    }
+    // 色卡缓存键统一使用收敛后的标准，避免"切了没反应"时还缓存出两份等价结果
+    val effectiveSpec = specVersion.effectiveFor(paletteStyle)
+    val dynamicCardColors = remember(previewScheme, paletteStyle, effectiveSpec) {
+        if (previewScheme != null) {
+            themeCardColorsFromScheme(previewScheme)
         } else {
-            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
+            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, effectiveSpec)
         }
     }
-    val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, specVersion) {
+
+    val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, effectiveSpec) {
         seeds.filter { it != ThemeSeed.Dynamic }.associateWith { seed ->
-            getOrCreateThemeCardColors(seed, paletteStyle, specVersion)
+            getOrCreateThemeCardColors(seed, paletteStyle, effectiveSpec)
         }
     }
 

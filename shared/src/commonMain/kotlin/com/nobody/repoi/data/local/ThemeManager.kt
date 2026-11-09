@@ -88,12 +88,6 @@ class ThemeManager(
         get() = specVersionRef.load()
         private set(value) { specVersionRef.store(value) }
 
-    var expressiveColor: Boolean
-        get() = paletteStyle == PaletteStyle.Expressive
-        private set(value) {
-            paletteStyle = if (value) PaletteStyle.Expressive else PaletteStyle.TonalSpot
-        }
-
     val themeModeFlow: Flow<ThemeMode> = dataStore.data.map { prefs ->
         when (prefs[THEME_MODE_KEY]) {
             ThemeMode.LIGHT.name -> ThemeMode.LIGHT
@@ -125,8 +119,6 @@ class ThemeManager(
             ?: ColorSpec.SpecVersion.SPEC_2025
     }
 
-    val expressiveColorFlow: Flow<Boolean> = paletteStyleFlow.map { it == PaletteStyle.Expressive }
-
     init {
         runCatching {
             scope.launch {
@@ -148,11 +140,8 @@ class ThemeManager(
                     amoled = it
                 }
                 val savedStyle = parsePaletteStyle(prefs[PALETTE_STYLE_KEY])
-                if (savedStyle != null) {
-                    paletteStyle = savedStyle
-                } else if (prefs[EXPRESSIVE_COLOR_KEY] == true) {
-                    paletteStyle = PaletteStyle.Expressive
-                }
+                    ?: if (prefs[EXPRESSIVE_COLOR_KEY] == true) PaletteStyle.Expressive else null
+                if (savedStyle != null) paletteStyle = savedStyle
                 val savedSpecVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY])
                 if (savedSpecVersion != null) {
                     specVersion = savedSpecVersion
@@ -175,8 +164,6 @@ class ThemeManager(
     fun getInitialPaletteStyle(): PaletteStyle = paletteStyle
 
     fun getInitialSpecVersion(): ColorSpec.SpecVersion = specVersion
-
-    fun getInitialExpressiveColor(): Boolean = expressiveColor
 
     suspend fun setThemeMode(mode: ThemeMode) {
         themeMode = mode
@@ -226,7 +213,8 @@ class ThemeManager(
         paletteStyle = style
         dataStore.edit { prefs ->
             prefs[PALETTE_STYLE_KEY] = style.name
-            prefs[EXPRESSIVE_COLOR_KEY] = (style == PaletteStyle.Expressive)
+            // 遗留键仅作一次性迁移来源，写入新键后清除
+            prefs.remove(EXPRESSIVE_COLOR_KEY)
         }
     }
 
@@ -237,15 +225,12 @@ class ThemeManager(
         }
     }
 
-    suspend fun setExpressiveColor(enabled: Boolean) {
-        setPaletteStyle(if (enabled) PaletteStyle.Expressive else PaletteStyle.TonalSpot)
-    }
-
     companion object {
         private val THEME_MODE_KEY = stringPreferencesKey("app_theme_mode")
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("app_dynamic_color")
         private val THEME_SEED_KEY = stringPreferencesKey("app_theme_seed")
         private val AMOLED_KEY = booleanPreferencesKey("app_amoled")
+        /** 遗留键：仅供一次性迁移到 [PALETTE_STYLE_KEY]，写入新键后即清除 */
         private val EXPRESSIVE_COLOR_KEY = booleanPreferencesKey("app_expressive_color")
         private val PALETTE_STYLE_KEY = stringPreferencesKey("app_palette_style")
         private val SPEC_VERSION_KEY = stringPreferencesKey("app_spec_version")
