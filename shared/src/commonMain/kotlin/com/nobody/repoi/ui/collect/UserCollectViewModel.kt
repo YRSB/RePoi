@@ -1050,13 +1050,21 @@ class UserCollectViewModel(
         )
     }
 
-    /** 取消在途请求并清空该大类列表（条件变化后必须重置，避免旧页码与 hasMore 污染新条件） */
+    /**
+     * 取消在途请求并清空该大类列表（条件变化后必须重置，避免旧页码与 hasMore 污染新条件）。
+     *
+     * 重置后立刻同步投影一次：否则 UI 会残留一帧旧条件的数据（重构前是在 `_uiState.update` 里同步清空的）。
+     */
     private fun resetLoader(category: UserCollectCategory) {
         loaders.getValue(category).reset()
+        syncCategory(category)
     }
 
     private fun resetAllLoaders() {
-        loaders.values.forEach { it.reset() }
+        loaders.forEach { (category, loader) ->
+            loader.reset()
+            syncCategory(category)
+        }
     }
 
     /** 目标大类没装载过（闲置且空列表）：切 Tab 时才补首屏请求，已有缓存则原地复用 */

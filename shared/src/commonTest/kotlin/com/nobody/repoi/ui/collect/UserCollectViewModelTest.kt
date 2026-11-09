@@ -145,13 +145,6 @@ class UserCollectViewModelTest {
         )
     }
 
-    private fun MockApi.routePic(body: (page: String?) -> String) {
-        routeWhen(
-            predicate = { path, _, _ -> path.contains("api/collect/pic-v2") },
-            body = { _, _, query -> body(query["page"]) }
-        )
-    }
-
     // ==================== 初始状态与 Intent 发派 ====================
 
     @Test
@@ -173,7 +166,13 @@ class UserCollectViewModelTest {
         val requestsAfterInit = env.mock.requestCount
 
         // Nav3 重建 Entry 会重复下发同一 param：幂等门禁必须拦住，避免重复请求与浏览位置重置
-        env.viewModel.initParam(UserCollectNavParam(userId = 888L, initialCategory = UserCollectCategory.HOBBY.key))
+        env.viewModel.initParam(
+            UserCollectNavParam(
+                userId = 888L,
+                initialCollectState = CollectStateOption.DEFAULT,
+                initialCategory = UserCollectCategory.HOBBY.key
+            )
+        )
         advanceUntilIdle()
 
         assertEquals(requestsAfterInit, env.mock.requestCount)
@@ -408,7 +407,8 @@ class UserCollectViewModelTest {
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             enqueue(pics(1, startId = 11))
-            routePic { pics(2, startId = 11) }
+            // 恢复后的静默刷新消费这一条
+            enqueue(pics(2, startId = 11))
         }
         val env = buildEnv(mock = mock)
         awaitInitialized(env.viewModel)
@@ -453,7 +453,8 @@ class UserCollectViewModelTest {
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             enqueue(pics(1, startId = 11))
-            routePic { pics(1, startId = 11) }
+            // 一次刷新只应发生一次，故只备一条
+            enqueue(pics(1, startId = 11))
         }
         val env = buildEnv(mock = mock)
         awaitInitialized(env.viewModel)
