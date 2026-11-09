@@ -40,13 +40,14 @@ import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.album.AlbumViewModel
+import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.user.history.UserHistoryViewModel
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.ui.follow.FollowViewModel
+import com.nobody.repoi.ui.gallery.PictureGalleryViewModel
 import com.nobody.repoi.ui.home.HomeFeedViewModel
 import com.nobody.repoi.ui.login.LoginViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
-import com.nobody.repoi.util.CollectInvalidationBus
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.Json
@@ -97,7 +98,6 @@ class KoinModuleVerificationTest {
             koin.getOrNull<SearchHistoryManager>().shouldNotBeNull()
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
-            koin.getOrNull<CollectInvalidationBus>().shouldNotBeNull()
 
             // 3. 全量 25 个 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()
@@ -159,6 +159,10 @@ class KoinModuleVerificationTest {
             koin.getOrNull<AlbumViewModel>().shouldNotBeNull()
             koin.getOrNull<FollowViewModel>().shouldNotBeNull()
             koin.getOrNull<UserHistoryViewModel>().shouldNotBeNull()
+            // 收藏链路 ViewModel：构造依赖最多（仓储 + UseCase + 偏好 + 会话 + 具名下载 client），
+            // 解析一次即可捕获 Koin 参数漂移（Koin 无编译期校验，否则只在运行期崩溃）
+            koin.getOrNull<UserCollectViewModel>().shouldNotBeNull()
+            koin.getOrNull<PictureGalleryViewModel>().shouldNotBeNull()
         } finally {
             app.close()
         }
