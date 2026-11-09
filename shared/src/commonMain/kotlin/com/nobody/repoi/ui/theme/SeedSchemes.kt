@@ -32,24 +32,6 @@ fun seedColorScheme(
 
 @Composable
 fun seedColorScheme(
-    seedColor: Color,
-    darkTheme: Boolean,
-    amoled: Boolean,
-    secondary: Color? = null,
-    tertiary: Color? = null,
-    expressiveColor: Boolean = false
-): ColorScheme = seedColorScheme(
-    seedColor = seedColor,
-    darkTheme = darkTheme,
-    amoled = amoled,
-    secondary = secondary,
-    tertiary = tertiary,
-    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
-    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
-)
-
-@Composable
-fun seedColorScheme(
     seedArgb: Long,
     darkTheme: Boolean,
     amoled: Boolean,
@@ -65,24 +47,6 @@ fun seedColorScheme(
     tertiary = tertiary,
     style = style,
     specVersion = specVersion
-)
-
-@Composable
-fun seedColorScheme(
-    seedArgb: Long,
-    darkTheme: Boolean,
-    amoled: Boolean,
-    secondary: Color? = null,
-    tertiary: Color? = null,
-    expressiveColor: Boolean = false
-): ColorScheme = seedColorScheme(
-    seedArgb = seedArgb,
-    darkTheme = darkTheme,
-    amoled = amoled,
-    secondary = secondary,
-    tertiary = tertiary,
-    style = if (expressiveColor) PaletteStyle.Expressive else PaletteStyle.TonalSpot,
-    specVersion = if (expressiveColor) ColorSpec.SpecVersion.SPEC_2025 else ColorSpec.SpecVersion.SPEC_2021
 )
 
 fun ColorScheme.withAmoledBlack(): ColorScheme = copy(

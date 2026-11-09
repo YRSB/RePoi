@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -80,6 +81,13 @@ private val LightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
+/**
+ * 根主题。
+ *
+ * [systemSchemeProvider] 是平台壁纸取色的注入缝：生产环境走
+ * `expect/actual` 的 [dynamicPoiShelfColorScheme]，`jvmTest` 可注入固定的
+ * 假系统配色来验证「动态主题下 style/spec 是否生效」（issue #82 回归）。
+ */
 @Composable
 fun PoiShelfTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -89,36 +97,34 @@ fun PoiShelfTheme(
     amoled: Boolean = false,
     paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     specVersion: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
-    expressiveColor: Boolean = false,
+    systemSchemeProvider: @Composable (darkTheme: Boolean) -> ColorScheme? = { dynamicPoiShelfColorScheme(it) },
     content: @Composable () -> Unit
 ) {
-    val effectiveStyle = if (paletteStyle != PaletteStyle.TonalSpot) {
-        paletteStyle
-    } else if (expressiveColor) {
-        PaletteStyle.Expressive
-    } else {
-        PaletteStyle.TonalSpot
-    }
-    val effectiveSpec = specVersion
     val activeSeed = themeSeed ?: seedArgb?.let { argb -> ThemeSeed.entries.firstOrNull { it.argb == argb } }
     val (seedPrimary, seedSecondary, seedTertiary) = activeSeed?.toColors()
         ?: Triple(seedArgb?.let { Color(it) }, null, null)
-    val seedScheme = seedPrimary?.let {
-        seedColorScheme(
-            seedColor = it,
-            darkTheme = darkTheme,
-            amoled = amoled,
-            secondary = seedSecondary,
-            tertiary = seedTertiary,
-            style = effectiveStyle,
-            specVersion = effectiveSpec
-        )
+
+    // 平台取色是 @Composable 调用，必须在组合内直接调用；只取主色作锚点（issue #82）
+    val wallpaperPrimary = if (dynamicColor && seedPrimary == null) {
+        systemSchemeProvider(darkTheme)?.primary
+    } else {
+        null
     }
-    val dynamicScheme = if (seedScheme == null && dynamicColor) dynamicPoiShelfColorScheme(darkTheme) else null
-    val baseScheme = seedScheme ?: dynamicScheme ?: if (darkTheme) DarkColorScheme else LightColorScheme
-    val colorScheme = if (amoled && darkTheme) {
-        baseScheme.withAmoledBlack()
-    } else baseScheme
+
+    val colorScheme = resolvePoiColorScheme(
+        darkTheme = darkTheme,
+        dynamicColor = dynamicColor,
+        seedPrimary = seedPrimary,
+        seedSecondary = seedSecondary,
+        seedTertiary = seedTertiary,
+        wallpaperPrimary = wallpaperPrimary,
+        amoled = amoled,
+        paletteStyle = paletteStyle,
+        specVersion = specVersion,
+        // 兜底配色不经过取色算法，需在此补一次 AMOLED 纯黑
+        staticFallback = (if (darkTheme) DarkColorScheme else LightColorScheme)
+            .let { if (amoled && darkTheme) it.withAmoledBlack() else it }
+    )
     CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

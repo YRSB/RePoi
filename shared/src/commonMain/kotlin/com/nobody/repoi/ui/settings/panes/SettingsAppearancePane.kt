@@ -67,6 +67,9 @@ import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.theme.ThemeCardColors
 import com.nobody.repoi.ui.theme.getOrCreateThemeCardColors
+import com.nobody.repoi.ui.theme.PoiSchemeSource
+import com.nobody.repoi.ui.theme.resolveSchemeSource
+import com.nobody.repoi.ui.theme.seedColorScheme
 import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
 
 /**
@@ -117,14 +120,31 @@ fun SettingsAppearancePane(
             )
         }
     }
-    val systemDynamicScheme = dynamicPoiShelfColorScheme(darkTheme = false)
-    val dynamicCardColors = remember(systemDynamicScheme, paletteStyle, specVersion) {
-        if (systemDynamicScheme != null) {
-            themeCardColorsFromScheme(systemDynamicScheme)
-        } else {
-            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
+    // 动态色卡必须与真实主题走同一条取色路径，否则切换色彩风格/标准时色卡不跟随（issue #82）
+    // 预览刻意固定浅色：该圆盘表示「动态主题会长什么样」，与当前深浅模式无关
+    val previewSource = resolveSchemeSource(
+        dynamicColor = true,
+        seedPrimary = null,
+        seedSecondary = null,
+        seedTertiary = null,
+        wallpaperPrimary = dynamicPoiShelfColorScheme(darkTheme = false)?.primary
+    )
+    val dynamicCardColors = remember(previewSource, paletteStyle, specVersion) {
+        when (previewSource) {
+            is PoiSchemeSource.Dynamic -> themeCardColorsFromScheme(
+                seedColorScheme(
+                    seedColor = previewSource.anchor,
+                    darkTheme = false,
+                    amoled = false,
+                    style = paletteStyle,
+                    specVersion = specVersion
+                )
+            )
+
+            else -> getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
         }
     }
+
     val staticCardColors: Map<ThemeSeed, ThemeCardColors> = remember(paletteStyle, specVersion) {
         seeds.filter { it != ThemeSeed.Dynamic }.associateWith { seed ->
             getOrCreateThemeCardColors(seed, paletteStyle, specVersion)

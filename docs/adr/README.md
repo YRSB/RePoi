@@ -19,6 +19,7 @@
 | [ADR-0005](0005-token-auth-import-export.md) | 登录令牌导入导出与 Token 登录原子验权 | **鉴权/会话/跨端**：请求体候选令牌直达验权、登录页双模、设置页导出安全闭环 | 已采纳并全量执行 (Accepted & Completed) - 2026-11-07 |
 | [ADR-0006](0006-unified-route-action-resolver.md) | 统一路由与动作解析器 (AppRouteResolver) 架构深化 | **导航/路由/解耦**：无副作用纯解析器、强类型 RouteTarget、终结回调击穿、直连 Navigation 3 | 已采纳 (Accepted) - 2026-11-08 |
 | [ADR-0007](0007-media-pipeline-async-image.md) | 多媒体管道 (MediaPipeline) 与自适应图片呈现基元架构深化 | **多媒体/呈现/防抖/手势**：纯计算 MediaPipeline、404 防御闭环、PoiAsyncImage 内置宽高比防抖、跨平台 PoiZoomableImage、渐进桥接 | 已采纳 (Accepted) - 2026-11-08 |
+| [ADR-0008](0008-dynamic-theme-style-spec.md) | 动态主题下的色彩风格 / 色彩标准重推导 | **主题/取色系统/可测性**：壁纸主色作锚点重推导、纯决策树 `resolveSchemeSource`、`systemSchemeProvider` 注入缝、收敛 expressiveColor 重复维度 | 已采纳 (Accepted) - 2026-11-09 |
 
 ---
 
