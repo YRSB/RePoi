@@ -5,11 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
+import com.nobody.repoi.data.repository.CollectEvent
 import com.nobody.repoi.data.repository.CollectRepository
-import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.data.repository.UserRepository
-import com.nobody.repoi.ui.navigation.UserCollectNavParam
-import com.nobody.repoi.util.CollectInvalidationBus
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -35,7 +34,6 @@ class UserCollectViewModel(
     private val collectRepository: CollectRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val userSession: UserSession,
-    private val collectInvalidationBus: CollectInvalidationBus,
     navUserId: Long = 0L,
     navInitialCollectState: String? = null,
     navInitialOrder: String? = null,
@@ -143,26 +141,33 @@ class UserCollectViewModel(
             }
         }
 
-        // 画廊已升级为独立 Nav3 路由：在画廊内取消收藏后就地剔除该图片，避免返回后残留脏项；
-        // 重新收藏时列表排序可能变化，直接刷新图片分类，避免条目永久缺失。
+        // 统一收藏事件自愈（ADR-0011）：取消类就地内存过滤（零网络），新增/修改类精准刷新对应分类。
         viewModelScope.launch {
-            collectInvalidationBus.changes.collect { change ->
-                if (change.collected) {
-                    refresh(UserCollectCategory.PICTURE)
-                    return@collect
-                }
-                _uiState.update { state ->
-                    val current = state.picData
-                    val filtered = current.items.filterNot { it.id == change.nodeId }
-                    if (filtered.size == current.items.size) {
-                        state
-                    } else {
-                        state.copy(
-                            picData = current.copy(
-                                items = filtered,
-                                page = (current.page - 1).coerceAtLeast(0)
-                            )
-                        )
+            collectRepository.collectEvents.collect { event ->
+                when (event) {
+                    is CollectEvent.HobbyCollectChanged -> {
+                        if (event.data == null) {
+                            removeHobbyFromMemory(event.nodeId)
+                        } else {
+                            refresh(UserCollectCategory.HOBBY)
+                        }
+                    }
+                    is CollectEvent.ItemCollectChanged -> {
+                        if (event.isCollected) {
+                            refresh(event.category)
+                        } else {
+                            removeCategoryItemsFromMemory(event.category, setOf(event.nodeId))
+                        }
+                    }
+                    is CollectEvent.WorksCollectChanged -> {
+                        if (event.data == null) {
+                            removeWorksFromMemory(event.worksId)
+                        } else {
+                            refresh(UserCollectCategory.WORKS)
+                        }
+                    }
+                    is CollectEvent.BatchCollectCancelled -> {
+                        removeCategoryItemsFromMemory(event.category, event.ids)
                     }
                 }
             }
@@ -1168,6 +1173,52 @@ class UserCollectViewModel(
             else -> updateCommonData(category) { it.copy(errorMessage = null, isContentHidden = false) }
         }
     }
+
+    // ==================== 统一事件自愈（ADR-0011） ====================
+
+    /**
+     * 收藏中心内存过滤：按外层收藏节点 id 剔除，命中任一 id 即移除。
+     *
+     * id 口径统一为收藏列表的外层 `id`（批量取消接口的 `idArr` 同源）：
+     * 手办编辑页的 `nodeId` 即列表 `id`；图片/通用条目复用列表 `id`（画廊以 pic-v2 扁平 `id` 为准）。
+     */
+    private fun removeHobbyFromMemory(nodeId: Long) {
+        removeCategoryItemsFromMemory(UserCollectCategory.HOBBY, setOf(nodeId))
+    }
+
+    private fun removeWorksFromMemory(worksId: Long) {
+        removeCategoryItemsFromMemory(UserCollectCategory.WORKS, setOf(worksId))
+    }
+
+    private fun removeCategoryItemsFromMemory(category: UserCollectCategory, ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        when (category) {
+            UserCollectCategory.HOBBY -> _uiState.update { state ->
+                val filtered = state.hobbyData.items.filterNot { it.id in ids }
+                if (filtered.size == state.hobbyData.items.size) state
+                else state.copy(hobbyData = state.hobbyData.copy(items = filtered))
+            }
+            UserCollectCategory.ALBUM -> _uiState.update { state ->
+                val filtered = state.albumData.items.filterNot { it.id in ids }
+                if (filtered.size == state.albumData.items.size) state
+                else state.copy(albumData = state.albumData.copy(items = filtered))
+            }
+            UserCollectCategory.PICTURE -> _uiState.update { state ->
+                val filtered = state.picData.items.filterNot { it.id in ids }
+                if (filtered.size == state.picData.items.size) state
+                else state.copy(picData = state.picData.copy(items = filtered))
+            }
+            UserCollectCategory.VENDOR,
+            UserCollectCategory.SERIES,
+            UserCollectCategory.WORKS,
+            UserCollectCategory.CHARACTER,
+            UserCollectCategory.PERSON -> updateCommonData(category) { current ->
+                val filtered = current.items.filterNot { it.id in ids }
+                if (filtered.size == current.items.size) current else current.copy(items = filtered)
+            }
+        }
+    }
+
 
     // ==================== 内部工具 ====================
 
