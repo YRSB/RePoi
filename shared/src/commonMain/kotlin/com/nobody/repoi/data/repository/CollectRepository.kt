@@ -26,8 +26,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * 同时承载收藏页的两条写侧链路——批量取消收藏 (`api/collect/batch/cancel`)
  * 与作品收藏整链 (`api/works/glean/get|add|del`、`api/user/glean/textTag/get`)，
  * 另含图片画廊的关联条目查询 (`api/pic/relate`)。
- * 暴露 [collectUpdates] 旧版弱类型广播（T2 迁移时删除），以及统一多态事件流
- * [CollectRepository.collectEvents]（ADR-0011），所有写操作成功后内生自动发射。
+ * 对外暴露统一多态事件流 [CollectRepository.collectEvents]（ADR-0011），所有写操作成功后内生自动发射。
  *
  * 收藏领域统一多态事件契约（ADR-0011）见 [CollectEvent]：
  * 全站手办、通用条目、作品与批量取消的收藏状态变更统一经此密封层次表达，
@@ -52,9 +51,6 @@ class CollectRepository(
     private val api: HpoiApi,
     private val json: Json
 ) {
-    // 广播 (nodeId, CollectData?) 更新事件：CollectData 为 null 或 state=="delete" 时代表取消收藏
-    private val _collectUpdates = MutableSharedFlow<Pair<Long, CollectData?>>(extraBufferCapacity = 16)
-    val collectUpdates: SharedFlow<Pair<Long, CollectData?>> = _collectUpdates.asSharedFlow()
     // 统一多态事件流：replay=0 杜绝新订阅者收到陈旧事件，64 缓冲 + DROP_OLDEST 避免高并发挂起
     private val _collectEvents = MutableSharedFlow<CollectEvent>(
         replay = 0,
@@ -62,7 +58,6 @@ class CollectRepository(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val collectEvents: SharedFlow<CollectEvent> = _collectEvents.asSharedFlow()
-
     /**
      * 获取指定条目的收藏状态信息 (api/collect/state)。
      */
@@ -110,7 +105,6 @@ class CollectRepository(
         val jsonPayload = json.encodeToString(collectData)
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
-            _collectUpdates.tryEmit(nodeId to collectData)
             _collectEvents.tryEmit(CollectEvent.HobbyCollectChanged(nodeId, collectData))
         } else {
             throw ApiException(response.code, response.msg ?: "保存收藏失败")
@@ -125,7 +119,6 @@ class CollectRepository(
         val jsonPayload = json.encodeToString(deletedData)
         val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         if (response.isSuccess) {
-            _collectUpdates.tryEmit(nodeId to null)
             _collectEvents.tryEmit(CollectEvent.HobbyCollectChanged(nodeId, null))
         } else {
             throw ApiException(response.code, response.msg ?: "取消收藏失败")

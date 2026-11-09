@@ -12,6 +12,7 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.HobbyTimelineItem
 import com.nobody.repoi.data.remote.model.InfoListEntry
 import com.nobody.repoi.data.remote.model.PicItem
+import com.nobody.repoi.data.repository.CollectEvent
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
@@ -23,6 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -159,12 +161,14 @@ class HobbyDetailViewModel(
     init {
         // 合并评论详情页回写的主楼更新（点赞/回复）
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
-        // 监听全局收藏状态变更广播，实时原子更新详情页的爱心高亮与计数值
+        // 监听收藏领域统一事件流的手办变更，实时原子更新详情页的爱心高亮与计数值
         viewModelScope.launch {
-            collectRepository.collectUpdates.collect { (nodeId, collectData) ->
+            collectRepository.collectEvents.filterIsInstance<CollectEvent.HobbyCollectChanged>()
+                .collect { event ->
                 _uiState.update { current ->
                     val currentNodeId = current.detail?.actualNodeId ?: current.itemId
-                    if (currentNodeId != nodeId) return@update current
+                    if (currentNodeId != event.nodeId) return@update current
+                    val collectData = event.data
                     val isCollected = collectData != null && collectData.isCollected
                     val deltaChange = when {
                         isCollected && !current.isFavorite -> 1
