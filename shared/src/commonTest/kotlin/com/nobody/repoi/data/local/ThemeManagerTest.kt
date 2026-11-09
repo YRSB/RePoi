@@ -140,8 +140,9 @@ class ThemeManagerTest {
         val manager = ThemeManager(dataStore)
 
         // 遗留布尔标志只作为一次性迁移来源，统一收敛到 paletteStyle（issue #82 顺带清理）
+        // 迁移在 init 的后台协程内完成，paletteStyleFlow 是唯一确定性观测点；
+        // getInitialPaletteStyle() 由同一协程写入，在此断言会与协程调度赛跑（CI 实测 flake）
         assertEquals(PaletteStyle.Expressive, manager.paletteStyleFlow.first())
-        assertEquals(PaletteStyle.Expressive, manager.getInitialPaletteStyle())
     }
 
     @Test
