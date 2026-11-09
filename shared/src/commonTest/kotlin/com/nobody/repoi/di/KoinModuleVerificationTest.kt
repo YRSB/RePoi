@@ -41,7 +41,6 @@ import com.nobody.repoi.ui.follow.FollowViewModel
 import com.nobody.repoi.ui.home.HomeFeedViewModel
 import com.nobody.repoi.ui.login.LoginViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
-import com.nobody.repoi.util.CollectInvalidationBus
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.Json
@@ -92,7 +91,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<SearchHistoryManager>().shouldNotBeNull()
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
-            koin.getOrNull<CollectInvalidationBus>().shouldNotBeNull()
+            // 收藏失效总线已删除：收藏同步唯一事实来源为 CollectRepository.collectEvents
 
             // 3. 全量 25 个 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()
