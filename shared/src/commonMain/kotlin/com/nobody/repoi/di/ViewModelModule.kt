@@ -58,7 +58,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：51 个 ViewModel 注册（M3 起按 NavKey 传参）。
+ * ViewModel 模块：50 个 ViewModel 注册（M3 起按 NavKey 传参）。
  *
  * 构造签名不含可选参数、也不依赖限定符时统一走 `viewModelOf(::Xxx)`；
  * 带 Kotlin 默认参数（如 `UserCollectViewModel`、`UserCreationViewModel`）或需 `named` 限定符者

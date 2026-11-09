@@ -473,7 +473,7 @@ class UserCollectViewModelTest {
     // ==================== 恢复感知（画廊脏位）====================
 
     @Test
-    fun onResume_refreshesPictureWhenGalleryMutated() = runTest(testDispatcher) {
+    fun onResume_refreshesPictureAfterGalleryMutation() = runTest(testDispatcher) {
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             enqueue(pics(1, startId = 11))
@@ -519,7 +519,7 @@ class UserCollectViewModelTest {
     }
 
     @Test
-    fun onResume_consumesDirtyTickOnlyOnce() = runTest(testDispatcher) {
+    fun onResume_consumesGalleryMutationCountOnlyOnce() = runTest(testDispatcher) {
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             enqueue(pics(1, startId = 11))

@@ -45,7 +45,7 @@ class GalleryCollectToggleTest {
     }
 
     @Test
-    fun toggleCollect_addsItemAndMarksGalleryMutated() = runTest(testDispatcher) {
+    fun toggleCollect_addsItemAndMarksGalleryMutation() = runTest(testDispatcher) {
         val collectMock = MockApi()
         val collectRepository = newRepository(collectMock)
         val viewModel = newViewModel(collectRepository)
