@@ -3,31 +3,36 @@ package com.nobody.repoi.ui.collect
 import app.cash.turbine.test
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.CollectConstants
+import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.remote.model.UserCollectCategory
+import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserFinanceRepository
 import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.util.CollectInvalidationBus
+import com.nobody.repoi.data.session.SessionState
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.cancelChildren
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
 
 /**
- * 用户全量收藏中枢 ViewModel 状态机单元测试（Turbine + Kotest）。
+ * 用户全量收藏中枢 ViewModel 状态机单测（Turbine + Kotest）。
  *
- * 验证大类切换（手办/周边/相册/图片/作品）、收藏状态变更、批量管理多选模式流转。
+ * 验证大类切换（手办/周边/相册/图片/作品）、收藏状态变更、批量管理多选模式流转，
+ * 以及統一收藏事件 [CollectEvent] 触发的内存过滤与精准刷新自愈（ADR-0011/T3）。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserCollectViewModelTest {
@@ -45,29 +50,60 @@ class UserCollectViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private suspend fun setup(userId: Long = 999L): UserCollectViewModel {
-        val mockApi = MockApi()
-        val session = FakeUserSession("test-token")
-        val followRepo = FollowRepository(mockApi.api(), mockApi.json, session)
-        val financeRepo = UserFinanceRepository(mockApi.api())
-        val userRepo = UserRepository(mockApi.api(), session, followRepo, financeRepo)
-        val collectRepo = CollectRepository(mockApi.api(), mockApi.json)
-        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
-        val bus = CollectInvalidationBus()
+    private data class Fixture(
+        val mock: MockApi,
+        val session: FakeUserSession,
+        val collectRepo: CollectRepository,
+        val viewModel: UserCollectViewModel,
+    )
 
-        return UserCollectViewModel(
+    private fun fixture(userId: Long = 999L): Fixture {
+        val mock = MockApi()
+        val session = FakeUserSession(
+            SessionState.Authenticated(
+                userId = userId,
+                token = "test-token",
+                profile = UserProfile(id = userId),
+            )
+        )
+        val followRepo = FollowRepository(mock.api(testDispatcher), mock.json, session)
+        val financeRepo = UserFinanceRepository(mock.api(testDispatcher))
+        val userRepo = UserRepository(mock.api(testDispatcher), session, followRepo, financeRepo)
+        val collectRepo = CollectRepository(mock.api(testDispatcher), mock.json)
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+
+        val viewModel = UserCollectViewModel(
             userRepository = userRepo,
             collectRepository = collectRepo,
             viewPreferencesManager = preferences,
             userSession = session,
-            collectInvalidationBus = bus,
             navUserId = userId,
         )
+        return Fixture(mock, session, collectRepo, viewModel)
     }
 
     @Test
     fun initialSetup_matchesNavParameters() = runTest(testDispatcher) {
-        val viewModel = setup(userId = 888L)
+        // 首屏 hobby-v2 先回空列表，避免初始化请求悬空
+        val mock = MockApi()
+        val session = FakeUserSession(
+            SessionState.Authenticated(userId = 888L, token = "test-token", profile = UserProfile(id = 888L))
+        )
+        val followRepo = FollowRepository(mock.api(testDispatcher), mock.json, session)
+        val financeRepo = UserFinanceRepository(mock.api(testDispatcher))
+        val userRepo = UserRepository(mock.api(testDispatcher), session, followRepo, financeRepo)
+        val collectRepo = CollectRepository(mock.api(testDispatcher), mock.json)
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+
+        val viewModel = UserCollectViewModel(
+            userRepository = userRepo,
+            collectRepository = collectRepo,
+            viewPreferencesManager = preferences,
+            userSession = session,
+            navUserId = 888L,
+        )
+        testScheduler.advanceUntilIdle()
 
         viewModel.userId shouldBe 888L
         viewModel.uiState.value.selectedCategory shouldBe UserCollectCategory.HOBBY
@@ -77,7 +113,9 @@ class UserCollectViewModelTest {
 
     @Test
     fun switchCategory_updatesCategoryState() = runTest(testDispatcher) {
-        val viewModel = setup()
+        val (mock, _, _, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
             awaitItem().selectedCategory shouldBe UserCollectCategory.HOBBY
@@ -92,7 +130,9 @@ class UserCollectViewModelTest {
 
     @Test
     fun switchCollectState_updatesStateKey() = runTest(testDispatcher) {
-        val viewModel = setup()
+        val (mock, _, _, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
             awaitItem().collectState shouldBe CollectStateOption.DEFAULT
@@ -107,7 +147,9 @@ class UserCollectViewModelTest {
 
     @Test
     fun toggleSelectionMode_flipsSelectionFlagAndClearsSelectedIds() = runTest(testDispatcher) {
-        val viewModel = setup()
+        val (mock, _, _, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
             awaitItem().hobbySelectionMode shouldBe false
@@ -118,5 +160,154 @@ class UserCollectViewModelTest {
             viewModel.toggleSelectionMode()
             awaitItem().hobbySelectionMode shouldBe false
         }
+    }
+
+    // ── T3：CollectEvent 自愈（取消类内存过滤零网络，新增/修改类精准刷新）──
+
+    @Test
+    fun hobbyCancelEvent_removesItemFromMemoryWithoutNetwork() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"},{"id":1002,"itemId":2002,"nameCN":"手办B"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.hobbyData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(1001L, 1002L))
+        val requestsBefore = mock.requestCount
+
+        // 手办取消：服务端成功后仓储内生发射 HobbyCollectChanged(nodeId, null)
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.deleteCollect(1001L, CollectData(id = 1001L, state = CollectConstants.STATE_BUY))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.hobbyData.items.map { it.id } shouldBe listOf(1002L)
+        // 内存过滤零网络：除首屏与取消写操作外无新增列表请求
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun hobbyAddEvent_refreshesHobbyCategory() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        // 新增/修改：仓储发射 HobbyCollectChanged(nodeId, data) 后触发对应分类 refresh
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"},{"id":1003,"itemId":2003,"nameCN":"新手办"}]}}"""
+        )
+        val data = CollectData(id = 1003L, state = CollectConstants.STATE_BUY)
+        collectRepo.saveCollect(1003L, data)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.hobbyData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(1001L, 1003L))
+        // 写操作 1 次 + 刷新拉取 1 次
+        mock.requestCount shouldBe requestsBefore + 2
+    }
+
+    @Test
+    fun pictureCancelEvent_removesItemFromMemoryWithoutNetwork() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"categoryId":80001,"itemId":4235086,"itemType":"picture","collect":2,"path":"2026/09/a.jpg"},{"id":9002,"categoryId":80001,"itemId":4235087,"itemType":"picture","collect":2,"path":"2026/09/b.jpg"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.picData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(9001L, 9002L))
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(9001L, UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.picData.items.map { it.id } shouldBe listOf(9002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun pictureAddEvent_refreshesPictureCategory() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.PICTURE)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"categoryId":80001,"itemId":4235086,"itemType":"picture","collect":2,"path":"2026/09/a.jpg"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"categoryId":80001,"itemId":4235086,"itemType":"picture","collect":2,"path":"2026/09/a.jpg"},{"id":9003,"categoryId":80001,"itemId":4235088,"itemType":"picture","collect":2,"path":"2026/09/c.jpg"}]}}"""
+        )
+        collectRepo.collectItemAdd(9003L, UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.picData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(9001L, 9003L))
+        mock.requestCount shouldBe requestsBefore + 2
+    }
+
+    @Test
+    fun worksCancelEvent_removesItemFromMemoryWithoutNetwork() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.WORKS)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":20001,"itemId":30001,"nameCN":"作品A","state":2},{"id":20002,"itemId":30002,"nameCN":"作品B","state":2}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.worksData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(20001L, 20002L))
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.deleteWorksCollect(20001L)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.worksData.items.map { it.id } shouldBe listOf(20002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun batchCancelEvent_removesAlbumItemsFromMemoryWithoutNetwork() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
+        testScheduler.advanceUntilIdle()
+        viewModel.switchCategory(UserCollectCategory.ALBUM)
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":7001,"itemId":8001,"nameCN":"相册A"},{"id":7002,"itemId":8002,"nameCN":"相册B"},{"id":7003,"itemId":8003,"nameCN":"相册C"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        viewModel.uiState.value.albumData.items.map { it.id }.shouldContainExactlyInAnyOrder(listOf(7001L, 7002L, 7003L))
+        val requestsBefore = mock.requestCount
+
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.cancelCollectBatch(listOf(7001L, 7003L), UserCollectCategory.ALBUM)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.albumData.items.map { it.id } shouldBe listOf(7002L)
+        mock.requestCount shouldBe requestsBefore + 1
+    }
+
+    @Test
+    fun unrelatedCancelEvent_leavesCurrentListUntouched() = runTest(testDispatcher) {
+        val (mock, _, collectRepo, viewModel) = fixture()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"nameCN":"手办A"}]}}"""
+        )
+        testScheduler.advanceUntilIdle()
+        val requestsBefore = mock.requestCount
+
+        // 图片分类的取消事件不得污染手办列表，且不产生网络请求（写操作除外）
+        mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectRepo.collectItemDel(9001L, UserCollectCategory.PICTURE)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.hobbyData.items.map { it.id } shouldBe listOf(1001L)
+        mock.requestCount shouldBe requestsBefore + 1
     }
 }
