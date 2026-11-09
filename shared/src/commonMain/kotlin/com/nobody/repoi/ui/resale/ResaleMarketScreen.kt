@@ -222,7 +222,7 @@ fun ResaleMarketScreen(
                             verticalItemSpacing = 12.dp,
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(6) {
+                            items(count = 6, key = { "resale_market_skeleton_$it" }, contentType = { "skeleton" }) {
                                 ShimmerHost { ZoneResaleCardSkeleton() }
                             }
                         }

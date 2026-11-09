@@ -12,6 +12,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 - **Architecture**（KMP 单 shared 模块、Koin 依赖注入、单向数据流与分页加载器）：查阅 [CODING_STANDARDS.md#架构与数据流-architecture--di](CODING_STANDARDS.md#架构与数据流-architecture--di)
 - **Libraries**（KMP 依赖选型与 klibs.io MCP 权威校验）：查阅 [CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection](CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection)
 - **UI**（Material 3 Expressive 规范、自适应双窗格、悬浮栏、网格与 CDN 图片变体）：查阅 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)
+- **Media**（图片显示、CDN 变体档位、404 避坑、`PoiAsyncImage` / `PoiZoomableImage`、全屏看图）：查阅 [docs/media.md](docs/media.md)
 - **Quirks**（Hpoi API 反序列化多态、图片 path 拼接与逆向踩坑）：查阅 [docs/API_QUIRKS.md](docs/API_QUIRKS.md)
 - **Domain**（业务模型、实体命名契约与领域术语）：查阅 [docs/domain.md](docs/domain.md)
 - **ADR**（架构演进决策与选型归档）：查阅 [docs/adr/](docs/adr/)
@@ -29,7 +30,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
    - 判定通过标准：远端 CI 双端工作流（Android 编译、JVM 目标单测、Android-host 宿主单测、Desktop 产物验证）全绿。
 2. **规范提交信息**：遵循 Conventional Commits 1.0.0，提交信息全中文、无末尾句号：
    `<type>(<scope>): <subject>`（例如 `feat(detail): 增加手办发售信息卡片`；scope 统一为小写特性名，如 `home`, `detail`, `search`, `network`, `nav` 等）。
-3. **渲染与性能规范**：所有 Lazy 列表项强制显式配置稳定的 `key` 与 `contentType`。
+3. **渲染与性能规范**：Lazy 列表项必须显式配置稳定的 `key` 与 `contentType`（骨架屏占位项同样适用），细则见 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)。
 4. **KMP 依赖选型门禁 (Kotlin Multiplatform Library Selection)**：
    在添加或推荐 Kotlin Multiplatform 依赖前，必须先查询 klibs.io MCP (`https://api.klibs.io/mcp`) 或借助 `kmp-libraries-expert` 技能核验依赖元数据：
    - 目标平台兼容性（本项目必须支持 Android 与 Desktop/JVM）；

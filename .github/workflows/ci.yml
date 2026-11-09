@@ -59,6 +59,27 @@ jobs:
             echo "skip_ci=false" >> "$GITHUB_OUTPUT"
           fi
 
+  ui-rules:
+    name: UI Rules Check
+    needs: check-docs-only
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fast pass for docs-only change
+        if: needs.check-docs-only.outputs.skip_ci == 'true'
+        run: echo "Documentation only change; skipping UI rule checks."
+
+      - name: Check out repository
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
+        uses: actions/checkout@v7
+
+      # 静态规则检查（无需 JDK / Gradle）：Lazy 列表项 key/contentType 等
+      # 编译与单测都抓不到的机械规则，见 scripts/check-ui-rules.ps1
+      - name: Run UI rule checks
+        if: needs.check-docs-only.outputs.skip_ci != 'true'
+        shell: pwsh
+        run: ./scripts/check-ui-rules.ps1 -Verbose
+
   test:
     name: Shared Tests (JVM & Android Host)
     needs: check-docs-only
