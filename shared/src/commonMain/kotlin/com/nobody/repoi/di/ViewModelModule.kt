@@ -53,6 +53,7 @@ import com.nobody.repoi.ui.works.WorksDetailViewModel
 import com.nobody.repoi.ui.zone.ZoneBrowseViewModel
 import com.nobody.repoi.ui.zone.ZoneDetailViewModel
 import com.nobody.repoi.ui.zone.ZoneSettingsViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
