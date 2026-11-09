@@ -71,7 +71,7 @@ val viewModelModule = module {
     viewModel { CharacterAlbumListViewModel(get()) }
     viewModel { CharacterWorksListViewModel(get()) }
     viewModel { CollectEditViewModel(get(), get(), get()) }
-    viewModel { UserCollectViewModel(get(), get(), get(), get(), get()) }
+    viewModel { UserCollectViewModel(get(), get(), get(), get()) }
     viewModel { WorksCollectEditViewModel(get(), get()) }
     viewModel { CommentDetailViewModel(get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }

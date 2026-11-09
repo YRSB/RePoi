@@ -3,15 +3,20 @@ package com.nobody.repoi.ui.collect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
+import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
+import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.session.UserSession
-import com.nobody.repoi.data.repository.UserRepository
+import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
-import com.nobody.repoi.util.CollectInvalidationBus
+import com.nobody.repoi.util.paging.LoadStage
+import com.nobody.repoi.util.paging.PagedListLoader
+import com.nobody.repoi.util.paging.PagedListState
+import com.nobody.repoi.util.paging.pagedListLoader
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,8 +25,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * 用户全量收藏中枢 ViewModel。
- * 驱动 8 大实体大类、手办双模视图、6 档状态胶囊、多套排序与多维筛选，以及批量取消收藏多选。
+ * 用户全量收藏中枢 ViewModel（纯 MVI 单向数据流）。
+ *
+ * 对外只暴露两个接缝：
+ * - [uiState]：单一不可变状态流，由 8 个 [PagedListLoader] 的状态投影而来；
+ * - [onIntent]：全部用户意图的唯一入口（[UserCollectIntent] 密封接口）。
+ *
+ * 分页、并发守卫、稳定键去重、在途取消、首尾错误恢复全部下沉到 [PagedListLoader]；
+ * 本类不再持有手写 `Job` 映射、页码递增或分页状态机样板代码。
+ *
+ * 8 大类各持一个 loader 实例（`KeyedListLoader` 只有一个 `activeJob`，共用会互相取消），
+ * loader 的 `fetcher` 闭包在每次请求时重读 [uiState]，因此收藏状态、排序、升降序、
+ * 筛选条件、相册类型与作品三态都是**运行时可变条件**，不在构造时快照。
  *
  * 排序维度按大类隔离，互不串味：
  * - 周边：[UserCollectUiState.order] + [UserCollectUiState.sortType]（按收藏状态分别记忆）
@@ -31,11 +46,10 @@ import kotlinx.coroutines.launch
  * - 作品：[UserCollectUiState.worksState] + [UserCollectUiState.worksOrderAsc] + [UserCollectUiState.worksTag]
  */
 class UserCollectViewModel(
-    private val userRepository: UserRepository,
     private val collectRepository: CollectRepository,
+    private val batchCancelCollectUseCase: BatchCancelCollectUseCase,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val userSession: UserSession,
-    private val collectInvalidationBus: CollectInvalidationBus,
     navUserId: Long = 0L,
     navInitialCollectState: String? = null,
     navInitialOrder: String? = null,
@@ -99,7 +113,6 @@ class UserCollectViewModel(
      */
     private var appliedNavParam: UserCollectNavParam? = null
     private var currentParam: UserCollectNavParam? = null
-    private val fetchJobs = mutableMapOf<UserCollectCategory, Job>()
 
     /**
      * 周边页「排序 + 升降序」按收藏状态分别记忆：
@@ -135,6 +148,116 @@ class UserCollectViewModel(
         persistHobbySortMemory()
     }
 
+    /**
+     * 已消费的画廊写操作计数快照。
+     *
+     * [CollectRepository.galleryMutationTicks] 单调递增且无订阅也不丢事件，
+     * 因此恢复时只需比对计数是否变大，即可判定「画廊里动过收藏」。
+     */
+    private var consumedGalleryTicks: Long = collectRepository.galleryMutationTicks.value
+
+    // ==================== 8 大类分页装载器 ====================
+
+    private val hobbyLoader: PagedListLoader<UserCollectHobbyItem> = pagedListLoader(
+        scope = viewModelScope,
+        pageSize = PAGE_SIZE,
+        // 外层收藏节点 id 与真实条目 id 的组合键：跨页可能出现同一 actualItemId 的不同收藏节点
+        keySelector = { item: UserCollectHobbyItem -> item.id to item.actualItemId }
+    ) { page, size ->
+        val state = _uiState.value
+        collectRepository.getUserCollectHobbyList(
+            userId = userId,
+            collectState = state.collectState,
+            category = state.subCategoryId ?: DEFAULT_HOBBY_KEY,
+            tag = state.selectedTag,
+            order = state.order,
+            sortType = state.sortType,
+            page = page,
+            pageSize = size
+        )
+    }
+
+    private val albumLoader: PagedListLoader<UserCollectAlbumItem> = pagedListLoader(
+        scope = viewModelScope,
+        pageSize = PAGE_SIZE,
+        keySelector = { item: UserCollectAlbumItem -> item.id }
+    ) { page, size ->
+        val state = _uiState.value
+        collectRepository.getUserCollectAlbumList(
+            userId = userId,
+            type = state.albumType,
+            order = state.albumOrder,
+            page = page,
+            pageSize = size
+        )
+    }
+
+    private val picLoader: PagedListLoader<UserCollectPicItem> = pagedListLoader(
+        scope = viewModelScope,
+        pageSize = PAGE_SIZE,
+        keySelector = { item: UserCollectPicItem -> item.id }
+    ) { page, size ->
+        val state = _uiState.value
+        collectRepository.getUserCollectPicList(
+            userId = userId,
+            order = state.picOrder,
+            page = page,
+            pageSize = size
+        )
+    }
+
+    private val vendorLoader: PagedListLoader<UserCollectCommonItem> = commonCollectLoader(UserCollectCategory.VENDOR)
+    private val seriesLoader: PagedListLoader<UserCollectCommonItem> = commonCollectLoader(UserCollectCategory.SERIES)
+    private val characterLoader: PagedListLoader<UserCollectCommonItem> = commonCollectLoader(UserCollectCategory.CHARACTER)
+    private val personLoader: PagedListLoader<UserCollectCommonItem> = commonCollectLoader(UserCollectCategory.PERSON)
+
+    /**
+     * 作品页请求形态独立：`type="works"` + 收藏三态 `state` + 升降序 `isAsc` + 标签 `tagValue`，
+     * 且没有 `order` 维度（强制收藏时间）。
+     */
+    private val worksLoader: PagedListLoader<UserCollectCommonItem> = pagedListLoader(
+        scope = viewModelScope,
+        pageSize = PAGE_SIZE,
+        keySelector = { item: UserCollectCommonItem -> item.id }
+    ) { page, size ->
+        val state = _uiState.value
+        fetchWorksPage(
+            page = page,
+            pageSize = size,
+            worksState = state.worksState,
+            isAsc = state.worksOrderAsc,
+            tagValue = state.worksTag
+        )
+    }
+
+    /** 通用 4 页 loader：`type` 与 `categoryId` 随大类固定，排序取运行时 [UserCollectUiState.commonOrder] */
+    private fun commonCollectLoader(category: UserCollectCategory): PagedListLoader<UserCollectCommonItem> =
+        pagedListLoader(
+            scope = viewModelScope,
+            pageSize = PAGE_SIZE,
+            keySelector = { item: UserCollectCommonItem -> item.id to item.actualItemId }
+        ) { page, size ->
+            val state = _uiState.value
+            fetchCommonPage(
+                category = category,
+                page = page,
+                pageSize = size,
+                order = state.commonOrder
+            )
+        }
+
+    /** 大类 → loader 映射（首屏重置、状态投影与错误清理共用） */
+    private val loaders: Map<UserCollectCategory, PagedListLoader<*>> = mapOf(
+        UserCollectCategory.HOBBY to hobbyLoader,
+        UserCollectCategory.ALBUM to albumLoader,
+        UserCollectCategory.PICTURE to picLoader,
+        UserCollectCategory.VENDOR to vendorLoader,
+        UserCollectCategory.SERIES to seriesLoader,
+        UserCollectCategory.WORKS to worksLoader,
+        UserCollectCategory.CHARACTER to characterLoader,
+        UserCollectCategory.PERSON to personLoader
+    )
+
     init {
         // 监听视图偏好变更
         viewModelScope.launch {
@@ -143,28 +266,10 @@ class UserCollectViewModel(
             }
         }
 
-        // 画廊已升级为独立 Nav3 路由：在画廊内取消收藏后就地剔除该图片，避免返回后残留脏项；
-        // 重新收藏时列表排序可能变化，直接刷新图片分类，避免条目永久缺失。
-        viewModelScope.launch {
-            collectInvalidationBus.changes.collect { change ->
-                if (change.collected) {
-                    refresh(UserCollectCategory.PICTURE)
-                    return@collect
-                }
-                _uiState.update { state ->
-                    val current = state.picData
-                    val filtered = current.items.filterNot { it.id == change.nodeId }
-                    if (filtered.size == current.items.size) {
-                        state
-                    } else {
-                        state.copy(
-                            picData = current.copy(
-                                items = filtered,
-                                page = (current.page - 1).coerceAtLeast(0)
-                            )
-                        )
-                    }
-                }
+        // 8 个 loader 的状态投影到 UI 状态（列表数据的唯一来源）
+        loaders.forEach { (category, loader) ->
+            viewModelScope.launch {
+                loader.state.collect { syncCategory(category) }
             }
         }
 
@@ -183,6 +288,44 @@ class UserCollectViewModel(
                     initialCategory = initialCat.key
                 )
             )
+        }
+    }
+
+    // ==================== 意图入口 ====================
+
+    /**
+     * 全部用户意图的唯一入口。
+     */
+    fun onIntent(intent: UserCollectIntent) {
+        when (intent) {
+            is UserCollectIntent.SwitchCategory -> applyCategorySwitch(intent.category)
+            UserCollectIntent.ToggleViewMode -> applyToggleViewMode()
+            is UserCollectIntent.SwitchCollectState -> applyCollectState(intent.state)
+            is UserCollectIntent.SwitchOrder -> applyHobbyOrder(intent.order)
+            is UserCollectIntent.SwitchSortDirection -> applyHobbySortType(intent.sortType)
+            is UserCollectIntent.SelectSubCategory -> applySubCategory(intent.id)
+            is UserCollectIntent.SelectTag -> applyTag(intent.tag)
+            UserCollectIntent.ResetFilter -> resetFilterInternal()
+            is UserCollectIntent.SetFilterSheetVisible -> applyFilterSheetVisible(intent.visible)
+            is UserCollectIntent.SwitchAlbumOrder -> applyAlbumOrder(intent.order)
+            is UserCollectIntent.SwitchPicOrder -> applyPicOrder(intent.order)
+            is UserCollectIntent.SwitchCommonOrder -> applyCommonOrder(intent.order)
+            is UserCollectIntent.SwitchWorksState -> applyWorksState(intent.state)
+            is UserCollectIntent.SwitchWorksOrderAsc -> applyWorksOrderAsc(intent.asc)
+            is UserCollectIntent.SelectWorksTag -> applyWorksTag(intent.tag)
+            UserCollectIntent.ResetWorksTag -> resetWorksTagInternal()
+            is UserCollectIntent.SetWorksFilterSheetVisible -> applyWorksFilterSheetVisible(intent.visible)
+            is UserCollectIntent.LoadFirstPage -> loadFirstPage(intent.category)
+            is UserCollectIntent.Refresh -> refresh(intent.category)
+            is UserCollectIntent.LoadNextPage -> loadNextPage(intent.category)
+            is UserCollectIntent.DismissError -> dismissError(intent.category)
+            is UserCollectIntent.ToggleSelectionMode -> toggleSelectionMode(intent.category)
+            is UserCollectIntent.ToggleSelect -> applyToggleSelect(intent.id)
+            is UserCollectIntent.SelectAll -> selectAll(intent.category)
+            is UserCollectIntent.ClearSelection -> clearSelection(intent.category)
+            UserCollectIntent.ConfirmBatchCancel -> confirmBatchCancel()
+            UserCollectIntent.DismissBatchCancelError -> applyDismissBatchCancelError()
+            UserCollectIntent.OnResume -> handleResume()
         }
     }
 
@@ -265,17 +408,11 @@ class UserCollectViewModel(
                 albumType = param.albumType,
                 albumOrder = if (targetCategory == UserCollectCategory.ALBUM) targetOrder else it.albumOrder,
                 picOrder = if (targetCategory == UserCollectCategory.PICTURE) targetOrder else it.picOrder,
-                commonOrder = if (targetCategory in COMMON_CATEGORIES) targetOrder else it.commonOrder,
-                hobbyData = SubPageData(),
-                albumData = SubPageData(),
-                picData = SubPageData(),
-                vendorData = SubPageData(),
-                seriesData = SubPageData(),
-                worksData = SubPageData(),
-                characterData = SubPageData(),
-                personData = SubPageData()
+                commonOrder = if (targetCategory in COMMON_CATEGORIES) targetOrder else it.commonOrder
             )
         }
+        // 8 类缓存全部失效：清空 loader 状态（含页码与 hasMore），只装载目标大类首屏
+        resetAllLoaders()
         loadFirstPage(targetCategory)
     }
 
@@ -339,11 +476,10 @@ class UserCollectViewModel(
     /**
      * 切换大类（若目标大类尚未加载数据，自动触发首屏加载）。
      */
-    fun switchCategory(category: UserCollectCategory) {
+    private fun applyCategorySwitch(category: UserCollectCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
-        val hasData = _uiState.value.subPageData(category).items.isNotEmpty()
-        if (!hasData) {
+        if (isLoaderIdleAndEmpty(category)) {
             loadFirstPage(category)
         }
     }
@@ -351,9 +487,8 @@ class UserCollectViewModel(
     /**
      * 切换手办视图模式（网格/列表），并持久化偏好。
      */
-    fun toggleViewMode() {
-        val currentIsList = _uiState.value.isListView
-        val newIsList = !currentIsList
+    private fun applyToggleViewMode() {
+        val newIsList = !_uiState.value.isListView
         _uiState.update { it.copy(isListView = newIsList) }
         viewModelScope.launch {
             viewPreferencesManager.setCollectListGridMode(!newIsList)
@@ -366,7 +501,7 @@ class UserCollectViewModel(
      * 切换周边收藏状态（全部/关注/想买/预定/已入/有过）。
      * 排序与升降序按状态分别记忆：切回旧状态时恢复该状态上次的排序选择。
      */
-    fun switchCollectState(newState: String) {
+    private fun applyCollectState(newState: String) {
         if (!CollectStateOption.isValid(newState)) return
         if (_uiState.value.collectState == newState) return
         stateSet("collectState", newState)
@@ -377,10 +512,10 @@ class UserCollectViewModel(
             it.copy(
                 collectState = newState,
                 order = restoredOrder,
-                sortType = restoredSortType,
-                hobbyData = SubPageData()
+                sortType = restoredSortType
             )
         }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
         refreshTagPoolIfSheetOpen()
         persistHobbySortToPrefs()
@@ -390,19 +525,15 @@ class UserCollectViewModel(
      * 切换周边排序方式（收藏时间/发售时间/评分/我的评分/更新时间/入手时间）。
      * 入手时间仅「已入(buy)」档可选，其余档位自动回落收藏时间。
      */
-    fun switchOrder(newOrder: String) {
+    private fun applyHobbyOrder(newOrder: String) {
         if (!HobbyOrderOption.isValid(newOrder, _uiState.value.collectState)) return
         val effectiveOrder = HobbyOrderOption.effective(_uiState.value.collectState, newOrder)
         if (_uiState.value.order == effectiveOrder) return
         stateSet("order", effectiveOrder)
         hobbyOrderMemory[_uiState.value.collectState] = effectiveOrder
         persistHobbySortMemory()
-        _uiState.update {
-            it.copy(
-                order = effectiveOrder,
-                hobbyData = SubPageData()
-            )
-        }
+        _uiState.update { it.copy(order = effectiveOrder) }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
         persistHobbySortToPrefs()
     }
@@ -410,18 +541,14 @@ class UserCollectViewModel(
     /**
      * 切换周边升降序（1 升序 / 2 降序）。
      */
-    fun switchSortDirection(newSortType: Int) {
+    private fun applyHobbySortType(newSortType: Int) {
         if (newSortType != UserCollectUiState.SORT_ASC && newSortType != UserCollectUiState.SORT_DESC) return
         if (_uiState.value.sortType == newSortType) return
         stateSet("sortType", newSortType)
         hobbySortTypeMemory[_uiState.value.collectState] = newSortType
         persistHobbySortMemory()
-        _uiState.update {
-            it.copy(
-                sortType = newSortType,
-                hobbyData = SubPageData()
-            )
-        }
+        _uiState.update { it.copy(sortType = newSortType) }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
         persistHobbySortToPrefs()
     }
@@ -429,17 +556,13 @@ class UserCollectViewModel(
     /**
      * 选择周边细分子分类。
      */
-    fun selectSubCategory(subCategoryId: Int?) {
+    private fun applySubCategory(subCategoryId: Int?) {
         // 筛选抽屉回传「全部」可能是候选首项 10000，统一收敛到 null，
         // 保证保存键与请求参数一一对应（否则同内容会同时存在 null / 10000 两个键）。
         val normalized = HobbySubCategoryOption.normalize(subCategoryId)
         if (_uiState.value.subCategoryId == normalized) return
-        _uiState.update {
-            it.copy(
-                subCategoryId = normalized,
-                hobbyData = SubPageData()
-            )
-        }
+        _uiState.update { it.copy(subCategoryId = normalized) }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
         refreshTagPoolIfSheetOpen()
     }
@@ -447,32 +570,28 @@ class UserCollectViewModel(
     /**
      * 选择/反选标签过滤。
      */
-    fun selectTag(tag: String?) {
+    private fun applyTag(tag: String?) {
         // 空白标签等价于「未筛选」，避免 null 与 "" 两种表示制造两个保存键
         val requested = tag?.takeUnless { it.isBlank() }
         val newTag = if (_uiState.value.selectedTag == requested) null else requested
-        _uiState.update {
-            it.copy(
-                selectedTag = newTag,
-                hobbyData = SubPageData()
-            )
-        }
+        _uiState.update { it.copy(selectedTag = newTag) }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
     }
 
     /**
      * 重置所有筛选条件（子分类与标签）。
      */
-    fun resetFilter() {
+    private fun resetFilterInternal() {
         // subCategoryId 已归一化（「全部」恒为 null），此守卫即「本来就没筛选」的精确判断
         if (_uiState.value.subCategoryId == null && _uiState.value.selectedTag == null) return
         _uiState.update {
             it.copy(
                 subCategoryId = null,
-                selectedTag = null,
-                hobbyData = SubPageData()
+                selectedTag = null
             )
         }
+        resetLoader(UserCollectCategory.HOBBY)
         loadFirstPage(UserCollectCategory.HOBBY)
     }
 
@@ -480,7 +599,7 @@ class UserCollectViewModel(
      * 控制筛选抽屉显隐。**打开时按当前收藏状态与细分类懒加载标签候选池**
      * （原版 `UserCollectHobbyFragment.java:593-611` 每次开弹层带 `categoryId` + `collectState` 重拉）。
      */
-    fun setFilterSheetVisible(visible: Boolean) {
+    private fun applyFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showFilterSheet = visible) }
         if (visible) {
             loadAvailableTags(force = true)
@@ -522,22 +641,21 @@ class UserCollectViewModel(
     /**
      * 切换通用 4 页（厂商/系列/角色/人物）排序：收藏时间 / 人气。
      * 白名单外（含历史遗留的 `orderTime`）一律拒绝。
+     *
+     * 排序维度被 4 页共享，故其余 3 页的缓存随之失效（重置为空），
+     * 下次切到该 Tab 时由 [switchCategory] 触发首屏装载。
      */
-    fun switchCommonOrder(newOrder: String) {
+    private fun applyCommonOrder(newOrder: String) {
         if (!CommonOrderOption.isValid(newOrder)) return
         if (_uiState.value.commonOrder == newOrder) return
-        val isCurrentCommon = _uiState.value.selectedCategory in COMMON_CATEGORIES
-        _uiState.update {
-            it.copy(
-                commonOrder = newOrder,
-                vendorData = SubPageData(),
-                seriesData = SubPageData(),
-                characterData = SubPageData(),
-                personData = SubPageData()
-            )
+        val current = _uiState.value.selectedCategory
+        _uiState.update { it.copy(commonOrder = newOrder) }
+        COMMON_CATEGORIES.forEach { category ->
+            if (category != current) resetLoader(category)
         }
-        if (isCurrentCommon) {
-            loadFirstPage(_uiState.value.selectedCategory)
+        if (current in COMMON_CATEGORIES) {
+            resetLoader(current)
+            loadFirstPage(current)
         }
     }
 
@@ -546,10 +664,11 @@ class UserCollectViewModel(
     /**
      * 切换相册排序：发布时间 / 收藏时间 / 点赞量。
      */
-    fun switchAlbumOrder(newOrder: String) {
+    private fun applyAlbumOrder(newOrder: String) {
         if (!MediaOrderOption.isValid(newOrder)) return
         if (_uiState.value.albumOrder == newOrder) return
-        _uiState.update { it.copy(albumOrder = newOrder, albumData = SubPageData()) }
+        _uiState.update { it.copy(albumOrder = newOrder) }
+        resetLoader(UserCollectCategory.ALBUM)
         if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
             loadFirstPage(UserCollectCategory.ALBUM)
         }
@@ -560,61 +679,66 @@ class UserCollectViewModel(
     /**
      * 切换图片排序：发布时间 / 收藏时间 / 点赞量。
      */
-    fun switchPicOrder(newOrder: String) {
+    private fun applyPicOrder(newOrder: String) {
         if (!MediaOrderOption.isValid(newOrder)) return
         if (_uiState.value.picOrder == newOrder) return
-        _uiState.update { it.copy(picOrder = newOrder, picData = SubPageData()) }
+        _uiState.update { it.copy(picOrder = newOrder) }
+        resetLoader(UserCollectCategory.PICTURE)
         if (_uiState.value.selectedCategory == UserCollectCategory.PICTURE) {
             loadFirstPage(UserCollectCategory.PICTURE)
         }
     }
 
-    // ==================== 作品页（独立实现）====================
+    // ==================== 作品页（独立请求形态）====================
 
     /**
      * 切换作品收藏状态（想看=1 / 在看=2 / 看过=3）。
      */
-    fun switchWorksState(newState: Int) {
+    private fun applyWorksState(newState: Int) {
         if (!WorksStateOption.isValid(newState)) return
         if (_uiState.value.worksState == newState) return
         stateSet("worksState", newState)
-        _uiState.update { it.copy(worksState = newState, worksData = SubPageData()) }
+        _uiState.update { it.copy(worksState = newState) }
+        resetLoader(UserCollectCategory.WORKS)
         if (_uiState.value.selectedCategory == UserCollectCategory.WORKS) {
-            loadWorksFirstPage()
+            loadFirstPage(UserCollectCategory.WORKS)
         }
     }
 
     /**
      * 切换作品页收藏时间升降序。
      */
-    fun switchWorksOrderAsc(isAsc: Boolean) {
+    private fun applyWorksOrderAsc(isAsc: Boolean) {
         if (_uiState.value.worksOrderAsc == isAsc) return
         stateSet("worksOrderAsc", isAsc)
-        _uiState.update { it.copy(worksOrderAsc = isAsc, worksData = SubPageData()) }
+        _uiState.update { it.copy(worksOrderAsc = isAsc) }
+        resetLoader(UserCollectCategory.WORKS)
         if (_uiState.value.selectedCategory == UserCollectCategory.WORKS) {
-            loadWorksFirstPage()
+            loadFirstPage(UserCollectCategory.WORKS)
         }
     }
 
     /**
      * 选择/反选作品页标签过滤。
      */
-    fun selectWorksTag(tag: String?) {
+    private fun applyWorksTag(tag: String?) {
         val newTag = if (_uiState.value.worksTag == tag) null else tag
-        _uiState.update { it.copy(worksTag = newTag, worksData = SubPageData()) }
+        _uiState.update { it.copy(worksTag = newTag) }
+        resetLoader(UserCollectCategory.WORKS)
         if (_uiState.value.selectedCategory == UserCollectCategory.WORKS) {
-            loadWorksFirstPage()
+            loadFirstPage(UserCollectCategory.WORKS)
         }
     }
 
     /**
      * 重置作品页标签筛选。
      */
-    fun resetWorksTag() {
+    private fun resetWorksTagInternal() {
         if (_uiState.value.worksTag == null) return
-        _uiState.update { it.copy(worksTag = null, worksData = SubPageData()) }
+        _uiState.update { it.copy(worksTag = null) }
+        resetLoader(UserCollectCategory.WORKS)
         if (_uiState.value.selectedCategory == UserCollectCategory.WORKS) {
-            loadWorksFirstPage()
+            loadFirstPage(UserCollectCategory.WORKS)
         }
     }
 
@@ -622,7 +746,7 @@ class UserCollectViewModel(
      * 控制作品页筛选弹层显隐，打开时懒加载作品标签候选池
      * （原版池来自 `api/user/glean/textTag/get`，与手办池不是同一个）。
      */
-    fun setWorksFilterSheetVisible(visible: Boolean) {
+    private fun applyWorksFilterSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showWorksFilterSheet = visible) }
         if (visible) {
             loadWorksAvailableTags(force = true)
@@ -650,53 +774,20 @@ class UserCollectViewModel(
     /**
      * 加载作品页第一页（独立于通用 4 页的请求形态：`type="works"` + `state` + `isAsc` + `tagValue`）。
      */
-    fun loadWorksFirstPage() {
-        fetchWorksFirstPageInternal(isRefresh = false)
-    }
+    fun loadWorksFirstPage() = loadFirstPage(UserCollectCategory.WORKS)
 
     /**
      * 加载作品页下一页。
      */
-    fun loadWorksNextPage() {
-        if (userId <= 0L) return
-        val current = _uiState.value.worksData
-        if (current.isLoading || current.isRefreshing || current.isPaging || !current.hasMore) return
-        val nextPage = current.page + 1
-        cancelFetchJob(UserCollectCategory.WORKS)
-        fetchJobs[UserCollectCategory.WORKS] = viewModelScope.launch {
-            setSubPagePaging(UserCollectCategory.WORKS, isPaging = true)
-            fetchWorks(page = nextPage).fold(
-                onSuccess = { newItems ->
-                    updateCommonData(UserCollectCategory.WORKS) { currentData ->
-                        currentData.appendPagedItems(newItems, nextPage) { it.id }
-                    }
-                },
-                onFailure = { error ->
-                    updateCommonData(UserCollectCategory.WORKS) { it.toPagingFailed(error) }
-                }
-            )
-        }
-    }
-
-    private suspend fun fetchWorks(page: Int) = userRepository.getUserCollectCommonList(
-        userId = userId,
-        categoryId = UserCollectCategory.WORKS.key,
-        type = UserCollectCategory.WORKS.apiType,
-        order = CommonOrderOption.ACTION_DATE,
-        page = page,
-        pageSize = PAGE_SIZE,
-        state = _uiState.value.worksState,
-        isAsc = _uiState.value.worksOrderAsc,
-        tagValue = _uiState.value.worksTag
-    )
+    fun loadWorksNextPage() = loadNextPage(UserCollectCategory.WORKS)
 
     // ==================== 批量取消收藏 ====================
 
     /**
      * 进入/退出多选模式。周边页与相册页各持一套独立选中集合，切换互不影响。
      */
-    fun toggleSelectionMode() {
-        when (_uiState.value.selectedCategory) {
+    private fun toggleSelectionMode(category: UserCollectCategory) {
+        when (category) {
             UserCollectCategory.HOBBY -> _uiState.update {
                 if (it.hobbySelectionMode) it.copy(hobbySelectionMode = false, hobbySelectedIds = emptySet())
                 else it.copy(hobbySelectionMode = true)
@@ -714,7 +805,7 @@ class UserCollectViewModel(
      *
      * @param id **外层收藏节点 id**（不是 `actualItemId`/`actualAlbumId`）。
      */
-    fun toggleSelect(id: Long) {
+    private fun applyToggleSelect(id: Long) {
         when (_uiState.value.selectedCategory) {
             UserCollectCategory.HOBBY -> _uiState.update {
                 val newSet = it.hobbySelectedIds.toggle(id)
@@ -736,16 +827,16 @@ class UserCollectViewModel(
     }
 
     /**
-     * 全选当前大类已加载的全部条目。
+     * 全选指定大类已加载的全部条目。
      */
-    fun selectAll() {
-        when (_uiState.value.selectedCategory) {
+    private fun selectAll(category: UserCollectCategory) {
+        when (category) {
             UserCollectCategory.HOBBY -> {
-                val allIds = _uiState.value.hobbyData.items.map { it.id }.toSet()
+                val allIds = hobbyLoader.state.value.items.map { it.id }.toSet()
                 _uiState.update { it.copy(hobbySelectedIds = allIds, hobbySelectionMode = allIds.isNotEmpty()) }
             }
             UserCollectCategory.ALBUM -> {
-                val allIds = _uiState.value.albumData.items.map { it.id }.toSet()
+                val allIds = albumLoader.state.value.items.map { it.id }.toSet()
                 _uiState.update { it.copy(albumSelectedIds = allIds, albumSelectionMode = allIds.isNotEmpty()) }
             }
             else -> Unit
@@ -753,10 +844,10 @@ class UserCollectViewModel(
     }
 
     /**
-     * 清空当前大类的选中集合并退出多选模式。
+     * 清空指定大类的选中集合并退出多选模式。
      */
-    fun clearSelection() {
-        when (_uiState.value.selectedCategory) {
+    private fun clearSelection(category: UserCollectCategory) {
+        when (category) {
             UserCollectCategory.HOBBY -> _uiState.update { it.copy(hobbySelectedIds = emptySet(), hobbySelectionMode = false) }
             UserCollectCategory.ALBUM -> _uiState.update { it.copy(albumSelectedIds = emptySet(), albumSelectionMode = false) }
             else -> Unit
@@ -764,39 +855,42 @@ class UserCollectViewModel(
     }
 
     /**
-     * 批量取消收藏（`api/collect/batch/cancel`）。仅本人可见可用。
+     * 批量取消收藏（`api/collect/batch/cancel`）。仅周边页与相册页具备该能力。
+     *
+     * 验权（非本人零请求）已上移到 [BatchCancelCollectUseCase]；
+     * 成功后就地 `removeItem` 剔除已取消条目，使后续 `loadMore` 不会重复拉取已删页。
      */
-    fun cancelSelectedCollect() {
-        val category = _uiState.value.selectedCategory
+    private fun confirmBatchCancel() {
+        val snapshot = _uiState.value
+        val category = snapshot.selectedCategory
         // 仅周边页与相册页有批量取消收藏能力
         if (category != UserCollectCategory.HOBBY && category != UserCollectCategory.ALBUM) return
-        if (!_uiState.value.isSelf) {
-            _uiState.update { it.copy(batchCancelError = "仅可管理自己的收藏") }
-            return
-        }
         val isHobby = category == UserCollectCategory.HOBBY
-        val ids = if (isHobby) _uiState.value.hobbySelectedIds else _uiState.value.albumSelectedIds
-        if (ids.isEmpty() || _uiState.value.isCancellingBatch) return
+        val ids = if (isHobby) snapshot.hobbySelectedIds else snapshot.albumSelectedIds
+        if (ids.isEmpty() || snapshot.isCancellingBatch) return
 
         _uiState.update { it.copy(isCancellingBatch = true, batchCancelError = null) }
         viewModelScope.launch {
-            collectRepository.cancelCollectBatch(ids.toList())
+            batchCancelCollectUseCase(ids.toList(), ownerUserId = userId)
                 .onSuccess {
-                    val cancelled = ids
-                    _uiState.update { state ->
-                        if (isHobby) {
-                            state.copy(
+                    if (isHobby) {
+                        hobbyLoader.removeItem { it.id in ids }
+                        syncCategory(UserCollectCategory.HOBBY)
+                        _uiState.update {
+                            it.copy(
                                 isCancellingBatch = false,
                                 hobbySelectedIds = emptySet(),
-                                hobbySelectionMode = false,
-                                hobbyData = state.hobbyData.copy(items = state.hobbyData.items.filterNot { it.id in cancelled })
+                                hobbySelectionMode = false
                             )
-                        } else {
-                            state.copy(
+                        }
+                    } else {
+                        albumLoader.removeItem { it.id in ids }
+                        syncCategory(UserCollectCategory.ALBUM)
+                        _uiState.update {
+                            it.copy(
                                 isCancellingBatch = false,
                                 albumSelectedIds = emptySet(),
-                                albumSelectionMode = false,
-                                albumData = state.albumData.copy(items = state.albumData.items.filterNot { it.id in cancelled })
+                                albumSelectionMode = false
                             )
                         }
                     }
@@ -812,7 +906,7 @@ class UserCollectViewModel(
     /**
      * 清除批量取消收藏的错误提示。
      */
-    fun dismissBatchCancelError() {
+    private fun applyDismissBatchCancelError() {
         _uiState.update { it.copy(batchCancelError = null) }
     }
 
@@ -824,410 +918,169 @@ class UserCollectViewModel(
      * 加载指定大类（默认当前）的第一页。
      */
     fun loadFirstPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
-        fetchFirstPage(category, isRefresh = false)
+        if (userId <= 0L) return
+        dispatchToLoader(category) { it.loadInitial() }
     }
 
     /**
      * 下拉刷新指定大类（默认当前）的数据。
      */
     fun refresh(category: UserCollectCategory = _uiState.value.selectedCategory) {
-        fetchFirstPage(category, isRefresh = true)
+        if (userId <= 0L) return
+        dispatchToLoader(category) { it.refresh() }
     }
 
     /**
      * 加载指定大类（默认当前）的下一页。
+     *
+     * 并发守卫、`hasMore` 判定与首屏错误短路由 loader 内部完成。
      */
     fun loadNextPage(category: UserCollectCategory = _uiState.value.selectedCategory) {
         if (userId <= 0L) return
-        // 作品页请求形态独立，走专用分支
-        if (category == UserCollectCategory.WORKS) {
-            loadWorksNextPage()
-            return
-        }
-        val currentSubPage = getSubPageData(category)
-        if (currentSubPage.isLoading || currentSubPage.isRefreshing || currentSubPage.isPaging || !currentSubPage.hasMore) {
-            return
-        }
-        val nextPage = currentSubPage.page + 1
-        cancelFetchJob(category)
-        fetchJobs[category] = viewModelScope.launch {
-            setSubPagePaging(category, isPaging = true)
-            when (category) {
-                UserCollectCategory.HOBBY -> {
-                    val result = userRepository.getUserCollectHobbyList(
-                        userId = userId,
-                        collectState = _uiState.value.collectState,
-                        category = _uiState.value.subCategoryId ?: DEFAULT_HOBBY_KEY,
-                        tag = _uiState.value.selectedTag,
-                        order = _uiState.value.order,
-                        sortType = _uiState.value.sortType,
-                        page = nextPage,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { newItems ->
-                            _uiState.update { current ->
-                                current.copy(
-                                    hobbyData = current.hobbyData.appendPagedItems(newItems, nextPage) { it.id to it.actualItemId }
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update { current ->
-                                current.copy(hobbyData = current.hobbyData.toPagingFailed(error))
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.ALBUM -> {
-                    val result = userRepository.getUserCollectAlbumList(
-                        userId = userId,
-                        type = _uiState.value.albumType,
-                        order = _uiState.value.albumOrder,
-                        page = nextPage,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { newItems ->
-                            _uiState.update { current ->
-                                current.copy(
-                                    albumData = current.albumData.appendPagedItems(newItems, nextPage) { it.id }
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update { current ->
-                                current.copy(albumData = current.albumData.toPagingFailed(error))
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.PICTURE -> {
-                    val result = userRepository.getUserCollectPicList(
-                        userId = userId,
-                        order = _uiState.value.picOrder,
-                        page = nextPage,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { newItems ->
-                            _uiState.update { current ->
-                                current.copy(
-                                    picData = current.picData.appendPagedItems(newItems, nextPage) { it.id }
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update { current ->
-                                current.copy(picData = current.picData.toPagingFailed(error))
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.VENDOR,
-                UserCollectCategory.SERIES,
-                UserCollectCategory.CHARACTER,
-                UserCollectCategory.PERSON -> {
-                    val result = fetchCommon(category, page = nextPage)
-                    result.fold(
-                        onSuccess = { newItems ->
-                            updateCommonData(category) { current ->
-                                current.appendPagedItems(newItems, nextPage) { it.id to it.actualItemId }
-                            }
-                        },
-                        onFailure = { error ->
-                            updateCommonData(category) { current ->
-                                current.toPagingFailed(error)
-                            }
-                        }
-                    )
-                }
-                // 作品页走独立的 loadWorksNextPage
-                UserCollectCategory.WORKS -> Unit
-            }
-        }
+        dispatchToLoader(category) { it.loadMore() }
     }
-
-    /**
-     * 统一拉取指定分类的第一页（支持初次加载与下拉刷新）。
-     */
-    private fun fetchFirstPage(category: UserCollectCategory, isRefresh: Boolean) {
-        if (userId <= 0L) return
-        // 作品页请求形态独立，走专用分支
-        if (category == UserCollectCategory.WORKS) {
-            fetchWorksFirstPageInternal(isRefresh)
-            return
-        }
-        cancelFetchJob(category)
-        fetchJobs[category] = viewModelScope.launch {
-            setSubPageLoading(category, isLoading = !isRefresh, isRefreshing = isRefresh)
-            when (category) {
-                UserCollectCategory.HOBBY -> {
-                    val result = userRepository.getUserCollectHobbyList(
-                        userId = userId,
-                        collectState = _uiState.value.collectState,
-                        category = _uiState.value.subCategoryId ?: DEFAULT_HOBBY_KEY,
-                        tag = _uiState.value.selectedTag,
-                        order = _uiState.value.order,
-                        sortType = _uiState.value.sortType,
-                        page = 1,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { items ->
-                            _uiState.update {
-                                it.copy(
-                                    hobbyData = SubPageData(
-                                        items = items,
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
-                                    )
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update {
-                                it.copy(
-                                    hobbyData = it.hobbyData.copy(
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        errorMessage = error.toDisplayMessage(isRefresh, "加载手办收藏失败"),
-                                        isContentHidden = error.isContentHiddenError()
-                                    )
-                                )
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.ALBUM -> {
-                    val result = userRepository.getUserCollectAlbumList(
-                        userId = userId,
-                        type = _uiState.value.albumType,
-                        order = _uiState.value.albumOrder,
-                        page = 1,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { items ->
-                            _uiState.update {
-                                it.copy(
-                                    albumData = SubPageData(
-                                        items = items,
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
-                                    )
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update {
-                                it.copy(
-                                    albumData = it.albumData.copy(
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        errorMessage = error.toDisplayMessage(isRefresh, "加载相册收藏失败"),
-                                        isContentHidden = error.isContentHiddenError()
-                                    )
-                                )
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.PICTURE -> {
-                    val result = userRepository.getUserCollectPicList(
-                        userId = userId,
-                        order = _uiState.value.picOrder,
-                        page = 1,
-                        pageSize = PAGE_SIZE
-                    )
-                    result.fold(
-                        onSuccess = { items ->
-                            _uiState.update {
-                                it.copy(
-                                    picData = SubPageData(
-                                        items = items,
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        hasMore = items.size >= PAGE_SIZE,
-                                        page = 1
-                                    )
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update {
-                                it.copy(
-                                    picData = it.picData.copy(
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        errorMessage = error.toDisplayMessage(isRefresh, "加载图片收藏失败"),
-                                        isContentHidden = error.isContentHiddenError()
-                                    )
-                                )
-                            }
-                        }
-                    )
-                }
-                UserCollectCategory.VENDOR,
-                UserCollectCategory.SERIES,
-                UserCollectCategory.CHARACTER,
-                UserCollectCategory.PERSON -> {
-                    val result = fetchCommon(category, page = 1)
-                    result.fold(
-                        onSuccess = { items ->
-                            updateCommonData(category) {
-                                SubPageData(
-                                    items = items,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    hasMore = items.size >= PAGE_SIZE,
-                                    page = 1
-                                )
-                            }
-                        },
-                        onFailure = { error ->
-                            updateCommonData(category) { current ->
-                                current.copy(
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    errorMessage = error.toDisplayMessage(isRefresh, "加载${category.title}收藏失败"),
-                                    isContentHidden = error.isContentHiddenError()
-                                )
-                            }
-                        }
-                    )
-                }
-                // 作品页已在方法入口分流
-                UserCollectCategory.WORKS -> Unit
-            }
-        }
-    }
-
-    /**
-     * 作品页第一页装载（区分下拉刷新与首次加载的 loading 语义）。
-     */
-    private fun fetchWorksFirstPageInternal(isRefresh: Boolean) {
-        if (userId <= 0L) return
-        cancelFetchJob(UserCollectCategory.WORKS)
-        fetchJobs[UserCollectCategory.WORKS] = viewModelScope.launch {
-            setSubPageLoading(UserCollectCategory.WORKS, isLoading = !isRefresh, isRefreshing = isRefresh)
-            fetchWorks(page = 1).fold(
-                onSuccess = { items ->
-                    updateCommonData(UserCollectCategory.WORKS) {
-                        SubPageData(
-                            items = items,
-                            isLoading = false,
-                            isRefreshing = false,
-                            hasMore = items.size >= PAGE_SIZE,
-                            page = 1
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    updateCommonData(UserCollectCategory.WORKS) { current ->
-                        current.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            errorMessage = error.toDisplayMessage(isRefresh, "加载作品收藏失败"),
-                            isContentHidden = error.isContentHiddenError()
-                        )
-                    }
-                }
-            )
-        }
-    }
-
-    private suspend fun fetchCommon(category: UserCollectCategory, page: Int) =
-        userRepository.getUserCollectCommonList(
-            userId = userId,
-            categoryId = category.key,
-            type = category.apiType,
-            order = _uiState.value.commonOrder,
-            page = page,
-            pageSize = PAGE_SIZE
-        )
 
     /**
      * 清除指定大类（默认当前）的错误提示。
      */
     fun dismissError(category: UserCollectCategory = _uiState.value.selectedCategory) {
-        when (category) {
-            UserCollectCategory.HOBBY -> _uiState.update {
-                it.copy(hobbyData = it.hobbyData.copy(errorMessage = null, isContentHidden = false))
-            }
-            UserCollectCategory.ALBUM -> _uiState.update {
-                it.copy(albumData = it.albumData.copy(errorMessage = null, isContentHidden = false))
-            }
-            UserCollectCategory.PICTURE -> _uiState.update {
-                it.copy(picData = it.picData.copy(errorMessage = null, isContentHidden = false))
-            }
-            else -> updateCommonData(category) { it.copy(errorMessage = null, isContentHidden = false) }
+        dispatchToLoader(category) { it.clearError() }
+    }
+
+    // ==================== 恢复感知 ====================
+
+    /**
+     * 恢复感知：读画廊脏位，有变化则对**图片页**静默刷新。
+     *
+     * 脏位方案来自 ADR-0011：`CollectRepository` 的写操作计数是状态而非事件，
+     * 出栈返回、进程内任意时刻都可比对，且无订阅者也不丢。
+     * 仅当当前正停在图片大类、或图片列表已开始装载过时才刷新，避免白发一次首屏请求。
+     */
+    private fun handleResume() {
+        val ticks = collectRepository.galleryMutationTicks.value
+        if (ticks <= consumedGalleryTicks) return
+        consumedGalleryTicks = ticks
+        if (userId <= 0L) return
+        val picState = picLoader.state.value
+        val shouldRefreshPic = _uiState.value.selectedCategory == UserCollectCategory.PICTURE ||
+            picState.items.isNotEmpty() ||
+            picState.stage != LoadStage.Idle
+        if (shouldRefreshPic) {
+            dispatchToLoader(UserCollectCategory.PICTURE) { it.refresh() }
         }
     }
 
     // ==================== 内部工具 ====================
 
-    private fun getSubPageData(category: UserCollectCategory): SubPageData<*> {
-        return _uiState.value.subPageData(category)
-    }
-
-    private fun cancelFetchJob(category: UserCollectCategory) {
-        fetchJobs.remove(category)?.cancel()
-    }
-
-    private fun setSubPageLoading(category: UserCollectCategory, isLoading: Boolean, isRefreshing: Boolean) {
+    /**
+     * 单个 loader 状态 → [UserCollectUiState] 对应子页的投影。
+     *
+     * `SubPageData` 完全由 loader 的 [PagedListState] 派生，不额外保存副本，
+     * 因此不存在"列表与页码各改一半"的中间态。
+     */
+    private fun syncCategory(category: UserCollectCategory) {
         when (category) {
-            UserCollectCategory.HOBBY -> _uiState.update {
-                it.copy(hobbyData = it.hobbyData.copy(isLoading = isLoading, isRefreshing = isRefreshing, errorMessage = null))
-            }
-            UserCollectCategory.ALBUM -> _uiState.update {
-                it.copy(albumData = it.albumData.copy(isLoading = isLoading, isRefreshing = isRefreshing, errorMessage = null))
-            }
-            UserCollectCategory.PICTURE -> _uiState.update {
-                it.copy(picData = it.picData.copy(isLoading = isLoading, isRefreshing = isRefreshing, errorMessage = null))
-            }
-            else -> updateCommonData(category) {
-                it.copy(isLoading = isLoading, isRefreshing = isRefreshing, errorMessage = null)
-            }
+            UserCollectCategory.HOBBY -> _uiState.update { it.copy(hobbyData = toSubPageData(category, hobbyLoader.state.value)) }
+            UserCollectCategory.ALBUM -> _uiState.update { it.copy(albumData = toSubPageData(category, albumLoader.state.value)) }
+            UserCollectCategory.PICTURE -> _uiState.update { it.copy(picData = toSubPageData(category, picLoader.state.value)) }
+            UserCollectCategory.VENDOR -> _uiState.update { it.copy(vendorData = toSubPageData(category, vendorLoader.state.value)) }
+            UserCollectCategory.SERIES -> _uiState.update { it.copy(seriesData = toSubPageData(category, seriesLoader.state.value)) }
+            UserCollectCategory.WORKS -> _uiState.update { it.copy(worksData = toSubPageData(category, worksLoader.state.value)) }
+            UserCollectCategory.CHARACTER -> _uiState.update { it.copy(characterData = toSubPageData(category, characterLoader.state.value)) }
+            UserCollectCategory.PERSON -> _uiState.update { it.copy(personData = toSubPageData(category, personLoader.state.value)) }
         }
     }
 
-    private fun setSubPagePaging(category: UserCollectCategory, isPaging: Boolean) {
-        when (category) {
-            UserCollectCategory.HOBBY -> _uiState.update {
-                it.copy(hobbyData = it.hobbyData.copy(isPaging = isPaging, errorMessage = null))
-            }
-            UserCollectCategory.ALBUM -> _uiState.update {
-                it.copy(albumData = it.albumData.copy(isPaging = isPaging, errorMessage = null))
-            }
-            UserCollectCategory.PICTURE -> _uiState.update {
-                it.copy(picData = it.picData.copy(isPaging = isPaging, errorMessage = null))
-            }
-            else -> updateCommonData(category) {
-                it.copy(isPaging = isPaging, errorMessage = null)
-            }
+    /**
+     * loader 状态 → UI 子页状态。
+     *
+     * 相册页与图片页沿用重构前的错误静默行为：这两类不发错误文案（失败时展示通用空态），
+     * 其余大类透传 `initialError` / `appendError`。「用户已隐藏内容」专用空态由错误文案关键词派生
+     * ——[PagedListState] 没有该字段，故在此处旁路判定。
+     */
+    private fun <T> toSubPageData(category: UserCollectCategory, listState: PagedListState<T>): SubPageData<T> {
+        val rawError = if (category in ERROR_SILENCED_CATEGORIES) {
+            null
+        } else {
+            listState.initialError ?: listState.appendError
+        }
+        return SubPageData(
+            items = listState.items,
+            isLoading = listState.isLoading,
+            isRefreshing = listState.isRefreshing,
+            isPaging = listState.isLoadingMore,
+            hasMore = listState.hasMore,
+            page = listState.page,
+            errorMessage = rawError,
+            isContentHidden = rawError?.contains(CONTENT_HIDDEN_KEYWORD) == true
+        )
+    }
+
+    /**
+     * 对指定大类的 loader 执行一次动作，并**同步**把结果投影进 [uiState]。
+     *
+     * loader 自身的状态流由后台协程转发；若不做同步投影，UI 会先看到一帧旧状态
+     * （典型症状：清除错误后 snackbar 又按旧值弹一次、点重试后没有立即出现 loading）。
+     */
+    private fun dispatchToLoader(category: UserCollectCategory, action: (PagedListLoader<*>) -> Unit) {
+        action(loaders.getValue(category))
+        syncCategory(category)
+    }
+
+    /**
+     * 取消在途请求并清空该大类列表（条件变化后必须重置，避免旧页码与 hasMore 污染新条件）。
+     *
+     * 重置后立刻同步投影一次：否则 UI 会残留一帧旧条件的数据（重构前是在 `_uiState.update` 里同步清空的）。
+     */
+    private fun resetLoader(category: UserCollectCategory) {
+        loaders.getValue(category).reset()
+        syncCategory(category)
+    }
+
+    private fun resetAllLoaders() {
+        loaders.forEach { (category, loader) ->
+            loader.reset()
+            syncCategory(category)
         }
     }
 
-    private fun updateCommonData(
+    /** 目标大类没装载过（闲置且空列表）：切 Tab 时才补首屏请求，已有缓存则原地复用 */
+    private fun isLoaderIdleAndEmpty(category: UserCollectCategory): Boolean {
+        val listState = loaders.getValue(category).state.value
+        return listState.stage == LoadStage.Idle && listState.items.isEmpty()
+    }
+
+    private suspend fun fetchCommonPage(
         category: UserCollectCategory,
-        transform: (SubPageData<UserCollectCommonItem>) -> SubPageData<UserCollectCommonItem>
-    ) {
-        _uiState.update { state ->
-            when (category) {
-                UserCollectCategory.VENDOR -> state.copy(vendorData = transform(state.vendorData))
-                UserCollectCategory.SERIES -> state.copy(seriesData = transform(state.seriesData))
-                UserCollectCategory.WORKS -> state.copy(worksData = transform(state.worksData))
-                UserCollectCategory.CHARACTER -> state.copy(characterData = transform(state.characterData))
-                UserCollectCategory.PERSON -> state.copy(personData = transform(state.personData))
-                else -> state
-            }
-        }
-    }
+        page: Int,
+        pageSize: Int,
+        order: String
+    ) = collectRepository.getUserCollectCommonList(
+        userId = userId,
+        categoryId = category.key,
+        type = category.apiType,
+        order = order,
+        page = page,
+        pageSize = pageSize
+    )
+
+    private suspend fun fetchWorksPage(
+        page: Int,
+        pageSize: Int,
+        worksState: Int,
+        isAsc: Boolean,
+        tagValue: String?
+    ) = collectRepository.getUserCollectCommonList(
+        userId = userId,
+        categoryId = UserCollectCategory.WORKS.key,
+        type = UserCollectCategory.WORKS.apiType,
+        order = CommonOrderOption.ACTION_DATE,
+        page = page,
+        pageSize = pageSize,
+        state = worksState,
+        isAsc = isAsc,
+        tagValue = tagValue
+    )
 
     /**
      * 登录用户 id 与当前浏览用户 id 相同即为「本人」，仅本人可见写操作入口。
@@ -1236,16 +1089,6 @@ class UserCollectViewModel(
         val loginId = userSession.currentUserId
         return loginId > 0L && loginId == targetUserId
     }
-
-    private fun Throwable.toDisplayMessage(isRefresh: Boolean, fallback: String): String =
-        message?.takeIf { it.isNotBlank() } ?: if (isRefresh) "刷新失败" else fallback
-
-    /**
-     * 识别后端「用户已隐藏内容」语义（原版 `text_empty_user_hide` / `text_empty_user_hide_content`），
-     * 供 UI 渲染专用空态而非通用错误态。
-     */
-    private fun Throwable.isContentHiddenError(): Boolean =
-        message?.contains(CONTENT_HIDDEN_KEYWORD) == true
 
     private fun readStringMapMemory(key: String): MutableMap<String, String> =
         runCatching {
@@ -1274,6 +1117,55 @@ class UserCollectViewModel(
         }
     }
 
+    // ==================== 过渡期薄转发（UI 调用点保持不变）====================
+    // 目标形态是视图层只发 Intent；这些方法仅为避免一次性改写 8 个子页的回调签名而保留。
+
+    fun switchCategory(category: UserCollectCategory) = onIntent(UserCollectIntent.SwitchCategory(category))
+
+    fun toggleViewMode() = onIntent(UserCollectIntent.ToggleViewMode)
+
+    fun switchCollectState(newState: String) = onIntent(UserCollectIntent.SwitchCollectState(newState))
+
+    fun switchOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchOrder(newOrder))
+
+    fun switchSortDirection(newSortType: Int) = onIntent(UserCollectIntent.SwitchSortDirection(newSortType))
+
+    fun selectSubCategory(subCategoryId: Int?) = onIntent(UserCollectIntent.SelectSubCategory(subCategoryId))
+
+    fun selectTag(tag: String?) = onIntent(UserCollectIntent.SelectTag(tag))
+
+    fun resetFilter() = onIntent(UserCollectIntent.ResetFilter)
+
+    fun setFilterSheetVisible(visible: Boolean) = onIntent(UserCollectIntent.SetFilterSheetVisible(visible))
+
+    fun switchCommonOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchCommonOrder(newOrder))
+
+    fun switchAlbumOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchAlbumOrder(newOrder))
+
+    fun switchPicOrder(newOrder: String) = onIntent(UserCollectIntent.SwitchPicOrder(newOrder))
+
+    fun switchWorksState(newState: Int) = onIntent(UserCollectIntent.SwitchWorksState(newState))
+
+    fun switchWorksOrderAsc(isAsc: Boolean) = onIntent(UserCollectIntent.SwitchWorksOrderAsc(isAsc))
+
+    fun selectWorksTag(tag: String?) = onIntent(UserCollectIntent.SelectWorksTag(tag))
+
+    fun resetWorksTag() = onIntent(UserCollectIntent.ResetWorksTag)
+
+    fun setWorksFilterSheetVisible(visible: Boolean) = onIntent(UserCollectIntent.SetWorksFilterSheetVisible(visible))
+
+    fun toggleSelectionMode() = onIntent(UserCollectIntent.ToggleSelectionMode(_uiState.value.selectedCategory))
+
+    fun toggleSelect(id: Long) = onIntent(UserCollectIntent.ToggleSelect(id))
+
+    fun selectAll() = onIntent(UserCollectIntent.SelectAll(_uiState.value.selectedCategory))
+
+    fun clearSelection() = onIntent(UserCollectIntent.ClearSelection(_uiState.value.selectedCategory))
+
+    fun cancelSelectedCollect() = onIntent(UserCollectIntent.ConfirmBatchCancel)
+
+    fun dismissBatchCancelError() = onIntent(UserCollectIntent.DismissBatchCancelError)
+
     companion object {
         const val PAGE_SIZE = 20
 
@@ -1294,37 +1186,11 @@ class UserCollectViewModel(
             UserCollectCategory.CHARACTER,
             UserCollectCategory.PERSON
         )
-    }
 
-    /**
-     * 合并分页新数据：执行主键去重、更新当前页码并根据批次容量判定是否还有更多数据。
-     */
-    private fun <T> SubPageData<T>.appendPagedItems(
-        newItems: List<T>,
-        nextPage: Int,
-        pageSize: Int = PAGE_SIZE,
-        keySelector: (T) -> Any
-    ): SubPageData<T> {
-        val existingKeys = items.map(keySelector).toSet()
-        val unique = newItems.filterNot { keySelector(it) in existingKeys }
-        return copy(
-            items = items + unique,
-            isPaging = false,
-            page = nextPage,
-            hasMore = newItems.size >= pageSize,
-            errorMessage = null,
-            isContentHidden = false
+        /** 相册页与图片页沿用重构前的错误静默行为（失败时不弹错误文案，走通用空态） */
+        private val ERROR_SILENCED_CATEGORIES = setOf(
+            UserCollectCategory.ALBUM,
+            UserCollectCategory.PICTURE
         )
     }
-
-    /**
-     * 分页失败状态流转。
-     */
-    private fun <T> SubPageData<T>.toPagingFailed(
-        error: Throwable,
-        fallback: String = "加载下一页失败"
-    ): SubPageData<T> = copy(
-        isPaging = false,
-        errorMessage = error.toDisplayMessage(isRefresh = false, fallback = fallback)
-    )
 }

@@ -28,10 +28,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -83,6 +87,15 @@ fun UserCollectScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 恢复感知：从图片画廊（独立 Nav3 路由）出栈回来时，若画廊内动过收藏，
+    // 由仓储脏位（galleryMutationTicks）驱动图片大类静默刷新。
+    // resumeCount > 1 跳过首次组合，避免刚进入页面就多发一次请求。
+    var resumeCount by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        resumeCount++
+        if (resumeCount > 1) viewModel.onIntent(UserCollectIntent.OnResume)
+    }
 
     val categories = remember { UserCollectCategory.entries }
     val initialIndex = remember(param.initialCategory) {
