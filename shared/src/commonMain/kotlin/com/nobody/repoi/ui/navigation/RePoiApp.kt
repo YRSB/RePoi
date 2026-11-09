@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -48,31 +50,37 @@ fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    val themeMode by themeManager.themeModeFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeMode())
-    val dynamicColor by themeManager.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialDynamicColor())
-    val themeSeed by themeManager.themeSeedFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialThemeSeed())
-    val amoled by themeManager.amoledFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialAmoled())
-    val paletteStyle by themeManager.paletteStyleFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialPaletteStyle())
-    val specVersion by themeManager.specVersionFlow.collectAsStateWithLifecycle(initialValue = themeManager.getInitialSpecVersion())
+    // 单一主题流：null 表示首次读盘未完成，此时不能拿默认值先画一帧
+    val settings by themeManager.settings.collectAsStateWithLifecycle()
+    val current = settings
+    if (current == null) {
+        // 占位只跟随系统深浅取纯黑白，不套任何主题配色，避免「先看到默认取色」
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (isSystemInDarkTheme()) Color.Black else Color.White)
+        )
+        return
+    }
 
-    val darkTheme = when (themeMode) {
+    val darkTheme = when (current.themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val effectiveSeed = when {
-        themeSeed != ThemeSeed.Dynamic -> themeSeed.orAvailable()
-        !dynamicColor -> ThemeSeed.Lotus
+        current.themeSeed != ThemeSeed.Dynamic -> current.themeSeed.orAvailable()
+        !current.dynamicColor -> ThemeSeed.Lotus
         else -> null
     }
 
     PoiShelfTheme(
         darkTheme = darkTheme,
-        dynamicColor = dynamicColor,
+        dynamicColor = current.dynamicColor,
         themeSeed = effectiveSeed,
-        amoled = amoled,
-        paletteStyle = paletteStyle,
-        specVersion = specVersion
+        amoled = current.amoled,
+        paletteStyle = current.paletteStyle,
+        specVersion = current.specVersion
     ) {
         RePoiNavHost()
     }
