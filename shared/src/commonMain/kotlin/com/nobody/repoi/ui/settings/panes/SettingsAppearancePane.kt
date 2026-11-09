@@ -129,19 +129,23 @@ fun SettingsAppearancePane(
         seedTertiary = null,
         wallpaperPrimary = dynamicPoiShelfColorScheme(darkTheme = false)?.primary
     )
-    val dynamicCardColors = remember(previewSource, paletteStyle, specVersion) {
-        when (previewSource) {
-            is PoiSchemeSource.Dynamic -> themeCardColorsFromScheme(
-                seedColorScheme(
-                    seedColor = previewSource.anchor,
-                    darkTheme = false,
-                    amoled = false,
-                    style = paletteStyle,
-                    specVersion = specVersion
-                )
-            )
+    // seedColorScheme 是 @Composable：必须在组合内先算出配色，再按值记忆化卡片色
+    val previewScheme = when (previewSource) {
+        is PoiSchemeSource.Dynamic -> seedColorScheme(
+            seedColor = previewSource.anchor,
+            darkTheme = false,
+            amoled = false,
+            style = paletteStyle,
+            specVersion = specVersion
+        )
 
-            else -> getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
+        else -> null
+    }
+    val dynamicCardColors = remember(previewScheme, paletteStyle, specVersion) {
+        if (previewScheme != null) {
+            themeCardColorsFromScheme(previewScheme)
+        } else {
+            getOrCreateThemeCardColors(ThemeSeed.Lotus, paletteStyle, specVersion)
         }
     }
 
