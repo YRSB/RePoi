@@ -22,6 +22,7 @@
 | [ADR-0008](0008-dynamic-theme-style-spec.md) | 动态主题下的色彩风格 / 色彩标准重推导 | **主题/取色系统/可测性**：壁纸主色作锚点重推导、纯决策树 `resolveSchemeSource`、`systemSchemeProvider` 注入缝、收敛 expressiveColor 重复维度 | 已采纳 (Accepted) - 2026-11-09 |
 | [ADR-0009](0009-theme-color-motion.md) | 主题切换的颜色弹簧过渡 | **主题/动效**：逐角色 animateColorAsState、首帧与深浅模式切换不补间、走 ColorScheme.copy | 已采纳 (Accepted) - 2026-11-09 |
 | [ADR-0010](0010-theme-settings-single-flow.md) | 六维主题配置合并为单一状态流 | **主题/状态管理**：StateFlow<ThemeSettings?>、null 表达未就绪、ensureLoaded 幂等并发安全、删除六个 getInitialXxx | 已采纳 (Accepted) - 2026-11-09 |
+| [ADR-0011](0011-collect-architecture-eventbus-decoupling.md) | 收藏模块解耦与状态驱动架构演进 | **收藏/状态驱动/解耦**：彻底剔除 EventBus、单一事实源 StateFlow、查询归集至 CollectRepository、纯 MVI 与 PagedListLoader | 已采纳 (Accepted) - 2026-11-09 |
 
 ---
 
