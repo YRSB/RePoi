@@ -1,5 +1,7 @@
 # 收藏模块解耦与状态驱动架构演进 (Collect Architecture & EventBus Decoupling)
 
+- 状态：已采纳 (Accepted) - 2026-11-09
+
 ## 背景与上下文 (Context)
 历史版本中，画廊页（`PictureGalleryRouteScreen`）与手办详情页等跨组件通信依赖临时事件总线（`CollectInvalidationBus`）与零散广播（`CollectRepository.collectUpdates`）。此外，8 大类用户收藏列表查询分散在 `UserRepository`，而写侧操作（保存、取消、批量管理）又位于 `CollectRepository`，导致收藏业务内聚性缺失；`UserCollectViewModel` 高达 1300 余行，手工维护分页游标与状态机，偏离了项目标准的单向数据流（UDF）与分页加载规范。
 

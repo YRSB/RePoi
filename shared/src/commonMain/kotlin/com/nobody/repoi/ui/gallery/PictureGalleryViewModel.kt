@@ -341,7 +341,7 @@ class PictureGalleryViewModel(
             val result = toggleItemCollectUseCase(item.id, wasCollected)
             result.onSuccess {
                 // 记录画廊脏位：收藏中心列表恢复时据此静默刷新
-                collectRepository.markGalleryMutated()
+                collectRepository.markGalleryMutation()
             }
             result.onFailure { error ->
                 // 回滚到请求前状态

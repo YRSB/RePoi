@@ -9,6 +9,7 @@ import com.nobody.repoi.data.remote.model.PersonHobbyEntry
 import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.repository.PersonDetailRepository
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -346,12 +347,5 @@ class PersonDetailViewModel(
                 }
             }
         }
-    }
-
-    /** 计数增量以「服务端原始收藏态」为基准，不做逐次累加。 */
-    private fun collectDeltaOf(originalCollected: Boolean, currentCollected: Boolean): Int = when {
-        originalCollected && !currentCollected -> -1
-        !originalCollected && currentCollected -> 1
-        else -> 0
     }
 }

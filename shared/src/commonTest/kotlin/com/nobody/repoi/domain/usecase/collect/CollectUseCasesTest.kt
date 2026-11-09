@@ -5,7 +5,8 @@ import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.session.FakeUserSessionimport kotlinx.coroutines.test.runTest
+import com.nobody.repoi.data.session.FakeUserSession
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

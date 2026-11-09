@@ -71,7 +71,7 @@ val viewModelModule = module {
     viewModel { AlbumViewModel(get(), get()) }
     viewModelOf(::AlbumDetailViewModel)
     viewModel { AlbumRankListViewModel(get()) }
-    viewModel { CharacterDetailViewModel(get(), get()) }
+    viewModelOf(::CharacterDetailViewModel)
     viewModel { CharacterAlbumListViewModel(get()) }
     viewModel { CharacterWorksListViewModel(get()) }
     viewModelOf(::CollectEditViewModel)

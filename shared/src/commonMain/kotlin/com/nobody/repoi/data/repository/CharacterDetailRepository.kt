@@ -9,17 +9,15 @@ import com.nobody.repoi.data.remote.model.CharacterWorksItem
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 
 /**
  * 角色/要素详情多端点聚合数据仓储。
  *
- * 收藏切换不再直连 `api/collect/item/add|del`，统一委托 [ToggleItemCollectUseCase]，
- * 使角色页与其他详情页共享同一份收藏状态池。
+ * 本仓储只承载详情/作品/相册等只读聚合查询；收藏切换由 ViewModel 直接依赖
+ * `ToggleItemCollectUseCase`（依赖倒置：仓储不再转手写操作）。
  */
 class CharacterDetailRepository(
     private val api: HpoiApi,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
 ) {
     /**
      * 获取角色主体详情 (api/charactar/get)
@@ -116,14 +114,6 @@ class CharacterDetailRepository(
             throw ApiException(response.code, response.msg ?: "获取属性标签失败")
         }
     }
-
-    /**
-     * 切换收藏/想买状态（委托 [ToggleItemCollectUseCase]，写入收藏仓储状态池）
-     * @param isCollected 当前是否已收藏，true 表示操作取消收藏，false 表示操作新增收藏
-     * @return 切换后的最新收藏状态
-     */
-    suspend fun toggleCollect(nodeId: Long, isCollected: Boolean): Result<Boolean> =
-        toggleItemCollectUseCase(nodeId, isCollected)
 
     /**
      * 获取角色评论列表 (api/comment/get)

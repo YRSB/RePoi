@@ -197,13 +197,13 @@ class CollectRepositoryStateTest {
     }
 
     @Test
-    fun markGalleryMutated_incrementsMonotonically() {
+    fun markGalleryMutation_incrementsMonotonically() {
         val (_, repository) = setup()
-        assertEquals(0L, repository.galleryMutationTicks.value)
+        assertEquals(0L, repository.galleryMutationCount.value)
 
-        repository.markGalleryMutated()
-        repository.markGalleryMutated()
+        repository.markGalleryMutation()
+        repository.markGalleryMutation()
 
-        assertEquals(2L, repository.galleryMutationTicks.value)
+        assertEquals(2L, repository.galleryMutationCount.value)
     }
 }

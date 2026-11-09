@@ -489,7 +489,7 @@ class UserCollectViewModelTest {
         val requestsBeforeResume = mock.requestCount
 
         // 画廊里收藏/取消过：仓储脏位 +1
-        env.collectRepository.markGalleryMutated()
+        env.collectRepository.markGalleryMutation()
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
 
@@ -532,7 +532,7 @@ class UserCollectViewModelTest {
         env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.PICTURE))
         advanceUntilIdle()
 
-        env.collectRepository.markGalleryMutated()
+        env.collectRepository.markGalleryMutation()
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
         val requestsAfterFirstResume = mock.requestCount

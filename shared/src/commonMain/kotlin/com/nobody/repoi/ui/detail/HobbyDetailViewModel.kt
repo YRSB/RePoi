@@ -215,7 +215,7 @@ class HobbyDetailViewModel(
         return current.copy(
             isFavorite = isCollected,
             currentCollectData = collectData,
-            collectCountDelta = collectCountDeltaOf(isCollected, collectBaselineCollected)
+            collectCountDelta = collectDeltaOf(collectBaselineCollected, isCollected)
         )
     }
 
@@ -223,12 +223,7 @@ class HobbyDetailViewModel(
     private fun currentNodeIdOf(state: HobbyDetailUiState): Long =
         state.detail?.actualNodeId ?: state.itemId
 
-    /** 「基线 + delta」：delta 恒为当前收藏态相对基线的差值。 */
-    private fun collectCountDeltaOf(isCollected: Boolean, baseline: Boolean): Int = when {
-        isCollected && !baseline -> 1
-        !isCollected && baseline -> -1
-        else -> 0
-    }
+
 
     init {
         // 合并评论详情页回写的主楼更新（点赞/回复）

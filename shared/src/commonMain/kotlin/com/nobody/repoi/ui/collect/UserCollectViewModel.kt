@@ -150,12 +150,15 @@ class UserCollectViewModel(
     }
 
     /**
-     * 已消费的画廊写操作计数快照。
+     * 已消费的**画廊写操作计数**快照，随恢复槽持久化。
      *
-     * [CollectRepository.galleryMutationTicks] 单调递增且无订阅也不丢事件，
+     * [CollectRepository.galleryMutationCount] 单调递增且无订阅也不丢事件，
      * 因此恢复时只需比对计数是否变大，即可判定「画廊里动过收藏」。
+     * 快照必须写进 [savedState]：否则配置变更重建后会把已消费的计数当成新事件，白发一次刷新。
      */
-    private var consumedGalleryTicks: Long = collectRepository.galleryMutationTicks.value
+    private var consumedGalleryMutationCount: Long =
+        stateGet<Long>(KEY_CONSUMED_GALLERY_MUTATION_COUNT)
+            ?: collectRepository.galleryMutationCount.value
 
     // ==================== 8 大类分页装载器 ====================
 
@@ -1006,9 +1009,10 @@ class UserCollectViewModel(
      * 仅当当前正停在图片大类、或图片列表已开始装载过时才刷新，避免白发一次首屏请求。
      */
     private fun handleResume() {
-        val ticks = collectRepository.galleryMutationTicks.value
-        if (ticks <= consumedGalleryTicks) return
-        consumedGalleryTicks = ticks
+        val count = collectRepository.galleryMutationCount.value
+        if (count <= consumedGalleryMutationCount) return
+        consumedGalleryMutationCount = count
+        stateSet(KEY_CONSUMED_GALLERY_MUTATION_COUNT, count)
         if (userId <= 0L) return
         val picState = picLoader.state.value
         val shouldRefreshPic = _uiState.value.selectedCategory == UserCollectCategory.PICTURE ||
@@ -1178,6 +1182,9 @@ class UserCollectViewModel(
         private const val CONTENT_HIDDEN_KEYWORD = "隐藏"
         private const val KEY_HOBBY_ORDER_MEMORY = "collect_hobby_order_memory"
         private const val KEY_HOBBY_SORT_TYPE_MEMORY = "collect_hobby_sort_type_memory"
+
+        /** 已消费的画廊写操作计数在恢复槽中的键 */
+        private const val KEY_CONSUMED_GALLERY_MUTATION_COUNT = "consumedGalleryMutationCount"
 
         /** 通用 4 页：厂商/系列/角色/人物，共用 2 档排序白名单 */
         val COMMON_CATEGORIES = setOf(
