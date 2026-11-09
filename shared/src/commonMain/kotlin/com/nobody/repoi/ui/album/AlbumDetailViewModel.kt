@@ -414,7 +414,7 @@ class AlbumDetailViewModel(
 
         viewModelScope.launch {
             val likeDeferred = async { repository.getAlbumLikeInfo(actualAlbumId) }
-            val collectDeferred = async { collectRepository.getCollectState(actualAlbumId) }
+            val collectDeferred = async { collectRepository.refreshCollectState(actualAlbumId) }
             val followDeferred = if (!isAuthor && authorId > 0L) {
                 async { followRepository.getFellowType(authorId) }
             } else null

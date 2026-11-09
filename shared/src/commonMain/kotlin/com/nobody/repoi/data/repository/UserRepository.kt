@@ -9,8 +9,6 @@ import com.nobody.repoi.data.remote.model.CollectTopItem
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
-import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
-import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.remote.model.UserPraiseItem
 import com.nobody.repoi.data.session.SessionState
@@ -35,20 +33,12 @@ data class FullProfileData(
 )
 
 /**
- * 分页数据包装结果，保留根据底层未过滤条数计算得出的 hasMore 标志。
- */
-data class CreationPageResult<T>(
-    val items: List<T> = emptyList(),
-    val hasMore: Boolean = false
-)
-
-/**
  * 用户档案、展柜与个人创作数据仓储。
  *
  * 会话职责已全面收敛至 [UserSession]，足迹划归 [UserHistoryRepository]，
  * 社交关注划归 [FollowRepository]，订单财务划归 [UserFinanceRepository]，
- * 收藏列表与收藏状态读写一律归属 [CollectRepository]（收藏数据唯一真相源）。
- * 本仓储自身专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
+ * 收藏列表、收藏状态读写与「我创建的」相册/图片查询一律归属 [CollectRepository]
+ * （收藏数据唯一真相源）。本仓储自身专注于用户信息查询、签到打卡、魔力值积分、个人资料修改与收藏展柜列表。
  */
 class UserRepository(
     private val api: HpoiApi,
@@ -79,62 +69,6 @@ class UserRepository(
             response.data?.list?.map { it.toAlbumListItem() } ?: emptyList()
         } else {
             throw ApiException(response.code, response.msg ?: "获取用户相册失败")
-        }
-    }
-
-    /**
-     * 获取用户发布页的相册列表 (api/album/user-v2)。
-     * 返回原版完整相册条目 [UserCollectAlbumItem]。
-     */
-    suspend fun getUserCreationAlbumList(
-        userId: Long,
-        page: Int = 1,
-        pageSize: Int = 20,
-        order: String = "addTime"
-    ): Result<CreationPageResult<UserCollectAlbumItem>> = runCatching {
-        val response = api.getUserAlbumList(
-            userNodeId = userId,
-            page = page,
-            pageSize = pageSize,
-            type = "upload",
-            order = order
-        )
-        if (response.isSuccess || (response.success && response.data != null)) {
-            val rawList = response.data?.list ?: emptyList()
-            CreationPageResult(
-                items = rawList,
-                hasMore = rawList.size >= pageSize
-            )
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取用户发布相册失败")
-        }
-    }
-
-    /**
-     * 获取用户发布页的图片列表 (api/pic/user)。
-     * 返回原版图片条目 [UserCollectPicItem]。
-     */
-    suspend fun getUserCreationPicList(
-        userId: Long,
-        page: Int = 1,
-        pageSize: Int = 20,
-        order: String = "addTime"
-    ): Result<CreationPageResult<UserCollectPicItem>> = runCatching {
-        val response = api.getUserPicList(
-            userNodeId = userId,
-            page = page,
-            pageSize = pageSize,
-            collectState = "upload",
-            order = order
-        )
-        if (response.isSuccess || (response.success && response.data != null)) {
-            val rawList = response.data?.list ?: emptyList()
-            CreationPageResult(
-                items = rawList.filter { it.actualUrl.isNotBlank() },
-                hasMore = rawList.size >= pageSize
-            )
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取用户发布图片失败")
         }
     }
 

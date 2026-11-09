@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.collect
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,7 +20,7 @@ import kotlin.test.assertTrue
 
 /**
  * 作品收藏编辑页写侧测试：保存委托 `SaveWorksCollectUseCase`（三态校验 + 标签串清洗），
- * 取消收藏仍走仓储 `deleteWorksCollect`。
+ * 取消收藏委托 `DeleteWorksCollectUseCase`（worksId 守卫 + 仓储删除）。
  *
  * 类名刻意不含 `ViewModel`，避免受既有 ViewModel 测试过滤规则影响。
  */
@@ -44,7 +45,8 @@ class WorksCollectEditSaveTest {
         val collectRepository = newRepository(collectMock)
         val viewModel = WorksCollectEditViewModel(
             collectRepository,
-            SaveWorksCollectUseCase(collectRepository)
+            SaveWorksCollectUseCase(collectRepository),
+            DeleteWorksCollectUseCase(collectRepository)
         )
         collectMock.route("user/glean/textTag/get", collectMock.ok("""[]"""))
         collectMock.route("works/glean/get", collectMock.ok("{}"))
@@ -75,7 +77,8 @@ class WorksCollectEditSaveTest {
         val collectRepository = newRepository(collectMock)
         val viewModel = WorksCollectEditViewModel(
             collectRepository,
-            SaveWorksCollectUseCase(collectRepository)
+            SaveWorksCollectUseCase(collectRepository),
+            DeleteWorksCollectUseCase(collectRepository)
         )
         collectMock.route("user/glean/textTag/get", collectMock.ok("""[]"""))
         collectMock.route(

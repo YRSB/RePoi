@@ -3,8 +3,8 @@ package com.nobody.repoi.ui.user.creation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CreationPageResult
-import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +14,12 @@ import kotlinx.coroutines.launch
 
 /**
  * 用户投稿页 ViewModel；是否为本人由 [UserSession.currentUserId] 判定。
+ *
+ * 「我创建的」相册/图片查询归属 [CollectRepository]（收藏语料唯一真相源），
+ * 与收藏中心相册页的「我创建的」分档共用同一份查询实现。
  */
 class UserCreationViewModel(
-    private val userRepository: UserRepository,
+    private val collectRepository: CollectRepository,
     private val userSession: UserSession,
     initialCategory: Int? = null,
 ) : ViewModel() {
@@ -159,7 +162,7 @@ class UserCreationViewModel(
                     getTabState = { it.albumState },
                     updateTabState = { state, tab -> state.copy(albumState = tab) },
                     fetcher = { page, order ->
-                        userRepository.getUserCreationAlbumList(
+                        collectRepository.getUserCreationAlbumList(
                             userId = userId,
                             page = page,
                             pageSize = PAGE_SIZE,
@@ -173,7 +176,7 @@ class UserCreationViewModel(
                     getTabState = { it.picState },
                     updateTabState = { state, tab -> state.copy(picState = tab) },
                     fetcher = { page, order ->
-                        userRepository.getUserCreationPicList(
+                        collectRepository.getUserCreationPicList(
                             userId = userId,
                             page = page,
                             pageSize = PAGE_SIZE,

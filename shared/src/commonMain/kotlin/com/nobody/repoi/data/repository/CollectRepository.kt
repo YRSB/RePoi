@@ -5,6 +5,7 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectCountData
 import com.nobody.repoi.data.remote.model.CollectData
+import com.nobody.repoi.data.remote.model.CommonResponse
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -25,6 +26,17 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+
+/**
+ * 分页数据包装结果，保留根据底层未过滤条数计算得出的 hasMore 标志。
+ *
+ * 原属 `UserRepository`；「我创建的」相册/图片查询收口到 [CollectRepository] 后随之迁入，
+ * 由用户投稿页与收藏中心相册页共用。
+ */
+data class CreationPageResult<T>(
+    val items: List<T> = emptyList(),
+    val hasMore: Boolean = false
+)
 
 /**
  * 收藏模块聚合数据仓储（收藏数据唯一真相源 SSOT）：
@@ -54,8 +66,8 @@ class CollectRepository(
     private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData?>>>(emptyMap())
 
     /** 画廊写操作计数：单调递增，供列表页恢复时判定是否需要静默刷新 */
-    private val _galleryMutationTicks = MutableStateFlow(0L)
-    val galleryMutationTicks: StateFlow<Long> = _galleryMutationTicks.asStateFlow()
+    private val _galleryMutationCount = MutableStateFlow(0L)
+    val galleryMutationCount: StateFlow<Long> = _galleryMutationCount.asStateFlow()
 
     /**
      * 观察指定条目的收藏状态流；同 [nodeId] 恒返回同一实例（幂等），未拉取前值为 `null`。
@@ -83,8 +95,8 @@ class CollectRepository(
     /**
      * 标记画廊发生过收藏写操作；计数只增不减，可随时重读、无订阅者也不丢。
      */
-    fun markGalleryMutated() {
-        _galleryMutationTicks.update { it + 1 }
+    fun markGalleryMutation() {
+        _galleryMutationCount.update { it + 1 }
     }
 
     /**
@@ -101,12 +113,6 @@ class CollectRepository(
             throw ApiException(response.code, response.msg ?: "获取收藏状态失败")
         }
     }
-
-    /**
-     * 获取指定条目的收藏状态信息 (api/collect/state)。
-     * 语义等同 [refreshCollectState]：网络成功即写入状态池，失败保持池内原值。
-     */
-    suspend fun getCollectState(nodeId: Long): Result<CollectData?> = refreshCollectState(nodeId)
 
     /**
      * 获取指定条目的 5 种分类统计人数 (api/hobby/collectCount)。
@@ -211,6 +217,30 @@ class CollectRepository(
     }
 
     /**
+     * 收藏类列表请求的统一信封处理。
+     *
+     * 四个收藏列表与两个创建列表接口的响应体差异只在载荷与错误文案，成功/失效判定完全一致，
+     * 故在此收口：成功（含 `success && data != null` 的历史返回）→ 由 [extract] 取出原始列表；
+     * 失败 → token 过期先触发会话自愈通知（用**请求前**的快照比对，避免误伤已刷新的会话），
+     * 再统一抛 [ApiException]。
+     */
+    private suspend fun <T, R> listWithSessionEnvelope(
+        fallbackMessage: String,
+        request: suspend () -> CommonResponse<T>,
+        extract: (T?) -> List<R>?
+    ): List<R> {
+        val snapshotToken = userSession.currentToken
+        val response = request()
+        if (response.isSuccess || (response.success && response.data != null)) {
+            return extract(response.data) ?: emptyList()
+        }
+        if (response.isTokenExpired) {
+            userSession.notifyTokenExpired(snapshotToken)
+        }
+        throw ApiException(response.code, response.msg ?: fallbackMessage)
+    }
+
+    /**
      * 查询用户全量手办收藏列表 (api/collect/hobby-v2, GET)。
      *
      * @param category 周边细分类，「全部」传 [CollectConstants.CATEGORY_ALL]（10000，原版不用 null）
@@ -244,16 +274,11 @@ class CollectRepository(
                 put("tag", tag)
             }
         }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectHobby(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取收藏列表失败")
-        }
+        listWithSessionEnvelope(
+            fallbackMessage = "获取收藏列表失败",
+            request = { api.getUserCollectHobby(params) },
+            extract = { data -> data?.list }
+        )
     }
 
     /**
@@ -302,16 +327,11 @@ class CollectRepository(
                 }
             }
         }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectCommon(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取通用实体收藏列表失败")
-        }
+        listWithSessionEnvelope(
+            fallbackMessage = "获取通用实体收藏列表失败",
+            request = { api.getUserCollectCommon(params) },
+            extract = { data -> data?.list }
+        )
     }
 
     /**
@@ -336,16 +356,11 @@ class CollectRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectAlbum(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取相册收藏列表失败")
-        }
+        listWithSessionEnvelope(
+            fallbackMessage = "获取相册收藏列表失败",
+            request = { api.getUserCollectAlbum(params) },
+            extract = { data -> data?.list }
+        )
     }
 
     /**
@@ -371,16 +386,78 @@ class CollectRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserCollectPic(params)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取图片收藏列表失败")
-        }
+        listWithSessionEnvelope(
+            fallbackMessage = "获取图片收藏列表失败",
+            request = { api.getUserCollectPic(params) },
+            extract = { data -> data?.list }
+        )
+    }
+
+    /**
+     * 查询用户**创建**（发布）的相册列表 (api/album/user-v2, type=upload)。
+     *
+     * 与 [getUserCollectAlbumList]（`api/collect/album-v2`）是两套语料：
+     * 本方法服务于收藏中心相册页的「我创建的」分档（issue #97 Story 5）与用户投稿页，
+     * 故同样收口在收藏仓储，避免 `UserRepository` 持有收藏语料。
+     *
+     * @param order 排序 key，白名单 addTime（发布时间）/ actionDate（收藏时间）/ praiseCount（点赞量）
+     * @return 保留底层未过滤条数推导出的 `hasMore`
+     */
+    suspend fun getUserCreationAlbumList(
+        userId: Long,
+        page: Int = 1,
+        pageSize: Int = 20,
+        order: String = CollectConstants.ORDER_ADD_TIME
+    ): Result<CreationPageResult<UserCollectAlbumItem>> = runCatching {
+        val items = listWithSessionEnvelope(
+            fallbackMessage = "获取用户发布相册失败",
+            request = {
+                api.getUserAlbumList(
+                    userNodeId = userId,
+                    page = page,
+                    pageSize = pageSize,
+                    type = CREATION_ALBUM_TYPE,
+                    order = order
+                )
+            },
+            extract = { data -> data?.list }
+        )
+        // hasMore 以**过滤前**条数判定，避免服务端补全路径时提前终止翻页
+        CreationPageResult(items = items, hasMore = items.size >= pageSize)
+    }
+
+    /**
+     * 查询用户**创建**（发布）的图片列表 (api/pic/user, collectState=upload)。
+     *
+     * 与 [getUserCollectPicList]（`api/collect/pic-v2`）是两套语料；空白 URL 条目按原实现过滤，
+     * `hasMore` 仍以**未过滤**条数判定，避免服务端补全路径时提前终止翻页。
+     *
+     * @param order 排序 key，白名单 addTime / actionDate / praiseCount
+     */
+    suspend fun getUserCreationPicList(
+        userId: Long,
+        page: Int = 1,
+        pageSize: Int = 20,
+        order: String = CollectConstants.ORDER_ADD_TIME
+    ): Result<CreationPageResult<UserCollectPicItem>> = runCatching {
+        val rawList = listWithSessionEnvelope(
+            fallbackMessage = "获取用户发布图片失败",
+            request = {
+                api.getUserPicList(
+                    userNodeId = userId,
+                    page = page,
+                    pageSize = pageSize,
+                    collectState = CREATION_PIC_STATE,
+                    order = order
+                )
+            },
+            extract = { data -> data?.list }
+        )
+        // hasMore 以**过滤前**条数判定，避免空 URL 条目被剔除后过早结束翻页
+        CreationPageResult(
+            items = rawList.filter { it.actualUrl.isNotBlank() },
+            hasMore = rawList.size >= pageSize
+        )
     }
 
     /**
@@ -542,5 +619,11 @@ class CollectRepository(
 
         /** 周边列表排序：降序（原版默认值） */
         const val SORT_TYPE_DESC = 2
+
+        /** 「我创建的」相册查询类型（`api/album/user-v2` 的 type） */
+        const val CREATION_ALBUM_TYPE = "upload"
+
+        /** 「我上传的」图片查询状态（`api/pic/user` 的 collectState） */
+        const val CREATION_PIC_STATE = "upload"
     }
 }

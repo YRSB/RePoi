@@ -214,4 +214,41 @@ class CollectUseCasesTest {
         assertTrue(result.isFailure)
         assertEquals("标签过长", (result.exceptionOrNull() as ApiException).message)
     }
+
+    @Test
+    fun deleteWorksCollect_withInvalidWorksId_failsWithoutRequest() = runTest {
+        val env = env()
+
+        val result = DeleteWorksCollectUseCase(env.repository).invoke(worksId = 0L)
+
+        assertTrue(result.isFailure)
+        assertEquals("作品信息缺失", (result.exceptionOrNull() as ApiException).message)
+        assertEquals(0, env.mock.requestCount)
+    }
+
+    @Test
+    fun deleteWorksCollect_onSuccess_callsDeleteEndpoint() = runTest {
+        val env = env()
+        env.mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val result = DeleteWorksCollectUseCase(env.repository).invoke(worksId = 20001L)
+
+        assertTrue(result.isSuccess)
+        val recorded = env.mock.takeRequest()
+        assertEquals("/api/works/glean/del", recorded.encodedPath)
+        assertEquals("Works", recorded.formEntries()["itemType"])
+        assertEquals("20001", recorded.formEntries()["itemId"])
+    }
+
+    @Test
+    fun deleteWorksCollect_onApiFailure_propagatesApiException() = runTest {
+        val env = env()
+        env.mock.enqueue(env.mock.failure(500, "取消作品收藏失败"))
+
+        val result = DeleteWorksCollectUseCase(env.repository).invoke(worksId = 20001L)
+
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
+        assertEquals("取消作品收藏失败", (result.exceptionOrNull() as ApiException).message)
+    }
 }

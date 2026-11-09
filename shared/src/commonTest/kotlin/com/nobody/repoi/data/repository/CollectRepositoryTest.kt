@@ -499,6 +499,71 @@ class CollectRepositoryTest {
         assertEquals("fav", recorded.queryParameter("type"))
     }
 
+    /**
+     * 「我创建的」相册走 `api/album/user-v2`（type=upload），与「我收藏的」
+     * （`api/collect/album-v2`，type=fav）是两套语料（issue #97 Story 5）。
+     */
+    @Test
+    fun getUserCreationAlbumList_sendsUploadTypeAndDerivesHasMore() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":7001,"addTime":"2024-05-01 12:00:00","name":"我的相册","cover":"covers/mine.jpg"}]}}"""
+        )
+
+        val result = repository.getUserCreationAlbumList(userId = 88888L, page = 2, pageSize = 20)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.items.size)
+        assertEquals(7001L, page.items[0].id)
+        // 未满一页 → 没有下一页
+        assertFalse(page.hasMore)
+
+        val recorded = mock.takeRequest()
+        assertEquals("GET", recorded.method)
+        assertTrue(recorded.encodedPath!!.startsWith("/api/album/user-v2"))
+        assertEquals("88888", recorded.queryParameter("userNodeId"))
+        assertEquals("upload", recorded.queryParameter("type"))
+        assertEquals("2", recorded.queryParameter("page"))
+        assertEquals("20", recorded.queryParameter("pageSize"))
+        assertEquals("addTime", recorded.queryParameter("order"))
+    }
+
+    @Test
+    fun getUserCreationAlbumList_onApiFailurePropagatesMessage() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "相册服务异常"))
+
+        val result = repository.getUserCreationAlbumList(userId = 88888L)
+
+        assertTrue(result.isFailure)
+        assertEquals("相册服务异常", (result.exceptionOrNull() as ApiException).message)
+    }
+
+    /**
+     * 空白 URL 条目被过滤，但 `hasMore` 仍以**未过滤**条数判定，
+     * 避免服务端补全路径时提前终止翻页。
+     */
+    @Test
+    fun getUserCreationPicList_filtersBlankUrlsAndKeepsRawHasMore() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"path":"2026/09/a.jpg"},{"id":9002,"path":""}]}}"""
+        )
+
+        val result = repository.getUserCreationPicList(userId = 88888L, page = 1, pageSize = 2)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(listOf(9001L), page.items.map { it.id })
+        assertTrue(page.hasMore)
+
+        val recorded = mock.takeRequest()
+        assertTrue(recorded.encodedPath!!.startsWith("/api/pic/user"))
+        assertEquals("upload", recorded.queryParameter("collectState"))
+        assertEquals("addTime", recorded.queryParameter("order"))
+    }
+
     @Test
     fun getUserCollectPicList_passesParamsAndParsesItems() = runTest {
         val (mock, repository) = setup()

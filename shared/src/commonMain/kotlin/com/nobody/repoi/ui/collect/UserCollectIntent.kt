@@ -48,10 +48,25 @@ sealed interface UserCollectIntent {
     /** 控制周边筛选抽屉显隐（打开时懒加载标签候选池） */
     data class SetFilterSheetVisible(val visible: Boolean) : UserCollectIntent
 
+    /**
+     * 懒加载周边标签候选池。
+     *
+     * 抽屉打开时由 ViewModel 内部自动触发；[force] 为 true 时无视已有缓存强制重拉。
+     */
+    data class LoadHobbyTags(val force: Boolean) : UserCollectIntent
+
     // ===== 各大类排序 =====
 
     /** 切换相册排序 */
     data class SwitchAlbumOrder(val order: String) : UserCollectIntent
+
+    /**
+     * 切换相册页语料：`fav` = 我收藏的 / `upload` = 我创建的。
+     *
+     * 两档走两套接口（`collect/album-v2` 与 `album/user-v2`），内容与分页语义都不同，
+     * 切换即重载相册列表；白名单外的值由 ViewModel 丢弃。
+     */
+    data class SwitchAlbumType(val type: String) : UserCollectIntent
 
     /** 切换图片排序 */
     data class SwitchPicOrder(val order: String) : UserCollectIntent
@@ -75,6 +90,9 @@ sealed interface UserCollectIntent {
 
     /** 控制作品筛选弹层显隐（打开时懒加载作品标签候选池） */
     data class SetWorksFilterSheetVisible(val visible: Boolean) : UserCollectIntent
+
+    /** 懒加载作品页标签候选池（[force] 为 true 时无视已有缓存强制重拉） */
+    data class LoadWorksTags(val force: Boolean) : UserCollectIntent
 
     // ===== 分页装载 =====
 

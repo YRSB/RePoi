@@ -269,7 +269,7 @@ class PictureGalleryViewModel(
      * 切页：重置原图开关、重置超长图标记、重新回填收藏态与关联条目。
      *
      * 对齐原版 `PictureGalleryActivity.s0()` + `t0()`：切页后**延迟 500ms** 且确认
-     * 仍停留在同一页时才调 `getCollectState` 回填星标（原版用 `Thread.sleep(500)` + 下标比对）。
+     * 仍停留在同一页时才调 `refreshCollectState` 回填星标（原版用 `Thread.sleep(500)` + 下标比对）。
      *
      * @param item 当前页对应的图片条目
      * @param index 当前页下标
@@ -297,7 +297,7 @@ class PictureGalleryViewModel(
         collectStateJob = viewModelScope.launch {
             delay(COLLECT_STATE_REFRESH_DELAY_MS)
             if (currentIndex != index) return@launch
-            collectRepository.getCollectState(item.id)
+            collectRepository.refreshCollectState(item.id)
                 .onSuccess { data ->
                     if (currentIndex != index) return@onSuccess
                     val collected = data?.isCollected == true
@@ -341,7 +341,7 @@ class PictureGalleryViewModel(
             val result = toggleItemCollectUseCase(item.id, wasCollected)
             result.onSuccess {
                 // 记录画廊脏位：收藏中心列表恢复时据此静默刷新
-                collectRepository.markGalleryMutated()
+                collectRepository.markGalleryMutation()
             }
             result.onFailure { error ->
                 // 回滚到请求前状态

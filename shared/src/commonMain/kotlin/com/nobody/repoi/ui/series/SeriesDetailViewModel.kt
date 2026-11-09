@@ -12,6 +12,7 @@ import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.data.repository.SeriesDetailRepository
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -329,13 +330,6 @@ class SeriesDetailViewModel(
                 }
             }
         }
-    }
-
-    /** 计数增量以「服务端原始收藏态」为基准，不做逐次累加。 */
-    private fun collectDeltaOf(originalCollected: Boolean, currentCollected: Boolean): Int = when {
-        originalCollected && !currentCollected -> -1
-        !originalCollected && currentCollected -> 1
-        else -> 0
     }
 
     /**

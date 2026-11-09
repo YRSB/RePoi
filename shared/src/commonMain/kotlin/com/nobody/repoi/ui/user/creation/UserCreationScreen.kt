@@ -63,6 +63,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
+import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.components.CollectAlbumCard
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
@@ -206,7 +207,9 @@ fun UserCreationScreen(
                             isSelected = false,
                             isSelectionMode = false,
                             onClick = { onNavigateToAlbum(album.actualAlbumId) },
-                            onLongClick = {}
+                            onLongClick = {},
+                            // 投稿页只有「我创建的」语料：无收藏时间，时间列退到发布时间
+                            albumType = AlbumTypeOption.UPLOAD
                         )
                     }
                 }

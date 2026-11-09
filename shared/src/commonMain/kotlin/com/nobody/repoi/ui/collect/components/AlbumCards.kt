@@ -38,6 +38,7 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
+import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.MediaOrderOption
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import androidx.compose.material3.ElevatedCard
@@ -61,6 +62,7 @@ import androidx.compose.material3.CardDefaults
  *
  * @param item 外层收藏节点。⚠️ **批量取消收藏用 `item.id`，不是 `actualAlbumId`**。
  * @param currentOrder 当前排序档，取值见 [MediaOrderOption]
+ * @param albumType 相册语料档位，取值见 [AlbumTypeOption]（决定「收藏时间」档的时间回落）
  * @param isSelected 多选模式下是否已选中
  * @param isSelectionMode 是否处于多选模式（决定点击是「进详情」还是「切换选中」）
  */
@@ -73,6 +75,7 @@ internal fun CollectAlbumCard(
     isSelectionMode: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    albumType: String = AlbumTypeOption.DEFAULT,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
@@ -111,9 +114,9 @@ internal fun CollectAlbumCard(
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
-                // 时间字段与排序档联动（交付项 #5）
-                val timeText = remember(currentOrder, item.id) {
-                    formatCollectAlbumTime(item, currentOrder)
+                // 时间字段与排序档联动（交付项 #5）；「我创建的」档无收藏时间，退到发布时间
+                val timeText = remember(currentOrder, item.id, albumType) {
+                    formatCollectAlbumTime(item, currentOrder, albumType)
                 }
                 val hasAuthor = !item.actualUserNickName.isNullOrBlank()
                 val hasAvatar = !item.actualUserAvatar.isNullOrBlank()
@@ -298,10 +301,12 @@ private fun CollectPraiseBadge(
  *
  * @param album 外层收藏节点
  * @param currentOrder 当前排序档
+ * @param albumType 相册语料档位（`fav` 我收藏的 / `upload` 我创建的）
  */
 internal fun formatCollectAlbumTime(
     album: UserCollectAlbumItem,
-    currentOrder: String
+    currentOrder: String,
+    albumType: String = AlbumTypeOption.DEFAULT
 ): String? = when (currentOrder) {
     // 发布/更新时间：原版以 updTime 为准（纯相对时间），降级内层 updTime 再退到 addTime
     MediaOrderOption.ADD_TIME -> formatAlbumTime(
@@ -311,7 +316,12 @@ internal fun formatCollectAlbumTime(
             ?: album.item?.addTime
     )
     // 收藏时间：actualActionDate 已做「外层 → 内层」的回退
-    MediaOrderOption.ACTION_DATE -> formatAlbumTime(album.actualActionDate)
+    MediaOrderOption.ACTION_DATE -> if (albumType == AlbumTypeOption.UPLOAD) {
+        // 「我创建的」条目本身没有收藏动作，退到发布时间，避免整行空白
+        formatAlbumTime(album.actualActionDate ?: album.addTime ?: album.item?.addTime)
+    } else {
+        formatAlbumTime(album.actualActionDate)
+    }
     // 按点赞量排序时发布时间与收藏时间都失去参考意义，整行隐藏
     else -> null
 }

@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.collect
+package com.nobody.repoi.ui.collect
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -69,7 +69,7 @@ class CollectEditViewModel(
             }
 
             // 2. 拉取当前条目的用户收藏详情
-            val stateResult = collectRepository.getCollectState(resolvedNodeId)
+            val stateResult = collectRepository.refreshCollectState(resolvedNodeId)
             stateResult.onSuccess { collectData ->
                 if (collectData != null && collectData.isCollected) {
                     val formattedMoney = collectData.orderMoney?.let {

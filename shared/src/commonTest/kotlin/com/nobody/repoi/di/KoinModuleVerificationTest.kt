@@ -36,6 +36,7 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
@@ -133,6 +134,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<DeleteHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<SaveWorksCollectUseCase>().shouldNotBeNull()
+            koin.getOrNull<DeleteWorksCollectUseCase>().shouldNotBeNull()
         } finally {
             app.close()
         }

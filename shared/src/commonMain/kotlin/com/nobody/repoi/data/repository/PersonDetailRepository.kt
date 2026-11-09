@@ -94,5 +94,5 @@ class PersonDetailRepository(
      * 未收藏返回 false，失败时透出由调用方回退到主体详情初始值。
      */
     suspend fun getCollectState(personNodeId: Long): Result<Boolean> =
-        collectRepository.getCollectState(personNodeId).map { it?.isCollected == true }
+        collectRepository.refreshCollectState(personNodeId).map { it?.isCollected == true }
 }

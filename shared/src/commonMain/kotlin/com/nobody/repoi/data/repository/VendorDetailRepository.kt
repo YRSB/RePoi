@@ -183,7 +183,7 @@ class VendorDetailRepository(
      * 未收藏返回 false，失败时透出由调用方兜底。
      */
     suspend fun getCollectState(companyNodeId: Long): Result<Boolean> =
-        collectRepository.getCollectState(companyNodeId).map { it?.isCollected == true }
+        collectRepository.refreshCollectState(companyNodeId).map { it?.isCollected == true }
 
     /**
      * 查询厂商屏蔽状态 (api/mask/state-v2)。
