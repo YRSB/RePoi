@@ -139,7 +139,7 @@ class ThemeMotionTest {
      */
     @Test
     fun coldStart_themeConfigArrival_snapsToTargetWithoutInterpolation() = runComposeUiTest {
-        val style = mutableStateOf(PaletteStyle.TonalSpot)
+        val style = mutableStateOf<PaletteStyle>(PaletteStyle.TonalSpot)
         var animated: Triple<Color, Color, Color>? = null
         var target: Triple<Color, Color, Color>? = null
         setThemeUnderTest(
@@ -215,7 +215,7 @@ class ThemeMotionTest {
     @Test
     fun darkModeSwitch_appliesImmediately() = runComposeUiTest {
         val dark = mutableStateOf(false)
-        val style = mutableStateOf(PaletteStyle.TonalSpot)
+        val style = mutableStateOf<PaletteStyle>(PaletteStyle.TonalSpot)
         var animated: Triple<Color, Color, Color>? = null
         var target: Triple<Color, Color, Color>? = null
         setThemeUnderTest(
