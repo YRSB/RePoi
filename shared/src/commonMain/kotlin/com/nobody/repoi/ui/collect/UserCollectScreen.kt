@@ -28,10 +28,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -84,6 +88,15 @@ fun UserCollectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 恢复感知：从图片画廊（独立 Nav3 路由）出栈回来时，若画廊内动过收藏，
+    // 由仓储脏位（galleryMutationCount）驱动图片大类静默刷新。
+    // resumeCount > 1 跳过首次组合，避免刚进入页面就多发一次请求。
+    var resumeCount by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        resumeCount++
+        if (resumeCount > 1) viewModel.onIntent(UserCollectIntent.OnResume)
+    }
+
     val categories = remember { UserCollectCategory.entries }
     val initialIndex = remember(param.initialCategory) {
         categories.indexOfFirst { it.key == param.initialCategory }.coerceAtLeast(0)
@@ -105,7 +118,7 @@ fun UserCollectScreen(
         val error = uiState.errorMessage
         if (error != null && uiState.currentHasItems) {
             snackbarHostState.showSnackbar(error)
-            viewModel.dismissError()
+            viewModel.onIntent(UserCollectIntent.DismissError(uiState.selectedCategory))
         }
     }
 
@@ -131,7 +144,7 @@ fun UserCollectScreen(
                 actions = {
                     // 仅手办周边页显示网格/列表切换按钮
                     if (uiState.selectedCategory == UserCollectCategory.HOBBY) {
-                        IconButton(onClick = { viewModel.toggleViewMode() }) {
+                        IconButton(onClick = { viewModel.onIntent(UserCollectIntent.ToggleViewMode) }) {
                             Icon(
                                 imageVector = if (uiState.isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.List,
                                 contentDescription = if (uiState.isListView) "切换为网格视图" else "切换为列表视图",
@@ -179,7 +192,7 @@ fun UserCollectScreen(
                         Tab(
                             selected = isSelected,
                             onClick = {
-                                viewModel.switchCategory(cat)
+                                viewModel.onIntent(UserCollectIntent.SwitchCategory(cat))
                             },
                             text = {
                                 Text(
@@ -206,17 +219,17 @@ fun UserCollectScreen(
                         HobbyCollectSubPage(
                             uiState = uiState,
                             navBarBottomPadding = navBarBottomPadding,
-                            onRefresh = { viewModel.refresh(UserCollectCategory.HOBBY) },
-                            onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.HOBBY) },
-                            onSwitchCollectState = { viewModel.switchCollectState(it) },
-                            onSwitchOrder = { viewModel.switchOrder(it) },
-                            onSwitchSortDirection = { viewModel.switchSortDirection(it) },
-                            onOpenFilter = { viewModel.setFilterSheetVisible(true) },
+                            onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.HOBBY)) },
+                            onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.HOBBY)) },
+                            onSwitchCollectState = { viewModel.onIntent(UserCollectIntent.SwitchCollectState(it)) },
+                            onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchOrder(it)) },
+                            onSwitchSortDirection = { viewModel.onIntent(UserCollectIntent.SwitchSortDirection(it)) },
+                            onOpenFilter = { viewModel.onIntent(UserCollectIntent.SetFilterSheetVisible(true)) },
                             // 多选与批量取消收藏：入参为外层收藏节点 id
-                            onToggleSelect = { viewModel.toggleSelect(it) },
-                            onSelectAll = { viewModel.selectAll() },
-                            onClearSelection = { viewModel.clearSelection() },
-                            onCancelSelectedCollect = { viewModel.cancelSelectedCollect() },
+                            onToggleSelect = { viewModel.onIntent(UserCollectIntent.ToggleSelect(it)) },
+                            onSelectAll = { viewModel.onIntent(UserCollectIntent.SelectAll(UserCollectCategory.HOBBY)) },
+                            onClearSelection = { viewModel.onIntent(UserCollectIntent.ClearSelection(UserCollectCategory.HOBBY)) },
+                            onCancelSelectedCollect = { viewModel.onIntent(UserCollectIntent.ConfirmBatchCancel) },
                             onItemClick = { item ->
                                 onNavigateToHobby(
                                     DetailNavParam(
@@ -227,7 +240,7 @@ fun UserCollectScreen(
                                     )
                                 )
                             },
-                            onRetry = { viewModel.loadFirstPage(UserCollectCategory.HOBBY) }
+                            onRetry = { viewModel.onIntent(UserCollectIntent.LoadFirstPage(UserCollectCategory.HOBBY)) }
                         )
                     }
 
@@ -241,24 +254,29 @@ fun UserCollectScreen(
                             selectedIds = uiState.albumSelectedIds,
                             isSelf = uiState.isSelf,
                             isCancellingBatch = uiState.isCancellingBatch,
-                            onRefresh = { viewModel.refresh(UserCollectCategory.ALBUM) },
-                            onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.ALBUM) },
-                            onSwitchOrder = { viewModel.switchAlbumOrder(it) },
+                            onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.ALBUM)) },
+                            onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.ALBUM)) },
+                            onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchAlbumOrder(it)) },
                             onItemClick = { item ->
                                 onNavigateToAlbum?.invoke(
                                     AlbumNavParam(
-                                        albumId = item.actualAlbumId,
+                                        // 「我收藏的」用内层真实相册 id；「我创建的」接口的 id 本身就是相册 id
+                                        albumId = if (uiState.albumType == AlbumTypeOption.UPLOAD) {
+                                            item.id
+                                        } else {
+                                            item.actualAlbumId
+                                        },
                                         initialTitle = item.actualTitle,
                                         initialCover = item.actualCover
                                     )
                                 )
                             },
                             // 多选：入参为外层收藏节点 id
-                            onToggleSelect = { viewModel.toggleSelect(it) },
-                            onSelectAll = { viewModel.selectAll() },
-                            onCancelSelection = { viewModel.clearSelection() },
-                            onCancelCollect = { viewModel.cancelSelectedCollect() },
-                            onRetry = { viewModel.loadFirstPage(UserCollectCategory.ALBUM) }
+                            onToggleSelect = { viewModel.onIntent(UserCollectIntent.ToggleSelect(it)) },
+                            onSelectAll = { viewModel.onIntent(UserCollectIntent.SelectAll(UserCollectCategory.ALBUM)) },
+                            onCancelSelection = { viewModel.onIntent(UserCollectIntent.ClearSelection(UserCollectCategory.ALBUM)) },
+                            onCancelCollect = { viewModel.onIntent(UserCollectIntent.ConfirmBatchCancel) },
+                            onRetry = { viewModel.onIntent(UserCollectIntent.LoadFirstPage(UserCollectCategory.ALBUM)) }
                         )
                     }
 
@@ -267,9 +285,9 @@ fun UserCollectScreen(
                             subPageData = uiState.picData,
                             navBarBottomPadding = navBarBottomPadding,
                             currentOrder = uiState.picOrder,
-                            onRefresh = { viewModel.refresh(UserCollectCategory.PICTURE) },
-                            onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.PICTURE) },
-                            onSwitchOrder = { viewModel.switchPicOrder(it) },
+                            onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.PICTURE)) },
+                            onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.PICTURE)) },
+                            onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchPicOrder(it)) },
                             // 画廊是独立 Nav3 路由：只传「图片 id + 收藏页当前下标 + 排序档」，
                             // 由画廊路由自行按同一接口/排序加载列表并定位，返回时由 back stack 出栈。
                             onItemClick = { index ->
@@ -287,7 +305,7 @@ fun UserCollectScreen(
                                     )
                                 }
                             },
-                            onRetry = { viewModel.loadFirstPage(UserCollectCategory.PICTURE) }
+                            onRetry = { viewModel.onIntent(UserCollectIntent.LoadFirstPage(UserCollectCategory.PICTURE)) }
                         )
                     }
 
@@ -302,14 +320,14 @@ fun UserCollectScreen(
                             isSelf = uiState.isSelf,
                             showFilterSheet = uiState.showWorksFilterSheet,
                             navBarBottomPadding = navBarBottomPadding,
-                            onRefresh = { viewModel.refresh(UserCollectCategory.WORKS) },
-                            onLoadNextPage = { viewModel.loadNextPage(UserCollectCategory.WORKS) },
-                            onSwitchState = { viewModel.switchWorksState(it) },
-                            onSwitchOrderAsc = { viewModel.switchWorksOrderAsc(it) },
-                            onOpenFilter = { viewModel.setWorksFilterSheetVisible(true) },
-                            onSelectTag = { viewModel.selectWorksTag(it) },
-                            onResetTag = { viewModel.resetWorksTag() },
-                            onDismissFilter = { viewModel.setWorksFilterSheetVisible(false) },
+                            onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.WORKS)) },
+                            onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.WORKS)) },
+                            onSwitchState = { viewModel.onIntent(UserCollectIntent.SwitchWorksState(it)) },
+                            onSwitchOrderAsc = { viewModel.onIntent(UserCollectIntent.SwitchWorksOrderAsc(it)) },
+                            onOpenFilter = { viewModel.onIntent(UserCollectIntent.SetWorksFilterSheetVisible(true)) },
+                            onSelectTag = { viewModel.onIntent(UserCollectIntent.SelectWorksTag(it)) },
+                            onResetTag = { viewModel.onIntent(UserCollectIntent.ResetWorksTag) },
+                            onDismissFilter = { viewModel.onIntent(UserCollectIntent.SetWorksFilterSheetVisible(false)) },
                             onItemClick = { item ->
                                 // 嵌套实体无法确定真实条目 id 时，子页已禁掉点击，此处兜底再判一次
                                 if (worksDetailItemId(item) > 0L) {
@@ -322,7 +340,7 @@ fun UserCollectScreen(
                                     )
                                 }
                             },
-                            onRetry = { viewModel.loadFirstPage(UserCollectCategory.WORKS) }
+                            onRetry = { viewModel.onIntent(UserCollectIntent.LoadFirstPage(UserCollectCategory.WORKS)) }
                         )
                     }
 
@@ -344,10 +362,10 @@ fun UserCollectScreen(
                             commonOrder = uiState.commonOrder,
                             isListView = uiState.isListView,
                             navBarBottomPadding = navBarBottomPadding,
-                            onRefresh = { viewModel.refresh(category) },
-                            onLoadNextPage = { viewModel.loadNextPage(category) },
-                            onSwitchOrder = { viewModel.switchCommonOrder(it) },
-                            onToggleViewMode = { viewModel.toggleViewMode() },
+                            onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(category)) },
+                            onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(category)) },
+                            onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchCommonOrder(it)) },
+                            onToggleViewMode = { viewModel.onIntent(UserCollectIntent.ToggleViewMode) },
                             // 系列已建站条目走单例入口（对标原版 CommonItemListAdapter.java:51-52）
                             onSeriesSubPageClick = { item ->
                                 onNavigateToSeries?.invoke(
@@ -399,7 +417,7 @@ fun UserCollectScreen(
                                     else -> Unit
                                 }
                             },
-                            onRetry = { viewModel.loadFirstPage(category) }
+                            onRetry = { viewModel.onIntent(UserCollectIntent.LoadFirstPage(category)) }
                         )
                     }
                 }
@@ -414,11 +432,11 @@ fun UserCollectScreen(
             selectedTag = uiState.selectedTag,
             availableTags = uiState.availableTags,
             onConfirm = { subCategoryId, tag ->
-                viewModel.selectSubCategory(subCategoryId)
-                viewModel.selectTag(tag)
+                viewModel.onIntent(UserCollectIntent.SelectSubCategory(subCategoryId))
+                viewModel.onIntent(UserCollectIntent.SelectTag(tag))
             },
-            onReset = { viewModel.resetFilter() },
-            onDismiss = { viewModel.setFilterSheetVisible(false) }
+            onReset = { viewModel.onIntent(UserCollectIntent.ResetFilter) },
+            onDismiss = { viewModel.onIntent(UserCollectIntent.SetFilterSheetVisible(false)) }
         )
     }
 }

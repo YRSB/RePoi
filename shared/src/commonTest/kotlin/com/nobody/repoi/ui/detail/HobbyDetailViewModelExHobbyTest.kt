@@ -94,7 +94,7 @@ class HobbyDetailViewModelExHobbyTest {
             )
             return HobbyDetailViewModel(
                 HobbyDetailRepository(detailMock.api()),
-                CollectRepository(collectMock.api(), collectMock.json),
+                CollectRepository(collectMock.api(), collectMock.json, session),
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,

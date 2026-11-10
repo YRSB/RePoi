@@ -12,9 +12,12 @@ import com.nobody.repoi.data.remote.model.ZoneItem
 
 /**
  * 角色/要素详情多端点聚合数据仓储。
+ *
+ * 本仓储只承载详情/作品/相册等只读聚合查询；收藏切换由 ViewModel 直接依赖
+ * `ToggleItemCollectUseCase`（依赖倒置：仓储不再转手写操作）。
  */
 class CharacterDetailRepository(
-    private val api: HpoiApi
+    private val api: HpoiApi,
 ) {
     /**
      * 获取角色主体详情 (api/charactar/get)
@@ -109,24 +112,6 @@ class CharacterDetailRepository(
             response.data?.items ?: emptyList()
         } else {
             throw ApiException(response.code, response.msg ?: "获取属性标签失败")
-        }
-    }
-
-    /**
-     * 切换收藏/想买状态 (api/collect/item/add, api/collect/del)
-     * @param isCollected 当前是否已收藏，true 表示操作取消收藏，false 表示操作新增收藏
-     * @return 切换后的最新收藏状态
-     */
-    suspend fun toggleCollect(nodeId: Long, isCollected: Boolean): Result<Boolean> = runCatching {
-        val response = if (isCollected) {
-            api.collectItemDel(id = nodeId)
-        } else {
-            api.collectItemAdd(id = nodeId)
-        }
-        if (response.isSuccess) {
-            !isCollected
-        } else {
-            throw ApiException(response.code, response.msg ?: "收藏操作失败")
         }
     }
 

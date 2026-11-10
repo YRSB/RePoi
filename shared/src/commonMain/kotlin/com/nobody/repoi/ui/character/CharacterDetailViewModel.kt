@@ -1,10 +1,12 @@
-﻿package com.nobody.repoi.ui.character
+package com.nobody.repoi.ui.character
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.data.repository.CharacterDetailRepository
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import kotlinx.coroutines.Job
@@ -17,6 +19,7 @@ import com.nobody.repoi.data.remote.model.CommentItem
 
 class CharacterDetailViewModel(
     private val repository: CharacterDetailRepository,
+    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val commentDelegate: CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -168,25 +171,17 @@ class CharacterDetailViewModel(
         if (nodeId <= 0L) return
         val currentCollected = state.isCollected
         val nextCollected = !currentCollected
-        val delta = when {
-            state.originalCollected && !nextCollected -> -1
-            !state.originalCollected && nextCollected -> 1
-            else -> 0
-        }
+        val delta = collectDeltaOf(state.originalCollected, nextCollected)
 
         // 乐观更新
         _uiState.update { it.copy(isCollected = nextCollected, collectCountDelta = delta) }
 
         viewModelScope.launch {
-            val result = repository.toggleCollect(nodeId, currentCollected)
+            val result = toggleItemCollectUseCase(nodeId, currentCollected)
             if (result.isFailure) {
                 // 失败回滚
                 _uiState.update {
-                    val origDelta = when {
-                        it.originalCollected && !currentCollected -> -1
-                        !it.originalCollected && currentCollected -> 1
-                        else -> 0
-                    }
+                    val origDelta = collectDeltaOf(it.originalCollected, currentCollected)
                     it.copy(
                         isCollected = currentCollected,
                         collectCountDelta = origDelta,

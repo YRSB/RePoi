@@ -26,39 +26,58 @@ import com.nobody.repoi.data.repository.UserRepository
 import com.nobody.repoi.data.repository.VendorDetailRepository
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.data.repository.ZoneRepository
+import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
+import org.koin.core.module.dsl.factoryOf
+import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 /**
  * 仓储模块：25 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
  * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
+ *
+ * 模块尾部同时挂载收藏写侧 Domain UseCases（`factory`，无状态、随用随建）：
+ * 它们只依赖仓储与会话，承担收藏领域的业务校验与数据清洗，避免校验散落各 ViewModel。
  */
 val repositoryModule = module {
-    single { CollectRepository(get(), get()) }
+    singleOf(::CollectRepository)
     single { AlbumRepository(get()) }
-    single { AlbumDetailRepository(get()) }
-    single { CharacterDetailRepository(get()) }
+    singleOf(::AlbumDetailRepository)
+    singleOf(::CharacterDetailRepository)
     single { CommentRepository(get(), get()) }
     single { ExHobbyRepository(get()) }
     single { FollowRepository(get(), get(), get()) }
     single { ForumRepository(get(), get()) }
-    single { HobbyDetailRepository(get()) }
+    singleOf(::HobbyDetailRepository)
     single { HomeRepository(get()) }
     single { ItemRepository(get()) }
     single { MessageRepository(get(), get()) }
-    single { PersonDetailRepository(get(), get()) }
+    singleOf(::PersonDetailRepository)
     single { PictureListRepository(get()) }
     single { PostRepository(get(), get()) }
     single { ResaleRepository(get()) }
     single { SearchRepository(get(), get()) }
-    single { SeriesDetailRepository(get(), get()) }
+    singleOf(::SeriesDetailRepository)
     single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get()) }
     single { UserFinanceRepository(get(), get()) }
-    single { UserRepository(get(), get(), get(), get()) }
-    single { VendorDetailRepository(get(), get()) }
+    singleOf(::UserRepository)
+    singleOf(::VendorDetailRepository)
     single { WorksDetailRepository(get()) }
     single { ZoneRepository(get(), get()) }
     factory { CommentInteractionDelegate(get(), get(), get()) }
+
+    // ── 收藏写侧 Domain UseCases（无状态，factory 即取即用） ──
+    factoryOf(::ToggleItemCollectUseCase)
+    factoryOf(::SaveHobbyCollectUseCase)
+    factoryOf(::DeleteHobbyCollectUseCase)
+    factoryOf(::BatchCancelCollectUseCase)
+    factoryOf(::SaveWorksCollectUseCase)
+    factoryOf(::DeleteWorksCollectUseCase)
 }

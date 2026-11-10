@@ -19,6 +19,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.serialization.json.Json
 
 /**
@@ -33,6 +34,8 @@ class HobbyDetailEnv(
     val collectMock: MockApi = MockApi(),
     val commentMock: MockApi = MockApi(),
     val userMock: MockApi = MockApi(),
+    // 调度器三件套之一：引擎响应分发落在测试调度器上，否则 advanceUntilIdle 推不动请求体
+    private val dispatcher: CoroutineDispatcher? = null,
 ) {
     private val session = FakeUserSession("utoken-test")
     val json: Json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
@@ -45,11 +48,11 @@ class HobbyDetailEnv(
         )
     }
 
-    val detailRepository = HobbyDetailRepository(detailMock.api())
-    val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
-    val commentRepository = CommentRepository(commentMock.api(), session)
-    val stickerRepository = StickerRepository(detailMock.api())
-    val userHistoryRepository = UserHistoryRepository(userMock.api(), session)
+    val detailRepository = HobbyDetailRepository(detailMock.api(dispatcher))
+    val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json, session)
+    val commentRepository = CommentRepository(commentMock.api(dispatcher), session)
+    val stickerRepository = StickerRepository(detailMock.api(dispatcher))
+    val userHistoryRepository = UserHistoryRepository(userMock.api(dispatcher), session)
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 

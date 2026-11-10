@@ -1,8 +1,10 @@
-﻿package com.nobody.repoi.ui.collect
+package com.nobody.repoi.ui.collect
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.repository.CollectRepository
+import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +20,9 @@ import com.nobody.repoi.data.remote.model.CollectConstants
  * 驱动状态单选切换、入库价格/途径/日期录入、打分与多选标签池联动。
  */
 class CollectEditViewModel(
-    private val collectRepository: CollectRepository
+    private val collectRepository: CollectRepository,
+    private val saveHobbyCollectUseCase: SaveHobbyCollectUseCase,
+    private val deleteHobbyCollectUseCase: DeleteHobbyCollectUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectEditUiState())
@@ -65,7 +69,7 @@ class CollectEditViewModel(
             }
 
             // 2. 拉取当前条目的用户收藏详情
-            val stateResult = collectRepository.getCollectState(resolvedNodeId)
+            val stateResult = collectRepository.refreshCollectState(resolvedNodeId)
             stateResult.onSuccess { collectData ->
                 if (collectData != null && collectData.isCollected) {
                     val formattedMoney = collectData.orderMoney?.let {
@@ -244,7 +248,8 @@ class CollectEditViewModel(
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             val fresh = _uiState.value
             val collectData = fresh.toCollectData()
-            val result = collectRepository.saveCollect(fresh.nodeId, collectData)
+            // 写侧委托用例：状态缺失/条目缺失的业务校验与状态池原子更新都在用例内完成
+            val result = saveHobbyCollectUseCase(fresh.nodeId, collectData)
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
@@ -275,7 +280,7 @@ class CollectEditViewModel(
             }
             val fresh = _uiState.value
             val currentData = fresh.toCollectData()
-            val result = collectRepository.deleteCollect(fresh.nodeId, currentData)
+            val result = deleteHobbyCollectUseCase(fresh.nodeId, currentData)
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isDeleting = false, deleteSuccess = true) }

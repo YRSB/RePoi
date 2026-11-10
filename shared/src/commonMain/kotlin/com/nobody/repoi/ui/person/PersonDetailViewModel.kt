@@ -8,6 +8,8 @@ import com.nobody.repoi.data.remote.model.PersonData
 import com.nobody.repoi.data.remote.model.PersonHobbyEntry
 import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.repository.PersonDetailRepository
+import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,6 +111,7 @@ data class PersonDetailUiState(
 
 class PersonDetailViewModel(
     private val repository: PersonDetailRepository,
+    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -311,17 +314,38 @@ class PersonDetailViewModel(
     }
 
     /**
-     * 切换收藏人物状态与计数。
+     * 切换收藏人物状态与计数（乐观更新 + 失败回滚）。
+     *
+     * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
+     * [ToggleItemCollectUseCase]，成功即写入收藏仓储状态池。
      */
     fun toggleCollect() {
+        val state = _uiState.value
+        val nodeId = state.personNodeId
+        if (nodeId <= 0L) return
+        val previousCollected = state.isCollected
+        val nextCollected = !previousCollected
+
+        // 乐观更新
         _uiState.update {
-            val nextCollected = !it.isCollected
-            val delta = when {
-                it.originalCollected && !nextCollected -> -1
-                !it.originalCollected && nextCollected -> 1
-                else -> 0
+            it.copy(
+                isCollected = nextCollected,
+                collectCountDelta = collectDeltaOf(it.originalCollected, nextCollected)
+            )
+        }
+
+        viewModelScope.launch {
+            val result = toggleItemCollectUseCase(nodeId, previousCollected)
+            if (result.isFailure) {
+                // 失败回滚
+                _uiState.update {
+                    it.copy(
+                        isCollected = previousCollected,
+                        collectCountDelta = collectDeltaOf(it.originalCollected, previousCollected),
+                        commentActionMessage = result.exceptionOrNull()?.message ?: "收藏状态更新失败"
+                    )
+                }
             }
-            it.copy(isCollected = nextCollected, collectCountDelta = delta)
         }
     }
 }

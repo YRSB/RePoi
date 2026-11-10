@@ -150,7 +150,7 @@ class SeriesDetailRepository(
      * 未收藏返回 false，失败时透出由调用方兜底。
      */
     suspend fun getCollectState(nodeId: Long): Result<Boolean> =
-        collectRepository.getCollectState(nodeId).map { it?.isCollected == true }
+        collectRepository.refreshCollectState(nodeId).map { it?.isCollected == true }
 
     /**
      * 查询系列屏蔽状态 (api/mask/state-v2)。

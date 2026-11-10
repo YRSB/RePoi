@@ -54,25 +54,30 @@ import com.nobody.repoi.ui.zone.ZoneBrowseViewModel
 import com.nobody.repoi.ui.zone.ZoneDetailViewModel
 import com.nobody.repoi.ui.zone.ZoneSettingsViewModel
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：51 `viewModel { }`（M3 起按 NavKey 传参）。
+ * ViewModel 模块：50 个 ViewModel 注册（M3 起按 NavKey 传参）。
+ *
+ * 构造签名不含可选参数、也不依赖限定符时统一走 `viewModelOf(::Xxx)`；
+ * 带 Kotlin 默认参数（如 `UserCollectViewModel`、`UserCreationViewModel`）或需 `named` 限定符者
+ * 保留 `viewModel { }` 显式写法，否则 Koin 会尝试从容器解析缺省值类型导致启动失败。
  *
  * SavedStateHandle 已删除（见各 VM 注释）：NavKey 字段经 `koinViewModel(parameters = ...)`
  * 或 `loadInitial/initParam` 传入；plain `koinViewModel()` 保持条目作用域。
  */
 val viewModelModule = module {
     viewModel { AlbumViewModel(get(), get()) }
-    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModelOf(::AlbumDetailViewModel)
     viewModel { AlbumRankListViewModel(get()) }
-    viewModel { CharacterDetailViewModel(get(), get()) }
+    viewModelOf(::CharacterDetailViewModel)
     viewModel { CharacterAlbumListViewModel(get()) }
     viewModel { CharacterWorksListViewModel(get()) }
-    viewModel { CollectEditViewModel(get()) }
-    viewModel { UserCollectViewModel(get(), get(), get(), get(), get()) }
-    viewModel { WorksCollectEditViewModel(get()) }
+    viewModelOf(::CollectEditViewModel)
+    viewModel { UserCollectViewModel(get(), get(), get(), get()) }
+    viewModelOf(::WorksCollectEditViewModel)
     viewModel { CommentDetailViewModel(get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }
     viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get()) }
@@ -82,7 +87,7 @@ val viewModelModule = module {
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
-    viewModel { PictureGalleryViewModel(get(), get(), get(), get(named("download"))) }
+    viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
     viewModel { HomeFeedViewModel(get(), get(), get(), get(), get()) }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
@@ -91,14 +96,14 @@ val viewModelModule = module {
     viewModel { MessageNoticeViewModel(get()) }
     viewModel { MessageChatViewModel(get()) }
     viewModel { MessageBlockViewModel(get()) }
-    viewModel { PersonDetailViewModel(get(), get()) }
+    viewModel { PersonDetailViewModel(get(), get(), get()) }
     viewModel { PictureListViewModel(get()) }
     viewModel { PostDetailViewModel(get(), get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }
-    viewModel { SeriesDetailViewModel(get(), get()) }
+    viewModel { SeriesDetailViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { SettingsAccountViewModel(get(), get()) }
     viewModel { SettingsShieldViewModel(get()) }
@@ -108,7 +113,7 @@ val viewModelModule = module {
     viewModel { UserInfoViewModel(get(), get(), get(), get()) }
     viewModel { UserCreationViewModel(get(), get()) }
     viewModel { UserHistoryViewModel(get()) }
-    viewModel { VendorDetailViewModel(get(), get(), get()) }
+    viewModel { VendorDetailViewModel(get(), get(), get(), get()) }
     viewModel { VendorActionsViewModel(get()) }
     viewModel { WorksDetailViewModel(get(), get()) }
     viewModel { ZoneBrowseViewModel(get()) }

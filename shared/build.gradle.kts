@@ -169,7 +169,11 @@ tasks.withType<Test>().configureEach {
         // M7 遗留测试：依赖 MockApi 网络引擎与 DataStore 磁盘 IO 异步时序竞争，待 Phase 3 逐步重构为 Turbine/Fake 纯状态机测试
         excludeTestsMatching("*AlbumRankListViewModelTest*")
         excludeTestsMatching("*AlbumViewModelTest*")
-        excludeTestsMatching("*HobbyDetailViewModel*")
+        // 手办详情测试按类隔离：仅排除仍依赖异步时序的兄弟类，收藏链路（HobbyDetailViewModelCollectTest）已回归状态流驱动，须真实执行
+        excludeTestsMatching("*HobbyDetailViewModelPagingTest*")
+        excludeTestsMatching("*HobbyDetailViewModelRelatedTest*")
+        excludeTestsMatching("*HobbyDetailViewModelTimelineTest*")
+        excludeTestsMatching("*HobbyDetailViewModelExHobbyTest*")
         excludeTestsMatching("*HomeFeedViewModelTest*")
         excludeTestsMatching("*LoginViewModelTest*")
         excludeTestsMatching("*MessageBlockViewModelTest*")
@@ -178,7 +182,8 @@ tasks.withType<Test>().configureEach {
         excludeTestsMatching("*MessageNoticeViewModelTest*")
         excludeTestsMatching("*SearchViewModelTest*")
         excludeTestsMatching("*SettingsViewModelTest*")
-        excludeTestsMatching("*UserCollectViewModelTest*")
+        // UserCollectViewModelTest 已完成 MVI 化（Intent + PagedListLoader）并补齐调度器三件套，
+        // 重新纳入 CI 执行范围；不要再加回过滤，否则断言会静默失效。
     }
 }
 

@@ -15,6 +15,7 @@ import kotlin.test.assertTrue
  */
 class CharacterDetailRepositoryTest {
 
+    /** 仓储只做只读聚合查询；收藏切换已上移到 `ToggleItemCollectUseCase`（见 `CollectUseCasesTest`）。 */
     private fun setup(): Pair<MockApi, CharacterDetailRepository> {
         val mock = MockApi()
         return mock to CharacterDetailRepository(mock.api())
@@ -139,28 +140,6 @@ class CharacterDetailRepositoryTest {
             assertTrue(result.isFailure)
             assertEquals(500, (result.exceptionOrNull() as ApiException).code)
         }
-    }
-
-    @Test
-    fun toggleCollect_picksAddOrDelEndpointAndInvertsState() = runTest {
-        val (mock, repository) = setup()
-        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
-        assertTrue(repository.toggleCollect(7L, isCollected = false).getOrThrow())
-        val addRecorded = mock.takeRequest()
-        assertEquals("/api/collect/item/add", addRecorded.encodedPath)
-        assertEquals("7", addRecorded.formEntries()["id"])
-
-        mock.enqueue("""{"success":true,"code":200,"data":{}}""")
-        assertFalse(repository.toggleCollect(7L, isCollected = true).getOrThrow())
-        val delRecorded = mock.takeRequest()
-        assertEquals("/api/collect/del", delRecorded.encodedPath)
-        assertEquals("7", delRecorded.formEntries()["id"])
-
-        mock.enqueue(mock.failure(401, "请先登录"))
-        val failure = repository.toggleCollect(7L, isCollected = false)
-        assertTrue(failure.isFailure)
-        assertEquals(401, (failure.exceptionOrNull() as ApiException).code)
-        assertEquals("请先登录", failure.exceptionOrNull()?.message)
     }
 
     @Test
