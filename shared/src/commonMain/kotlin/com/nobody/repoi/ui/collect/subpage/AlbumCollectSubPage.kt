@@ -83,6 +83,7 @@ internal fun AlbumCollectSubPage(
     onRefresh: () -> Unit,
     onLoadNextPage: () -> Unit,
     onSwitchOrder: (String) -> Unit,
+    onItemClick: (UserCollectAlbumItem) -> Unit,
     onToggleSelect: (Long) -> Unit,
     onSelectAll: () -> Unit,
     onCancelSelection: () -> Unit,
