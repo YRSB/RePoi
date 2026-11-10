@@ -164,6 +164,7 @@
   - **自定义裁剪与修饰符**：通用圆角统一通过 `MaterialTheme.shapes.*`（如 `small`, `medium`, `large`）或官方推荐扩展属性（如 `MaterialTheme.shapes.bottomSheet`, `MaterialTheme.shapes.largeCard`）访问，**严禁硬编码** `RoundedCornerShape(X.dp)`。
   - **全面使用官方原生控件**：已彻底移除旧版全局单例 `ExpressiveTokens` 与包装控件（如 `ExpressiveElevatedCard`、`ExpressiveCard`，见 `ADR-0004`），所有卡片与表面容器一律直接使用官方原生组件（`ElevatedCard`、`Card` 等），杜绝中间人二次抽象。
 - **暗黑主题感知**：通过 `LocalIsDarkTheme.current` 感知当前暗黑模式状态。
+- **配色比较**：`ColorScheme` 是 `@Immutable class` 且**没有结构化 `equals`**（实例相等即引用相等）。任何「两份配色是否相同」的判定都必须比较颜色角色值，否则参数未变的重组会被误判成主题变更。
 
 ### 6. CDN 图片变体工具 (`CdnUrlUtils`)
 根据使用场景选择对应的 CDN 规格获取函数：
