@@ -4,28 +4,44 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Elevation 1: Pillars Soft Physical Drop Shadow -->
+    <!-- Option A: White Peeking Card Shadow -->
     <path
-        android:fillColor="#1A00223D"
-        android:pathData="M 32,35.5 C 32,32.1863 34.6863,29.5 38,29.5 C 41.3137,29.5 44,32.1863 44,35.5 L 44,75.5 C 44,78.8137 41.3137,81.5 38,81.5 C 34.6863,81.5 32,78.8137 32,75.5 Z M 64,35.5 C 64,32.1863 66.6863,29.5 70,29.5 C 73.3137,29.5 76,32.1863 76,35.5 L 76,75.5 C 76,78.8137 73.3137,81.5 70,81.5 C 66.6863,81.5 64,78.8137 64,75.5 Z" />
-    <!-- Elevation 1: Material 3 Base Pillars -->
+        android:fillColor="#1F001524"
+        android:pathData="M 44,28.5 L 68,28.5 C 76.8366,28.5 84,35.6634 84,44.5 L 84,72.5 C 84,81.3366 76.8366,88.5 68,88.5 L 44,88.5 C 35.1634,88.5 28,81.3366 28,72.5 L 28,44.5 C 28,35.6634 35.1634,28.5 44,28.5 Z" />
+    <!-- Option A: White Peeking Card Surface -->
     <path
-        android:fillColor="#005C8F"
-        android:pathData="M 32,34 C 32,30.6863 34.6863,28 38,28 C 41.3137,28 44,30.6863 44,34 L 44,74 C 44,77.3137 41.3137,80 38,80 C 34.6863,80 32,77.3137 32,74 Z M 64,34 C 64,30.6863 66.6863,28 70,28 C 73.3137,28 76,30.6863 76,34 L 76,74 C 76,77.3137 73.3137,80 70,80 C 66.6863,80 64,77.3137 64,74 Z" />
-    <!-- Elevation 2: Floating Crossbar Layer Shadow -->
+        android:fillColor="#F0FFFFFF"
+        android:pathData="M 44,26 L 68,26 C 76.8366,26 84,33.1634 84,42 L 84,70 C 84,78.8366 76.8366,86 68,86 L 44,86 C 35.1634,86 28,78.8366 28,70 L 28,42 C 28,33.1634 35.1634,26 44,26 Z" />
+    <!-- Top Cyan Card Shadow -->
     <path
-        android:fillColor="#33001D32"
-        android:pathData="M 37,49 L 71,49 C 74.866,49 78,52.134 78,56 C 78,59.866 74.866,63 71,63 L 37,63 C 33.134,63 30,59.866 30,56 C 30,52.134 33.134,49 37,49 Z" />
-    <!-- Elevation 2: Floating Crossbar Card Surface -->
+        android:fillColor="#26001524"
+        android:pathData="M 40,24.5 L 64,24.5 C 72.8366,24.5 80,31.6634 80,40.5 L 80,68.5 C 80,77.3366 72.8366,84.5 64,84.5 L 40,84.5 C 31.1634,84.5 24,77.3366 24,68.5 L 24,40.5 C 24,31.6634 31.1634,24.5 40,24.5 Z" />
+    <!-- Top Cyan Card Surface -->
     <path
-        android:fillColor="#D4E4FF"
-        android:pathData="M 37,47 L 71,47 C 74.866,47 78,50.134 78,54 C 78,57.866 74.866,61 71,61 L 37,61 C 33.134,61 30,57.866 30,54 C 30,50.134 33.134,47 37,47 Z" />
-    <!-- Elevation 2: Crossbar Inner Core Accent -->
+        android:fillColor="#C7EDF9"
+        android:pathData="M 40,22 L 64,22 C 72.8366,22 80,29.1634 80,38 L 80,66 C 80,74.8366 72.8366,82 64,82 L 40,82 C 31.1634,82 24,74.8366 24,66 L 24,38 C 24,29.1634 31.1634,22 40,22 Z" />
+    <!-- Left Pillar Shadow -->
     <path
-        android:fillColor="#004A75"
-        android:pathData="M 40,50 L 68,50 C 70.2091,50 72,51.7909 72,54 C 72,56.2091 70.2091,58 68,58 L 40,58 C 37.7909,58 36,56.2091 36,54 C 36,51.7909 37.7909,50 40,50 Z" />
-    <!-- Tertiary Anime Star Dot -->
+        android:fillColor="#24001D32"
+        android:pathData="M 36,38.5 C 36,35.7386 38.2386,33.5 41,33.5 C 43.7614,33.5 46,35.7386 46,38.5 L 46,68.5 C 46,71.2614 43.7614,73.5 41,73.5 C 38.2386,73.5 36,71.2614 36,68.5 Z" />
+    <!-- Left Pillar Deep Blue -->
     <path
-        android:fillColor="#FF7AA3"
-        android:pathData="M 70,31.7 C 71.5464,31.7 72.8,32.9536 72.8,34.5 C 72.8,36.0464 71.5464,37.3 70,37.3 C 68.4536,37.3 67.2,36.0464 67.2,34.5 C 67.2,32.9536 68.4536,31.7 70,31.7 Z" />
+        android:fillColor="#1C698D"
+        android:pathData="M 36,37 C 36,34.2386 38.2386,32 41,32 C 43.7614,32 46,34.2386 46,37 L 46,67 C 46,69.7614 43.7614,72 41,72 C 38.2386,72 36,69.7614 36,67 Z" />
+    <!-- Right Pillar White Top -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 62,37 C 62,34.2386 64.2386,32 67,32 C 69.7614,32 72,34.2386 72,37 L 72,54 C 72,56.7614 69.7614,59 67,59 C 64.2386,59 62,56.7614 62,54 Z" />
+    <!-- Right Pillar Peach Bottom Accent -->
+    <path
+        android:fillColor="#FFA880"
+        android:pathData="M 62,62 C 62,59.2386 64.2386,57 67,57 C 69.7614,57 72,59.2386 72,62 L 72,67 C 72,69.7614 69.7614,72 67,72 C 64.2386,72 62,69.7614 62,67 Z" />
+    <!-- Floating S-Curve Ribbon Shadow -->
+    <path
+        android:fillColor="#33001A2C"
+        android:pathData="M 38,58 C 38,51 43,48 48,48 C 54,48 56,44 63,44 C 67,44 68,47 68,50 L 68,54 C 68,60 63,62 57,62 C 51,62 48,66 42,66 C 39,66 38,63 38,58 Z" />
+    <!-- Floating S-Curve Wave Ribbon -->
+    <path
+        android:fillColor="#79D1E8"
+        android:pathData="M 38,56 C 38,49 43,46 48,46 C 54,46 56,42 63,42 C 67,42 68,45 68,48 L 68,52 C 68,58 63,60 57,60 C 51,60 48,64 42,64 C 39,64 38,61 38,56 Z" />
 </vector>
