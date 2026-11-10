@@ -10,6 +10,13 @@
 #                                 且收益仅在**混合类型**列表中成立，故不阻断合并。
 #                                 依据：developer.android.com/develop/ui/compose/lists
 #
+#   [错误] TEST-QUARANTINE      被 excludeTestsMatching 隔离的测试类未登记
+#                               → 未登记的隔离 = 静默失效的断言（CI 全绿但从不执行）。
+#                                 登记位置：docs/testing.md「被隔离的测试」一节。
+#
+#   [错误] CONFLICT-MARKER      源文件残留合并冲突标记
+#                               → 冲突标记被误提交后，编译错误会指向无关行号，排查成本极高。
+#
 # 用法：
 #   pwsh -File scripts/check-ui-rules.ps1           # 检查全库（有 warning 仍返回 0）
 #   pwsh -File scripts/check-ui-rules.ps1 -Strict   # warning 也视为失败
@@ -108,9 +115,56 @@ foreach ($file in $uiFiles) {
 # 文本无法解析约束，实测全为假阳性，故不做机械化。
 # 该语义由 shared/src/jvmTest/.../PoiAsyncImageLayoutTest.kt 的 Compose UI 测试覆盖。
 
+# ---------------------------------------------------------------- 规则 3：测试隔离登记
+# 背景：build.gradle.kts 的 excludeTestsMatching 是隐形门禁——被排除的测试类不会执行，
+# CI 依然是绿的。历史上正是靠偶然读到该文件，才发现收藏模块两个核心行为测试从未运行。
+# 规则：每条 excludeTestsMatching 必须在 docs/testing.md 的隔离登记表里出现（按 pattern 子串匹配）。
+$gradleFiles = @('shared/build.gradle.kts')
+$testingDoc = 'docs/testing.md'
+$quarantineRegistry = ''
+if (Test-Path $testingDoc) {
+    $quarantineRegistry = Get-Content -LiteralPath $testingDoc -Raw
+}
+
+foreach ($gradleFile in $gradleFiles) {
+    if (-not (Test-Path $gradleFile)) { continue }
+    $lines = Get-Content -LiteralPath $gradleFile
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $match = [regex]::Match($lines[$i], 'excludeTestsMatching\(\s*"([^"]+)"\s*\)')
+        if (-not $match.Success) { continue }
+        $pattern = $match.Groups[1].Value
+        # 通配符去掉后再查登记表，避免 * 造成字面量匹配失败
+        $needle = ($pattern -replace '\*', '')
+        if ($quarantineRegistry -notlike "*$needle*") {
+            $errors += [pscustomobject]@{
+                File = $gradleFile; Line = $i + 1
+                Text = "excludeTestsMatching(`"$pattern`")  ── 未在 docs/testing.md 登记"
+                Hint = '在 docs/testing.md 的「被隔离的测试」表里补一行：pattern / 原因 / 恢复条件'
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------- 规则 4：冲突标记
+# 冲突标记被误提交后，编译器报错位置与真实问题无关，且 IDE 折叠后极易漏看。
+$codeFiles = git ls-files --cached --others --exclude-standard '*.kt' '*.kts'
+foreach ($file in $codeFiles) {
+    $lines = Get-Content -LiteralPath $file
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line -match '^\s*(<{7}|>{7})(\s|$)' -or $line -match '^\s*={7}\s*$') {
+            $errors += [pscustomobject]@{
+                File = $file; Line = $i + 1
+                Text = "$($line.Trim())  ── 残留合并冲突标记"
+                Hint = '解析冲突并删除 <<<<<<< / ======= / >>>>>>> 三行'
+            }
+        }
+    }
+}
+
 # ---------------------------------------------------------------- 输出
 if ($Verbose) {
-    Write-Host "扫描 $($uiFiles.Count) 个 UI 源文件"
+    Write-Host "扫描 $($uiFiles.Count) 个 UI 源文件、$($codeFiles.Count) 个 Kotlin 文件"
 }
 
 foreach ($w in $warnings) {
@@ -133,7 +187,10 @@ if ($errors.Count -gt 0) {
     Write-Host ""
     Write-Host "发现 $($errors.Count) 处错误：" -ForegroundColor Red
     foreach ($e in $errors) {
-        Write-Host "  [LAZY-ITEM-KEY] $($e.File):$($e.Line)" -ForegroundColor Red
+        $tag = if ($e.Text -like '*缺 key*') { 'LAZY-ITEM-KEY' }
+               elseif ($e.Text -like '*excludeTestsMatching*') { 'TEST-QUARANTINE' }
+               else { 'CONFLICT-MARKER' }
+        Write-Host "  [$tag] $($e.File):$($e.Line)" -ForegroundColor Red
         Write-Host "    $($e.Text)"
         Write-Host "    -> $($e.Hint)" -ForegroundColor Cyan
     }

@@ -72,6 +72,8 @@ jobs:
       - name: Check out repository
         if: needs.check-docs-only.outputs.skip_ci != 'true'
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # 静态规则检查（无需 JDK / Gradle）：Lazy 列表项 key/contentType 等
       # 编译与单测都抓不到的机械规则，见 scripts/check-ui-rules.ps1
@@ -79,6 +81,11 @@ jobs:
         if: needs.check-docs-only.outputs.skip_ci != 'true'
         shell: pwsh
         run: ./scripts/check-ui-rules.ps1 -Verbose
+      # 空白错误与冲突标记：编译器抓不到，但会污染 diff 与定位
+      - name: Check whitespace and conflict markers
+        if: needs.check-docs-only.outputs.skip_ci != 'true' && github.event_name == 'pull_request'
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
+
 
   test:
     name: Shared Tests (JVM & Android Host)
