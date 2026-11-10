@@ -37,9 +37,8 @@ compose.desktop {
             packageVersion = "1.0.0"
 
             windows {
-                // M6: 无 RePoi .ico 资产时不设 iconFile（jpackage 回落默认图标）；
-                // 补入 desktopApp/icons/RePoi.ico 后取消注释下一行。
-                // iconFile = project.file("icons/RePoi.ico")
+                // Windows 应用及安装器原生图标 (Issue #106)
+                iconFile = project.file("icons/RePoi.ico")
                 dirChooser = true
                 shortcut = true
                 menu = true
