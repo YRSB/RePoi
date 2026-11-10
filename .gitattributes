@@ -1,0 +1,32 @@
+# 统一换行符：仓库内一律 LF，检出时按平台自动转换。
+#
+# 为什么必须有这个文件：Windows 上 core.autocrlf=true 时，脚本改写过的文件会在
+# `git status` 里显示为「已修改」而 `git diff` 为空（纯 CRLF/LF 差异）。
+# 这会让 agent 与人类都误判为脏工作区，进而执行不必要的 stash / 手动比对。
+* text=auto eol=lf
+
+# Kotlin / Gradle / Markdown / YAML 一律 LF
+*.kt      text eol=lf
+*.kts     text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.toml    text eol=lf
+*.properties text eol=lf
+
+# PowerShell 脚本保持 CRLF（Windows PowerShell 5.1 对 LF 结尾的 .ps1 兼容性差）
+*.ps1     text eol=crlf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# 二进制资源不得被当作文本处理
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.gif     binary
+*.ico     binary
+*.ttf     binary
+*.otf     binary
+*.jar     binary
+*.keystore binary

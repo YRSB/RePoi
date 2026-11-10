@@ -84,3 +84,34 @@ gh run watch <run-id> --exit-status
 
 `workflow_dispatch` 使用目标分支上的工作流定义，实施分支需先包含 `tests.yml`（从 main 切出即满足）。
 
+
+---
+
+## 被隔离的测试（quarantine registry）
+
+`shared/build.gradle.kts` 的 `excludeTestsMatching` 是**隐形门禁**：被排除的测试类根本不执行，
+CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-rules.ps1` 的 `TEST-QUARANTINE`
+规则会机械校验「构建脚本里出现的每个 pattern 都能在本表找到」。
+
+> 新增排除前先问：能不能用调度器三件套把它修好？本项目历史上正是靠「先修再摘除」把
+> `UserCollectViewModelTest` 与 `HobbyDetailViewModelCollectTest` 从空绿拉回了真实执行。
+
+| pattern | 原因 | 恢复条件 |
+|---|---|---|
+| `*AlbumRankListViewModelTest*` | M7 遗留：依赖 MockApi 真实线程与异步时序竞争 | 改为 Fake 仓储 + Turbine 纯状态机断言 |
+| `*AlbumViewModelTest*` | 同上 | 同上 |
+| `*HobbyDetailViewModelPagingTest*` | 详情页分页仍依赖异步时序 | 分页装载抽到可单测的 loader 后 |
+| `*HobbyDetailViewModelRelatedTest*` | 关联条目并发加载时序不稳 | 用虚拟调度器固定并发顺序后 |
+| `*HobbyDetailViewModelTimelineTest*` | 时间轴多阶段加载时序不稳 | 同上 |
+| `*HobbyDetailViewModelExHobbyTest*` | ExHobby 图库按需补录时序不稳 | 同上 |
+| `*HomeFeedViewModelTest*` | 首页多源聚合 + 真实 DataStore IO | 注入内存 DataStore 后 |
+| `*LoginViewModelTest*` | 登录链路含真实会话预热 | 会话层改为 Fake 后 |
+| `*MessageBlockViewModelTest*` | 消息拉黑列表时序不稳 | 调度器三件套改造后 |
+| `*MessageCenterViewModelTest*` | 消息中心多 Tab 并发时序不稳 | 同上 |
+| `*MessageChatViewModelTest*` | 聊天长轮询依赖真实延迟 | 注入可暂停的时钟后 |
+| `*MessageNoticeViewModelTest*` | 通知列表分页时序不稳 | 同上 |
+| `*SearchViewModelTest*` | 搜索防抖依赖真实时间 | 注入 TestDispatcher 时间后 |
+| `*SettingsViewModelTest*` | 设置页多 DataStore 并发读 | 内存 DataStore 后 |
+
+> 注意：`*HobbyDetailViewModel*` 曾以整类通配排除，会把收藏联动断言一并吞掉。
+> 现行做法是按兄弟类逐个收窄，**收藏链路（`HobbyDetailViewModelCollectTest`）必须真实执行**。

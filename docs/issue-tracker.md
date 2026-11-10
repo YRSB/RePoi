@@ -36,3 +36,14 @@
 - **编译失败**：`gh run view <run-id> --log-failed | grep -m5 "e: "` 取首个错误（CI 摘要页亦有镜像）
 - **测试失败**：`gh run download <run-id> -n test-reports`，从 XML 的 `system-out` 节点提取 `DIAG-` 打印
 - **服务端抖动**（`Internal Server Error` / GraphQL EOF）：等待后重试同一命令，不换方案
+
+### 等待纪律（避免把一次等待拆成多轮轮询）
+
+- **一条 `gh run watch` 等到底**。它自身带 30s 间隔与退出码，不要在它返回前再叠加
+  `Start-Sleep` + `gh run view` / `gh pr checks`——那会把一次等待的成本翻几倍，并制造重复判断。
+- `workflow_dispatch` 刚触发时 run-id 还没生成：用
+  `gh run list --workflow Tests --branch <branch> --limit 1` 取最近一条，再交给 watch。
+- watch 中途报 `Post "https://api.github.com/graphql": EOF` 或 `502` 时，**直接重跑同一条
+  watch 命令**（run 仍在远端正常执行，本地进程断线而已），不要因为报错就改判 run 失败。
+- 需要并行等多条流水线时，认准各自的 run-id 分别 watch；`gh pr checks` 只在
+  「所有 job 已结束、要一次性取总账」时使用。
