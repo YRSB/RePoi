@@ -257,7 +257,6 @@ fun UserCollectScreen(
                             onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.ALBUM)) },
                             onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.ALBUM)) },
                             onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchAlbumOrder(it)) },
-                            onSwitchAlbumType = { viewModel.onIntent(UserCollectIntent.SwitchAlbumType(it)) },
                             onItemClick = { item ->
                                 onNavigateToAlbum?.invoke(
                                     AlbumNavParam(

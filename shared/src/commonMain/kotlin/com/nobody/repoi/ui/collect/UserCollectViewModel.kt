@@ -306,7 +306,6 @@ class UserCollectViewModel(
             is UserCollectIntent.SetFilterSheetVisible -> applyFilterSheetVisible(intent.visible)
             is UserCollectIntent.LoadHobbyTags -> loadHobbyTags(intent.force)
             is UserCollectIntent.SwitchAlbumOrder -> applyAlbumOrder(intent.order)
-            is UserCollectIntent.SwitchAlbumType -> applyAlbumType(intent.type)
             is UserCollectIntent.SwitchPicOrder -> applyPicOrder(intent.order)
             is UserCollectIntent.SwitchCommonOrder -> applyCommonOrder(intent.order)
             is UserCollectIntent.SwitchWorksState -> applyWorksState(intent.state)
@@ -350,7 +349,7 @@ class UserCollectViewModel(
         // 注意：applyInitParam 内的归一化守卫会被排序记忆漂移误判，故门禁必须用原始 param。
         if (appliedNavParam == param) return
         appliedNavParam = param
-        // 相册语料档位只在档位确实变化时重载：NavKey 默认 fav 不能覆盖用户在页内切过的「我创建的」
+        // 相册语料档位只认深链输入：再次进入同一 NavKey 时不得把当前档位顶回默认
         reloadAlbumIfTypeChanged(resolveAlbumType(param.albumType))
         // 归一化必须排在持久化读回之后，否则首屏会用默认排序白发一次请求
         viewModelScope.launch {
@@ -385,7 +384,7 @@ class UserCollectViewModel(
         stateSet("initialCollectState", if (targetCategory == UserCollectCategory.WORKS) targetWorksState.toString() else targetState)
         stateSet("initialOrder", targetOrder)
         stateSet("initialCategory", targetCategory.key)
-        // 相册语料档位同样进恢复槽：Nav3 重建 Entry 后仍停在用户选过的那一档
+        // 相册语料档位同样进恢复槽：Nav3 重建 Entry 后保持深链指定的档位
         stateSet("albumType", resolveAlbumType(param.albumType))
         if (targetCategory == UserCollectCategory.WORKS) {
             stateSet("worksState", targetWorksState)
@@ -421,9 +420,9 @@ class UserCollectViewModel(
     }
 
     /**
-     * 相册语料档位变化时重载相册列表（保留 AppRoute 已有的 albumType 入口语义）。
+     * 相册语料档位变化时重载相册列表（仅深链 `UserCollectNavParam.albumType` 会触发）。
      *
-     * 仅在档位确实不同时动作：NavKey 默认 `fav` 不得把页内切到的「我创建的」顶回去。
+     * 仅在档位确实不同时动作：同一 NavKey 重复初始化不得把当前档位顶回默认。
      */
     private fun reloadAlbumIfTypeChanged(targetType: String) {
         if (_uiState.value.albumType == targetType) return
@@ -693,26 +692,6 @@ class UserCollectViewModel(
         if (!MediaOrderOption.isValid(newOrder)) return
         if (_uiState.value.albumOrder == newOrder) return
         _uiState.update { it.copy(albumOrder = newOrder) }
-        resetLoader(UserCollectCategory.ALBUM)
-        if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
-            loadFirstPage(UserCollectCategory.ALBUM)
-        }
-    }
-
-    // ==================== 相册页语料（我收藏的 / 我创建的）====================
-
-    /**
-     * 切换相册语料档位（[AlbumTypeOption.FAV] / [AlbumTypeOption.UPLOAD]）。
-     *
-     * 两档走两套接口，切换即等于换了一份列表：必须重置 loader（清掉旧页码与 hasMore）
-     * 再装载首屏，否则「我创建的」会沿用「我收藏的」的页码继续翻页。
-     * 滚动位置由相册子页按 `albumType + order` 绑定新键自动回顶。
-     */
-    private fun applyAlbumType(newType: String) {
-        if (!AlbumTypeOption.isValid(newType)) return
-        if (_uiState.value.albumType == newType) return
-        stateSet("albumType", newType)
-        _uiState.update { it.copy(albumType = newType) }
         resetLoader(UserCollectCategory.ALBUM)
         if (_uiState.value.selectedCategory == UserCollectCategory.ALBUM) {
             loadFirstPage(UserCollectCategory.ALBUM)

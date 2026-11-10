@@ -60,14 +60,6 @@ sealed interface UserCollectIntent {
     /** 切换相册排序 */
     data class SwitchAlbumOrder(val order: String) : UserCollectIntent
 
-    /**
-     * 切换相册页语料：`fav` = 我收藏的 / `upload` = 我创建的。
-     *
-     * 两档走两套接口（`collect/album-v2` 与 `album/user-v2`），内容与分页语义都不同，
-     * 切换即重载相册列表；白名单外的值由 ViewModel 丢弃。
-     */
-    data class SwitchAlbumType(val type: String) : UserCollectIntent
-
     /** 切换图片排序 */
     data class SwitchPicOrder(val order: String) : UserCollectIntent
 

@@ -143,11 +143,6 @@ class UserCollectViewModelTest {
         )
     }
 
-    /** 消费并丢弃已排队的请求记录（首屏装载会先打若干请求）。 */
-    private fun MockApi.drainPaths(): List<String?> = buildList {
-        repeat(requestCount) { add(takeRequest().encodedPath) }
-    }
-
     // ==================== 初始状态与 Intent 发派 ====================
 
     @Test
@@ -401,73 +396,6 @@ class UserCollectViewModelTest {
 
         env.viewModel.onIntent(UserCollectIntent.DismissBatchCancelError)
         assertNull(env.viewModel.uiState.value.batchCancelError)
-    }
-
-    // ==================== 相册语料：我收藏的 / 我创建的 ====================
-
-    /**
-     * 切「我创建的」必须换接口（`api/album/user-v2`，type=upload）并重载首屏；
-     * 切回「我收藏的」同样回到 `api/collect/album-v2`（type=fav）。
-     */
-    @Test
-    fun switchAlbumType_reloadsThroughCreationEndpointAndBack() = runTest(testDispatcher) {
-        val mock = MockApi().apply {
-            routeWhen(
-                predicate = { path, _, _ -> path.contains("api/collect/album-v2") },
-                body = { _, _, _ -> albums(1, startId = 1) }
-            )
-            routeWhen(
-                predicate = { path, _, _ -> path.contains("api/album/user-v2") },
-                body = { _, _, _ -> albums(1, startId = 501) }
-            )
-        }
-        val env = buildEnv(mock = mock)
-        awaitInitialized(env.viewModel)
-
-        env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.ALBUM))
-        advanceUntilIdle()
-        assertEquals(AlbumTypeOption.FAV, env.viewModel.uiState.value.albumType)
-        assertEquals(1L, env.viewModel.uiState.value.albumData.items.single().id)
-        // 丢弃首屏阶段已消费的请求，后续断言只看切档
-        mock.drainPaths()
-
-        val requestsBeforeSwitch = mock.requestCount
-        env.viewModel.onIntent(UserCollectIntent.SwitchAlbumType(AlbumTypeOption.UPLOAD))
-        advanceUntilIdle()
-
-        // 切档必须重载（requestCount 增加）
-        assertTrue(mock.requestCount > requestsBeforeSwitch)
-        val uploadRequest = mock.takeRequest()
-        assertTrue(uploadRequest.encodedPath!!.startsWith("/api/album/user-v2"))
-        assertEquals("upload", uploadRequest.queryParameter("type"))
-        assertEquals(AlbumTypeOption.UPLOAD, env.viewModel.uiState.value.albumType)
-        // 新语料不从旧列表续页：首屏整体替换
-        assertEquals(501L, env.viewModel.uiState.value.albumData.items.single().id)
-        assertEquals(1, env.viewModel.uiState.value.albumData.page)
-
-        env.viewModel.onIntent(UserCollectIntent.SwitchAlbumType(AlbumTypeOption.FAV))
-        advanceUntilIdle()
-
-        val favRequest = mock.takeRequest()
-        assertTrue(favRequest.encodedPath!!.startsWith("/api/collect/album-v2"))
-        assertEquals("fav", favRequest.queryParameter("type"))
-        assertEquals(AlbumTypeOption.FAV, env.viewModel.uiState.value.albumType)
-        assertEquals(1L, env.viewModel.uiState.value.albumData.items.single().id)
-    }
-
-    @Test
-    fun switchAlbumType_ignoresUnknownValue() = runTest(testDispatcher) {
-        val mock = MockApi().apply { routeHobby { hobbies(1) } }
-        val env = buildEnv(mock = mock)
-        awaitInitialized(env.viewModel)
-        val requestsBeforeSwitch = mock.requestCount
-
-        env.viewModel.onIntent(UserCollectIntent.SwitchAlbumType("garbage"))
-        advanceUntilIdle()
-
-        // 白名单外不发请求、不改状态
-        assertEquals(requestsBeforeSwitch, mock.requestCount)
-        assertEquals(AlbumTypeOption.FAV, env.viewModel.uiState.value.albumType)
     }
 
     // ==================== 恢复感知（画廊脏位）====================
