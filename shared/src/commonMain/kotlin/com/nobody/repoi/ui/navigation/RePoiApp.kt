@@ -49,8 +49,9 @@ fun RePoiApp() {
     val imageLoader: ImageLoader = koinInject()
     setSingletonImageLoaderFactory { imageLoader }
     val themeManager: ThemeManager = koinInject()
-    // 单一主题流：null 表示首次读盘未完成，此时直接用平台默认值渲染，不插入任何占位。
-    // 代价是冷启动会出现一次「默认配色 → 真实配色」的切换（已知问题，后续单独解决）；
+    // 单一主题流：null 表示首次读盘未完成，此时直接用平台默认值渲染，不插入任何占位，
+    // 冷启动期间「默认配色 → 持久化配色」的跃迁由 PoiShelfTheme 内的首态落定门禁瞬间落定，
+    // Android 侧另有原生启动遮罩掩盖读盘窗口，两者共同保证首屏即为用户配色（ADR-0012）。
     // 收益是首帧永远有真实界面，不会出现黑屏或空白。
     val settings by themeManager.settings.collectAsStateWithLifecycle()
     val current = settings ?: defaultThemeSettings()
