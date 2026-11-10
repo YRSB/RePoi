@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  生成 RePoi 跨平台图标资产（Android Adaptive Icon 位图 / Desktop SVG / ICO / PNG）。
+  生成 RePoi 纯正 Material 3 质感（纸面层叠 + 物理微阴影）跨平台图标资产。
 .DESCRIPTION
-  根据 Issue #106 规范，基于 Material 3 Expressive 胶囊几何构型生成：
+  根据 Issue #106 方案 1（M3 层叠纸面与浮动横梁）：
   - desktopApp/icons/RePoi.svg
-  - desktopApp/src/main/resources/icons/RePoi.png
   - desktopApp/icons/RePoi.ico (16, 24, 32, 48, 64, 128, 256)
+  - desktopApp/src/main/resources/icons/RePoi.png
   - androidApp/src/main/res/mipmap-*/ic_launcher.png
   - androidApp/src/main/res/mipmap-*/ic_launcher_round.png
 #>
@@ -17,34 +17,7 @@ param(
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
-function BuildHPath([float]$cx, [float]$cy, [float]$s) {
-    function X([float]$v) { return $cx + ($v - 54.0) * $s }
-    function Y([float]$v) { return $cy + ($v - 54.0) * $s }
-    function D([float]$v) { return $v * $s }
-
-    $p = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $p.StartFigure()
-    $p.AddArc([float](X 32), [float](Y 30), [float](D 12), [float](D 12), 180.0, 180.0)
-    $p.AddLine([float](X 44), [float](Y 36), [float](X 44), [float](Y 44))
-    $p.AddArc([float](X 40), [float](Y 40), [float](D 8),  [float](D 8),  180.0, -90.0)
-    $p.AddLine([float](X 48), [float](Y 48), [float](X 60), [float](Y 48))
-    $p.AddArc([float](X 56), [float](Y 40), [float](D 8),  [float](D 8),  90.0,  -90.0)
-    $p.AddLine([float](X 64), [float](Y 44), [float](X 64), [float](Y 36))
-    $p.AddArc([float](X 64), [float](Y 30), [float](D 12), [float](D 12), 180.0, 180.0)
-    $p.AddLine([float](X 76), [float](Y 36), [float](X 76), [float](Y 72))
-    $p.AddArc([float](X 64), [float](Y 66), [float](D 12), [float](D 12), 0.0,   180.0)
-    $p.AddLine([float](X 64), [float](Y 72), [float](X 64), [float](Y 64))
-    $p.AddArc([float](X 56), [float](Y 60), [float](D 8),  [float](D 8),  0.0,   -90.0)
-    $p.AddLine([float](X 60), [float](Y 60), [float](X 48), [float](Y 60))
-    $p.AddArc([float](X 44), [float](Y 60), [float](D 8),  [float](D 8),  270.0, -90.0)
-    $p.AddLine([float](X 44), [float](Y 64), [float](X 44), [float](Y 72))
-    $p.AddArc([float](X 32), [float](Y 66), [float](D 12), [float](D 12), 0.0,   180.0)
-    $p.AddLine([float](X 32), [float](Y 72), [float](X 32), [float](Y 36))
-    $p.CloseFigure()
-    return $p
-}
-
-function BuildSquirclePath([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
+function BuildCapsulePath([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
     $p = New-Object System.Drawing.Drawing2D.GraphicsPath
     $p.StartFigure()
     $p.AddArc($x, $y, $r * 2, $r * 2, 180.0, 90.0)
@@ -59,7 +32,7 @@ function BuildSquirclePath([float]$x, [float]$y, [float]$w, [float]$h, [float]$r
     return $p
 }
 
-function RenderIconBitmap([int]$size, [bool]$isRound) {
+function RenderM3IconBitmap([int]$size, [bool]$isRound) {
     $bmp = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
@@ -70,43 +43,85 @@ function RenderIconBitmap([int]$size, [bool]$isRound) {
     $pad = [float]($size * 0.05)
     $boxSize = [float]($size - $pad * 2)
 
+    # 1. M3 Surface Container Background (Soft Sky Gradient)
     $rect = New-Object System.Drawing.RectangleF $pad, $pad, $boxSize, $boxSize
-    $gradBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+    $bgGrad = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
         $rect,
-        [System.Drawing.ColorTranslator]::FromHtml('#E3F0FF'),
-        [System.Drawing.ColorTranslator]::FromHtml('#C7E1FF'),
+        [System.Drawing.ColorTranslator]::FromHtml('#E2EEFF'),
+        [System.Drawing.ColorTranslator]::FromHtml('#C6DEFF'),
         [System.Drawing.Drawing2D.LinearGradientMode]::Vertical
     )
 
     if ($isRound) {
-        $g.FillEllipse($gradBrush, $rect)
+        $g.FillEllipse($bgGrad, $rect)
     } else {
-        $cornerR = [float]($boxSize * 0.22)
-        $bgPath = BuildSquirclePath $pad $pad $boxSize $boxSize $cornerR
-        $g.FillPath($gradBrush, $bgPath)
+        $cornerR = [float]($boxSize * 0.24)
+        $bgPath = BuildCapsulePath $pad $pad $boxSize $boxSize $cornerR
+        $g.FillPath($bgGrad, $bgPath)
         $bgPath.Dispose()
     }
-    $gradBrush.Dispose()
+    $bgGrad.Dispose()
 
-    # H 图标缩放与微阴影
-    $scale = [float]($size / 108.0 * 0.88)
-    $cx = [float]($size / 2.0)
-    $cy = [float]($size / 2.0)
-    $shadowDy = [float][Math]::Max(1.0, $size * 0.015)
+    # 坐标缩放映射 (Base 108 -> Target Size)
+    $scale = [float]($size / 108.0)
+    function X([float]$v) { return $v * $scale }
+    function Y([float]$v) { return $v * $scale }
 
-    # 绘制微投影
-    $shadowPath = BuildHPath $cx ($cy + $shadowDy) $scale
-    $shadowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(31, 0, 34, 61))
-    $g.FillPath($shadowBrush, $shadowPath)
-    $shadowBrush.Dispose()
-    $shadowPath.Dispose()
+    # 2. Elevation 1: Pillars Shadow & Fill
+    $pillarShadowDy = [float][Math]::Max(1.0, $size * 0.015)
+    $shadowBrush1 = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(35, 0, 34, 61))
 
-    # 绘制主 H 标
-    $hPath = BuildHPath $cx $cy $scale
-    $hBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml('#004B76'))
-    $g.FillPath($hBrush, $hPath)
-    $hBrush.Dispose()
-    $hPath.Dispose()
+    # Left Pillar Shadow
+    $lpShadow = BuildCapsulePath (X 32) (Y (28 + $pillarShadowDy)) (X 12) (Y 52) (X 6)
+    $g.FillPath($shadowBrush1, $lpShadow)
+    $lpShadow.Dispose()
+
+    # Right Pillar Shadow
+    $rpShadow = BuildCapsulePath (X 64) (Y (28 + $pillarShadowDy)) (X 12) (Y 52) (X 6)
+    $g.FillPath($shadowBrush1, $rpShadow)
+    $rpShadow.Dispose()
+    $shadowBrush1.Dispose()
+
+    # Pillars Solid Fill (#005C8F)
+    $pillarBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml('#005C8F'))
+    $lp = BuildCapsulePath (X 32) (Y 28) (X 12) (Y 52) (X 6)
+    $g.FillPath($pillarBrush, $lp)
+    $lp.Dispose()
+
+    $rp = BuildCapsulePath (X 64) (Y 28) (X 12) (Y 52) (X 6)
+    $g.FillPath($pillarBrush, $rp)
+    $rp.Dispose()
+    $pillarBrush.Dispose()
+
+    # 3. Elevation 2: Floating Crossbar Shadow & Card
+    $bridgeShadowDy = [float][Math]::Max(1.5, $size * 0.02)
+    $bridgeShadowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(45, 0, 29, 50))
+    $bridgeShadow = BuildCapsulePath (X 30) (Y (47 + $bridgeShadowDy)) (X 48) (Y 14) (X 7)
+    $g.FillPath($bridgeShadowBrush, $bridgeShadow)
+    $bridgeShadow.Dispose()
+    $bridgeShadowBrush.Dispose()
+
+    # Floating Card Surface (#D4E4FF)
+    $bridgeBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml('#D4E4FF'))
+    $bridge = BuildCapsulePath (X 30) (Y 47) (X 48) (Y 14) (X 7)
+    $g.FillPath($bridgeBrush, $bridge)
+    $bridge.Dispose()
+    $bridgeBrush.Dispose()
+
+    # Floating Card Inner Core (#004A75)
+    $coreBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml('#004A75'))
+    $core = BuildCapsulePath (X 36) (Y 50) (X 36) (Y 8) (X 4)
+    $g.FillPath($coreBrush, $core)
+    $core.Dispose()
+    $coreBrush.Dispose()
+
+    # 4. Tertiary Anime Collectible Star Accent (#FF7AA3)
+    $starBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml('#FF7AA3'))
+    $starR = [float](X 2.8)
+    $starX = [float](X 70) - $starR
+    $starY = [float](Y 34.5) - $starR
+    $g.FillEllipse($starBrush, $starX, $starY, $starR * 2, $starR * 2)
+    $starBrush.Dispose()
 
     $g.Dispose()
     return $bmp
@@ -116,14 +131,13 @@ function SaveIcoFile([string]$outPath, [int[]]$sizes) {
     $ms = New-Object System.IO.MemoryStream
     $bw = New-Object System.IO.BinaryWriter $ms
 
-    # ICONDIR
-    $bw.Write([uint16]0)                # Reserved
-    $bw.Write([uint16]1)                # Type = 1 (Icon)
-    $bw.Write([uint16]$sizes.Length)    # Count
+    $bw.Write([uint16]0)
+    $bw.Write([uint16]1)
+    $bw.Write([uint16]$sizes.Length)
 
     $pngList = @()
     foreach ($s in $sizes) {
-        $bmp = RenderIconBitmap $s $false
+        $bmp = RenderM3IconBitmap $s $false
         $imgMs = New-Object System.IO.MemoryStream
         $bmp.Save($imgMs, [System.Drawing.Imaging.ImageFormat]::Png)
         $bmp.Dispose()
@@ -138,14 +152,14 @@ function SaveIcoFile([string]$outPath, [int[]]$sizes) {
         $wByte = if ($s -ge 256) { [byte]0 } else { [byte]$s }
         $hByte = if ($s -ge 256) { [byte]0 } else { [byte]$s }
 
-        $bw.Write($wByte)                       # Width
-        $bw.Write($hByte)                       # Height
-        $bw.Write([byte]0)                      # Color count
-        $bw.Write([byte]0)                      # Reserved
-        $bw.Write([uint16]1)                    # Planes
-        $bw.Write([uint16]32)                   # BitCount
-        $bw.Write([uint32]$pngData.Length)      # BytesInRes
-        $bw.Write([uint32]$offset)              # ImageOffset
+        $bw.Write($wByte)
+        $bw.Write($hByte)
+        $bw.Write([byte]0)
+        $bw.Write([byte]0)
+        $bw.Write([uint16]1)
+        $bw.Write([uint16]32)
+        $bw.Write([uint32]$pngData.Length)
+        $bw.Write([uint32]$offset)
 
         $offset += $pngData.Length
     }
@@ -158,46 +172,63 @@ function SaveIcoFile([string]$outPath, [int[]]$sizes) {
     [System.IO.File]::WriteAllBytes($outPath, $ms.ToArray())
     $bw.Dispose()
     $ms.Dispose()
-    Write-Host "Created ICO: $outPath ($($sizes -join ', ') px)"
+    Write-Host "Created M3 ICO: $outPath ($($sizes -join ', ') px)"
 }
 
 # --- 执行生成 ---
 $resolvedRoot = (Resolve-Path $ProjectRoot).Path
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
 # 1. Desktop SVG
 $svgContent = @'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
-    <linearGradient id="bg_grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#E3F0FF" />
-      <stop offset="100%" stop-color="#C7E1FF" />
+    <linearGradient id="m3_bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E2EEFF" />
+      <stop offset="100%" stop-color="#C6DEFF" />
     </linearGradient>
+    <filter id="m3_drop1" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#00223D" flood-opacity="0.16" />
+    </filter>
+    <filter id="m3_bridge_drop" x="-20%" y="-30%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="3.5" stdDeviation="3" flood-color="#001D32" flood-opacity="0.22" />
+    </filter>
   </defs>
 
-  <!-- Material 3 Rounded Squircle Background -->
-  <rect x="12" y="12" width="232" height="232" rx="54" fill="url(#bg_grad)" />
+  <!-- M3 Squircle Base -->
+  <rect x="12" y="12" width="232" height="232" rx="56" fill="url(#m3_bg)" stroke="rgba(255,255,255,0.6)" stroke-width="2" />
 
-  <!-- Material 3 Soft Drop Shadow -->
-  <path fill="#1F00223D" d="M 73,86 C 73,77.7157 79.7157,71 88,71 C 96.2843,71 103,77.7157 103,86 L 103,106 C 103,111.5228 107.4772,116 113,116 L 143,116 C 148.5228,116 153,111.5228 153,106 L 153,86 C 153,77.7157 159.7157,71 168,71 C 176.2843,71 183,77.7157 183,86 L 183,176 C 183,184.2843 176.2843,191 168,191 C 159.7157,191 153,184.2843 153,176 L 153,156 C 153,150.4772 148.5228,146 143,146 L 113,146 C 107.4772,146 103,150.4772 103,156 L 103,176 C 103,184.2843 96.2843,191 88,191 C 79.7157,191 73,184.2843 73,176 L 73,86 Z" />
+  <!-- Base Elevation: Left & Right Pillars -->
+  <g filter="url(#m3_drop1)">
+    <rect x="74" y="66" width="28" height="124" rx="14" fill="#005C8F" />
+    <rect x="154" y="66" width="28" height="124" rx="14" fill="#005C8F" />
+  </g>
 
-  <!-- Material 3 Expressive Capsule H Primary Mark -->
-  <path fill="#004B76" d="M 73,83 C 73,74.7157 79.7157,68 88,68 C 96.2843,68 103,74.7157 103,83 L 103,103 C 103,108.5228 107.4772,113 113,113 L 143,113 C 148.5228,113 153,108.5228 153,103 L 153,83 C 153,74.7157 159.7157,68 168,68 C 176.2843,68 183,74.7157 183,83 L 183,173 C 183,181.2843 176.2843,188 168,188 C 159.7157,188 153,181.2843 153,173 L 153,153 C 153,147.4772 148.5228,143 143,143 L 113,143 C 107.4772,143 103,147.4772 103,153 L 103,173 C 103,181.2843 96.2843,188 88,188 C 79.7157,188 73,181.2843 73,173 L 73,83 Z" />
+  <!-- Floating Elevation: Crossbar Card -->
+  <g filter="url(#m3_bridge_drop)">
+    <rect x="70" y="112" width="116" height="32" rx="16" fill="#D4E4FF" />
+  </g>
+
+  <!-- Crossbar Inner Core -->
+  <rect x="84" y="119" width="88" height="18" rx="9" fill="#004A75" />
+
+  <!-- Tertiary Anime Star Dot -->
+  <circle cx="168" cy="82" r="7" fill="#FF7AA3" />
 </svg>
 '@
 
 $svgPath = Join-Path $resolvedRoot "desktopApp/icons/RePoi.svg"
-[System.IO.File]::WriteAllText($svgPath, ($svgContent.TrimEnd() + "
-"), $utf8NoBom)
+[System.IO.File]::WriteAllText($svgPath, ($svgContent.TrimEnd() + "`n"), $utf8NoBom)
 Write-Host "Updated Desktop SVG: $svgPath"
 
-# 2. Desktop ICO (multi-size)
+# 2. Desktop ICO
 $icoPath = Join-Path $resolvedRoot "desktopApp/icons/RePoi.ico"
 SaveIcoFile $icoPath @(16, 24, 32, 48, 64, 128, 256)
 
-# 3. Desktop resources PNG (for in-app window icon)
+# 3. Desktop resources PNG
 $resDir = Join-Path $resolvedRoot "desktopApp/src/main/resources/icons"
 if (-not (Test-Path $resDir)) { [System.IO.Directory]::CreateDirectory($resDir) | Out-Null }
-$resPng = RenderIconBitmap 256 $false
+$resPng = RenderM3IconBitmap 256 $false
 $resPngPath = Join-Path $resDir "RePoi.png"
 $resPng.Save($resPngPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $resPng.Dispose()
@@ -218,13 +249,13 @@ foreach ($folder in $densityMap.Keys) {
     $dir = Join-Path $androidResDir $folder
 
     # Regular squircle launcher
-    $squareBmp = RenderIconBitmap $dim $false
+    $squareBmp = RenderM3IconBitmap $dim $false
     $squarePath = Join-Path $dir "ic_launcher.png"
     $squareBmp.Save($squarePath, [System.Drawing.Imaging.ImageFormat]::Png)
     $squareBmp.Dispose()
 
     # Round launcher
-    $roundBmp = RenderIconBitmap $dim $true
+    $roundBmp = RenderM3IconBitmap $dim $true
     $roundPath = Join-Path $dir "ic_launcher_round.png"
     $roundBmp.Save($roundPath, [System.Drawing.Imaging.ImageFormat]::Png)
     $roundBmp.Dispose()
@@ -232,4 +263,4 @@ foreach ($folder in $densityMap.Keys) {
     Write-Host "Updated Android $folder : ${dim}x${dim} (regular & round)"
 }
 
-Write-Host "All icons generated successfully!"
+Write-Host "M3 Icons generated successfully!"
