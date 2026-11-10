@@ -1,6 +1,7 @@
 package com.nobody.repoi
 
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -20,6 +21,7 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         state = mainWindowState,
         title = "RePoi",
+        icon = painterResource("icons/RePoi.png"),
     ) {
         RePoiApp()
     }
