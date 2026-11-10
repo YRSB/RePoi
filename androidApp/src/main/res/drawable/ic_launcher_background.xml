@@ -5,7 +5,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Full-bleed Soft Cyan Background: Eliminates the dark-box nested framing -->
+    <!-- Full-bleed Soft Blue Gradient: Pure M3 Background with Zero Nested Framing -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -13,13 +13,9 @@
                 android:startY="0"
                 android:endX="54"
                 android:endY="108"
-                android:startColor="#D6F1FA"
-                android:endColor="#BBE6F5"
+                android:startColor="#DEEDFF"
+                android:endColor="#C8E2FF"
                 android:type="linear" />
         </aapt:attr>
     </path>
-    <!-- Option A: Subtle Layered White Wiki Card on the right -->
-    <path
-        android:fillColor="#D8FFFFFF"
-        android:pathData="M 74,22 L 80,22 C 88.8366,22 96,29.1634 96,38 L 96,70 C 96,78.8366 88.8366,86 80,86 L 74,86 C 65.1634,86 58,78.8366 58,70 L 58,38 C 58,29.1634 65.1634,22 74,22 Z" />
 </vector>
