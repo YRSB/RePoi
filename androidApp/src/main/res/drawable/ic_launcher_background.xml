@@ -5,6 +5,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Full-bleed Soft Blue Gradient: Pure M3 Background with Zero Nested Framing -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -12,8 +13,8 @@
                 android:startY="0"
                 android:endX="54"
                 android:endY="108"
-                android:startColor="#E3F0FF"
-                android:endColor="#C7E1FF"
+                android:startColor="#DEEDFF"
+                android:endColor="#C8E2FF"
                 android:type="linear" />
         </aapt:attr>
     </path>
