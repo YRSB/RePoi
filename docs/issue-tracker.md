@@ -27,6 +27,8 @@
     ```
   - 合并后**必须核实** `gh issue view <n> --json state`，未闭环的用 `gh issue close <n> --comment "<交付说明>"` 补关。
 - 纯文档 PR（仅 `docs/**`、`*.md` 等）走 `check-docs-only` 快速通道，并由 `auto-merge-docs` 自动合并。
+- **PR 的 Evidence 一律写 CI 运行结论**（run id + 各 job 耗时），不写本地构建：本项目禁止本地 Gradle，
+  本地只有 `scripts/check-ui-rules.ps1` 这一道静态预检，二者在 PR 描述里不可互相替代。
 
 ---
 

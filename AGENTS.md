@@ -3,6 +3,9 @@
 RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 `com.nobody.repoi`，支持 Android 与 Windows Desktop）。
 所有用户可见文本、代码注释及 Commit 信息**一律使用中文（简体）**。
 
+应用代码只在本仓库根目录：`shared/`、`androidApp/`、`desktopApp/`、`docs/`、`scripts/`。
+`Zhihu-Hyperion/`、`PodAura-ref/`、`PoiShelf/` 是 gitignored 的参考实现，递归搜索与 `git ls-files` 请限定上述目录，避免几十 MB 的无关输出。
+
 ---
 
 ## 领域实现规范索引 (Context Pointers)
@@ -12,6 +15,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 - **Architecture**（KMP 单 shared 模块、Koin 依赖注入、单向数据流与分页加载器）：查阅 [CODING_STANDARDS.md#架构与数据流-architecture--di](CODING_STANDARDS.md#架构与数据流-architecture--di)
 - **Libraries**（KMP 依赖选型与 klibs.io MCP 权威校验）：查阅 [CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection](CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection)
 - **UI**（Material 3 Expressive 规范、自适应双窗格、悬浮栏、网格与 CDN 图片变体）：查阅 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)
+- **Theme**（六维主题配置、`resolvePoiColorScheme`、色彩弹簧过渡、冷启动落定门禁、启动遮罩）：查阅 [docs/theme.md](docs/theme.md)
 - **Collect**（收藏状态池、8 类列表与去重键、`UserCollectIntent`、画廊脏位恢复感知、排序记忆、滚动键）：查阅 [docs/collect.md](docs/collect.md)
 - **Media**（图片显示、CDN 变体档位、404 避坑、`PoiAsyncImage` / `PoiZoomableImage`、全屏看图）：查阅 [docs/media.md](docs/media.md)
 - **Quirks**（Hpoi API 反序列化多态、图片 path 拼接与逆向踩坑）：查阅 [docs/API_QUIRKS.md](docs/API_QUIRKS.md)

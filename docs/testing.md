@@ -1,6 +1,13 @@
 # 测试规范 (Testing)
 
-本项目单元测试位于 `shared/src/commonTest`，由 CI `Shared Tests` 任务在 JVM 与 Android-host 双目标执行。
+本项目单元测试由 CI `Shared Tests` 任务执行，按依赖选择位置：
+
+- **纯逻辑**（仓储、ViewModel、主题决策树、工具函数）放 `shared/src/commonTest`，JVM 与 Android-host 双目标都会跑；
+- **Compose UI 测试**（`runComposeUiTest` / `mainClock`）放 `shared/src/jvmTest`，只在 `:shared:jvmTest` 执行（先例：`ThemeMotionTest`、`ThemeDynamicRegressionTest`、`PoiAsyncImageLayoutTest`）。
+
+写 Compose 状态测试时显式声明枚举泛型：`mutableStateOf<PaletteStyle>(PaletteStyle.TonalSpot)`。
+`mutableStateOf(PaletteStyle.TonalSpot)` 会被推断成**枚举字面量类型**，之后赋同枚举的其他成员即编译失败
+（issue #103 的修正提交 `77762b2` 即此坑；`scripts/check-ui-rules.ps1` 的 `ENUM-STATE-INFERENCE` 拦这一类）。
 仓储测试模板与 ViewModel 测试模板不同，混用是 flaky 主因。
 
 ---
@@ -83,6 +90,8 @@ gh run watch <run-id> --exit-status
 ```
 
 `workflow_dispatch` 使用目标分支上的工作流定义，实施分支需先包含 `tests.yml`（从 main 切出即满足）。
+
+该流水线先单独跑 `:shared:compileTestKotlinJvm`（fast failure），再跑测试任务：测试源的编译错误（类型推断、缺 import）十几秒内就返回，不必等整个矩阵跑完。
 
 
 ---

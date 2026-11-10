@@ -33,6 +33,11 @@ jobs:
       - name: Set up Gradle environment
         uses: ./.github/actions/gradle-setup
 
+      # 先单独编译测试源：类型推断、缺 import 这类错误不必等整个测试矩阵，
+      # 也避免测试源编译失败被淹没在 Gradle 大段输出里。
+      - name: Compile tests (fast failure)
+        run: ./gradlew :shared:compileTestKotlinJvm --stacktrace 2>&1 | tee compile-output.log; exit ${PIPESTATUS[0]}
+
       - name: Run unit tests
         run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log; exit ${PIPESTATUS[0]}
 
@@ -42,7 +47,7 @@ jobs:
           {
             echo "## 首个失败"
             echo '```'
-            grep -m5 -E "e: |FAILED" test-output.log || echo "(未能提取错误行)"
+            grep -m5 -E "e: |FAILED" test-output.log compile-output.log 2>/dev/null || echo "(未能提取错误行)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -55,3 +60,4 @@ jobs:
             shared/build/reports/tests/
             shared/build/test-results/
             test-output.log
+            compile-output.log
