@@ -125,7 +125,7 @@ fun PoiShelfTheme(
         staticFallback = (if (darkTheme) DarkColorScheme else LightColorScheme)
             .let { if (amoled && darkTheme) it.withAmoledBlack() else it }
     )
-    // 切换色彩风格 / 标准 / 种子色时，让新旧配色弹簧过渡；深浅模式切换与首帧不补间
+    // 交互切换色彩风格 / 标准 / 种子色时弹簧过渡；冷启动首态落定与深浅模式切换均不补间（ADR-0012）
     val animatedScheme = colorScheme.animateAsState(darkTheme = darkTheme)
     CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
         MaterialExpressiveTheme(

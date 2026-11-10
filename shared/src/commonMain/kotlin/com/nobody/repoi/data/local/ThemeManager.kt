@@ -88,8 +88,9 @@ class ThemeManager(
     /**
      * 唯一的主题状态流。
      *
-     * `null` 表示**首次读盘尚未完成**，UI 必须停在启动占位而不是拿默认值先画一帧；
-     * 一旦读出（成功或回落默认值）就只可能是非空。
+     * `null` 表示**首次读盘尚未完成**：宿主以 [awaitSettings] 把启动遮罩保持到读盘落定（ADR-0012），
+     * 一旦读出（成功或回落默认值）就只可能是非空。尚无遮罩的桌面端可直接以默认值渲染首帧，
+     * 其后的配色跃迁由主题动画层的首态落定门禁瞬间落定，不会播放补间。
      */
     private val state = MutableStateFlow<ThemeSettings?>(null)
 
@@ -139,6 +140,16 @@ class ThemeManager(
             specVersion = parseSpecVersion(prefs[SPEC_VERSION_KEY]) ?: ColorSpec.SpecVersion.SPEC_2025,
         )
     }
+
+    /**
+     * 等到首次读盘落定后再返回非空主题配置。
+     *
+     * 供宿主启动门禁使用（Android 启动遮罩，ADR-0012）：在那里只关心「主题配色是否已就绪」，
+     * 不该由调用方自行判空或触碰状态流内部。返回非空即意味着 UI 首帧能用上持久化配色。
+     *
+     * 收到取消（如 Activity 销毁导致启动遮罩流程终止）会立即抛出，不吞异常。
+     */
+    suspend fun awaitSettings(): ThemeSettings = settings.first { it != null }!!
 
     /**
      * 乐观更新内存状态并返回新值：UI 立即生效，DataStore 只负责持久化。

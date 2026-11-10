@@ -15,6 +15,9 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(libs.androidx.activity.compose)
+    // 冷启动启动遮罩（ADR-0012）：API 24+ 向后兼容的官方启动画面支持库。
+    // 仅 Android 宿主需要，shared 公共代码不引用，故留在单端 shell。
+    implementation(libs.androidx.core.splashscreen)
 
     // M2: Koin android 扩展（androidLogger/androidContext，供 RepoiApp thin init）。
     implementation(libs.koin.android)

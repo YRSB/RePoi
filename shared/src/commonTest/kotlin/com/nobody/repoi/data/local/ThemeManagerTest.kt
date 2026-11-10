@@ -12,7 +12,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -28,10 +27,6 @@ import kotlin.test.assertTrue
 class ThemeManagerTest {
 
     private fun manager(): ThemeManager = ThemeManager(TestDataStore.themePrefs())
-
-    /** 等首次读盘落定（成功或回落默认值）。 */
-    private suspend fun ThemeManager.awaitSettings(): ThemeSettings =
-        assertNotNull(settings.first { it != null }, "主题配置应在一轮读盘后落定")
 
     @Test
     fun settings_resolvesFromDiskAndNeverStaysNull() = runTest {
