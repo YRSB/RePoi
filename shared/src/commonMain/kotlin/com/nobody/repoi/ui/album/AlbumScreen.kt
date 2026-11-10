@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -81,7 +80,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import kotlin.math.roundToInt
 import com.nobody.repoi.platform.LocalAppMessages
@@ -180,17 +180,8 @@ fun AlbumScreen(
         }
     }
 
-    val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = 16.dp + navBarBottomPadding
-    val bottomBarState = LocalBottomBarScrollState.current
-    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
-    val fabBottomPadding = when {
-        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
-        isCompact -> 16.dp
-        else -> 24.dp + navBarBottomPadding
-    }
+    val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
+    val fabBottomPadding = rememberBottomBarFabPadding()
     val pullRefreshState = rememberPullToRefreshState()
     val isAnyRefreshing = uiState.isRefreshing || (uiState.showRanking && uiState.isSectionsLoading && uiState.sections.isEmpty())
 

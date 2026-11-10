@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,7 +44,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Surface
@@ -60,7 +58,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
-import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import kotlin.math.roundToInt
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,7 +77,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.ActionItem
-import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
@@ -195,17 +193,8 @@ fun FollowScreen(
         wasRefreshing = uiState.isRefreshing
     }
 
-    val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = 16.dp + navBarBottomPadding
-    val bottomBarState = LocalBottomBarScrollState.current
-    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
-    val fabBottomPadding = when {
-        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
-        isCompact -> 16.dp
-        else -> 24.dp + navBarBottomPadding
-    }
+    val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
+    val fabBottomPadding = rememberBottomBarFabPadding()
     val pullRefreshState = rememberPullToRefreshState()
     val showRefreshFab by remember {
         derivedStateOf { gridState.firstVisibleItemIndex > 3 && uiState.items.isNotEmpty() }

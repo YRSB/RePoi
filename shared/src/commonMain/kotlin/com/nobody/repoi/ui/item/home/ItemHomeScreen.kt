@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,7 +65,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -90,7 +89,6 @@ import kotlinx.datetime.todayIn
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import androidx.compose.material3.ElevatedCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,10 +102,7 @@ fun ItemHomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val isCompact = !adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = if (isCompact) 96.dp else (16.dp + navBarBottomPadding)
+    val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     var restored by remember { mutableStateOf(false) }
 
     LaunchedEffect(listState) {
