@@ -64,14 +64,17 @@ class UserHistoryRepository(
         return try {
             val type = resolveEntityType(item.itemType, requestedItemType) ?: return item
             val entityId = when (type) {
-                CoverFreshnessRepository.EntityType.HOBBY -> item.itemId
-                CoverFreshnessRepository.EntityType.ALBUM -> item.nodeId
+                // 接口偶有 itemId/nodeId 为 0 的桩数据：回退统一的 actualDetailId（id 兜底），
+                // 否则这类条目的缓存永远命中不了。仅命中才重写，回退不会放大请求。
+                CoverFreshnessRepository.EntityType.HOBBY -> item.itemId.takeIf { it > 0L } ?: item.actualDetailId
+                CoverFreshnessRepository.EntityType.ALBUM -> item.nodeId.takeIf { it > 0L } ?: item.actualDetailId
             }
             val cachedCover = coverFreshnessRepository.getCachedCover(entityId, type)
             if (cachedCover != null && cachedCover != item.cover) item.copy(cover = cachedCover) else item
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Throwable) {
+        } catch (_: Exception) {
+            // 仅吞单条解析异常（映射/类型解析），不吞 JVM Error 与协程取消
             item
         }
     }

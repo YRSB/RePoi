@@ -9,17 +9,23 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okio.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * 封面新鲜度仓储测试。
@@ -85,17 +91,20 @@ class CoverFreshnessRepositoryTest {
     }
 
     /**
-     * 等待最新封面真正落盘。
+     * 等待最新封面真正落盘（跨多个防抖窗口的真实 DataStore I/O 同步屏障）。
      *
-     * 连续多次写入可能落在不同的防抖窗口：上一窗口的 `edit` 尚未返回时，下一窗口的 `delay` 还没被调度，
-     * 单次 `advanceUntilIdle` 无法覆盖。这里逐窗口推进并在每个窗口后重建仓储观察，直到读到期望值。
+     * **这不是防抖断言的替代品**：500ms 窗口内「未落盘」、窗口后「已落盘」由独立用例
+     * （`rememberFreshCover_defersDiskWriteUntilDebounceElapses`、`rapidWrites_coalesceIntoSamePersistedSnapshot`）
+     * 通过 `advanceTimeBy(400/200)` 精确断言。本 helper 只用于「连续多次写入可能落在不同防抖窗口」时
+     * 推进虚拟时间并重建仓储读取结果；有界（默认 2 轮）失败时给出期望/实际值。
      */
     private suspend fun TestScope.awaitPersistedCover(
         preferences: DataStore<Preferences>,
         id: Long,
         type: CoverFreshnessRepository.EntityType,
         expected: String?,
-        attempts: Int = 4,
+        message: String = "等待封面落盘",
+        attempts: Int = 2,
     ): String? {
         var observed: String? = null
         repeat(attempts) {
@@ -107,7 +116,7 @@ class CoverFreshnessRepositoryTest {
             observed = restored.getCachedCover(id, type)
             if (observed == expected) return observed
         }
-        return observed
+        fail("$message：期望落盘值 <$expected>，实际 <$observed>（已等待 $attempts 个防抖窗口）")
     }
 
     @Test
@@ -666,13 +675,110 @@ class CoverFreshnessRepositoryTest {
         before.ensureWarmed()
         assertNotNull(before.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY))
 
+        // clear() 是终态：挂起返回即已落盘清空，不再依赖 501ms 防抖推进
         env.repository.clear()
-        advanceTimeBy(501)
-        advanceUntilIdle()
         prefs.awaitPendingWrites()
 
+        assertTrue(
+            prefs.data.first().asMap().isEmpty(),
+            "clear() 应立即清空持久化内容（不得留下任何 key），而不是等防抖窗口",
+        )
         val after = repositoryOver(prefs)
         after.ensureWarmed()
         assertNull(after.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY), "clear 应同步清空落盘内容")
     }
+
+    @Test
+    fun clear_afterInFlightFetch_doesNotResurrectCache() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val gate = CompletableDeferred<Unit>()
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val hobbyMock = MockApi()
+        hobbyMock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/item/get") },
+            body = { _, _, _ ->
+                gate.await()
+                hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
+            },
+        )
+        val repository = CoverFreshnessRepository(
+            HobbyDetailRepository(hobbyMock.api(dispatcher)),
+            AlbumDetailRepository(MockApi().api(dispatcher)),
+            prefs,
+            backgroundScope,
+        )
+
+        val pending = async { repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY) }
+        advanceUntilIdle()
+        assertEquals(1, hobbyMock.requestCount, "回源请求应已在途")
+
+        // 登出：在途回源尚未返回时清空
+        repository.clear()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(hobbyCover, pending.await().getOrThrow(), "调用方仍应拿到本次回源结果")
+        assertNull(
+            repository.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "clear 之后完成的旧回源不得写回内存缓存",
+        )
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+        assertTrue(
+            prefs.data.first().asMap().isEmpty(),
+            "clear 之后完成的旧回源不得触发落盘复活",
+        )
+    }
+
+    @Test
+    fun persist_retriesAfterWarmReadFailure_andStillWrites() = runTest {
+        val inner = TestDataStore.coverFreshnessPrefs()
+        // 初始化预热与首次落盘尝试（persistSnapshot 的 ensureWarmed）各消耗一次读盘失败，
+        // 因此落盘必须依赖有界重试才能成功。
+        val flaky = FlakyDataStore(inner, failures = 2)
+        val env = Env(backgroundScope, preferences = flaky)
+
+        env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
+
+        // 第一个防抖窗口：预热读盘失败，落盘被放弃但信号未丢弃
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        inner.awaitPendingWrites()
+        assertTrue(
+            inner.data.first().asMap().isEmpty(),
+            "预热未落定时不应写盘（等待重试）",
+        )
+
+        // 后续窗口：重试读到磁盘后落盘成功（无重试逻辑时该断言会失败）
+        assertEquals(
+            hobbyCover,
+            awaitPersistedCover(
+                preferences = inner,
+                id = 59570L,
+                type = CoverFreshnessRepository.EntityType.HOBBY,
+                expected = hobbyCover,
+                message = "预热读失败一次后，写入仍应在有界重试后落盘",
+            ),
+        )
+    }
+}
+
+/**
+ * 可注入读盘失败的 DataStore 包装：前 [failures] 次 `data` 收集抛 [IOException]，
+ * 其余全部委托真实 TestDataStore（写入始终委托，保证落盘可观察）。
+ */
+private class FlakyDataStore(
+    private val delegate: DataStore<Preferences>,
+    private val failures: Int,
+) : DataStore<Preferences> {
+    private var reads = 0
+
+    override val data: Flow<Preferences> = flow {
+        if (reads++ < failures) throw IOException("模拟封面新鲜度读盘失败")
+        emitAll(delegate.data)
+    }
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+        delegate.updateData(transform)
 }

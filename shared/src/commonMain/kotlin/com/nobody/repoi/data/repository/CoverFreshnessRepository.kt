@@ -38,7 +38,9 @@ import kotlinx.serialization.json.Json
  * - **单飞**：同一实体的并发修复请求只发一次，其余调用方共享同一个结果；
  * - **穿透只穿透正缓存**：[freshCover] 的 `forceRefresh` 只跳过已确认封面，
  *   负缓存窗口仍然生效（否则服务端空白封面会形成请求风暴）；
- * - **详情页沉淀**：[rememberFreshCover] 让「刚进过详情页」的封面直接命中，连修复请求都省掉。
+ * - **详情页沉淀**：[rememberFreshCover] 让「刚进过详情页」的封面直接命中，连修复请求都省掉；
+ * - **清空是终态**：[clear] 是挂起函数，返回时内存与磁盘都已清空（立即清盘，不被防抖窗口延迟），
+ *   代际递增会让 clear 之前发出的预热与回源结果失效，不会在清空后复活旧封面。
  *
  * 持久化格式：`cover_freshness.preferences_pb` 内的**单个** preferences key，
  * 值为按插入序编码的 `Map<String, String>` JSON（键 `"<type>:<id>"`，值为相对封面路径），
@@ -78,6 +80,24 @@ class CoverFreshnessRepository(
 
     /** 保护 [covers] 的写时复制、[negativeUntil] 与 [inFlight] 的并发读写。 */
     private val guard = Mutex()
+
+    /**
+     * 串行化**所有**磁盘写入（防抖落盘与 [clear] 的即时清盘）。
+     *
+     * 没有它，在途落盘与 [clear] 会乱序：后到的旧快照会覆盖刚清空的文件。
+     * 锁顺序固定为 [persistGuard] → [guard]，任何路径都不得反向持有（否则死锁）。
+     */
+    private val persistGuard = Mutex()
+
+    /**
+     * 缓存代际：每次 [clear] 递增。
+     *
+     * 预热与回源都在开始前捕获当时的代际，应用结果前再比对；不一致说明期间发生过 [clear]，
+     * 读到的旧盘数据或旧 owner 的回源结果一律丢弃，避免登出后旧封面复活。
+     * 递增只在 [guard] 内进行（[clear] 同时持有 [persistGuard]）；读取分别在 [guard] 或
+     * [persistGuard] 临界区内完成，两者与递增互斥。
+     */
+    private var cacheEpoch: Long = 0L
 
     /** 保护预热状态（[warmed] / [warmAttempt]）。 */
     private val warmGuard = Mutex()
@@ -127,7 +147,10 @@ class CoverFreshnessRepository(
         }
 
         try {
-            mergeWarmed(readPersistedCovers())
+            // 代际捕获与读盘必须在同一个 persistGuard 临界区内完成：否则 clear() 的
+            // 「代际递增 + 清盘」可能落在两者之间，把登出前的旧条目重新合并回内存。
+            val (epoch, loaded) = persistGuard.withLock { cacheEpoch to readPersistedCovers() }
+            mergeWarmed(loaded, epoch)
             warmed = true
         } catch (error: CancellationException) {
             throw error
@@ -190,7 +213,7 @@ class CoverFreshnessRepository(
                     } else {
                         val created = CompletableDeferred<Result<String?>>()
                         inFlight[key] = created
-                        Lookup(isOwner = true, deferred = created)
+                        Lookup(isOwner = true, deferred = created, epoch = cacheEpoch)
                     }
                 }
             }
@@ -209,6 +232,9 @@ class CoverFreshnessRepository(
             val freshCover = outcome.getOrNull()
             guard.withLock {
                 when {
+                    // clear() 之后完成的回源一律丢弃：否则登出/切换账号后，旧 owner 的封面会
+                    // 写回内存、甚至触发落盘复活。调用方仍会拿到本次请求结果。
+                    lookup.epoch != cacheEpoch -> Unit
                     // 网络/接口失败不写负缓存：可能只是瞬时抖动，允许下次滚动再试
                     outcome.isFailure -> Unit
                     // 成功但服务端也没有封面：窗口期内不再重试，避免空请求轰炸；且绝不落盘。
@@ -254,24 +280,45 @@ class CoverFreshnessRepository(
     }
 
     /**
-     * 清理已确认封面、负缓存与持久化内容（测试与登出场景使用）。
+     * 清空已确认封面、负缓存与持久化内容（测试与登出场景使用）。
+     *
+     * **终态语义**：这是挂起函数，返回时内存与磁盘都已清空——即时 `edit { remove(key) }`，
+     * 不被 [PERSIST_DEBOUNCE_MS] 防抖窗口延迟；清盘失败只记日志，内存仍然必然已清空
+     * （否则登出后依旧命中旧账号封面）。
+     *
+     * 同时递增 [cacheEpoch]：clear 之前发出的预热与回源结果在应用前代际校验失败，一律丢弃，
+     * 绝不会在清空后重新写回内存或落盘。
      *
      * 不清 [inFlight]：在途请求生命周期很短，清空会让随后登记的同类请求与旧 owner 失去去重关系；
      * 旧 owner 结束时也会按身份校验，只清理自己的占位。
      */
-    fun clear() {
-        if (!guard.tryLock()) return
+    suspend fun clear() {
         try {
-            covers = emptyMap()
-            negativeUntil.clear()
-        } finally {
-            guard.unlock()
+            // 登录态边界不允许「清了一半」：取消调用方也不打断内存失效与清盘。
+            withContext(NonCancellable) {
+                persistGuard.withLock {
+                    invalidate()
+                    // 立即清盘，不经过 500ms 防抖窗口。
+                    preferences.edit { prefs -> prefs.remove(COVERS_KEY) }
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            AppLogger.w("CoverFreshness", "清空封面新鲜度持久化缓存失败（内存已清空）：${error.message}")
         }
-        // 落盘是异步的：worker 取的是信号到达后的最新快照（此时为空映射）。
-        persistSignal.trySend(Unit)
     }
 
     // ------------------------------------------------------------------ 内部实现
+
+    /** 内存失效 + 代际递增。必须在 [persistGuard] 临界区内调用，与清盘/在途落盘串行。 */
+    private suspend fun invalidate() {
+        guard.withLock {
+            cacheEpoch++
+            covers = emptyMap()
+            negativeUntil.clear()
+        }
+    }
 
     /** 一次查询的结论：命中缓存 / 命中负缓存 / 成为 owner / 等待在途 owner。 */
     private class Lookup(
@@ -279,6 +326,8 @@ class CoverFreshnessRepository(
         val isNegative: Boolean = false,
         val isOwner: Boolean = false,
         val deferred: CompletableDeferred<Result<String?>>? = null,
+        /** owner 登记时的 [cacheEpoch]；应用结果前不匹配即说明期间发生过 [clear]。 */
+        val epoch: Long = 0L,
     )
 
     /** 一次预热尝试的票据：只有 owner 真正读盘，其余等待同一个信号。 */
@@ -314,9 +363,11 @@ class CoverFreshnessRepository(
     }
 
     /** 预热结果合并：落盘条目更旧，内存中已有的值优先，且保持在队尾。 */
-    private suspend fun mergeWarmed(loaded: Map<String, String>) {
+    private suspend fun mergeWarmed(loaded: Map<String, String>, epoch: Long) {
         if (loaded.isEmpty()) return
         guard.withLock {
+            // 读盘期间发生过 clear()：读到的是登出前的旧盘，整体丢弃，绝不合并回内存。
+            if (epoch != cacheEpoch) return@withLock
             val merged = LinkedHashMap<String, String>(loaded.size + covers.size)
             loaded.forEach { (key, value) -> if (value.isNotBlank()) merged[key] = value }
             covers.forEach { (key, value) ->
@@ -343,27 +394,54 @@ class CoverFreshnessRepository(
      *
      * `CONFLATED` 通道让同一窗口内的连续写入合并为一次落盘；worker 本体常驻于 [scope]，
      * 查询与写入调用方永远不会被磁盘 I/O 阻塞。
+     *
+     * 预热尚未落定时不写盘（否则会覆盖尚未读出的历史条目），但也不静默丢弃这次写入：
+     * 每 [PERSIST_DEBOUNCE_MS] 重试一次，最多 [PERSIST_MAX_ATTEMPTS] 次后放弃并记日志。
      */
     private suspend fun persistLoop() {
         for (unused in persistSignal) {
-            delay(PERSIST_DEBOUNCE_MS)
-            persistSnapshot()
+            var attempt = 1
+            while (true) {
+                delay(PERSIST_DEBOUNCE_MS)
+                if (persistSnapshot()) break
+                if (attempt >= PERSIST_MAX_ATTEMPTS) {
+                    AppLogger.w("CoverFreshness", "预热始终未落定，放弃本次封面缓存落盘（已重试 $attempt 次）")
+                    break
+                }
+                attempt++
+            }
         }
     }
 
-    private suspend fun persistSnapshot() {
+    /**
+     * 把当前内存快照写盘。
+     *
+     * @return `false` 仅表示预热尚未落定、本次未写盘（调用方应重试）；磁盘错误已记日志，不再重试。
+     *
+     * 快照在 [persistGuard] 内重新读取：clear() 的即时清盘与在途落盘因此严格串行，
+     * 后进入者写的一定是最新快照，绝不会用旧数据覆盖刚清空的文件。空快照直接删除 key，
+     * 不留下空壳文件，「清空」在磁盘上是可观察的终态。
+     */
+    private suspend fun persistSnapshot(): Boolean {
         // 预热未落定前不写盘：否则会用「只含新写入」的快照覆盖掉尚未读出的历史条目。
         ensureWarmed()
-        if (!warmed) return
-        val snapshot = covers
-        val encoded = json.encodeToString(coverMapSerializer, snapshot)
+        if (!warmed) return false
         try {
-            preferences.edit { prefs -> prefs[COVERS_KEY] = encoded }
+            persistGuard.withLock {
+                val snapshot = covers
+                if (snapshot.isEmpty()) {
+                    preferences.edit { prefs -> prefs.remove(COVERS_KEY) }
+                } else {
+                    val encoded = json.encodeToString(coverMapSerializer, snapshot)
+                    preferences.edit { prefs -> prefs[COVERS_KEY] = encoded }
+                }
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             AppLogger.w("CoverFreshness", "写入封面新鲜度缓存失败：${error.message}")
         }
+        return true
     }
 
     private fun isNegativeLocked(key: String): Boolean {
@@ -394,6 +472,9 @@ class CoverFreshnessRepository(
 
         /** 落盘防抖窗口。 */
         const val PERSIST_DEBOUNCE_MS = 500L
+
+        /** 预热未落定时单次落盘信号的最大尝试次数（每次仍间隔 [PERSIST_DEBOUNCE_MS]）。 */
+        const val PERSIST_MAX_ATTEMPTS = 3
 
         /** 单个 preferences key 承载整张映射（原子写入）。 */
         val COVERS_KEY = stringPreferencesKey("cover_freshness_covers")

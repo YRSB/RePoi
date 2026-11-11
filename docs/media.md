@@ -146,7 +146,8 @@ PoiAsyncImage(
 `CoverFreshnessRepository.ensureWarmed()`（幂等，等待冷启动读盘落定），再逐条重写封面：
 
 - 有效类型：条目 `itemType` 去空白、小写后非空则优先，否则回退请求参数 `itemType`；
-- 手办取 `itemId`、相册取 `nodeId`，仅当 ID > 0、`getCachedCover` 非空且与快照不同时 `copy(cover = cached)`；
+- 手办取 `itemId`、相册取 `nodeId`；该字段为 0（接口偶有桩数据）时回退 `actualDetailId`，
+  仅当 ID > 0、`getCachedCover` 非空且与快照不同时 `copy(cover = cached)`；
 - 单条异常只跳过该条、绝不丢弃整个列表；未命中或封面相同则原样保留服务端快照。
 
 因此冷启动打开浏览历史（手办/相册）时，已访问或修复过的条目直接以正确封面渲染，
@@ -172,14 +173,16 @@ query 归一（`DefaultMediaPipeline.canonicalAbsolutes`，`http://` 一并升�
 | 负缓存 | 服务端明确无封面时仅内存 10 分钟，**绝不落盘**（重建仓储后不会拦截请求） |
 | 读路径 | `getCachedCover(id, type)` 同步、纯内存、零挂起，供列表前置重写直接使用 |
 | 回源 | `freshCover(id, type, forceRefresh)`：`forceRefresh = true` 只穿透**正缓存**，负缓存窗口仍生效；成功原子覆写并落盘，失败不污染旧值 |
-| 写路径 | 先改内存快照，再经 `Channel(CONFLATED)` 信号由内部 worker `delay(500)` 防抖批量落盘 |
+| 写路径 | 先改内存快照，再经 `Channel(CONFLATED)` 信号由内部 worker `delay(500)` 防抖批量落盘；预热尚未落定时不写盘，改为每 500ms 有界重试（≤3 次）后放弃并记日志 |
 | 预热 | 仓储初始化即在注入的 `CoroutineScope` 启动一次性读盘；列表可在首次解析前 `ensureWarmed()` 等待（幂等、失败可重试、不挂死） |
 
 约束：
 
 - 查询与写入调用方**永远不做磁盘 I/O**；落盘只在仓储内部 worker 中发生；
 - 预热完成前所有查询安全返回 `null`（沿用服务端快照），不会阻塞或抛异常；
-- `clear()` 同时清空内存与持久化内容，且不影响在途单飞请求。
+- `clear()` 是**终态**挂起调用：返回时内存与持久化内容都已清空——同步/立即清盘，不被 500ms 防抖窗口延迟
+  （清盘失败只记日志，内存仍然必然已清）；清空会递增缓存代际，此前发出的预热与回源结果一律丢弃，
+  不会在登出后复活旧封面。在途单飞请求本身不受影响。
 
 ---
 
