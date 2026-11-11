@@ -13,15 +13,12 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -105,6 +102,7 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.user.creation.UserCreationCategory
 import com.nobody.repoi.util.CdnUrlUtils
@@ -137,8 +135,8 @@ fun ProfileScreen(
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     // 仅在横屏且宽度达到 Medium / Expanded 时启用双列布局，平板竖屏及手机竖屏均采用单列流式布局
     val isDualPane = isLandscape && isWideScreen
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomPadding = if (isDualPane) (28.dp + navBarBottomPadding) else (20.dp + navBarBottomPadding)
+    val extraBottomPadding = if (isDualPane) 28.dp else 20.dp
+    val bottomPadding = rememberBottomBarContentPadding(extraBottomPadding)
 
     var showFinanceDialog by rememberSaveable { mutableStateOf(false) }
     var financeDialogInitialTab by rememberSaveable { mutableStateOf(0) }

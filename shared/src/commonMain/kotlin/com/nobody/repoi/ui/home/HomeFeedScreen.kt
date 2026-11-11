@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
@@ -98,7 +97,8 @@ import com.nobody.repoi.ui.common.FakeSearchField
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
-import com.nobody.repoi.ui.navigation.LocalBottomBarScrollState
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
@@ -157,19 +157,10 @@ fun HomeFeedScreen(
     val tabRowHeightDp = with(density) { tabRowHeightPx.toDp() }
     val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
     val totalHeaderHeight = topBarHeight + tabRowHeightDp + filterRowHeightDp
-    val bottomBarState = LocalBottomBarScrollState.current
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
-    val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isCompact = !isWideScreen
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomContentPadding = 16.dp + navBarBottomPadding
-    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
-    val fabBottomPadding = when {
-        bottomBarHeightDp > 0.dp -> bottomBarHeightDp + 16.dp
-        isCompact -> 16.dp
-        else -> 24.dp + navBarBottomPadding
-    }
+    val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
+    val fabBottomPadding = rememberBottomBarFabPadding()
     val feedColumns = rememberFeedStaggeredGridColumns()
 
     LaunchedEffect(staggeredGridState, scrollBehavior.state) {
