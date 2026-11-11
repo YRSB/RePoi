@@ -84,6 +84,7 @@ class HobbyDetailViewModelExHobbyTest {
         val collectMock = MockApi()
         val commentMock = MockApi()
         val userMock = MockApi()
+        val albumMock = MockApi()
         val session = FakeUserSession("utoken-test")
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 
@@ -103,7 +104,7 @@ class HobbyDetailViewModelExHobbyTest {
                 UserHistoryRepository(userMock.api(), session),
                 CoverFreshnessRepository(
                     HobbyDetailRepository(detailMock.api()),
-                    AlbumDetailRepository(detailMock.api())
+                    AlbumDetailRepository(albumMock.api())
                 )
             )
         }

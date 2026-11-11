@@ -30,7 +30,10 @@ class UserHistoryViewModel(
      */
     private val coverRepairGate = Semaphore(COVER_REPAIR_CONCURRENCY)
 
-    /** 单条实体的本会话修复次数（键为 `type:id`），防止反复失败时形成请求风暴。 */
+    /**
+     * 单条实体的本会话**失败**次数（键为 `type:id`），防止反复失败时形成请求风暴。
+     * 修复成功即清零：成功既不产生新请求，也不该占用失败额度。
+     */
     private val coverRepairAttempts = mutableMapOf<String, Int>()
 
     private val hobbyLoader: PagedListLoader<UserHistoryItem> = pagedListLoader(
@@ -238,6 +241,9 @@ class UserHistoryViewModel(
                 loader.updateItem(predicate = { it.id == rowId }) { item ->
                     item.copy(cover = freshCover)
                 }
+                // 成功修复不消耗失败额度：否则下拉刷新把服务端快照换回旧路径后，
+                // 两次刷新就会把本会话的修复机会耗尽（刷新后的修复本可命中仓储缓存、零请求）。
+                coverRepairAttempts.remove(attemptKey)
             }
         }
     }
@@ -262,7 +268,7 @@ class UserHistoryViewModel(
         /** 同时在途的封面修复请求上限，避免整屏失效时瞬间打满详情接口。 */
         const val COVER_REPAIR_CONCURRENCY = 3
 
-        /** 同一实体的本会话修复次数上限；超限后保持破损图标，等下次进入页面重来。 */
+        /** 同一实体的本会话连续失败次数上限（成功修复会清零）；超限后保持破损图标，等下次进入页面重来。 */
         const val MAX_COVER_REPAIR_ATTEMPTS = 2
     }
 }

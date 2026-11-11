@@ -61,26 +61,29 @@ class CoverFreshnessRepository(
         if (id <= 0L) return Result.success(null)
         val key = cacheKey(id, type)
 
-        // 1) 命中已确认封面（含 TTL）
-        guard.withLock { readFreshCoverLocked(key) }?.let { cached ->
-            return Result.success(cached)
-        }
-
-        // 2) 命中负缓存：直接放弃，不再打接口
-        if (guard.withLock { isNegativeLocked(key) }) return Result.success(null)
-
-        // 3) 单飞：同一实体的并发修复共享结果
-        val (isOwner, deferred) = guard.withLock {
-            val existing = inFlight[key]
-            if (existing != null) {
-                false to existing
-            } else {
-                val created = CompletableDeferred<Result<String?>>()
-                inFlight[key] = created
-                true to created
+        // 命中判定与单飞登记必须在同一临界区完成：分三次加锁时，owner 可能在两次加锁之间
+        // 完成请求并清理在途表，调用方就会看不到刚写入的缓存/负缓存而重复发请求（单飞与负缓存同时失效）。
+        val lookup = guard.withLock {
+            val cached = readFreshCoverLocked(key)
+            when {
+                cached != null -> Lookup(cachedCover = cached)
+                isNegativeLocked(key) -> Lookup(isNegative = true)
+                else -> {
+                    val existing = inFlight[key]
+                    if (existing != null) {
+                        Lookup(deferred = existing)
+                    } else {
+                        val created = CompletableDeferred<Result<String?>>()
+                        inFlight[key] = created
+                        Lookup(isOwner = true, deferred = created)
+                    }
+                }
             }
         }
-        if (!isOwner) return deferred.await()
+        lookup.cachedCover?.let { return Result.success(it) }
+        if (lookup.isNegative) return Result.success(null)
+        val deferred = requireNotNull(lookup.deferred) { "单飞占位缺失" }
+        if (!lookup.isOwner) return deferred.await()
 
         // 单飞占位必须在所有出口清理并唤醒等待者，否则该实体会被永久卡在 inFlight 表里；
         // 清理阶段放进 NonCancellable，避免调用方会话被取消时把等待者一起悬空。
@@ -102,7 +105,10 @@ class CoverFreshnessRepository(
             }
         } finally {
             withContext(NonCancellable) {
-                guard.withLock { inFlight.remove(key) }
+                guard.withLock {
+                    // 按身份删除：若占位已被替换（例如 clear() 后的新 owner），不能误删别人的 deferred
+                    if (inFlight[key] === deferred) inFlight.remove(key)
+                }
                 deferred.complete(outcome)
             }
         }
@@ -127,19 +133,31 @@ class CoverFreshnessRepository(
         }
     }
 
-    /** 清理全部缓存（测试与登出场景使用）。 */
+    /**
+     * 清理已确认封面与负缓存（测试与登出场景使用）。
+     *
+     * 不清 [inFlight]：在途请求生命周期很短，清空会让随后登记的同类请求与旧 owner 失去去重关系；
+     * 旧 owner 结束时也会按身份校验，只清理自己的占位。
+     */
     fun clear() {
         if (!guard.tryLock()) return
         try {
             covers.clear()
             negativeUntil.clear()
-            inFlight.clear()
         } finally {
             guard.unlock()
         }
     }
 
     // ------------------------------------------------------------------ 内部实现
+
+    /** 一次查询的结论：命中缓存 / 命中负缓存 / 成为 owner / 等待在途 owner。 */
+    private class Lookup(
+        val cachedCover: String? = null,
+        val isNegative: Boolean = false,
+        val isOwner: Boolean = false,
+        val deferred: CompletableDeferred<Result<String?>>? = null,
+    )
 
     private suspend fun fetch(id: Long, type: EntityType): Result<String?> = when (type) {
         EntityType.HOBBY -> hobbyDetailRepository.getHobbyDetail(itemId = id, itemType = "hobby")

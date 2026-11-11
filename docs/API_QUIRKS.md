@@ -136,6 +136,7 @@
     只替换失败的那一行，**禁止整页刷新**；
   - 由 `CoverFreshnessRepository` 承载单飞、负缓存与 TTL，ViewModel 侧限流（在途 ≤ 3、单条 ≤ 2 次）；
   - 详情页拿到最新封面后顺手 `rememberFreshCover` 沉淀，历史页下次直接命中、零请求。
-  - 绝对 URL 的 `http://` 与旧 CDN 域名由 `DefaultMediaPipeline` 统一归一（`gk/` 之后路径与 query 保留）。
+  - 绝对 URL 的 `http://` 与旧 CDN 域名由 `DefaultMediaPipeline` 统一归一：仅 hpoi 系域名、且路径含
+    `gk/` 时生效，`gk/` 之后的路径与 query 保留。
 
 实现与接线细节见 [media.md](media.md#列表封面快照失效onerror--按条回源)。

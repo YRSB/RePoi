@@ -1,8 +1,12 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.platform.nowMillis
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -82,13 +86,11 @@ class CoverFreshnessRepositoryTest {
     @Test
     fun freshCover_failure_isNotNegativeCachedAndCanRetry() = runTest {
         val env = Env()
-        env.stubHobbyCover(hobbyCover)
         env.hobbyMock.replaceRoute("api/item/get", env.hobbyMock.failure(500, "Network error"))
 
         val first = env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
         assertTrue(first.isFailure)
 
-        env.stubHobbyCover(hobbyCover)
         env.hobbyMock.replaceRoute(
             "api/item/get",
             env.hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
@@ -174,5 +176,76 @@ class CoverFreshnessRepositoryTest {
 
         assertNotNull(refreshed.getOrThrow())
         assertEquals(2, hobbyMock.requestCount, "TTL 到期后应重新取一次")
+    }
+
+    @Test
+    fun freshCover_negativeCacheExpires_afterWindow() = runTest {
+        var now = nowMillis()
+        val hobbyMock = MockApi()
+        val repository = CoverFreshnessRepository(
+            HobbyDetailRepository(hobbyMock.api()),
+            AlbumDetailRepository(MockApi().api()),
+            clock = { now },
+        )
+        hobbyMock.route(
+            "api/item/get",
+            hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":null}}""")
+        )
+
+        assertEquals(null, repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
+
+        // 窗口内即使服务端已有封面，也仍在负缓存里，不发请求
+        hobbyMock.replaceRoute(
+            "api/item/get",
+            hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
+        )
+        assertEquals(null, repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
+        assertEquals(1, hobbyMock.requestCount)
+
+        // 越过 10 分钟负缓存窗口后必须重新探测
+        now += 10L * 60L * 1000L + 1
+        assertEquals(
+            hobbyCover,
+            repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow()
+        )
+        assertEquals(2, hobbyMock.requestCount)
+    }
+
+    @Test
+    fun freshCover_afterOwnerCancelled_allowsRetry() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val gate = CompletableDeferred<Unit>()
+        val hobbyMock = MockApi()
+        hobbyMock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/item/get") },
+            body = { _, _, _ ->
+                gate.await()
+                hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
+            },
+        )
+        val repository = CoverFreshnessRepository(
+            HobbyDetailRepository(hobbyMock.api(dispatcher)),
+            AlbumDetailRepository(MockApi().api(dispatcher)),
+        )
+
+        val owner = launch {
+            repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
+        }
+        advanceUntilIdle()
+        assertEquals(1, hobbyMock.requestCount, "owner 应已发出请求")
+
+        owner.cancel()
+        advanceUntilIdle()
+
+        // 在途占位必须已清理：否则后续调用会一直等在已取消 owner 的 deferred 上
+        val retry = async {
+            repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
+        }
+        advanceUntilIdle()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(hobbyCover, retry.await().getOrThrow())
+        assertEquals(2, hobbyMock.requestCount, "取消后应允许重新发起请求")
     }
 }

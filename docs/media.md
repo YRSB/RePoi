@@ -136,8 +136,10 @@ PoiAsyncImage(
 - **必须限流**：同时在途 ≤ 3、单条实体本会话最多 2 次（失败上限后可等下次进页面）；
 - **详情页顺手沉淀**：详情页拿到 `detail.cover` 后调 `rememberFreshCover`，历史页下次直接命中，零请求。
 
-绝对 URL 里的 `http://` 与旧 CDN 域名由管道统一归一（`DefaultMediaPipeline.canonicalAbsolutes`），
-但**路径本身变化**只能靠上面的回源修复，降档（`sr/`、`raw/`）在文件真没了时一样 404。
+`cover/`（含 `pic/`）家族的绝对 URL 会由管道按 authority 判定 hpoi 系域名、取 `gk/` 之后的路径与
+query 归一（`DefaultMediaPipeline.canonicalAbsolutes`，`http://` 一并升级为 CDN 根）；
+`posts/`、`bnr/`、`head/` 等家族仍按原契约透传。但**路径本身变化**只能靠上面的回源修复，
+降档（`sr/`、`raw/`）在文件真没了时一样 404。
 
 ---
 

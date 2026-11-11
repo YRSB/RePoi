@@ -83,6 +83,33 @@ class MediaPipelineTest {
             "http://rfx.hpoi.net/other/cover/n/a.jpg",
             pipeline.resolveUrl("http://rfx.hpoi.net/other/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
         )
+
+        // 域名按 authority 精确匹配：形似域名、或在 path 中出现 hpoi.net 的外部 URL 不得被改写
+        assertEquals(
+            "https://not-hpoi.net/gk/cover/n/$relPath",
+            pipeline.resolveUrl("https://not-hpoi.net/gk/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+        assertEquals(
+            "https://cdn.example.com/hpoi.net/gk/cover/n/$relPath",
+            pipeline.resolveUrl(
+                "https://cdn.example.com/hpoi.net/gk/cover/n/$relPath",
+                MediaCategory.HOBBY,
+                ImagePurpose.CARD_STANDARD
+            )
+        )
+
+        // gk/ 只在 query 里时不能当成 CDN 根截断路径
+        val gkOnlyInQuery = "https://www.hpoi.net/view?src=gk/cover/n/a.jpg"
+        assertEquals(
+            gkOnlyInQuery,
+            pipeline.resolveUrl(gkOnlyInQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+
+        // 旧快照可能原样保存大小写混合的绝对地址，marker 匹配忽略大小写但保留原始路径
+        assertEquals(
+            "${base}cover/n/$relPath",
+            pipeline.resolveUrl("http://WWW.HPOI.NET/GK/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
     }
 
     @Test
