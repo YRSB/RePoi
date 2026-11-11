@@ -41,6 +41,7 @@ import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.MediaOrderOption
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.CardDefaults
 
@@ -78,7 +79,9 @@ internal fun CollectAlbumCard(
     albumType: String = AlbumTypeOption.DEFAULT,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    PoiCaptionGridCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(
             containerColor = if (isSelected) {
@@ -87,21 +90,15 @@ internal fun CollectAlbumCard(
                 MaterialTheme.colorScheme.surfaceContainerLow
             }
         ),
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                // 多选模式下单击切换选中；非多选模式单击进详情（语义都由调用方决定）
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        Column {
+        modifier = modifier,
+        cover = {
             CollectAlbumCover(
                 item = item,
                 isSelected = isSelected,
                 isSelectionMode = isSelectionMode
             )
-
+        },
+        caption = {
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                 if (item.actualTitle.isNotBlank()) {
                     Text(
@@ -168,7 +165,7 @@ internal fun CollectAlbumCard(
                 }
             }
         }
-    }
+    )
 }
 
 /**

@@ -38,10 +38,12 @@ import com.nobody.repoi.data.remote.model.SearchResultItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.data.remote.model.SearchUserItem
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.card.PoiListCard
+import com.nobody.repoi.ui.common.card.PoiThumbnail
 import androidx.compose.material3.ElevatedCard
 
 /**
- * 手办/周边搜索结果横向卡片（MD3 Expressive 规范）
+ * 手办/周边搜索结果横向卡片（基于 PoiListCard 深基元）
  */
 @Composable
 fun HobbySearchCard(
@@ -49,25 +51,11 @@ fun HobbySearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    PoiListCard(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 封面图片（1:1 正方形微曲角），缺省/失败态由基元内置
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
-            ) {
+        modifier = modifier,
+        thumbnail = {
+            PoiThumbnail.Square {
                 PoiAsyncImage(
                     path = item.cover,
                     category = MediaCategory.HOBBY,
@@ -76,57 +64,47 @@ fun HobbySearchCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
-            // 右侧文本详情
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(68.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+        },
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                if (item.categoryBadge.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.padding(end = 2.dp)
                     ) {
-                        if (item.categoryBadge.isNotBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.padding(end = 2.dp)
-                            ) {
-                                Text(
-                                    text = item.categoryBadge,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-
                         Text(
-                            text = item.displayName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    if (!item.detail.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = item.detail,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 16.sp
+                            text = item.categoryBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
+
+                Text(
+                    text = item.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+        }
+    ) {
+        if (!item.detail.isNullOrBlank()) {
+            Text(
+                text = item.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 16.sp
+            )
         }
     }
 }
@@ -274,6 +252,7 @@ fun AlbumStaggeredCard(
 
 /**
  * 通用实体卡片（厂商、作品、系列、角色/要素、人物）
+ * 基于 PoiListCard 深基元
  */
 @Composable
 fun GeneralSearchCard(
@@ -281,25 +260,12 @@ fun GeneralSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    PoiListCard(
+        title = item.displayName,
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
-            ) {
+        modifier = modifier,
+        thumbnail = {
+            PoiThumbnail.Square {
                 PoiAsyncImage(
                     path = item.cover,
                     category = MediaCategory.HOBBY,
@@ -308,30 +274,16 @@ fun GeneralSearchCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = item.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (!item.detail.isNullOrBlank()) {
-                    Text(
-                        text = item.detail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+        }
+    ) {
+        if (!item.detail.isNullOrBlank()) {
+            Text(
+                text = item.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

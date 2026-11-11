@@ -1,37 +1,18 @@
 package com.nobody.repoi.ui.collect.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
+import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.card.PoiListCard
+import com.nobody.repoi.ui.common.card.PoiThumbnail
 import com.nobody.repoi.util.CdnUrlUtils
-import androidx.compose.material3.ElevatedCard
 
 // ── 作品收藏卡片（对标原版 UserCollectWorksAdapter + item_collect_works.xml）──
 
@@ -87,7 +68,7 @@ internal fun worksStateProgressText(state: Int?, current: Int): String = when (s
 /**
  * 作品收藏卡片。
  *
- * 竖版 90×130 海报在左，右侧三行：作品名（`nameCN`）、发售/首映/上映时间行、状态/进度行。
+ * 基于 [PoiListCard] 构筑：竖版 90×130 海报在左，右侧三行：作品名（`nameCN`）、状态/进度行、发售/首映/上映时间行。
  * 真实实体 id 不可确定时整卡禁用点击（见 [worksDetailItemId]）。
  */
 @Composable
@@ -107,97 +88,40 @@ internal fun WorksCollectCard(
     }
     val stateText = worksStateProgressText(item.state, item.current)
 
-    ElevatedCard(
+    PoiListCard(
+        title = item.displayName,
+        titleMaxLines = 2,
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 竖版封面 90×130
-            WorksPosterImage(
-                coverUrl = coverUrl,
-                contentDescription = item.displayName
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = item.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (isClickable) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    }
+        enabled = isClickable,
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        thumbnail = {
+            PoiThumbnail.Poster {
+                PoiAsyncImage(
+                    model = coverUrl,
+                    contentDescription = item.displayName,
+                    modifier = Modifier.fillMaxSize()
                 )
-
-                if (stateText.isNotBlank()) {
-                    Text(
-                        text = stateText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                if (!releaseDateString.isNullOrBlank()) {
-                    Text(
-                        text = worksReleaseDatePrefix(entityCategoryId) + releaseDateString,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
-    }
-}
-
-/**
- * 作品竖版封面（90×130），加载失败时回落破损图标。
- */
-@Composable
-private fun WorksPosterImage(
-    coverUrl: String,
-    contentDescription: String?,
-    modifier: Modifier = Modifier
-) {
-    var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-    Box(
-        modifier = modifier
-            .width(WorksPosterWidth.dp)
-            .height(WorksPosterHeight.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        contentAlignment = Alignment.Center
     ) {
-        if (coverUrl.isNotBlank() && !loadFailed) {
-            AsyncImage(
-                model = coverUrl,
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                onError = { loadFailed = true }
+        if (stateText.isNotBlank()) {
+            Text(
+                text = stateText,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-        } else {
-            Icon(
-                imageVector = Icons.Filled.BrokenImage,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.outline
+        }
+
+        if (!releaseDateString.isNullOrBlank()) {
+            Text(
+                text = worksReleaseDatePrefix(entityCategoryId) + releaseDateString,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

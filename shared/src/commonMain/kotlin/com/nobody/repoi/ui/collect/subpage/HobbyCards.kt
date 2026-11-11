@@ -39,6 +39,9 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.card.PoiListCard
+import com.nobody.repoi.ui.common.card.PoiPosterCard
+import com.nobody.repoi.ui.common.card.PoiThumbnail
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
 import com.nobody.repoi.util.PriceFormatter
 import androidx.compose.material3.ElevatedCard
@@ -247,7 +250,7 @@ internal fun HobbyEmptyState(
 // ── 卡片 ──────────────────────────────────────────────────
 
 /**
- * 周边网格卡（9:13 海报）。
+ * 周边网格卡（9:13 海报，基于 PoiPosterCard 深基元）。
  *
  * 右上角徽章按收藏状态自适应（见 [hobbyGridBadgeField]），底部叠加发售日期
  * （原版网格卡的 `titleType` 恒为 `release`）。多选态下叠加半透明遮罩与勾选角标。
@@ -256,7 +259,6 @@ internal fun HobbyEmptyState(
  * @param selectionMode 当前是否处于多选态，决定是否叠加遮罩与勾选角标。
  * @param isSelected 是否已被加入多选集合（存**外层收藏节点 id**）。
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun HobbyCollectGridCard(
     item: UserCollectHobbyItem,
@@ -268,9 +270,6 @@ internal fun HobbyCollectGridCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bottomScrim = remember {
-        Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x66000000)))
-    }
     val badgeText = badgeField.value(item)
     val badgeContent = remember(badgeField, badgeText) {
         if (badgeField.withPrefixOnGrid || badgeText == HOBBY_FIELD_PLACEHOLDER) {
@@ -280,18 +279,17 @@ internal fun HobbyCollectGridCard(
         }
     }
 
-    ElevatedCard(
-        modifier = modifier
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick.takeIf { isSelectionEnabled } ?: {}
-            )
-            .fillMaxWidth()
-            .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 封面 9:13 海报铺满整卡，缺省/失败态由基元内置（官方缺省图 / 破损图标）
+    PoiPosterCard(
+        onClick = onClick,
+        onLongClick = onLongClick.takeIf { isSelectionEnabled },
+        modifier = modifier,
+        aspectRatio = 9f / 13f,
+        badgeText = badgeContent.takeIf { it.isNotBlank() },
+        footerText = item.displayReleaseDateText.takeIf { it.isNotBlank() },
+        selectionOverlay = if (selectionMode) {
+            { SelectionOverlay(isSelected = isSelected, modifier = Modifier.fillMaxSize()) }
+        } else null,
+        cover = {
             PoiAsyncImage(
                 path = item.actualCover,
                 category = MediaCategory.HOBBY,
@@ -299,64 +297,15 @@ internal fun HobbyCollectGridCard(
                 contentDescription = item.displayName,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // 右上角状态自适应徽章
-            if (badgeContent.isNotBlank()) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = Color.Black.copy(alpha = 0.55f),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 4.dp, end = 4.dp)
-                ) {
-                    Text(
-                        text = badgeContent,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.95f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            // 底部发售日期（原版网格卡 titleType 恒为 release）
-            val dateText = item.displayReleaseDateText
-            if (dateText.isNotBlank()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(bottomScrim)
-                        .padding(top = 16.dp, bottom = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.95f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            if (selectionMode) {
-                SelectionOverlay(isSelected = isSelected, modifier = Modifier.fillMaxSize())
-            }
         }
-    }
+    )
 }
 
 /**
- * 周边列表卡（缩略图 + 标题 + 4 个自适应微标签的两行两列）。
+ * 周边列表卡（缩略图 + 标题 + 4 个自适应微标签的两行两列，基于 PoiListCard 深基元）。
  *
  * 4 个微标签的取值矩阵见 [hobbyListFields]；多选态下左侧缩略图叠加勾选角标。
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun HobbyCollectListCard(
     item: UserCollectHobbyItem,
@@ -368,30 +317,13 @@ internal fun HobbyCollectListCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        modifier = modifier
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick.takeIf { isSelectionEnabled } ?: {}
-            )
-            .fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 左侧封面缩略图（68dp 方形，圆角 SmallCardShape）
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
-            ) {
+    PoiListCard(
+        title = item.displayName,
+        onClick = onClick,
+        onLongClick = onLongClick.takeIf { isSelectionEnabled },
+        modifier = modifier,
+        thumbnail = {
+            PoiThumbnail.Square {
                 PoiAsyncImage(
                     path = item.actualCover,
                     category = MediaCategory.HOBBY,
@@ -408,40 +340,25 @@ internal fun HobbyCollectListCard(
                     )
                 }
             }
-
-            // 右侧信息列
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+        }
+    ) {
+        // 4 个微标签：两行两列等宽，取值随收藏状态自适应
+        fields.chunked(2).forEach { rowFields ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = item.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // 4 个微标签：两行两列等宽，取值随收藏状态自适应
-                fields.chunked(2).forEach { rowFields ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        rowFields.forEach { field ->
-                            HpoiInfoBadgeItem(
-                                label = field.label,
-                                value = field.value(item),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        // 奇数个字段时补一个等宽占位，保持两列对齐
-                        repeat(2 - rowFields.size) {
-                            Box(modifier = Modifier.weight(1f))
-                        }
-                    }
+                rowFields.forEach { field ->
+                    HpoiInfoBadgeItem(
+                        label = field.label,
+                        value = field.value(item),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // 奇数个字段时补一个等宽占位，保持两列对齐
+                repeat(2 - rowFields.size) {
+                    Box(modifier = Modifier.weight(1f))
                 }
             }
         }
