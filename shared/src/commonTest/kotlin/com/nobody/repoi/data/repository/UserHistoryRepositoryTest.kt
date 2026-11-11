@@ -42,7 +42,7 @@ class UserHistoryRepositoryTest {
     )
 
     /** 模拟冷启动：在真实存储文件上先落盘一条已确认封面，再重建仓储实例。 */
-    private fun TestScope.seedPersistedCover(
+    private suspend fun TestScope.seedPersistedCover(
         preferences: DataStore<Preferences>,
         id: Long,
         type: CoverFreshnessRepository.EntityType,
