@@ -61,7 +61,9 @@ private val BrokenImageIconSize = 28.dp
  *   **约束前提**：`aspectRatio` 只在至少一个轴仍可自由伸缩时生效。若调用方同时钉死宽与高
  *   （如 `Modifier.fillMaxSize()` 落在尺寸确定的父容器里），比例将被忽略、图片铺满容器。
  *   需要「定高、宽度按比例反推」时必须只给高度（`Modifier.height(...)`），不要叠加 `fillMaxSize()`；
- * - [enableFullscreenPreview] 为真时点击唤起全屏查看器；若同时提供 [onClick]，则 [onClick] 优先。
+ * - [enableFullscreenPreview] 为真时点击唤起全屏查看器；若同时提供 [onClick]，则 [onClick] 优先；
+ * - [onError] 为失败出口，供调用方在「URL 快照失效」时按条回源修复（成功重试由 urlText 变化驱动，
+ *   基元本身不做重试；未传则保持既有的静默破损图标表现）。
  *
  * @param path Hpoi 资源路径（相对路径或绝对 URL，可为空）
  * @param category 资源所属业务分类
@@ -74,6 +76,7 @@ private val BrokenImageIconSize = 28.dp
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
  * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
+ * @param onError 加载失败回调（每次失败触发一次），用于触发按条回源修复
  */
 @Composable
 fun PoiAsyncImage(
@@ -87,7 +90,8 @@ fun PoiAsyncImage(
     fallbackRatio: Float? = null,
     enableFullscreenPreview: Boolean = false,
     onClick: (() -> Unit)? = null,
-    alignment: Alignment = Alignment.Center
+    alignment: Alignment = Alignment.Center,
+    onError: (() -> Unit)? = null
 ) {
     val pipeline = LocalMediaPipeline.current
     val resolvedUrl = remember(path, category, purpose) { pipeline.resolveUrl(path, category, purpose) }
@@ -114,7 +118,8 @@ fun PoiAsyncImage(
         fallbackRatio = fallbackRatio,
         enableFullscreenPreview = enableFullscreenPreview,
         onClick = onClick,
-        alignment = alignment
+        alignment = alignment,
+        onError = onError
     )
 }
 
@@ -134,6 +139,7 @@ fun PoiAsyncImage(
  * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器（仅纯字符串 URL 可用）
  * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
  * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
+ * @param onError 加载失败回调（每次失败触发一次），语义与语义化重载一致
  */
 @Composable
 fun PoiAsyncImage(
@@ -146,7 +152,8 @@ fun PoiAsyncImage(
     fallbackRatio: Float? = null,
     enableFullscreenPreview: Boolean = false,
     onClick: (() -> Unit)? = null,
-    alignment: Alignment = Alignment.Center
+    alignment: Alignment = Alignment.Center,
+    onError: (() -> Unit)? = null
 ) {
     val urlText = remember(model) { modelTextOf(model) }
     val bucket = remember(contentScale, adaptiveRatio) {
@@ -168,7 +175,8 @@ fun PoiAsyncImage(
         fallbackRatio = fallbackRatio,
         enableFullscreenPreview = enableFullscreenPreview,
         onClick = onClick,
-        alignment = alignment
+        alignment = alignment,
+        onError = onError
     )
 }
 
@@ -176,6 +184,9 @@ fun PoiAsyncImage(
  * 两个公开重载的公共渲染核：负责请求构建、自适应纵横比、失败态与点击交互。
  *
  * 与公开重载的差别仅在于「URL 已解析完毕」，因此不做任何 CDN 判定。
+ *
+ * 失败态只做两件事：标记本地破损图标，并通过 [onError] 把「这张图加载失败」这一事实交给调用方。
+ * 基元自身**不重试**——修复后的新 URL 会让 `remember(urlText)` 自动重置失败态。
  */
 @Composable
 private fun PoiAsyncImageCore(
@@ -192,7 +203,8 @@ private fun PoiAsyncImageCore(
     fallbackRatio: Float?,
     enableFullscreenPreview: Boolean,
     onClick: (() -> Unit)?,
-    alignment: Alignment
+    alignment: Alignment,
+    onError: (() -> Unit)?
 ) {
     val pipeline = LocalMediaPipeline.current
     // ImageRequest 直通；其余模型统一经列表请求工厂生成带独立缓存键的请求
@@ -267,7 +279,10 @@ private fun PoiAsyncImageCore(
                         }
                     }
                 },
-                onError = { loadFailed = true }
+                onError = {
+                    loadFailed = true
+                    onError?.invoke()
+                }
             )
         }
     }

@@ -80,7 +80,7 @@ val viewModelModule = module {
     viewModelOf(::WorksCollectEditViewModel)
     viewModel { CommentDetailViewModel(get(), get(), get()) }
     viewModel { HobbyCommentsViewModel(get(), get()) }
-    viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { HobbyDetailViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { HobbyAlbumListViewModel(get()) }
     viewModel { ExHobbyListViewModel(get()) }
     viewModel { FollowViewModel(get(), get()) }
@@ -112,7 +112,7 @@ val viewModelModule = module {
     viewModel { SettingsCacheViewModel(get(), get(), get()) }
     viewModel { UserInfoViewModel(get(), get(), get(), get()) }
     viewModel { UserCreationViewModel(get(), get()) }
-    viewModel { UserHistoryViewModel(get()) }
+    viewModel { UserHistoryViewModel(get(), get()) }
     viewModel { VendorDetailViewModel(get(), get(), get(), get()) }
     viewModel { VendorActionsViewModel(get()) }
     viewModel { WorksDetailViewModel(get(), get()) }

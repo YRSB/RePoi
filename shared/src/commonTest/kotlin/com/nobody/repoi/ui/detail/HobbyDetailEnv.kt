@@ -3,8 +3,10 @@ package com.nobody.repoi.ui.detail
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
+import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
@@ -55,6 +57,8 @@ class HobbyDetailEnv(
     val userHistoryRepository = UserHistoryRepository(userMock.api(dispatcher), session)
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+    val albumDetailRepository = AlbumDetailRepository(detailMock.api(dispatcher))
+    val coverFreshnessRepository = CoverFreshnessRepository(detailRepository, albumDetailRepository)
 
     val commentDelegate = CommentInteractionDelegate(
         commentRepository, stickerRepository, session
@@ -62,7 +66,7 @@ class HobbyDetailEnv(
 
     fun viewModel(): HobbyDetailViewModel = HobbyDetailViewModel(
         detailRepository, collectRepository, commentDelegate,
-        exHobbyRepository, preferences, userHistoryRepository
+        exHobbyRepository, preferences, userHistoryRepository, coverFreshnessRepository
     )
 
     /** loadDetail 基础 7 件套（详情/信息/官图/相册/时间轴/关联/评论×2）。 */

@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.user.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.UserHistoryItem
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.pagedListLoader
@@ -11,13 +12,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 class UserHistoryViewModel(
-    private val userHistoryRepository: UserHistoryRepository
+    private val userHistoryRepository: UserHistoryRepository,
+    private val coverFreshnessRepository: CoverFreshnessRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserHistoryUiState())
     val uiState: StateFlow<UserHistoryUiState> = _uiState.asStateFlow()
+
+    /**
+     * 封面修复闸门：列表接口给的 `cover` 是写入快照，服务端重新落盘后必然 404，
+     * 而详情接口每次都会返回当前真实封面。失败才修复，且同时在途最多 [COVER_REPAIR_CONCURRENCY] 条，
+     * 正常滚动与翻页零额外请求。
+     */
+    private val coverRepairGate = Semaphore(COVER_REPAIR_CONCURRENCY)
+
+    /** 单条实体的本会话修复次数（键为 `type:id`），防止反复失败时形成请求风暴。 */
+    private val coverRepairAttempts = mutableMapOf<String, Int>()
 
     private val hobbyLoader: PagedListLoader<UserHistoryItem> = pagedListLoader(
         scope = viewModelScope,
@@ -196,6 +210,38 @@ class UserHistoryViewModel(
         _uiState.update { it.copy(userMessage = null) }
     }
 
+    /**
+     * 封面加载失败回调：按条回源修复历史快照里的过期封面路径。
+     *
+     * 为什么需要它：`api/user/read/item/get` 返回的 `cover` 是写入历史那一刻的快照，服务端重新
+     * 落盘封面后旧路径必然 404；而详情接口每次都会给出当前真实封面。因此只在图片真的加载失败时
+     * 按条补一次，绝不整页刷新（N 条历史 = N 个详情请求的代价不可接受）。
+     *
+     * @param rowId 历史记录行主键（用于精确替换列表项）
+     * @param detailId 业务实体 ID（手办为 `itemId`，相册为 `albumId`）
+     * @param category 条目所属分类
+     */
+    fun onCoverLoadFailed(rowId: Long, detailId: Long, category: UserHistoryCategory) {
+        if (detailId <= 0L) return
+        val entityType = category.toCoverEntityType()
+        val attemptKey = "${entityType.name}:$detailId"
+        val attempts = coverRepairAttempts[attemptKey] ?: 0
+        if (attempts >= MAX_COVER_REPAIR_ATTEMPTS) return
+        coverRepairAttempts[attemptKey] = attempts + 1
+
+        viewModelScope.launch {
+            coverRepairGate.withPermit {
+                val freshCover = coverFreshnessRepository.freshCover(detailId, entityType).getOrNull()
+                if (freshCover.isNullOrBlank()) return@withPermit
+                val loader = if (category == UserHistoryCategory.HOBBY) hobbyLoader else albumLoader
+                // 只替换真正失败的那一行：copy 后 urlText 变化会让 PoiAsyncImage 自动重置失败态
+                loader.updateItem(predicate = { it.id == rowId }) { item ->
+                    item.copy(cover = freshCover)
+                }
+            }
+        }
+    }
+
     private fun updateTabState(category: UserHistoryCategory, transform: (HistoryTabState) -> HistoryTabState) {
         _uiState.update { current ->
             if (category == UserHistoryCategory.HOBBY) {
@@ -204,5 +250,19 @@ class UserHistoryViewModel(
                 current.copy(albumState = transform(current.albumState))
             }
         }
+    }
+
+    private fun UserHistoryCategory.toCoverEntityType(): CoverFreshnessRepository.EntityType =
+        when (this) {
+            UserHistoryCategory.HOBBY -> CoverFreshnessRepository.EntityType.HOBBY
+            UserHistoryCategory.ALBUM -> CoverFreshnessRepository.EntityType.ALBUM
+        }
+
+    private companion object {
+        /** 同时在途的封面修复请求上限，避免整屏失效时瞬间打满详情接口。 */
+        const val COVER_REPAIR_CONCURRENCY = 3
+
+        /** 同一实体的本会话修复次数上限；超限后保持破损图标，等下次进入页面重来。 */
+        const val MAX_COVER_REPAIR_ATTEMPTS = 2
     }
 }

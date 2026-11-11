@@ -64,6 +64,9 @@ object DefaultMediaPipeline : MediaPipeline {
     private const val ZONE_PREFIX = "zone/"
     private const val STICKER_PREFIX = "sticker/item/"
 
+    /** CDN 根路径段：绝对 URL 归一化时以它切分域名前缀与资源路径。 */
+    private const val CDN_MARKER = "gk/"
+
     // ---------------------------------------------------------------- 契约实现
 
     override fun resolveUrl(path: String?, category: MediaCategory, purpose: ImagePurpose): String =
@@ -130,7 +133,7 @@ object DefaultMediaPipeline : MediaPipeline {
     fun buildVariantUrl(path: String?, prefixes: List<String>, targetPrefix: String): String {
         if (path.isNullOrBlank()) return ""
         if (isAbsoluteUrl(path)) {
-            var result: String = path
+            var result: String = canonicalAbsolutes(path)
             for (prefix in prefixes) {
                 if (prefix != targetPrefix) {
                     result = result.replace("/$prefix", "/$targetPrefix")
@@ -139,6 +142,22 @@ object DefaultMediaPipeline : MediaPipeline {
             return result
         }
         return "$CDN_BASE_URL$targetPrefix${cleanVariantPath(path, prefixes)}"
+    }
+
+    /**
+     * 绝对 URL 的协议/域名归一（仅 hpoi 系域名，外部域名原样返回）。
+     *
+     * 历史快照类列表接口可能存下多年前的绝对地址：`http://` 在 Android 会被明文流量策略直接拒绝，
+     * 旧 CDN 域名也可能已下线，两者都表现为「图片其实在、但列表加载不出来」。此处把 hpoi 系
+     * 绝对地址统一收敛到 [CDN_BASE_URL]，保留 `/gk/` 之后的路径与 query；路径里若没有 `gk/`
+     * 则原样保留整条 URL，避免把非 CDN 资源误改。
+     */
+    private fun canonicalAbsolutes(path: String): String {
+        val lower = path.lowercase()
+        if (!lower.contains("hpoi.net")) return path
+        val gkIndex = path.indexOf(CDN_MARKER)
+        if (gkIndex < 0) return path
+        return CDN_BASE_URL + path.substring(gkIndex + CDN_MARKER.length)
     }
 
     /** 清理手办/条目封面路径中的变体前缀。 */

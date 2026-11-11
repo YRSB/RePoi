@@ -121,3 +121,21 @@
   - 网络基类统一配置默认 BaseURL `https://www.hpoi.net.cn/`；
   - 图片与静态资源 CDN 工具类 `CdnUrlUtils` 确保指向高可用域名；
   - 网络插件在接收到 `code == 4001` 时发布全局认证失效事件，由 `UserSession.notifyTokenExpired()` 统一切断。
+
+---
+
+## 10. 列表封面是「写入快照」，会随服务端重新落盘而失效
+
+- **涉及接口**：`GET api/user/read/item/get`（浏览历史）及同类以列表形式返回 `cover` 的接口。
+- **踩坑现象**：
+  - 列表返回的 `cover` 是**写入那一刻**的相对路径，不是实时值；服务端重新落盘封面后旧路径必然 404，
+    表现为「历史卡片封面白屏 / 破损图标，但点进详情页封面正常」。
+  - 无法靠拼 URL 修复：路径本身变了，换任何变体目录（`cover/sr/`、`cover/raw/`）都仍 404。
+- **推荐解法**：
+  - 失败时按条回详情接口取当前真实封面（`api/item/get-v2` / `api/album/detail`），
+    只替换失败的那一行，**禁止整页刷新**；
+  - 由 `CoverFreshnessRepository` 承载单飞、负缓存与 TTL，ViewModel 侧限流（在途 ≤ 3、单条 ≤ 2 次）；
+  - 详情页拿到最新封面后顺手 `rememberFreshCover` 沉淀，历史页下次直接命中、零请求。
+  - 绝对 URL 的 `http://` 与旧 CDN 域名由 `DefaultMediaPipeline` 统一归一（`gk/` 之后路径与 query 保留）。
+
+实现与接线细节见 [media.md](media.md#列表封面快照失效onerror--按条回源)。

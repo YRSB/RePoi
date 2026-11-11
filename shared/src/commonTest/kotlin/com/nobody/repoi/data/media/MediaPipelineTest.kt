@@ -61,6 +61,31 @@ class MediaPipelineTest {
     }
 
     @Test
+    fun resolveUrl_hobby_canonicalizesLegacyHpoiAbsoluteUrl() {
+        // 历史快照类列表可能存下多年前的绝对地址：http 明文在 Android 直接被拒，旧域名也可能下线
+        val plainHttp = "http://rfx.hpoi.net/gk/cover/n/$relPath"
+        assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(plainHttp, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+
+        val legacyHost = "https://www.hpoi.net/gk/cover/n/$relPath"
+        assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(legacyHost, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+        assertEquals("${base}cover/raw/$relPath", pipeline.resolveRawUrl(legacyHost, MediaCategory.HOBBY))
+
+        // query 必须保留（服务端以 query 区分版本时不能丢）
+        val withQuery = "http://rfx.hpoi.net/gk/cover/n/$relPath?v=2"
+        assertEquals("${base}cover/n/$relPath?v=2", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+
+        // 非 hpoi 域名与非 CDN 路径原样透传，避免误改外部资源
+        assertEquals(
+            "http://cdn.example.com/cover/n/a.jpg",
+            pipeline.resolveUrl("http://cdn.example.com/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+        assertEquals(
+            "http://rfx.hpoi.net/other/cover/n/a.jpg",
+            pipeline.resolveUrl("http://rfx.hpoi.net/other/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+    }
+
+    @Test
     fun resolveUrl_keepsQueryStringAfterVariantPrefix() {
         val withQuery = "$relPath?v=2"
         assertEquals("${base}cover/n/$withQuery", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))

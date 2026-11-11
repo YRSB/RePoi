@@ -5,6 +5,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.CharacterDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.ForumRepository
@@ -38,7 +39,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 /**
- * 仓储模块：25 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
+ * 仓储模块：26 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
  * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
  *
  * 模块尾部同时挂载收藏写侧 Domain UseCases（`factory`，无状态、随用随建）：
@@ -66,6 +67,7 @@ val repositoryModule = module {
     single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get()) }
+    single { CoverFreshnessRepository(get(), get()) }
     single { UserFinanceRepository(get(), get()) }
     singleOf(::UserRepository)
     singleOf(::VendorDetailRepository)
