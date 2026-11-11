@@ -128,6 +128,31 @@ class UserHistoryRepositoryTest {
     }
 
     @Test
+    fun getUserHistoryList_hobby_withoutItemId_fallsBackToActualDetailId() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        // 手办桩数据没有 itemId（反序列化为 0），只能靠 actualDetailId（nodeId 456）命中
+        seedPersistedCover(prefs, 456L, CoverFreshnessRepository.EntityType.HOBBY, freshHobbyCover)
+
+        val detailMock = MockApi()
+        val mock = MockApi()
+        mock.enqueue(
+            """{"success":true,"code":200,"data":{"readList":[
+                {"id":123,"nodeId":456,"itemType":"hobby","title":"手办A","cover":"$staleCover"}
+            ]}}"""
+        )
+        val repository = UserHistoryRepository(
+            mock.api(),
+            FakeUserSession("utoken-test"),
+            freshness(prefs, hobbyMock = detailMock),
+        )
+
+        val item = repository.getUserHistoryList(itemType = "hobby", page = 1).getOrThrow().single()
+
+        assertEquals(freshHobbyCover, item.cover, "itemId 为 0 时应回退 actualDetailId 命中缓存")
+        assertEquals(0, detailMock.requestCount, "回退命中同样不应触发详情请求")
+    }
+
+    @Test
     fun getUserHistoryList_unmatched_keepsServerSnapshot() = runTest {
         val prefs = TestDataStore.coverFreshnessPrefs()
         seedPersistedCover(prefs, 59570L, CoverFreshnessRepository.EntityType.HOBBY, freshHobbyCover)
