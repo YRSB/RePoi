@@ -71,7 +71,7 @@ val repositoryModule = module {
     singleOf(::SeriesDetailRepository)
     single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
-    single { UserHistoryRepository(get(), get()) }
+    single { UserHistoryRepository(get(), get(), get()) }
     // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
     single(named("cover_freshness_scope")) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO)

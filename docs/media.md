@@ -136,6 +136,18 @@ PoiAsyncImage(
 - **必须限流**：同时在途 ≤ 3、单条实体本会话最多 2 次（失败上限后可等下次进页面）；
 - **详情页顺手沉淀**：详情页拿到 `detail.cover` 后调 `rememberFreshCover`，历史页下次直接命中，零请求。
 
+### 列表解析阶段的前置重写
+
+`UserHistoryRepository.getUserHistoryList` 在成功解析 `readList` 后先调
+`CoverFreshnessRepository.ensureWarmed()`（幂等，等待冷启动读盘落定），再逐条重写封面：
+
+- 有效类型：条目 `itemType` 去空白、小写后非空则优先，否则回退请求参数 `itemType`；
+- 手办取 `itemId`、相册取 `nodeId`，仅当 ID > 0、`getCachedCover` 非空且与快照不同时 `copy(cover = cached)`；
+- 单条异常只跳过该条、绝不丢弃整个列表；未命中或封面相同则原样保留服务端快照。
+
+因此冷启动打开浏览历史（手办/相册）时，已访问或修复过的条目直接以正确封面渲染，
+**零 404、零视觉闪烁、零详情请求**。上面的 `onError` 按条回源继续作为未命中条目与新条目的兜底自愈。
+
 `cover/`（含 `pic/`）家族的绝对 URL 会由管道按 authority 判定 hpoi 系域名、取 `gk/` 之后的路径与
 query 归一（`DefaultMediaPipeline.canonicalAbsolutes`，`http://` 一并升级为 CDN 根）；
 `posts/`、`bnr/`、`head/` 等家族仍按原契约透传。但**路径本身变化**只能靠上面的回源修复，
