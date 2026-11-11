@@ -38,10 +38,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import org.koin.dsl.onClose
 
 /**
  * 仓储模块：27 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
@@ -73,9 +75,10 @@ val repositoryModule = module {
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get(), get()) }
     // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
+    // onClose 在 Koin 关闭时取消作用域，避免测试/重启场景泄漏常驻协程。
     single(named("cover_freshness_scope")) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    }
+    }.onClose { scope -> scope.cancel() }
     single {
         CoverFreshnessRepository(
             hobbyDetailRepository = get(),
