@@ -164,6 +164,12 @@ object PoiThumbnail {
     /** 标准缩略图默认边长 68.dp */
     val StandardSquareSize: Dp = 68.dp
 
+    /** 作品竖版海报默认宽度 90.dp */
+    val StandardPosterWidth: Dp = 90.dp
+
+    /** 作品竖版海报默认高度 130.dp */
+    val StandardPosterHeight: Dp = 130.dp
+
     /**
      * 正方形缩略图容器（默认 68dp，适用于手办、专区、通用实体等）
      */
@@ -179,6 +185,28 @@ object PoiThumbnail {
                 .size(size)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    }
+
+    /**
+     * 竖版海报缩略图容器（默认 90x130dp，适用于作品等）
+     */
+    @Composable
+    fun Poster(
+        modifier: Modifier = Modifier,
+        width: Dp = StandardPosterWidth,
+        height: Dp = StandardPosterHeight,
+        shape: Shape = MaterialTheme.shapes.small,
+        content: @Composable BoxScope.() -> Unit
+    ) {
+        Box(
+            modifier = modifier
+                .size(width = width, height = height)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center
         ) {
             content()

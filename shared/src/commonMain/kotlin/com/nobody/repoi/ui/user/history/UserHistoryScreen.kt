@@ -88,6 +88,8 @@ import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.UserAvatar
+import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
+import com.nobody.repoi.ui.common.card.PoiPosterCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -595,9 +597,8 @@ private fun HistoryDateHeader(
 }
 
 /**
- * 手办历史海报网格卡片（黄金比例 9:13 紧凑海报展示）。
+ * 手办历史海报网格卡片（黄金比例 9:13 紧凑海报展示，基于 [PoiPosterCard] 深基元）。
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HobbyHistoryGridCard(
     item: UserHistoryItem,
@@ -610,69 +611,62 @@ private fun HobbyHistoryGridCard(
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
     val isSelected = isSelectedProvider()
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(9f / 13f)
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // 固定 9:13 海报格，不参与纵横比自适应；空路径/缺省图与失败态均由基元统一呈现
-        PoiAsyncImage(
-            path = item.actualCover,
-            category = MediaCategory.HOBBY,
-            purpose = ImagePurpose.CARD_STANDARD,
-            contentDescription = item.actualTitle,
-            modifier = Modifier.fillMaxSize()
-        )
+    PoiPosterCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        aspectRatio = 9f / 13f,
+        selectionOverlay = if (isManageMode) {
+            {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = if (isSelected) 0.45f else 0.25f))
+                )
 
-        // 管理模式下遮罩与勾选图标（对齐原版 Hpoi）
-        if (isManageMode) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = if (isSelected) 0.45f else 0.25f))
-            )
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (isSelected) {
-                            Modifier.background(MaterialTheme.colorScheme.primary)
-                        } else {
-                            Modifier
-                                .background(Color.Black.copy(alpha = 0.35f))
-                                .border(1.5.dp, Color.White, CircleShape)
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = "已选择",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (isSelected) {
+                                Modifier.background(MaterialTheme.colorScheme.primary)
+                            } else {
+                                Modifier
+                                    .background(Color.Black.copy(alpha = 0.35f))
+                                    .border(1.5.dp, Color.White, CircleShape)
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = "已选择",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
+        } else null,
+        cover = {
+            PoiAsyncImage(
+                path = item.actualCover,
+                category = MediaCategory.HOBBY,
+                purpose = ImagePurpose.CARD_STANDARD,
+                contentDescription = item.actualTitle,
+                modifier = Modifier.fillMaxSize()
+            )
         }
-    }
+    )
 }
 
 /**
- * 相册历史瀑布流卡片（对齐应用内其他相册卡片 AlbumFeedCard 视觉风格）。
+ * 相册历史瀑布流卡片（对齐应用内其他相册卡片视觉风格，基于 [PoiCaptionGridCard] 深基元）。
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlbumHistoryWaterfallCard(
     item: UserHistoryItem,
@@ -685,81 +679,69 @@ private fun AlbumHistoryWaterfallCard(
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
     val isSelected = isSelectedProvider()
 
-    ElevatedCard(
+    PoiCaptionGridCard(
         onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
+        onLongClick = onLongClick,
+        modifier = modifier,
+        cover = {
+            // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/；
+            // 高度交给基元的自适应纵横比撑开，失败态由基元渲染破损图标
+            PoiAsyncImage(
+                path = item.actualCover,
+                category = MediaCategory.ALBUM,
+                purpose = ImagePurpose.ADAPTIVE_GRID,
+                contentDescription = item.actualTitle,
+                modifier = Modifier.fillMaxWidth(),
+                adaptiveRatio = true,
+                fallbackRatio = 1.0f
             )
-    ) {
-        Box {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/；
-                // 高度交给基元的自适应纵横比撑开，失败态由基元渲染破损图标
-                PoiAsyncImage(
-                    path = item.actualCover,
-                    category = MediaCategory.ALBUM,
-                    purpose = ImagePurpose.ADAPTIVE_GRID,
-                    contentDescription = item.actualTitle,
-                    modifier = Modifier.fillMaxWidth(),
-                    adaptiveRatio = true,
-                    fallbackRatio = 1.0f
+        },
+        caption = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                val displayTitle = item.actualTitle.ifBlank { "相册图集" }
+                Text(
+                    text = displayTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                ) {
-                    val displayTitle = item.actualTitle.ifBlank { "相册图集" }
-                    Text(
-                        text = displayTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                val author = item.parsedUser
+                val authorName = author?.authorNickname?.ifBlank { null }
+                val authorAvatar = author?.authorAvatar?.ifBlank { null }
 
-                    val author = item.parsedUser
-                    val authorName = author?.authorNickname?.ifBlank { null }
-                    val authorAvatar = author?.authorAvatar?.ifBlank { null }
-
-                    if (authorName != null || authorAvatar != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            UserAvatar(
-                                avatarUrl = authorAvatar,
-                                size = 18.dp,
-                                contentDescription = authorName
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = authorName ?: "胶友",
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                if (authorName != null || authorAvatar != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        UserAvatar(
+                            avatarUrl = authorAvatar,
+                            size = 18.dp,
+                            contentDescription = authorName
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = authorName ?: "胶友",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
-
-            // 管理模式遮罩与勾选图标
-            if (isManageMode) {
+        },
+        overlay = if (isManageMode) {
+            {
+                // 管理模式遮罩与勾选图标
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -793,8 +775,8 @@ private fun AlbumHistoryWaterfallCard(
                     }
                 }
             }
-        }
-    }
+        } else null
+    )
 }
 
 /**

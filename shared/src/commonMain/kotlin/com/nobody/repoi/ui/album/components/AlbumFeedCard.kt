@@ -36,6 +36,7 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.UserAvatar
+import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -47,23 +48,17 @@ fun AlbumFeedCard(
     onClick: (AlbumListItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    PoiCaptionGridCard(
         onClick = { onClick(item) },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column {
+        modifier = modifier,
+        cover = {
             AlbumCover(
                 item = item,
                 rank = rank,
                 modifier = Modifier.fillMaxWidth()
             )
+        },
+        caption = {
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                 if (item.displayName.isNotBlank()) {
                     Text(
@@ -116,7 +111,7 @@ fun AlbumFeedCard(
                 }
             }
         }
-    }
+    )
 }
 
 @Composable
