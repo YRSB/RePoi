@@ -92,6 +92,12 @@ class HobbyDetailViewModelExHobbyTest {
         val albumMock = MockApi()
         val session = FakeUserSession("utoken-test")
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        private val coverFreshnessRepository = CoverFreshnessRepository(
+            HobbyDetailRepository(detailMock.api()),
+            AlbumDetailRepository(albumMock.api()),
+            TestDataStore.coverFreshnessPrefs(),
+            scope,
+        )
 
         suspend fun build(): HobbyDetailViewModel {
             preferences.setExHobbyEnabled(enabled)
@@ -106,13 +112,8 @@ class HobbyDetailViewModelExHobbyTest {
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,
-                UserHistoryRepository(userMock.api(), session),
-                CoverFreshnessRepository(
-                    HobbyDetailRepository(detailMock.api()),
-                    AlbumDetailRepository(albumMock.api()),
-                    TestDataStore.coverFreshnessPrefs(),
-                    scope,
-                )
+                UserHistoryRepository(userMock.api(), session, coverFreshnessRepository),
+                coverFreshnessRepository,
             )
         }
 

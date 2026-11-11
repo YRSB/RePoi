@@ -101,7 +101,7 @@ class AlbumDetailViewModelCoverSinkTest {
                 ToggleItemCollectUseCase(collectRepository),
                 session,
                 FollowRepository(followMock.api(dispatcher), followMock.json, session),
-                UserHistoryRepository(userMock.api(dispatcher), session),
+                UserHistoryRepository(userMock.api(dispatcher), session, coverFreshnessRepository),
                 delegate,
                 ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json)),
                 ViewPreferencesManager(TestDataStore.viewPrefs()),

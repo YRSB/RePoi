@@ -1,5 +1,8 @@
 package com.nobody.repoi.ui.user.history
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
@@ -11,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -47,6 +51,7 @@ class UserHistoryViewModelCoverRepairTest {
     private class Env(
         dispatcher: kotlinx.coroutines.CoroutineDispatcher,
         scope: CoroutineScope,
+        preferences: DataStore<Preferences> = TestDataStore.coverFreshnessPrefs(),
     ) {
         val historyMock = MockApi()
         val detailMock = MockApi()
@@ -56,12 +61,15 @@ class UserHistoryViewModelCoverRepairTest {
         val coverFreshnessRepository = CoverFreshnessRepository(
             HobbyDetailRepository(detailMock.api(dispatcher)),
             AlbumDetailRepository(albumMock.api(dispatcher)),
-            TestDataStore.coverFreshnessPrefs(),
+            preferences,
             scope,
         )
 
+        /** 冷启动预热需真实 DataStore I/O；在推平虚拟调度器前显式等待，避免测试与读盘竞态。 */
+        suspend fun warmUp() = coverFreshnessRepository.ensureWarmed()
+
         val viewModel = UserHistoryViewModel(
-            UserHistoryRepository(historyMock.api(dispatcher), session),
+            UserHistoryRepository(historyMock.api(dispatcher), session, coverFreshnessRepository),
             coverFreshnessRepository,
         )
     }
@@ -117,6 +125,7 @@ class UserHistoryViewModelCoverRepairTest {
             HistoryRow(rowId = 124L, itemId = 59571L, cover = oldCover),
         )
         env.stubHobbyDetail(freshCover)
+        env.warmUp()
         advanceUntilIdle()
         assertEquals(2, env.viewModel.uiState.value.hobbyState.items.size)
 
@@ -144,6 +153,7 @@ class UserHistoryViewModelCoverRepairTest {
             )
         )
         env.stubAlbumDetail(freshAlbumCover)
+        env.warmUp()
         env.viewModel.selectCategory(UserHistoryCategory.ALBUM)
         advanceUntilIdle()
         assertEquals(staleAlbumCover, env.viewModel.uiState.value.albumState.items.single().cover)
@@ -161,6 +171,7 @@ class UserHistoryViewModelCoverRepairTest {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.stubHobbyDetail(freshCover)
+        env.warmUp()
         advanceUntilIdle()
 
         repeat(3) {
@@ -168,7 +179,9 @@ class UserHistoryViewModelCoverRepairTest {
             advanceUntilIdle()
             assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
 
-            // 下拉刷新会把服务端快照（旧 cover）换回来：成功修复若占用失败额度，第三次就会永久放弃修复
+            // 清空缓存模拟「服务端快照仍是旧路径且本地无沉淀」（冷启动/登出后）：
+            // 成功若占用失败额度，第 3 次修复就会被永久放弃
+            env.coverFreshnessRepository.clear()
             env.viewModel.refresh(UserHistoryCategory.HOBBY)
             advanceUntilIdle()
             assertEquals(oldCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
@@ -177,7 +190,7 @@ class UserHistoryViewModelCoverRepairTest {
         env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
         advanceUntilIdle()
         assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
-        assertEquals(1, env.detailMock.requestCount, "后续修复应命中永久正缓存，零额外请求")
+        assertEquals(4, env.detailMock.requestCount, "每次成功都应重置失败额度并继续回源修复")
     }
 
     @Test
@@ -185,6 +198,7 @@ class UserHistoryViewModelCoverRepairTest {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.stubHobbyDetail(cover = null)
+        env.warmUp()
         advanceUntilIdle()
 
         env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
@@ -198,6 +212,7 @@ class UserHistoryViewModelCoverRepairTest {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.detailMock.route("api/item/get", env.detailMock.failure(500, "Network error"))
+        env.warmUp()
         advanceUntilIdle()
 
         // 逐次调用之间必须推平调度器：并发失败会被 `CoverFreshnessRepository` 的单飞合并成一个请求，
@@ -215,6 +230,7 @@ class UserHistoryViewModelCoverRepairTest {
     fun coverLoadFailed_invalidDetailId_doesNothing() = runTest(testDispatcher) {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
+        env.warmUp()
         advanceUntilIdle()
 
         env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 0L, category = UserHistoryCategory.HOBBY)
@@ -227,6 +243,7 @@ class UserHistoryViewModelCoverRepairTest {
     fun coverLoadFailed_afterDetailPageSink_hitsCacheWithoutRequest() = runTest(testDispatcher) {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
+        env.warmUp()
         advanceUntilIdle()
 
         env.coverFreshnessRepository.rememberFreshCover(
@@ -239,5 +256,42 @@ class UserHistoryViewModelCoverRepairTest {
 
         assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
         assertEquals(0, env.detailMock.requestCount, "详情页已沉淀的封面不应再触发修复请求")
+    }
+
+    /**
+     * 工单 #116 AC：冷启动预置持久化缓存后，分页装载直接呈现新封面，详情接口零请求。
+     */
+    @Test
+    fun coldStart_persistedCache_rendersFreshCoverWithoutDetailRequest() = runTest(testDispatcher) {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val seeder = CoverFreshnessRepository(
+            HobbyDetailRepository(MockApi().api(testDispatcher)),
+            AlbumDetailRepository(MockApi().api(testDispatcher)),
+            prefs,
+            backgroundScope,
+        )
+        seeder.ensureWarmed()
+        seeder.rememberFreshCover(
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            cover = freshCover,
+        )
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+
+        val env = Env(testDispatcher, backgroundScope, prefs)
+        env.stubHistory()
+        env.warmUp()
+        advanceUntilIdle()
+
+        val items = env.viewModel.uiState.value.hobbyState.items
+        assertEquals(freshCover, items.single().cover, "冷启动应从持久化缓存前置重写列表封面")
+        assertEquals(0, env.detailMock.requestCount, "前置重写命中后不应发出详情请求")
+    }
+
+    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
+    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
+        edit { }
     }
 }
