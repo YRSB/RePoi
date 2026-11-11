@@ -30,12 +30,17 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.card.PoiListCard
+import com.nobody.repoi.ui.common.card.PoiListCardSkeleton
+import com.nobody.repoi.ui.common.card.PoiPosterCard
+import com.nobody.repoi.ui.common.card.PoiPosterCardSkeleton
+import com.nobody.repoi.ui.common.card.PoiThumbnail
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import androidx.compose.material3.ElevatedCard
 
 /**
  * 周边网格封面卡片（自适应多列网格）
- * 基于 Material 3 ElevatedCard 规范
+ * 基于 Material 3 与 PoiPosterCard 深基元规范
  */
 @Composable
 fun HobbyGridCard(
@@ -43,17 +48,13 @@ fun HobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bottomScrim = remember { Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))) }
-
-    ElevatedCard(
+    PoiPosterCard(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 封面缺省与失败态均由基元承担：空路径/占位符走官方缺省图，加载失败显示破损图标
+        modifier = modifier,
+        aspectRatio = 9f / 13f,
+        badgeText = item.displayHitsText.takeIf { it.isNotBlank() },
+        footerText = item.displayReleaseDateText.takeIf { it.isNotBlank() },
+        cover = {
             PoiAsyncImage(
                 path = item.cover,
                 category = MediaCategory.HOBBY,
@@ -61,56 +62,13 @@ fun HobbyGridCard(
                 contentDescription = item.displayName,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // 顶部热度角标
-            val hitsText = item.displayHitsText
-            if (hitsText.isNotBlank()) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = Color.Black.copy(alpha = 0.65f),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 4.dp, end = 4.dp)
-                ) {
-                    Text(
-                        text = hitsText,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            // 底部发售时间（半透明渐变遮罩，保证文字可读性）
-            val dateText = item.displayReleaseDateText
-            if (dateText.isNotBlank()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(bottomScrim)
-                        .padding(top = 16.dp, bottom = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.95f),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
         }
-    }
+    )
 }
 
 /**
  * 周边单列图文详情卡片（适配 Hpoi 官方列表项布局 item_hobby_list.xml）
- * 基于 Material 3 ElevatedCard 规范
+ * 基于 Material 3 与 PoiListCard 深基元规范
  */
 @Composable
 fun HobbyListCard(
@@ -118,26 +76,12 @@ fun HobbyListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    PoiListCard(
+        title = item.displayName,
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 左侧封面缩略图（68dp 正方形，圆角 SmallCardShape）
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
-            ) {
+        modifier = modifier,
+        thumbnail = {
+            PoiThumbnail.Square {
                 PoiAsyncImage(
                     path = item.cover,
                     category = MediaCategory.HOBBY,
@@ -146,60 +90,44 @@ fun HobbyListCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+        }
+    ) {
+        // 第 1 行：厂商 与 发售（等宽 2 列）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HpoiInfoBadgeItem(
+                label = "厂商",
+                value = item.companyName.orEmpty(),
+                modifier = Modifier.weight(1f)
+            )
 
-            // 右侧信息列
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                // 标题（单行截断，MD3 titleSmall）
-                Text(
-                    text = item.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            HpoiInfoBadgeItem(
+                label = "发售",
+                value = item.displayReleaseDateText,
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-                // 第 1 行：厂商 与 发售（等宽 2 列）
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HpoiInfoBadgeItem(
-                        label = "厂商",
-                        value = item.companyName.orEmpty(),
-                        modifier = Modifier.weight(1f)
-                    )
+        // 第 2 行：定价 与 评分（等宽 2 列）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HpoiInfoBadgeItem(
+                label = "定价",
+                value = item.displayPriceText,
+                modifier = Modifier.weight(1f)
+            )
 
-                    HpoiInfoBadgeItem(
-                        label = "发售",
-                        value = item.displayReleaseDateText,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // 第 2 行：定价 与 评分（等宽 2 列）
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HpoiInfoBadgeItem(
-                        label = "定价",
-                        value = item.displayPriceText,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    HpoiInfoBadgeItem(
-                        label = "评分",
-                        value = if (item.rating > 0) item.displayRatingText else "0.00",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
+            HpoiInfoBadgeItem(
+                label = "评分",
+                value = if (item.rating > 0) item.displayRatingText else "0.00",
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -268,17 +196,10 @@ private fun SkeletonBox(
  */
 @Composable
 fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
-    ElevatedCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(9f / 13f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        SkeletonBox(
-            modifier = Modifier.fillMaxSize(),
-            shape = MaterialTheme.shapes.small
-        )
-    }
+    PoiPosterCardSkeleton(
+        modifier = modifier,
+        aspectRatio = 9f / 13f
+    )
 }
 
 /**
@@ -286,69 +207,48 @@ fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
  */
 @Composable
 fun HobbyListCardSkeleton(modifier: Modifier = Modifier) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
+    PoiListCardSkeleton(
+        modifier = modifier
     ) {
-        Row(
+        // 标题占位
+        SkeletonBox(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(0.7f)
+                .height(16.dp)
+        )
+
+        // 第 1 行占位
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 封面占位
             SkeletonBox(
-                modifier = Modifier.size(68.dp),
-                shape = MaterialTheme.shapes.small
+                modifier = Modifier
+                    .weight(1f)
+                    .height(14.dp)
             )
+            SkeletonBox(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(14.dp)
+            )
+        }
 
-            // 右侧信息占位
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 标题占位
-                SkeletonBox(
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(16.dp)
-                )
-
-                // 第 1 行占位
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SkeletonBox(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(14.dp)
-                    )
-                    SkeletonBox(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(14.dp)
-                    )
-                }
-
-                // 第 2 行占位
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SkeletonBox(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(14.dp)
-                    )
-                    SkeletonBox(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(14.dp)
-                    )
-                }
-            }
+        // 第 2 行占位
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SkeletonBox(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(14.dp)
+            )
+            SkeletonBox(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(14.dp)
+            )
         }
     }
 }
