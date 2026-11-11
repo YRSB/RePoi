@@ -48,6 +48,7 @@ fun PoiListCard(
     onLongClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     shape: Shape = MaterialTheme.shapes.medium,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
     title: @Composable () -> Unit,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
@@ -66,7 +67,12 @@ fun PoiListCard(
             modifier = cardModifier,
             shape = shape
         ) {
-            ListCardLayout(thumbnail = thumbnail, title = title, content = content)
+            ListCardLayout(
+                thumbnail = thumbnail,
+                title = title,
+                content = content,
+                verticalAlignment = verticalAlignment
+            )
         }
     } else {
         ElevatedCard(
@@ -75,7 +81,12 @@ fun PoiListCard(
             modifier = cardModifier,
             shape = shape
         ) {
-            ListCardLayout(thumbnail = thumbnail, title = title, content = content)
+            ListCardLayout(
+                thumbnail = thumbnail,
+                title = title,
+                content = content,
+                verticalAlignment = verticalAlignment
+            )
         }
     }
 }
@@ -93,6 +104,7 @@ fun PoiListCard(
     enabled: Boolean = true,
     titleMaxLines: Int = 1,
     shape: Shape = MaterialTheme.shapes.medium,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     PoiListCard(
@@ -102,6 +114,7 @@ fun PoiListCard(
         onLongClick = onLongClick,
         enabled = enabled,
         shape = shape,
+        verticalAlignment = verticalAlignment,
         title = {
             Text(
                 text = title,
@@ -120,14 +133,15 @@ fun PoiListCard(
 private fun ListCardLayout(
     thumbnail: @Composable () -> Unit,
     title: @Composable () -> Unit,
-    content: (@Composable ColumnScope.() -> Unit)?
+    content: (@Composable ColumnScope.() -> Unit)?,
+    verticalAlignment: Alignment.Vertical
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = verticalAlignment
     ) {
         // 左侧封面缩略图槽位
         thumbnail()
@@ -180,6 +194,7 @@ fun PoiListCardSkeleton(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.medium,
     thumbnailSize: Dp = PoiThumbnail.StandardSquareSize,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     ElevatedCard(
@@ -191,7 +206,7 @@ fun PoiListCardSkeleton(
                 .fillMaxWidth()
                 .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = verticalAlignment
         ) {
             // 左侧缩略图骨架占位
             Box(
