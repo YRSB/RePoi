@@ -36,6 +36,8 @@ import kotlinx.serialization.json.Json
  * - **负缓存不落盘**：服务端确实没有封面时窗口期内不再重试，避免每次滚动都打接口；
  *   该状态只存在于内存，进程结束后即失效；
  * - **单飞**：同一实体的并发修复请求只发一次，其余调用方共享同一个结果；
+ * - **穿透只穿透正缓存**：[freshCover] 的 `forceRefresh` 只跳过已确认封面，
+ *   负缓存窗口仍然生效（否则服务端空白封面会形成请求风暴）；
  * - **详情页沉淀**：[rememberFreshCover] 让「刚进过详情页」的封面直接命中，连修复请求都省掉。
  *
  * 持久化格式：`cover_freshness.preferences_pb` 内的**单个** preferences key，
@@ -157,10 +159,19 @@ class CoverFreshnessRepository(
      *
      * @param id 业务实体 ID（手办为 `itemId`，相册为 `albumId`）
      * @param type 实体类型
+     * @param forceRefresh 为 `true` 时**跳过正缓存**，直接发起详情单飞回源：
+     *   - 已有同类在途请求则并入等待，不重复发请求；
+     *   - 负缓存窗口（服务端明确无封面，10 分钟、纯内存）**仍然生效**，避免空白封面请求风暴；
+     *   - 成功原子覆写内存正缓存并触发 500ms 防抖落盘；失败绝不修改旧正缓存。
+     *
      * @return 成功时携带封面相对路径（服务端未提供时为 `null`）；
      *   网络/接口失败时为 `failure`（不写负缓存，允许后续重试）
      */
-    suspend fun freshCover(id: Long, type: EntityType): Result<String?> {
+    suspend fun freshCover(
+        id: Long,
+        type: EntityType,
+        forceRefresh: Boolean = false,
+    ): Result<String?> {
         if (id <= 0L) return Result.success(null)
         val key = cacheKey(id, type)
 
@@ -169,7 +180,8 @@ class CoverFreshnessRepository(
         val lookup = guard.withLock {
             val cached = covers[key]
             when {
-                cached != null -> Lookup(cachedCover = cached)
+                // 穿透只穿透正缓存；负缓存代表「服务端确实没有封面」，穿透它只会形成请求风暴。
+                cached != null && !forceRefresh -> Lookup(cachedCover = cached)
                 isNegativeLocked(key) -> Lookup(isNegative = true)
                 else -> {
                     val existing = inFlight[key]

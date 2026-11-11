@@ -61,10 +61,11 @@ class HobbyDetailEnv(
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
     val albumDetailRepository = AlbumDetailRepository(albumMock.api(dispatcher))
+    val coverFreshnessPreferences = TestDataStore.coverFreshnessPrefs()
     val coverFreshnessRepository = CoverFreshnessRepository(
         detailRepository,
         albumDetailRepository,
-        TestDataStore.coverFreshnessPrefs(),
+        coverFreshnessPreferences,
         scope,
     )
     val userHistoryRepository = UserHistoryRepository(

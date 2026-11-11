@@ -1,9 +1,16 @@
 package com.nobody.repoi.ui.detail
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
+import com.nobody.repoi.data.repository.HobbyDetailRepository
+import com.nobody.repoi.data.repository.MockApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -54,5 +61,41 @@ class HobbyDetailViewModelCoverSinkTest {
 
         assertEquals("cover/n/test.jpg", result.getOrThrow(), "详情页应沉淀当前真实封面")
         assertEquals(requestsAfterLoad, env.detailMock.requestCount, "命中沉淀后不应再请求详情接口")
+    }
+
+    /**
+     * 工单 #117 AC：详情页沉淀必须经 500ms 防抖落盘，冷启动重建仓储后仍能命中。
+     */
+    @Test
+    fun loadDetail_sinksCoverAndPersistsAfterDebounce() = runTest(testDispatcher) {
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
+        env.coverFreshnessRepository.ensureWarmed()
+        env.stubBasics(nodeId = 100L, itemId = 59570L)
+        env.collectMock.enqueue(env.collectMock.ok("""{}"""))
+
+        env.viewModel().loadDetail(DetailNavParam(itemId = 59570L))
+        advanceUntilIdle()
+
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        env.coverFreshnessPreferences.awaitPendingWrites()
+
+        val rebuilt = CoverFreshnessRepository(
+            HobbyDetailRepository(MockApi().api(testDispatcher)),
+            AlbumDetailRepository(MockApi().api(testDispatcher)),
+            env.coverFreshnessPreferences,
+            backgroundScope,
+        )
+        rebuilt.ensureWarmed()
+        assertEquals(
+            "cover/n/test.jpg",
+            rebuilt.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "详情页沉淀应经防抖落盘，重建仓储后仍能命中",
+        )
+    }
+
+    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
+    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
+        edit { }
     }
 }
