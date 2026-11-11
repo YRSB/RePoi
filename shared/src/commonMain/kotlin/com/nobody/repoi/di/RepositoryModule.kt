@@ -75,10 +75,10 @@ val repositoryModule = module {
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get(), get()) }
     // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
-    // onClose 在 Koin 关闭时取消作用域，避免测试/重启场景泄漏常驻协程。
+    // onClose 在 Koin 关闭时取消作用域，避免测试/重启场景泄漏常驻协程（Koin 传入的实例可空，按空安全处理）。
     single(named("cover_freshness_scope")) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    }.onClose { scope -> scope.cancel() }
+    }.onClose { scope -> scope?.cancel() }
     single {
         CoverFreshnessRepository(
             hobbyDetailRepository = get(),
