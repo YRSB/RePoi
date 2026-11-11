@@ -57,4 +57,3 @@ fun ZoneEntityCardSkeleton(
 ) {
     PoiListCardSkeleton(modifier = modifier)
 }
-
