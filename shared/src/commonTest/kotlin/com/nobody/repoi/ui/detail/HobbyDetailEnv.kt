@@ -22,6 +22,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 
 /**
@@ -32,6 +33,8 @@ import kotlinx.serialization.json.Json
  * - VPM 为真实实例（[TestDataStore] 隔离目录）。
  */
 class HobbyDetailEnv(
+    // 封面新鲜度仓储的预热/落盘协程作用域：测试传 runTest 的 backgroundScope（虚拟时间可控）
+    val scope: CoroutineScope,
     val detailMock: MockApi = MockApi(),
     val collectMock: MockApi = MockApi(),
     val commentMock: MockApi = MockApi(),
@@ -59,7 +62,12 @@ class HobbyDetailEnv(
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
     val albumDetailRepository = AlbumDetailRepository(albumMock.api(dispatcher))
-    val coverFreshnessRepository = CoverFreshnessRepository(detailRepository, albumDetailRepository)
+    val coverFreshnessRepository = CoverFreshnessRepository(
+        detailRepository,
+        albumDetailRepository,
+        TestDataStore.coverFreshnessPrefs(),
+        scope,
+    )
 
     val commentDelegate = CommentInteractionDelegate(
         commentRepository, stickerRepository, session

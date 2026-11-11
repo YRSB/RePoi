@@ -70,7 +70,7 @@ class HobbyDetailViewModelPagingTest {
 
     @Test
     fun firstPageFull_hasMoreTrue() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
         env.stubComments(null, 1, commentsJson(1..10))
@@ -84,7 +84,7 @@ class HobbyDetailViewModelPagingTest {
 
     @Test
     fun firstPageShort_hasMoreFalse() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
         env.stubComments(null, 1, commentsJson(1..3))
@@ -98,7 +98,7 @@ class HobbyDetailViewModelPagingTest {
 
     @Test
     fun secondPage_dedupMerge() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
         env.stubComments(null, 1, commentsJson(1..10))
@@ -115,7 +115,7 @@ class HobbyDetailViewModelPagingTest {
 
     @Test
     fun duplicatePage_blocksLoopWithoutGrowth() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
         env.stubComments(null, 1, commentsJson(1..10))
@@ -132,7 +132,7 @@ class HobbyDetailViewModelPagingTest {
 
     @Test
     fun nextPageFailure_reportsErrorAndStopsLoading() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.stubComments("hot_top", 1, env.detailMock.ok("""{"list":[]}"""))
         env.stubComments(null, 1, commentsJson(1..10))

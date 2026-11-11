@@ -53,7 +53,7 @@ class HobbyDetailViewModelTimelineTest {
 
     @Test
     fun loadDetail_whenTimelineSuccess_updatesTimelineState() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.detailMock.route(
             "api/user-action/timeline",
@@ -73,7 +73,7 @@ class HobbyDetailViewModelTimelineTest {
 
     @Test
     fun loadDetail_whenTimelineFails_silentlyDegradesToEmpty() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv()
+        val env = HobbyDetailEnv(backgroundScope)
         env.stubDetailBasics()
         env.detailMock.route("api/user-action/timeline", env.detailMock.failure(500, "Network error"))
 

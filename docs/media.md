@@ -126,7 +126,7 @@ PoiAsyncImage(
 
 调用方按条修复（参考 `UserHistoryViewModel.onCoverLoadFailed`）：
 
-1. `CoverFreshnessRepository.freshCover(id, type)` 取当前封面——内部有单飞、负缓存与 30 分钟 TTL；
+1. `CoverFreshnessRepository.freshCover(id, type)` 取当前封面——内部有单飞、负缓存与**永久正缓存**；
 2. `PagedListLoader.updateItem { it.id == rowId }` 只替换失败那一行；
 3. `cover` 变化 → `urlText` 变化 → `remember(urlText)` 自动重置失败态，图自然重试。
 
@@ -140,6 +140,29 @@ PoiAsyncImage(
 query 归一（`DefaultMediaPipeline.canonicalAbsolutes`，`http://` 一并升级为 CDN 根）；
 `posts/`、`bnr/`、`head/` 等家族仍按原契约透传。但**路径本身变化**只能靠上面的回源修复，
 降档（`sr/`、`raw/`）在文件真没了时一样 404。
+
+---
+
+## 封面新鲜度持久化
+
+已确认的封面映射跨进程保存在**独立**的 DataStore 文件里，冷启动直接恢复，不再等 404 触发修复：
+
+| 项 | 约定 |
+| --- | --- |
+| 文件 | `cover_freshness.preferences_pb`（`DataStoreFiles.COVER_FRESHNESS`），Koin 具名 `cover_freshness_prefs` |
+| 结构 | 单个 preferences key，值为按插入序编码的 `Map<String, String>` JSON；键 `"<hobby\|album>:<id>"`，值为相对路径 |
+| 容量 | 严格 1000 条，超限按插入序 FIFO 淘汰；覆写视为移到队尾。1000 条时文件约 40KB |
+| 有效期 | **永久**，不设时间 TTL（旧 30 分钟 TTL 语义已废除） |
+| 负缓存 | 服务端明确无封面时仅内存 10 分钟，**绝不落盘** |
+| 读路径 | `getCachedCover(id, type)` 同步、纯内存、零挂起，供列表前置重写直接使用 |
+| 写路径 | 先改内存快照，再经 `Channel(CONFLATED)` 信号由内部 worker `delay(500)` 防抖批量落盘 |
+| 预热 | 仓储初始化即在注入的 `CoroutineScope` 启动一次性读盘；列表可在首次解析前 `ensureWarmed()` 等待（幂等、失败可重试、不挂死） |
+
+约束：
+
+- 查询与写入调用方**永远不做磁盘 I/O**；落盘只在仓储内部 worker 中发生；
+- 预热完成前所有查询安全返回 `null`（沿用服务端快照），不会阻塞或抛异常；
+- `clear()` 同时清空内存与持久化内容，且不影响在途单飞请求。
 
 ---
 

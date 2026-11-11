@@ -38,7 +38,7 @@ class HobbyDetailViewModelCoverSinkTest {
 
     @Test
     fun loadDetail_sinksCoverForHistoryRepairWithoutExtraRequest() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L, itemId = 59570L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
 

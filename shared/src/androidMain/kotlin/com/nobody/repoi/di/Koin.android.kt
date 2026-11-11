@@ -36,4 +36,10 @@ actual val dataStoreModule: Module
                 fileName = DataStoreFiles.VIEW_PREFS,
             )
         }
+        single(named("cover_freshness_prefs")) {
+            createDataStore(
+                dirPath = { com.nobody.repoi.platform.filesDirPath() },
+                fileName = DataStoreFiles.COVER_FRESHNESS,
+            )
+        }
     }

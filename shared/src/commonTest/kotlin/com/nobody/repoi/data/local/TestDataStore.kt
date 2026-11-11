@@ -28,6 +28,8 @@ object TestDataStore {
     fun searchHistoryPrefs(): DataStore<Preferences> = create(DataStoreFiles.SEARCH_HISTORY_PREFS)
 
     fun viewPrefs(): DataStore<Preferences> = create(DataStoreFiles.VIEW_PREFS)
+
+    fun coverFreshnessPrefs(): DataStore<Preferences> = create(DataStoreFiles.COVER_FRESHNESS)
 }
 
 internal fun tempPathOf(name: String): String =

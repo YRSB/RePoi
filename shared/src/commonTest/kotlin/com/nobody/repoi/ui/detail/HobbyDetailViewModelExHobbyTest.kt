@@ -21,6 +21,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -79,7 +80,11 @@ class HobbyDetailViewModelExHobbyTest {
         })
     }
 
-    private class Env(val exhobby: ExHobbyConfig, private val enabled: Boolean) {
+    private class Env(
+        val exhobby: ExHobbyConfig,
+        private val enabled: Boolean,
+        private val scope: CoroutineScope,
+    ) {
         val detailMock = MockApi()
         val collectMock = MockApi()
         val commentMock = MockApi()
@@ -104,7 +109,9 @@ class HobbyDetailViewModelExHobbyTest {
                 UserHistoryRepository(userMock.api(), session),
                 CoverFreshnessRepository(
                     HobbyDetailRepository(detailMock.api()),
-                    AlbumDetailRepository(albumMock.api())
+                    AlbumDetailRepository(albumMock.api()),
+                    TestDataStore.coverFreshnessPrefs(),
+                    scope,
                 )
             )
         }
@@ -123,7 +130,7 @@ class HobbyDetailViewModelExHobbyTest {
         val exhobby = ExHobbyConfig().apply {
             body = """[{"path":"path/pic1.jpg"},{"path":"path/pic2.jpg"}]"""
         }
-        val env = Env(exhobby, enabled = true)
+        val env = Env(exhobby, enabled = true, scope = backgroundScope)
         env.stubBasics()
 
         val viewModel = env.build()
@@ -140,7 +147,7 @@ class HobbyDetailViewModelExHobbyTest {
     @Test
     fun loadDetail_whenExHobbyDisabled_doesNotCallExHobbyRepo() = runTest(testDispatcher) {
         val exhobby = ExHobbyConfig()
-        val env = Env(exhobby, enabled = false)
+        val env = Env(exhobby, enabled = false, scope = backgroundScope)
         env.stubBasics()
 
         val viewModel = env.build()
@@ -158,7 +165,7 @@ class HobbyDetailViewModelExHobbyTest {
         val exhobby = ExHobbyConfig().apply {
             failure = RuntimeException("网络超时")
         }
-        val env = Env(exhobby, enabled = true)
+        val env = Env(exhobby, enabled = true, scope = backgroundScope)
         env.stubBasics()
 
         val viewModel = env.build()
@@ -175,7 +182,7 @@ class HobbyDetailViewModelExHobbyTest {
         val exhobby = ExHobbyConfig().apply {
             body = """[{"path":"path/pic1.jpg"}]"""
         }
-        val env = Env(exhobby, enabled = false)
+        val env = Env(exhobby, enabled = false, scope = backgroundScope)
         env.stubBasics()
 
         val viewModel = env.build()

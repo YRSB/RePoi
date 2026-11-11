@@ -1,34 +1,47 @@
 package com.nobody.repoi.data.repository
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 封面新鲜度修复仓储测试。
+ * 封面新鲜度仓储测试。
  *
- * 覆盖四条关键契约：缓存命中不请求、失败可重试、空封面进负缓存、详情页沉淀优先于接口。
+ * 覆盖关键契约：缓存命中不请求、失败可重试、空封面进负缓存且不落盘、详情页沉淀优先于接口、
+ * 冷启动从真实测试存储文件预热、1000 条容量 FIFO 淘汰、500ms 防抖落盘与批量合并。
  */
 class CoverFreshnessRepositoryTest {
 
     private val hobbyCover = "2026/11/new_hobby.jpg"
     private val albumCover = "2026/11/new_album.jpg"
 
-    private class Env {
-        val hobbyMock = MockApi()
-        val albumMock = MockApi()
+    private class Env(
+        scope: CoroutineScope,
+        val hobbyMock: MockApi = MockApi(),
+        val albumMock: MockApi = MockApi(),
+        val preferences: DataStore<Preferences> = TestDataStore.coverFreshnessPrefs(),
+    ) {
         val repository = CoverFreshnessRepository(
             HobbyDetailRepository(hobbyMock.api()),
             AlbumDetailRepository(albumMock.api()),
+            preferences,
+            scope,
         )
 
         fun stubHobbyCover(cover: String?) {
@@ -48,9 +61,21 @@ class CoverFreshnessRepositoryTest {
         }
     }
 
+    /** 模拟冷启动：在同一份真实 DataStore 上重建仓储实例，只依赖公开接口观察恢复结果。 */
+    private fun TestScope.repositoryOver(
+        preferences: DataStore<Preferences>,
+        hobbyMock: MockApi = MockApi(),
+        albumMock: MockApi = MockApi(),
+    ): CoverFreshnessRepository = CoverFreshnessRepository(
+        HobbyDetailRepository(hobbyMock.api()),
+        AlbumDetailRepository(albumMock.api()),
+        preferences,
+        backgroundScope,
+    )
+
     @Test
     fun freshCover_hobby_returnsCoverFromDetailApi() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.stubHobbyCover(hobbyCover)
 
         val result = env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
@@ -61,7 +86,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_album_hitsAlbumDetailEndpoint() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.stubAlbumCover(albumCover)
 
         val result = env.repository.freshCover(8888L, CoverFreshnessRepository.EntityType.ALBUM)
@@ -73,7 +98,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_secondCall_servedFromCacheWithoutExtraRequest() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.stubHobbyCover(hobbyCover)
 
         env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
@@ -85,7 +110,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_failure_isNotNegativeCachedAndCanRetry() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.hobbyMock.replaceRoute("api/item/get", env.hobbyMock.failure(500, "Network error"))
 
         val first = env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
@@ -104,7 +129,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_blankCover_entersNegativeCacheAndStopsRequesting() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.stubHobbyCover(cover = null)
 
         val first = env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
@@ -117,7 +142,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun rememberFreshCover_shortCircuitsNetworkRequest() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.repository.rememberFreshCover(
             id = 59570L,
             type = CoverFreshnessRepository.EntityType.HOBBY,
@@ -132,7 +157,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_concurrentCalls_sendSingleRequest() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
         env.stubHobbyCover(hobbyCover)
 
         val results = listOf(
@@ -147,7 +172,7 @@ class CoverFreshnessRepositoryTest {
 
     @Test
     fun freshCover_invalidId_returnsNullWithoutRequest() = runTest {
-        val env = Env()
+        val env = Env(backgroundScope)
 
         val result = env.repository.freshCover(0L, CoverFreshnessRepository.EntityType.HOBBY)
 
@@ -156,12 +181,15 @@ class CoverFreshnessRepositoryTest {
     }
 
     @Test
-    fun freshCover_afterTtlExpires_refetches() = runTest {
+    fun freshCover_staysCachedIndefinitely() = runTest {
         var now = nowMillis()
+        val prefs = TestDataStore.coverFreshnessPrefs()
         val hobbyMock = MockApi()
         val repository = CoverFreshnessRepository(
             HobbyDetailRepository(hobbyMock.api()),
             AlbumDetailRepository(MockApi().api()),
+            prefs,
+            backgroundScope,
             clock = { now },
         )
         hobbyMock.route(
@@ -170,21 +198,24 @@ class CoverFreshnessRepositoryTest {
         )
 
         repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
-        // 越过 30 分钟新鲜窗口
-        now += 31L * 60L * 1000L
-        val refreshed = repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
+        // 永久有效：跨过旧实现的 30 分钟窗口（甚至跨天）后仍是同一份缓存
+        now += 365L * 24L * 60L * 60L * 1000L
+        val cached = repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
 
-        assertNotNull(refreshed.getOrThrow())
-        assertEquals(2, hobbyMock.requestCount, "TTL 到期后应重新取一次")
+        assertEquals(hobbyCover, cached.getOrThrow())
+        assertEquals(1, hobbyMock.requestCount, "正缓存永久有效，不应按时间重新取")
     }
 
     @Test
     fun freshCover_negativeCacheExpires_afterWindow() = runTest {
         var now = nowMillis()
+        val prefs = TestDataStore.coverFreshnessPrefs()
         val hobbyMock = MockApi()
         val repository = CoverFreshnessRepository(
             HobbyDetailRepository(hobbyMock.api()),
             AlbumDetailRepository(MockApi().api()),
+            prefs,
+            backgroundScope,
             clock = { now },
         )
         hobbyMock.route(
@@ -226,6 +257,8 @@ class CoverFreshnessRepositoryTest {
         val repository = CoverFreshnessRepository(
             HobbyDetailRepository(hobbyMock.api(dispatcher)),
             AlbumDetailRepository(MockApi().api(dispatcher)),
+            TestDataStore.coverFreshnessPrefs(),
+            backgroundScope,
         )
 
         val owner = launch {
@@ -247,5 +280,194 @@ class CoverFreshnessRepositoryTest {
 
         assertEquals(hobbyCover, retry.await().getOrThrow())
         assertEquals(2, hobbyMock.requestCount, "取消后应允许重新发起请求")
+    }
+
+    // ------------------------------------------------------------------ 持久化与容量
+
+    @Test
+    fun getCachedCover_isSynchronousPureMemoryRead() = runTest {
+        val env = Env(backgroundScope)
+        env.stubHobbyCover(hobbyCover)
+
+        assertNull(env.repository.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertEquals(0, env.hobbyMock.requestCount, "纯内存查询不应触发请求")
+
+        env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
+
+        assertEquals(
+            hobbyCover,
+            env.repository.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+        )
+        assertEquals(1, env.hobbyMock.requestCount)
+    }
+
+    @Test
+    fun coldStart_restoresPersistedCoversWithoutNetwork() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val writer = Env(backgroundScope, preferences = prefs)
+        writer.repository.ensureWarmed()
+        writer.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
+        advanceTimeBy(501)
+        advanceUntilIdle()
+
+        val coldStartMock = MockApi()
+        val restored = repositoryOver(prefs, hobbyMock = coldStartMock)
+        restored.ensureWarmed()
+
+        assertEquals(
+            hobbyCover,
+            restored.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "冷启动应从真实存储文件预热出已沉淀封面",
+        )
+        assertEquals(
+            hobbyCover,
+            restored.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow()
+        )
+        assertEquals(0, coldStartMock.requestCount, "冷启动命中持久化缓存后应零网络请求")
+    }
+
+    @Test
+    fun capacity_evictsOldestBeyondThousandEntries() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+
+        for (id in 1L..1001L) {
+            env.repository.rememberFreshCover(
+                id = id,
+                type = CoverFreshnessRepository.EntityType.HOBBY,
+                cover = "covers/$id.jpg",
+            )
+        }
+
+        assertNull(env.repository.getCachedCover(1L, CoverFreshnessRepository.EntityType.HOBBY), "最旧条目应被淘汰")
+        assertEquals("covers/1001.jpg", env.repository.getCachedCover(1001L, CoverFreshnessRepository.EntityType.HOBBY))
+
+        advanceTimeBy(501)
+        advanceUntilIdle()
+
+        val restored = repositoryOver(prefs)
+        restored.ensureWarmed()
+
+        assertNull(restored.getCachedCover(1L, CoverFreshnessRepository.EntityType.HOBBY), "淘汰结果应随快照落盘")
+        assertEquals("covers/1000.jpg", restored.getCachedCover(1000L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertEquals("covers/1001.jpg", restored.getCachedCover(1001L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertNull(restored.getCachedCover(1002L, CoverFreshnessRepository.EntityType.HOBBY))
+    }
+
+    @Test
+    fun capacity_overwriteMovesEntryToTail() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+
+        for (id in 1L..1000L) {
+            env.repository.rememberFreshCover(id, CoverFreshnessRepository.EntityType.HOBBY, "covers/$id.jpg")
+        }
+        // 覆写最旧条目：应视为最近使用而移到队尾
+        env.repository.rememberFreshCover(1L, CoverFreshnessRepository.EntityType.HOBBY, "covers/1-new.jpg")
+        env.repository.rememberFreshCover(1001L, CoverFreshnessRepository.EntityType.HOBBY, "covers/1001.jpg")
+
+        assertEquals(
+            "covers/1-new.jpg",
+            env.repository.getCachedCover(1L, CoverFreshnessRepository.EntityType.HOBBY),
+            "覆写应移到队尾，从而避开本次淘汰",
+        )
+        assertNull(env.repository.getCachedCover(2L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertEquals("covers/1001.jpg", env.repository.getCachedCover(1001L, CoverFreshnessRepository.EntityType.HOBBY))
+    }
+
+    @Test
+    fun rememberFreshCover_defersDiskWriteUntilDebounceElapses() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+        env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
+
+        advanceTimeBy(400)
+        val early = repositoryOver(prefs)
+        early.ensureWarmed()
+        assertNull(
+            early.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "500ms 防抖窗口内不应落盘",
+        )
+
+        advanceTimeBy(200)
+        advanceUntilIdle()
+        val late = repositoryOver(prefs)
+        late.ensureWarmed()
+        assertEquals(
+            hobbyCover,
+            late.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "防抖窗口结束后应落盘",
+        )
+    }
+
+    @Test
+    fun rapidWrites_coalesceIntoSamePersistedSnapshot() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+
+        env.repository.rememberFreshCover(1L, CoverFreshnessRepository.EntityType.HOBBY, "covers/1.jpg")
+        advanceTimeBy(100)
+        env.repository.rememberFreshCover(2L, CoverFreshnessRepository.EntityType.HOBBY, "covers/2.jpg")
+        advanceTimeBy(100)
+        env.repository.rememberFreshCover(3L, CoverFreshnessRepository.EntityType.HOBBY, "covers/3.jpg")
+
+        advanceTimeBy(200)
+        val early = repositoryOver(prefs)
+        early.ensureWarmed()
+        assertNull(
+            early.getCachedCover(3L, CoverFreshnessRepository.EntityType.HOBBY),
+            "最后一条写入未满 500ms 前不应落盘",
+        )
+
+        advanceTimeBy(200)
+        advanceUntilIdle()
+        val flushed = repositoryOver(prefs)
+        flushed.ensureWarmed()
+        assertEquals("covers/1.jpg", flushed.getCachedCover(1L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertEquals("covers/2.jpg", flushed.getCachedCover(2L, CoverFreshnessRepository.EntityType.HOBBY))
+        assertEquals("covers/3.jpg", flushed.getCachedCover(3L, CoverFreshnessRepository.EntityType.HOBBY))
+    }
+
+    @Test
+    fun negativeCache_isNeverPersisted() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.stubHobbyCover(cover = null)
+
+        assertNull(env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
+        advanceTimeBy(501)
+        advanceUntilIdle()
+
+        val restored = repositoryOver(prefs)
+        restored.ensureWarmed()
+        assertNull(
+            restored.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "负缓存只保留在内存，绝不能落盘",
+        )
+    }
+
+    @Test
+    fun clear_removesPersistedCovers() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+        env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
+        advanceTimeBy(501)
+        advanceUntilIdle()
+
+        val before = repositoryOver(prefs)
+        before.ensureWarmed()
+        assertNotNull(before.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY))
+
+        env.repository.clear()
+        advanceTimeBy(501)
+        advanceUntilIdle()
+
+        val after = repositoryOver(prefs)
+        after.ensureWarmed()
+        assertNull(after.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY), "clear 应同步清空落盘内容")
     }
 }
