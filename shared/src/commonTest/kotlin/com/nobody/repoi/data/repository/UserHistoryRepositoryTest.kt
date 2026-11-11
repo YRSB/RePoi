@@ -153,6 +153,29 @@ class UserHistoryRepositoryTest {
     }
 
     @Test
+    fun getUserHistoryList_album_withoutNodeId_fallsBackToActualDetailId() = runTest {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        // 相册桩数据既无 nodeId 也无 itemId，只能靠 actualDetailId（id 777）命中
+        seedPersistedCover(prefs, 777L, CoverFreshnessRepository.EntityType.ALBUM, freshAlbumCover)
+
+        val mock = MockApi()
+        mock.enqueue(
+            """{"success":true,"code":200,"data":{"readList":[
+                {"id":777,"itemType":"album","title":"相册B","cover":"$staleCover"}
+            ]}}"""
+        )
+        val repository = UserHistoryRepository(
+            mock.api(),
+            FakeUserSession("utoken-test"),
+            freshness(prefs),
+        )
+
+        val item = repository.getUserHistoryList(itemType = "album", page = 1).getOrThrow().single()
+
+        assertEquals(freshAlbumCover, item.cover, "nodeId 为 0 时应回退 actualDetailId 命中缓存")
+    }
+
+    @Test
     fun getUserHistoryList_unmatched_keepsServerSnapshot() = runTest {
         val prefs = TestDataStore.coverFreshnessPrefs()
         seedPersistedCover(prefs, 59570L, CoverFreshnessRepository.EntityType.HOBBY, freshHobbyCover)
