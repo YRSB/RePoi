@@ -25,6 +25,7 @@
 | [ADR-0011](0011-collect-architecture-eventbus-decoupling.md) | 收藏模块解耦与状态驱动架构演进 | **收藏/状态驱动/解耦**：彻底剔除 EventBus、单一事实源 StateFlow、查询归集至 CollectRepository、纯 MVI 与 PagedListLoader | 已采纳 (Accepted) - 2026-11-09 |
 | [ADR-0012](0012-cold-start-theme-settling.md) | 冷启动色彩就绪与启动补间抑制 | **主题/启动体验/动效**：系统级 Splash 门禁、首次落定 Snap 抑制、48 角色弹簧动画与冷启动解耦、闭环 ADR-0009 与 ADR-0010 | 已采纳 (Accepted) - 2026-11-10 |
 | [ADR-0013](0013-card-primitives-convergence.md) | 沉淀核心卡片展示基元与全业务实体卡收敛架构 | **UI/卡片基元/深模块**：PoiPosterCard、PoiListCard、PoiCaptionGridCard、PoiThumbnail，消除样式漂移，全量收敛手办/专区/搜索/收藏/相册/历史卡片 | 已采纳并全量推广 (Accepted & Deployed) - 2026-11-11 |
+| [ADR-0014](0014-cover-freshness-persistent-cache.md) | 封面新鲜度持久化缓存与列表前置自愈架构 | **多媒体/持久化/自愈**：DataStore 内存镜像、前置主动重写、永久有效与 1000 条 LRU 淘汰、404 穿透自愈 | 已采纳 (Accepted) - 2026-11-11 |
 
 ---
 
