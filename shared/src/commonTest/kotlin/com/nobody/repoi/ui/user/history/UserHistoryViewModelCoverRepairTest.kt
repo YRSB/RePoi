@@ -23,6 +23,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * 浏览历史封面按条修复测试。
@@ -240,22 +241,87 @@ class UserHistoryViewModelCoverRepairTest {
     }
 
     @Test
-    fun coverLoadFailed_afterDetailPageSink_hitsCacheWithoutRequest() = runTest(testDispatcher) {
+    fun coverLoadFailed_penetratesSunkCoverAndRepaintsRow() = runTest(testDispatcher) {
         val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.warmUp()
         advanceUntilIdle()
 
+        // 详情页曾沉淀过封面；但它随后也在服务端失效（404），此时必须穿透该正缓存重新回源
         env.coverFreshnessRepository.rememberFreshCover(
             id = 59570L,
             type = CoverFreshnessRepository.EntityType.HOBBY,
-            cover = freshCover,
+            cover = "2026/10/previous_hobby.jpg",
         )
+        val newestCover = "2026/12/newest_hobby.jpg"
+        env.stubHobbyDetail(newestCover)
         env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
         advanceUntilIdle()
 
-        assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
-        assertEquals(0, env.detailMock.requestCount, "详情页已沉淀的封面不应再触发修复请求")
+        assertEquals(newestCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
+        assertEquals(1, env.detailMock.requestCount, "404 必须穿透已沉淀的正缓存重新回源")
+    }
+
+    /**
+     * 工单 #117 AC：404 强制穿透成功后就地重绘，并同步落盘，冷启动仍为新封面。
+     */
+    @Test
+    fun coverLoadFailed_forceRefresh_persistsNewCoverForColdStart() = runTest(testDispatcher) {
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val seeder = CoverFreshnessRepository(
+            HobbyDetailRepository(MockApi().api(testDispatcher)),
+            AlbumDetailRepository(MockApi().api(testDispatcher)),
+            prefs,
+            backgroundScope,
+        )
+        seeder.ensureWarmed()
+        seeder.rememberFreshCover(
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            cover = oldCover,
+        )
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+
+        val env = Env(testDispatcher, backgroundScope, prefs)
+        env.stubHistoryRows(
+            HistoryRow(rowId = 123L, itemId = 59570L, cover = oldCover),
+            HistoryRow(rowId = 124L, itemId = 59571L, cover = oldCover),
+        )
+        env.stubHobbyDetail(freshCover)
+        env.warmUp()
+        advanceUntilIdle()
+        assertEquals(oldCover, env.viewModel.uiState.value.hobbyState.items.first { it.id == 123L }.cover)
+
+        env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
+        advanceUntilIdle()
+
+        val items = env.viewModel.uiState.value.hobbyState.items.associateBy { it.id }
+        assertEquals(freshCover, items.getValue(123L).cover, "失败行应就地重绘")
+        assertEquals(oldCover, items.getValue(124L).cover, "未失败行不得被替换")
+        assertEquals(1, env.detailMock.requestCount, "已缓存旧地址 404 时必须穿透正缓存回源")
+
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+
+        val coldStart = CoverFreshnessRepository(
+            HobbyDetailRepository(MockApi().api(testDispatcher)),
+            AlbumDetailRepository(MockApi().api(testDispatcher)),
+            prefs,
+            backgroundScope,
+        )
+        coldStart.ensureWarmed()
+        assertEquals(
+            freshCover,
+            coldStart.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "自愈结果应经防抖落盘，重建仓储后仍为新封面",
+        )
+        assertNull(
+            coldStart.getCachedCover(59571L, CoverFreshnessRepository.EntityType.HOBBY),
+            "未参与自愈的条目不应被写入持久化缓存",
+        )
     }
 
     /**

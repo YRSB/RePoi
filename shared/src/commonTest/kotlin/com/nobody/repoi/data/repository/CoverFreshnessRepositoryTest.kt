@@ -84,6 +84,32 @@ class CoverFreshnessRepositoryTest {
         edit { }
     }
 
+    /**
+     * 等待最新封面真正落盘。
+     *
+     * 连续多次写入可能落在不同的防抖窗口：上一窗口的 `edit` 尚未返回时，下一窗口的 `delay` 还没被调度，
+     * 单次 `advanceUntilIdle` 无法覆盖。这里逐窗口推进并在每个窗口后重建仓储观察，直到读到期望值。
+     */
+    private suspend fun TestScope.awaitPersistedCover(
+        preferences: DataStore<Preferences>,
+        id: Long,
+        type: CoverFreshnessRepository.EntityType,
+        expected: String?,
+        attempts: Int = 4,
+    ): String? {
+        var observed: String? = null
+        repeat(attempts) {
+            advanceTimeBy(501)
+            advanceUntilIdle()
+            preferences.awaitPendingWrites()
+            val restored = repositoryOver(preferences)
+            restored.ensureWarmed()
+            observed = restored.getCachedCover(id, type)
+            if (observed == expected) return observed
+        }
+        return observed
+    }
+
     @Test
     fun freshCover_hobby_returnsCoverFromDetailApi() = runTest {
         val env = Env(backgroundScope)
@@ -117,6 +143,150 @@ class CoverFreshnessRepositoryTest {
 
         assertEquals(hobbyCover, second.getOrThrow())
         assertEquals(1, env.hobbyMock.requestCount, "命中缓存后不应重复请求详情接口")
+    }
+
+    @Test
+    fun freshCover_forceRefresh_bypassesPositiveCacheAndPersistsNewCover() = runTest {
+        val staleCover = "2020/01/stale_hobby.jpg"
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+        env.stubHobbyCover(staleCover)
+        assertEquals(
+            staleCover,
+            env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow(),
+        )
+
+        // 已缓存地址在服务端再次失效（404）：穿透正缓存重新回源
+        env.hobbyMock.replaceRoute(
+            "api/item/get",
+            env.hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}"""),
+        )
+        val refreshed = env.repository.freshCover(
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            forceRefresh = true,
+        )
+
+        assertEquals(hobbyCover, refreshed.getOrThrow())
+        assertEquals(2, env.hobbyMock.requestCount, "forceRefresh 应跳过正缓存重新请求详情接口")
+        assertEquals(
+            hobbyCover,
+            env.repository.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "回源成功应立即原子覆写内存正缓存",
+        )
+
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+
+        val persisted = awaitPersistedCover(
+            preferences = prefs,
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            expected = hobbyCover,
+        )
+        assertEquals(hobbyCover, persisted, "穿透结果应经 500ms 防抖落盘，重建仓储后仍为新值")
+    }
+
+    @Test
+    fun freshCover_forceRefreshFailure_keepsOldCoverAndLaterQueriesStayOffline() = runTest {
+        val staleCover = "2020/01/stale_hobby.jpg"
+        val prefs = TestDataStore.coverFreshnessPrefs()
+        val env = Env(backgroundScope, preferences = prefs)
+        env.repository.ensureWarmed()
+        env.stubHobbyCover(staleCover)
+        env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow()
+
+        env.hobbyMock.replaceRoute("api/item/get", env.hobbyMock.failure(500, "Network error"))
+        val failed = env.repository.freshCover(
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            forceRefresh = true,
+        )
+
+        assertTrue(failed.isFailure)
+        assertEquals(
+            staleCover,
+            env.repository.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
+            "穿透失败绝不修改旧正缓存",
+        )
+
+        val normal = env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
+        assertEquals(staleCover, normal.getOrThrow())
+        assertEquals(2, env.hobbyMock.requestCount, "失败后普通查询仍命中旧缓存，零新增请求")
+
+        advanceTimeBy(501)
+        advanceUntilIdle()
+        prefs.awaitPendingWrites()
+
+        val persisted = awaitPersistedCover(
+            preferences = prefs,
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            expected = staleCover,
+        )
+        assertEquals(staleCover, persisted, "穿透失败不得污染已落盘的旧封面")
+    }
+
+    @Test
+    fun freshCover_forceRefreshWithinNegativeWindow_skipsRequest() = runTest {
+        val env = Env(backgroundScope)
+        env.stubHobbyCover(cover = null)
+        assertNull(
+            env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow()
+        )
+
+        // 服务端此时已有封面，但负缓存窗口未过：forceRefresh 也不得穿透，避免空白封面请求风暴
+        env.hobbyMock.replaceRoute(
+            "api/item/get",
+            env.hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}"""),
+        )
+        val forced = env.repository.freshCover(
+            id = 59570L,
+            type = CoverFreshnessRepository.EntityType.HOBBY,
+            forceRefresh = true,
+        )
+
+        assertNull(forced.getOrThrow(), "负缓存窗口内 forceRefresh 只能返回空")
+        assertEquals(1, env.hobbyMock.requestCount, "负缓存应拦截穿透请求")
+    }
+
+    @Test
+    fun freshCover_forceRefresh_joinsInFlightRequest() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val gate = CompletableDeferred<Unit>()
+        val hobbyMock = MockApi()
+        hobbyMock.routeWhenSuspend(
+            predicate = { path, _, _ -> path.contains("api/item/get") },
+            body = { _, _, _ ->
+                gate.await()
+                hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
+            },
+        )
+        val repository = CoverFreshnessRepository(
+            HobbyDetailRepository(hobbyMock.api(dispatcher)),
+            AlbumDetailRepository(MockApi().api(dispatcher)),
+            TestDataStore.coverFreshnessPrefs(),
+            backgroundScope,
+        )
+
+        val forced = async {
+            repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, forceRefresh = true)
+        }
+        advanceUntilIdle()
+        assertEquals(1, hobbyMock.requestCount, "穿透请求应已发出")
+
+        val joined = async {
+            repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, forceRefresh = true)
+        }
+        advanceUntilIdle()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(hobbyCover, forced.await().getOrThrow())
+        assertEquals(hobbyCover, joined.await().getOrThrow())
+        assertEquals(1, hobbyMock.requestCount, "已有同类在途请求时应并入等待，不重复发请求")
     }
 
     @Test
@@ -465,6 +635,21 @@ class CoverFreshnessRepositoryTest {
             restored.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY),
             "负缓存只保留在内存，绝不能落盘",
         )
+
+        // 负缓存未落盘：重建仓储（相当于进程重启）后不得再拦截请求
+        val retryMock = MockApi()
+        retryMock.route(
+            "api/item/get",
+            retryMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}"""),
+        )
+        val retried = repositoryOver(prefs, hobbyMock = retryMock)
+        retried.ensureWarmed()
+        assertEquals(
+            hobbyCover,
+            retried.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow(),
+            "重建仓储后负缓存已失效，应重新探测并拿到封面",
+        )
+        assertEquals(1, retryMock.requestCount, "负缓存不落盘，新进程必须重新请求")
     }
 
     @Test
