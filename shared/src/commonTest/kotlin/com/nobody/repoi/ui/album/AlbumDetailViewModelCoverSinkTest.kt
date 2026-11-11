@@ -24,6 +24,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -60,7 +61,10 @@ class AlbumDetailViewModelCoverSinkTest {
         Dispatchers.resetMain()
     }
 
-    private class Env(private val dispatcher: CoroutineDispatcher) {
+    private class Env(
+        private val dispatcher: CoroutineDispatcher,
+        scope: CoroutineScope,
+    ) {
         val albumMock = MockApi()
         private val collectMock = MockApi()
         private val commentMock = MockApi()
@@ -80,6 +84,8 @@ class AlbumDetailViewModelCoverSinkTest {
         val coverFreshnessRepository = CoverFreshnessRepository(
             HobbyDetailRepository(MockApi().api(dispatcher)),
             albumRepository,
+            TestDataStore.coverFreshnessPrefs(),
+            scope,
         )
 
         fun viewModel(): AlbumDetailViewModel {
@@ -115,7 +121,7 @@ class AlbumDetailViewModelCoverSinkTest {
 
     @Test
     fun loadDetail_sinksCoverForHistoryRepairWithoutExtraRequest() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubAlbum()
 
         val viewModel = env.viewModel()

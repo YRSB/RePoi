@@ -1,11 +1,13 @@
 package com.nobody.repoi.ui.user.history
 
+import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.session.FakeUserSession
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -42,7 +44,10 @@ class UserHistoryViewModelCoverRepairTest {
         Dispatchers.resetMain()
     }
 
-    private class Env(dispatcher: kotlinx.coroutines.CoroutineDispatcher) {
+    private class Env(
+        dispatcher: kotlinx.coroutines.CoroutineDispatcher,
+        scope: CoroutineScope,
+    ) {
         val historyMock = MockApi()
         val detailMock = MockApi()
         val albumMock = MockApi()
@@ -51,6 +56,8 @@ class UserHistoryViewModelCoverRepairTest {
         val coverFreshnessRepository = CoverFreshnessRepository(
             HobbyDetailRepository(detailMock.api(dispatcher)),
             AlbumDetailRepository(albumMock.api(dispatcher)),
+            TestDataStore.coverFreshnessPrefs(),
+            scope,
         )
 
         val viewModel = UserHistoryViewModel(
@@ -104,7 +111,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_replacesOnlyFailedRowWithFreshCover() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistoryRows(
             HistoryRow(rowId = 123L, itemId = 59570L, cover = oldCover),
             HistoryRow(rowId = 124L, itemId = 59571L, cover = oldCover),
@@ -124,7 +131,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_album_replacesAlbumRowWithFreshCover() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         val staleAlbumCover = "2020/01/stale_album.jpg"
         val freshAlbumCover = "2026/11/fresh_album.jpg"
         env.stubHistoryRows(
@@ -151,7 +158,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_successDoesNotConsumeAttemptBudget() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.stubHobbyDetail(freshCover)
         advanceUntilIdle()
@@ -170,12 +177,12 @@ class UserHistoryViewModelCoverRepairTest {
         env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
         advanceUntilIdle()
         assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
-        assertEquals(1, env.detailMock.requestCount, "后续修复应命中 30 分钟缓存，零额外请求")
+        assertEquals(1, env.detailMock.requestCount, "后续修复应命中永久正缓存，零额外请求")
     }
 
     @Test
     fun coverLoadFailed_blankFreshCover_keepsOriginalPath() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.stubHobbyDetail(cover = null)
         advanceUntilIdle()
@@ -188,7 +195,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_repeatedFailures_stopAfterAttemptCap() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         env.detailMock.route("api/item/get", env.detailMock.failure(500, "Network error"))
         advanceUntilIdle()
@@ -206,7 +213,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_invalidDetailId_doesNothing() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         advanceUntilIdle()
 
@@ -218,7 +225,7 @@ class UserHistoryViewModelCoverRepairTest {
 
     @Test
     fun coverLoadFailed_afterDetailPageSink_hitsCacheWithoutRequest() = runTest(testDispatcher) {
-        val env = Env(testDispatcher)
+        val env = Env(testDispatcher, backgroundScope)
         env.stubHistory()
         advanceUntilIdle()
 

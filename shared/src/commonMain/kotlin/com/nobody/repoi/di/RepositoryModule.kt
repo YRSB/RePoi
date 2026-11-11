@@ -34,12 +34,17 @@ import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * 仓储模块：26 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
+ * 仓储模块：27 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
  * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
  *
  * 模块尾部同时挂载收藏写侧 Domain UseCases（`factory`，无状态、随用随建）：
@@ -67,7 +72,18 @@ val repositoryModule = module {
     single { SettingsRepository(get(), get()) }
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get()) }
-    single { CoverFreshnessRepository(get(), get()) }
+    // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
+    single(named("cover_freshness_scope")) {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    }
+    single {
+        CoverFreshnessRepository(
+            hobbyDetailRepository = get(),
+            albumDetailRepository = get(),
+            preferences = get(named("cover_freshness_prefs")),
+            scope = get(named("cover_freshness_scope")),
+        )
+    }
     single { UserFinanceRepository(get(), get()) }
     singleOf(::UserRepository)
     singleOf(::VendorDetailRepository)

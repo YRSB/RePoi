@@ -44,7 +44,7 @@ class HobbyDetailViewModelCollectTest {
 
     @Test
     fun loadDetail_whenCollected_isFavoriteTrue() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{"collect":{"id":100,"state":"care"}}"""))
 
@@ -58,7 +58,7 @@ class HobbyDetailViewModelCollectTest {
 
     @Test
     fun loadDetail_whenNotCollected_isFavoriteFalse() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
 
@@ -75,7 +75,7 @@ class HobbyDetailViewModelCollectTest {
      */
     @Test
     fun collectStateFlow_syncsFavoriteAndCountDelta() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
 
@@ -109,7 +109,7 @@ class HobbyDetailViewModelCollectTest {
 
     @Test
     fun loadDetail_whenCollectStateReturnsNull_explicitlyResetsFavoriteToFalse() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.ok("""{"collect":{"id":100,"state":"care"}}"""))
 
@@ -131,7 +131,7 @@ class HobbyDetailViewModelCollectTest {
 
     @Test
     fun loadDetail_whenCollectFails_keepsInitialState() = runTest(testDispatcher) {
-        val env = HobbyDetailEnv(dispatcher = testDispatcher)
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.enqueue(env.collectMock.failure(500, "网络异常"))
 
