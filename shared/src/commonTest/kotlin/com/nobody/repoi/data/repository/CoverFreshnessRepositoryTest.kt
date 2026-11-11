@@ -73,6 +73,16 @@ class CoverFreshnessRepositoryTest {
         backgroundScope,
     )
 
+    /**
+     * 等待 DataStore 处理完已排队的写入。
+     *
+     * DataStore 的 `data.first()` 可能直接返回内存缓存，看不到「已入队、尚未落定」的写入；
+     * 空 `edit` 会排在所有在途写入之后，用它作为可观测的同步屏障，避免测试断言读到旧缓存。
+     */
+    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
+        edit { }
+    }
+
     @Test
     fun freshCover_hobby_returnsCoverFromDetailApi() = runTest {
         val env = Env(backgroundScope)
@@ -309,6 +319,7 @@ class CoverFreshnessRepositoryTest {
         writer.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
         advanceTimeBy(501)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
 
         val coldStartMock = MockApi()
         val restored = repositoryOver(prefs, hobbyMock = coldStartMock)
@@ -345,6 +356,7 @@ class CoverFreshnessRepositoryTest {
 
         advanceTimeBy(501)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
 
         val restored = repositoryOver(prefs)
         restored.ensureWarmed()
@@ -384,6 +396,7 @@ class CoverFreshnessRepositoryTest {
         env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
 
         advanceTimeBy(400)
+        prefs.awaitPendingWrites()
         val early = repositoryOver(prefs)
         early.ensureWarmed()
         assertNull(
@@ -393,6 +406,7 @@ class CoverFreshnessRepositoryTest {
 
         advanceTimeBy(200)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
         val late = repositoryOver(prefs)
         late.ensureWarmed()
         assertEquals(
@@ -415,6 +429,7 @@ class CoverFreshnessRepositoryTest {
         env.repository.rememberFreshCover(3L, CoverFreshnessRepository.EntityType.HOBBY, "covers/3.jpg")
 
         advanceTimeBy(200)
+        prefs.awaitPendingWrites()
         val early = repositoryOver(prefs)
         early.ensureWarmed()
         assertNull(
@@ -424,6 +439,7 @@ class CoverFreshnessRepositoryTest {
 
         advanceTimeBy(200)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
         val flushed = repositoryOver(prefs)
         flushed.ensureWarmed()
         assertEquals("covers/1.jpg", flushed.getCachedCover(1L, CoverFreshnessRepository.EntityType.HOBBY))
@@ -440,6 +456,7 @@ class CoverFreshnessRepositoryTest {
         assertNull(env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
         advanceTimeBy(501)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
 
         val restored = repositoryOver(prefs)
         restored.ensureWarmed()
@@ -457,6 +474,7 @@ class CoverFreshnessRepositoryTest {
         env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
         advanceTimeBy(501)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
 
         val before = repositoryOver(prefs)
         before.ensureWarmed()
@@ -465,6 +483,7 @@ class CoverFreshnessRepositoryTest {
         env.repository.clear()
         advanceTimeBy(501)
         advanceUntilIdle()
+        prefs.awaitPendingWrites()
 
         val after = repositoryOver(prefs)
         after.ensureWarmed()
