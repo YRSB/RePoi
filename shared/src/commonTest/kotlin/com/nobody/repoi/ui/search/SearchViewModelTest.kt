@@ -89,7 +89,7 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         viewModel.uiState.value.isSubmitted shouldBe false
-        viewModel.uiState.value.isLoading shouldBe false
+        viewModel.uiState.value.currentTabState.isLoading shouldBe false
     }
 
     @Test

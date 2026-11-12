@@ -1,12 +1,6 @@
 package com.nobody.repoi.ui.search
 
-import com.nobody.repoi.data.local.CategoryManager
-import com.nobody.repoi.data.local.SearchHistoryManager
-import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.remote.model.SearchCompanyAggregate
-import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.repository.RecordedHttpRequest
-import com.nobody.repoi.data.repository.SearchRepository
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,94 +43,8 @@ class SearchTabFilterTest {
 
     // ── 测试基建 ─────────────────────────────────────────────────
 
-    private class TestEnv(val mock: MockApi, val viewModel: SearchViewModel)
-
-    private fun MockApi.searchPageJson(category: String, page: Int): String {
-        val ids = when (page) {
-            1 -> listOf(1L, 2L)
-            2 -> listOf(3L)
-            else -> emptyList()
-        }
-        val items = ids.joinToString(",") { id ->
-            """{"id":$id,"itemId":$id,"name":"$category-page$page-item$id"}"""
-        }
-        // 聚合响应附带厂商/年份候选，用于验证候选列表只归属周边快照
-        val aggregates =
-            ""","companys":[{"nodeId":42,"itemName":"GoodSmile","docCount":5}],"releaseYear":[{"keyAsString":"2024","docCount":3}]"""
-        return ok(
-            """{"result":[$items],"query":{"category":${category},"page":$page,"pageCount":3,"totalCount":3}$aggregates}"""
-        )
-    }
-
-    private fun MockApi.userPageJson(page: Int): String {
-        val count = if (page == 1) 12 else 2
-        val start = page * 100
-        val users = (1..count).joinToString(",") { offset ->
-            """{"userId":${start + offset},"nickname":"u${page}_$offset"}"""
-        }
-        return ok("""{"userList":[$users]}""")
-    }
-
-    private fun MockApi.stubSearchEndpoints() {
-        routeWhen(
-            predicate = { path, form -> path.endsWith("/api/search") && form["category"] != null },
-            body = { _, form ->
-                val category = form["category"].orEmpty()
-                val page = form["page"]?.toIntOrNull() ?: 1
-                searchPageJson(category, page)
-            }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/user") },
-            body = { _, form -> userPageJson(form["page"]?.toIntOrNull() ?: 1) }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/auto/fill") },
-            body = { _, _ -> ok("""{"keywords":[]}""") }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/hotword") },
-            body = { _, _ -> ok("""{"list":[]}""") }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.contains("/api/search/attribute") },
-            body = { _, _ -> ok("""{"attributeList":[]}""") }
-        )
-    }
-
-    private fun TestScope.createEnv(): TestEnv {
-        val mock = MockApi().apply { stubSearchEndpoints() }
-        val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
-        val api = mock.api(testDispatcher)
-        val viewModel = SearchViewModel(
-            SearchRepository(api, historyManager),
-            CategoryManager(api, backgroundScope)
-        )
-        return TestEnv(mock, viewModel)
-    }
-
-    private fun MockApi.takeAllRequests(): List<RecordedHttpRequest> = buildList {
-        while (requestCount > 0) {
-            add(takeRequest())
-        }
-    }
-
-    private fun List<RecordedHttpRequest>.searchRequests(): List<RecordedHttpRequest> =
-        filter { it.encodedPath?.endsWith("/api/search") == true }
-
-    private fun List<RecordedHttpRequest>.searchCategories(): List<String> =
-        searchRequests().mapNotNull { it.formEntries()["category"] }
-
-    private fun List<RecordedHttpRequest>.lastSearchForm(): Map<String, String> =
-        searchRequests().last().formEntries()
-
-    private fun SearchViewModel.tabState(tab: SearchTab): TabSearchState =
-        uiState.value.tabStates.getValue(tab)
-
-    private fun SearchViewModel.submitAndLoadHobby() {
-        onKeywordChange("初音未来")
-        onSearch()
-    }
+    private fun TestScope.createEnv(): SearchTestEnv =
+        createSearchTestEnv(testDispatcher, json)
 
     private val company = SearchCompanyAggregate(nodeId = 42, itemName = "GoodSmile", docCount = 5)
 
@@ -310,6 +218,28 @@ class SearchTabFilterTest {
         viewModel.onSelectTab(SearchTab.HOBBY)
         advanceUntilIdle()
         viewModel.uiState.value.isFilterActive shouldBe false
+    }
+
+    @Test
+    fun tabScopedFilterAccessors_followGivenTabNotSelection() = runTest(testDispatcher) {
+        val viewModel = createEnv().viewModel
+        viewModel.submitAndLoadHobby()
+        advanceUntilIdle()
+
+        viewModel.onSelectTab(SearchTab.ALBUM)
+        advanceUntilIdle()
+        viewModel.onSortChange("hits")
+        advanceUntilIdle()
+        viewModel.onSelectTab(SearchTab.HOBBY)
+        advanceUntilIdle()
+
+        // 顶栏按 Pager 当前页取筛选态：selectedTab 是 HOBBY，也须能读到 ALBUM 的快照
+        viewModel.uiState.value.orderFor(SearchTab.ALBUM) shouldBe "hits"
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.ALBUM) shouldBe true
+        viewModel.uiState.value.orderFor(SearchTab.HOBBY) shouldBe ""
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.HOBBY) shouldBe false
+        viewModel.uiState.value.orderFor(SearchTab.COMPANY) shouldBe ""
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.COMPANY) shouldBe false
     }
 
     @Test

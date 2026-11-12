@@ -1,12 +1,6 @@
 package com.nobody.repoi.ui.search
 
 import app.cash.turbine.test
-import com.nobody.repoi.data.local.CategoryManager
-import com.nobody.repoi.data.local.SearchHistoryManager
-import com.nobody.repoi.data.local.TestDataStore
-import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.repository.RecordedHttpRequest
-import com.nobody.repoi.data.repository.SearchRepository
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
@@ -49,80 +43,10 @@ class SearchTabStateTest {
 
     // ── 测试基建 ─────────────────────────────────────────────────
 
-    private class TestEnv(val mock: MockApi, val viewModel: SearchViewModel)
+    private fun TestScope.createEnv(): SearchTestEnv =
+        createSearchTestEnv(testDispatcher, json)
 
-    private fun MockApi.searchPageJson(category: String, page: Int): String {
-        val ids = when (page) {
-            1 -> listOf(1L, 2L)
-            2 -> listOf(3L)
-            else -> emptyList()
-        }
-        val items = ids.joinToString(",") { id ->
-            """{"id":$id,"itemId":$id,"name":"$category-page$page-item$id"}"""
-        }
-        return ok(
-            """{"result":[$items],"query":{"category":${category},"page":$page,"pageCount":3,"totalCount":3}}"""
-        )
-    }
-
-    private fun MockApi.userPageJson(page: Int): String {
-        val count = if (page == 1) 12 else 2
-        val start = page * 100
-        val users = (1..count).joinToString(",") { offset ->
-            """{"userId":${start + offset},"nickname":"u${page}_$offset"}"""
-        }
-        return ok("""{"userList":[$users]}""")
-    }
-
-    private fun MockApi.stubSearchEndpoints() {
-        routeWhen(
-            predicate = { path, form -> path.endsWith("/api/search") && form["category"] != null },
-            body = { _, form ->
-                val category = form["category"].orEmpty()
-                val page = form["page"]?.toIntOrNull() ?: 1
-                searchPageJson(category, page)
-            }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/user") },
-            body = { _, form -> userPageJson(form["page"]?.toIntOrNull() ?: 1) }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/auto/fill") },
-            body = { _, _ -> ok("""{"keywords":[]}""") }
-        )
-        routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/hotword") },
-            body = { _, _ -> ok("""{"list":[]}""") }
-        )
-    }
-
-    private fun TestScope.createEnv(): TestEnv {
-        val mock = MockApi().apply { stubSearchEndpoints() }
-        val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
-        val api = mock.api(testDispatcher)
-        val viewModel = SearchViewModel(
-            SearchRepository(api, historyManager),
-            CategoryManager(api, backgroundScope)
-        )
-        return TestEnv(mock, viewModel)
-    }
-
-    /** 取走全部已记录请求（请求顺序无关，调用方按 path/form 过滤断言）。 */
-    private fun MockApi.takeAllRequests(): List<RecordedHttpRequest> = buildList {
-        while (requestCount > 0) {
-            add(takeRequest())
-        }
-    }
-
-    /** 主搜索（POST api/search）请求携带的分类 ID，按发出顺序。 */
-    private fun List<RecordedHttpRequest>.searchCategories(): List<String> =
-        filter { it.encodedPath?.endsWith("/api/search") == true }
-            .mapNotNull { it.formEntries()["category"] }
-
-    private fun SearchViewModel.tabState(tab: SearchTab): TabSearchState =
-        uiState.value.tabStates.getValue(tab)
-
+    /** 提交搜索并切到相册，使周边/相册各有一份缓存。 */
     private fun SearchViewModel.loadHobbyAndAlbum() {
         onKeywordChange("初音未来")
         onSearch()
@@ -161,6 +85,31 @@ class SearchTabStateTest {
         state.tabStates.getValue(SearchTab.ALBUM).items.size shouldBe 2
 
         env.mock.takeAllRequests().searchCategories() shouldBe listOf("70000")
+    }
+
+    @Test
+    fun onTabVisible_loadsTargetTabWithoutChangingSelection() = runTest(testDispatcher) {
+        val env = createEnv()
+        val viewModel = env.viewModel
+
+        viewModel.submitAndLoadHobby()
+        advanceUntilIdle()
+        env.mock.takeAllRequests()
+
+        // 页面滑入即预取：只加载目标分类，不改变当前选中分类
+        viewModel.onTabVisible(SearchTab.ALBUM)
+        advanceUntilIdle()
+
+        viewModel.uiState.value.selectedTab shouldBe SearchTab.HOBBY
+        val album = viewModel.tabState(SearchTab.ALBUM)
+        album.isLoaded shouldBe true
+        album.items.size shouldBe 2
+        env.mock.takeAllRequests().searchCategories() shouldBe listOf("70000")
+
+        // 已加载分类再次可见：零请求
+        viewModel.onTabVisible(SearchTab.ALBUM)
+        advanceUntilIdle()
+        env.mock.takeAllRequests().searchCategories().size shouldBe 0
     }
 
     @Test
