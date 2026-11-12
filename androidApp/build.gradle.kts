@@ -73,11 +73,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            optimization {
+                enable = true
+            }
+            proguardFiles("proguard-rules.pro")
             // 存在外部 release 签名配置时优先使用；未配置时默认回退到 debug 签名，确保产物已签名且可与 debug 构建相互覆盖安装
             signingConfig = if (signingProps != null) {
                 signingConfigs.getByName("release")
