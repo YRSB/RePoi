@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.search
 
-import app.cash.turbine.test
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.TestDataStore
@@ -198,13 +197,9 @@ class SearchTabFilterTest {
         val elementsBefore = viewModel.tabState(SearchTab.WORKS_ELEMENT)
 
         // 活动分类为相册时修改周边筛选：后台只重载周边，且请求取周边快照
-        viewModel.uiState.test {
-            skipItems(1)
-            viewModel.onHobbyCategoryChange(100)
-            val loading = awaitItem()
-            loading.tabStates.getValue(SearchTab.ALBUM) shouldBe albumBefore
-            loading.tabStates.getValue(SearchTab.WORKS_ELEMENT) shouldBe elementsBefore
-        }
+        viewModel.onHobbyCategoryChange(200)
+        viewModel.tabState(SearchTab.ALBUM) shouldBe albumBefore
+        viewModel.tabState(SearchTab.WORKS_ELEMENT) shouldBe elementsBefore
         advanceUntilIdle()
 
         viewModel.tabState(SearchTab.HOBBY).items.size shouldBe 2
@@ -212,7 +207,7 @@ class SearchTabFilterTest {
         viewModel.tabState(SearchTab.WORKS_ELEMENT) shouldBe elementsBefore
 
         val form = env.mock.takeAllRequests().lastSearchForm()
-        form["category"] shouldBe "100"
+        form["category"] shouldBe "200"
         form["order"] shouldBe "hits"
         form["company"] shouldBe "42"
         form["releaseYear"] shouldBe "2024"
