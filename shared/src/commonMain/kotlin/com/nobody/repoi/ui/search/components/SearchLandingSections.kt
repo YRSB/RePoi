@@ -166,23 +166,11 @@ fun SearchHistorySection(
             modifier = Modifier.fillMaxWidth()
         ) {
             historyList.forEach { historyWord ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-                        .combinedClickable(
-                            onClick = { onSelectWord(historyWord) },
-                            onLongClick = { onDeleteItem(historyWord) }
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = historyWord,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                SearchTagChip(
+                    text = historyWord,
+                    onClick = { onSelectWord(historyWord) },
+                    onLongClick = { onDeleteItem(historyWord) }
+                )
             }
         }
     }
@@ -261,23 +249,49 @@ fun EveryoneSearchingSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 hotwords.forEach { item ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-                            .clickable { onSelectWord(item.word) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = item.word,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    SearchTagChip(
+                        text = item.word,
+                        onClick = { onSelectWord(item.word) }
+                    )
                 }
             }
         }
+    }
+}
+
+/**
+ * 搜索标签 Chip 组件 (搜索历史与大家在找通用)
+ *
+ * 显式固定 32.dp 容器高度，内部文本垂直居中并配置单行省略，
+ * 解决因西文字符 (Latin) 与中文字符 (CJK) 采用不同系统回退字体时行高度量 (font metrics) 不一致导致的 Chip 高度高低不齐问题。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SearchTagChip(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null
+) {
+    Box(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
