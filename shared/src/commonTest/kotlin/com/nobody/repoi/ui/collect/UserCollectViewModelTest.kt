@@ -82,7 +82,7 @@ class UserCollectViewModelTest {
         val viewModel = UserCollectViewModel(
             collectRepository = collectRepository,
             batchCancelCollectUseCase = batchCancel,
-            viewPreferencesManager = ViewPreferencesManager(TestDataStore.viewPrefs()),
+            viewPreferencesManager = ViewPreferencesManager(TestDataStore.inMemory()),
             userSession = session,
             navUserId = targetUserId,
         )
