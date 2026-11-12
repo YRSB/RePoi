@@ -425,8 +425,8 @@ class SearchViewModel(
         val targetCategory = resolveSearchCategory(
             tab,
             hobby.categoryId,
-            album.category.categoryId,
-            elements.category.categoryId
+            album.category,
+            elements.category
         )
 
         tabJobs[tab]?.cancel()
@@ -639,8 +639,8 @@ class SearchViewModel(
         val targetCategory = resolveSearchCategory(
             tab,
             hobby.categoryId,
-            album.category.categoryId,
-            elements.category.categoryId
+            album.category,
+            elements.category
         )
 
         tabJobs[tab] = viewModelScope.launch {
