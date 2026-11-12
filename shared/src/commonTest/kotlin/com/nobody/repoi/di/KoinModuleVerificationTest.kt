@@ -13,6 +13,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.CharacterDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.ForumRepository
@@ -70,6 +71,7 @@ class KoinModuleVerificationTest {
         single(named("theme_prefs")) { TestDataStore.themePrefs() }
         single(named("search_history_prefs")) { TestDataStore.searchHistoryPrefs() }
         single(named("view_prefs")) { TestDataStore.viewPrefs() }
+        single(named("cover_freshness_prefs")) { TestDataStore.coverFreshnessPrefs() }
     }
 
     @Test
@@ -100,7 +102,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
 
-            // 3. 全量 25 个 Repository 及其交互代理
+            // 3. 全量 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumDetailRepository>().shouldNotBeNull()
@@ -121,6 +123,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<SeriesDetailRepository>().shouldNotBeNull()
             koin.getOrNull<StickerRepository>().shouldNotBeNull()
             koin.getOrNull<UserHistoryRepository>().shouldNotBeNull()
+            koin.getOrNull<CoverFreshnessRepository>().shouldNotBeNull()
             koin.getOrNull<UserFinanceRepository>().shouldNotBeNull()
             koin.getOrNull<UserRepository>().shouldNotBeNull()
             koin.getOrNull<VendorDetailRepository>().shouldNotBeNull()

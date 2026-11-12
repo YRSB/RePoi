@@ -22,4 +22,7 @@ object DataStoreFiles {
     const val THEME_PREFS = "theme_prefs.preferences_pb"
     const val SEARCH_HISTORY_PREFS = "search_history_prefs.preferences_pb"
     const val VIEW_PREFS = "view_prefs.preferences_pb"
+
+    /** 封面新鲜度映射（`<type>:<id>` → 相对路径）；独立文件，与用户配置严格隔离。 */
+    const val COVER_FRESHNESS = "cover_freshness.preferences_pb"
 }

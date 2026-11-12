@@ -2,6 +2,7 @@
 #
 # 用法（本地无需 Gradle）：
 #   gh workflow run tests.yml --ref <branch>
+#   gh workflow run tests.yml --ref <branch> -f filter='*CoverFreshness*'   # 定向快速反馈
 #   gh run list --workflow Tests --branch <branch> --limit 1
 #   gh run watch <run-id> --exit-status
 #
@@ -10,6 +11,11 @@ name: Tests
 
 on:
   workflow_dispatch:
+    inputs:
+      filter:
+        description: '可选：只跑匹配的 JVM 单测（Gradle --tests 通配符）；留空跑完整两目标'
+        required: false
+        default: ''
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -39,7 +45,14 @@ jobs:
         run: ./gradlew :shared:compileTestKotlinJvm --stacktrace 2>&1 | tee compile-output.log; exit ${PIPESTATUS[0]}
 
       - name: Run unit tests
-        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log; exit ${PIPESTATUS[0]}
+        run: |
+          if [ -n "${{ inputs.filter }}" ]; then
+            echo "定向模式：:shared:jvmTest --tests ${{ inputs.filter }}"
+            ./gradlew :shared:jvmTest --tests "${{ inputs.filter }}" --stacktrace 2>&1 | tee test-output.log
+          else
+            ./gradlew :shared:jvmTest :shared:testAndroidHostTest --stacktrace 2>&1 | tee test-output.log
+          fi
+          exit ${PIPESTATUS[0]}
 
       - name: Summarize first failure
         if: failure()

@@ -234,7 +234,12 @@ class UserHistoryViewModel(
 
         viewModelScope.launch {
             coverRepairGate.withPermit {
-                val freshCover = coverFreshnessRepository.freshCover(detailId, entityType).getOrNull()
+                // 404 说明本地缓存的封面地址也已失效：必须穿透正缓存重新回源，
+                // 否则会一直返回同一个坏地址，形成无法自愈的死循环。
+                // 负缓存窗口仍由仓储内部拦截，避免空白封面反复打接口。
+                val freshCover = coverFreshnessRepository
+                    .freshCover(detailId, entityType, forceRefresh = true)
+                    .getOrNull()
                 if (freshCover.isNullOrBlank()) return@withPermit
                 val loader = if (category == UserHistoryCategory.HOBBY) hobbyLoader else albumLoader
                 // 只替换真正失败的那一行：copy 后 urlText 变化会让 PoiAsyncImage 自动重置失败态

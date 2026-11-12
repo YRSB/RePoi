@@ -6,12 +6,12 @@ import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
-import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
@@ -22,6 +22,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 
 /**
@@ -32,6 +33,8 @@ import kotlinx.serialization.json.Json
  * - VPM 为真实实例（[TestDataStore] 隔离目录）。
  */
 class HobbyDetailEnv(
+    // 封面新鲜度仓储的预热/落盘协程作用域：测试传 runTest 的 backgroundScope（虚拟时间可控）
+    val scope: CoroutineScope,
     val detailMock: MockApi = MockApi(),
     val collectMock: MockApi = MockApi(),
     val commentMock: MockApi = MockApi(),
@@ -55,11 +58,19 @@ class HobbyDetailEnv(
     val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json, session)
     val commentRepository = CommentRepository(commentMock.api(dispatcher), session)
     val stickerRepository = StickerRepository(detailMock.api(dispatcher))
-    val userHistoryRepository = UserHistoryRepository(userMock.api(dispatcher), session)
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
-    val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+    val preferences = ViewPreferencesManager(TestDataStore.inMemory())
     val albumDetailRepository = AlbumDetailRepository(albumMock.api(dispatcher))
-    val coverFreshnessRepository = CoverFreshnessRepository(detailRepository, albumDetailRepository)
+    val coverFreshnessPreferences = TestDataStore.coverFreshnessPrefs()
+    val coverFreshnessRepository = testCoverFreshnessRepository(
+        scope = scope,
+        hobbyDetailRepository = detailRepository,
+        albumDetailRepository = albumDetailRepository,
+        preferences = coverFreshnessPreferences,
+    )
+    val userHistoryRepository = UserHistoryRepository(
+        userMock.api(dispatcher), session, coverFreshnessRepository
+    )
 
     val commentDelegate = CommentInteractionDelegate(
         commentRepository, stickerRepository, session
