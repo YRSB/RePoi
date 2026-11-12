@@ -49,6 +49,10 @@ PoiAsyncImage(
 
 最后一行是踩过的坑：`fillMaxSize()` 在尺寸确定的父容器里会锁死两轴，`aspectRatio` 静默失效。
 
+`Modifier.aspectRatio` 在宽度固定时不理会外层 `heightIn(max = ...)`。需要给超长竖图封顶时
+（如动态卡片相册封面 140dp），用基元的 `maxAdaptiveHeight = 140.dp`，由尺寸推导阶段夹取；
+把 `heightIn` 叠在 `Modifier.width(...)` 外层**不会**生效。
+
 ---
 
 ## `MediaCategory` × `ImagePurpose` 真实产出

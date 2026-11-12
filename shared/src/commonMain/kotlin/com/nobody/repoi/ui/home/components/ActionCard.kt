@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +63,17 @@ import com.nobody.repoi.util.FeedContentResolver
 import com.nobody.repoi.util.resolveMediaDisplayInfo
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
+
+/**
+ * 左侧海报槽位的测试探针：仅用于 JVM Compose 布局约束断言（ADR-0016），无用户可见语义。
+ */
+internal const val ActionCardPosterTag = "action_card_poster"
+
+/** 相册海报槽位的首帧回退比例：4:3（约 72dp 高），居于 16:9 与 1:1 之间，最小化首帧落差。 */
+private const val AlbumPosterFallbackRatio = 4f / 3f
+
+/** 相册海报槽位的最大高度：对齐手办 9:13 的 138.7dp 封顶线，阻断超长竖图向下撑爆卡片。 */
+private val AlbumPosterMaxHeight = 140.dp
 
 @Composable
 fun ActionCard(
@@ -91,7 +103,16 @@ fun ActionCard(
     val isCommentSameAsFigure = isOfficialNotice && !mainComment.isNullOrBlank() && !figureName.isNullOrBlank() &&
         (mainComment.equals(figureName, ignoreCase = true) || mainComment.equals(relateItem?.name, ignoreCase = true) || mainComment.equals(relateItem?.nameCN, ignoreCase = true))
 
-    // 左侧海报槽位收敛至 9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中完全呈现，零裁切零跳变，见 ADR-0015）
+    // 左侧海报槽位分类分流（ADR-0016）：
+    // - 常规手办/官方条目维持 9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中完全呈现，零裁切零跳变）；
+    // - 相册传图类条目改走高度自适应（宽 96dp，比例随实拍照片伸缩，顶部对齐），以消除 9:13 竖框
+    //   对横图的上下灰边；同时用 140dp 封顶线阻断 9:16/9:20 手机超长截屏向下撑爆卡片。
+    // 右侧内容天然需要约 134dp，横图（54~96dp）落在其高度包络线内，卡片外框仍由右侧锁死。
+    val isAlbumAction = relateItem?.isAlbum == true ||
+        actionItem.actionType == 3 ||
+        actionItem.actionType == 103 ||
+        actionItem.actionType == 104
+
     // 附图来自 pic/ 家族（MediaCategory 无 pic 槽位），先用扩展 resolvePictureUrl 解析成绝对 URL，
     // 再交给基元通用重载直通 Coil；缩略档位对齐旧 getPicSmallUrl 的 pic/s/
     val extraImageUrls = remember(displayExtraImages) {
@@ -118,7 +139,7 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：9:13 黄金比例刚性定框海报（宽定死 96dp，ContentScale.Fit 完整呈现零裁切零跳变，相册无图时展示纯文本卡片）──
+            // ── 【左侧栏】：分类分流海报（常规条目 9:13 刚性定框；相册传图宽 96dp 高度自适应、140dp 封顶；相册无图时展示纯文本卡片）──
             if (shouldShowLeftCover) {
                 if (mediaInfo.isAlbumNoCover) {
                     val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
@@ -132,22 +153,34 @@ fun ActionCard(
                     )
                 } else {
                     // 点击优先级由基元保证：传了 onClick 就不再触发全屏查看器，避免双触发
+                    val posterModifier = (
+                        if (isAlbumAction) {
+                            Modifier
+                                .width(96.dp)
+                                .clip(MaterialTheme.shapes.small)
+                        } else {
+                            Modifier
+                                .width(96.dp)
+                                .aspectRatio(9f / 13f)
+                                .clip(MaterialTheme.shapes.small)
+                        }
+                    ).testTag(ActionCardPosterTag)
+
                     PoiAsyncImage(
                         model = coverUrl,
                         contentDescription = "条目海报",
-                        modifier = Modifier
-                            .width(96.dp)
-                            .aspectRatio(9f / 13f)
-                            .clip(MaterialTheme.shapes.small),
+                        modifier = posterModifier,
                         contentScale = ContentScale.Fit,
-                        alignment = Alignment.Center,
-                        adaptiveRatio = false,
+                        alignment = if (isAlbumAction) Alignment.TopCenter else Alignment.Center,
+                        adaptiveRatio = isAlbumAction,
+                        fallbackRatio = if (isAlbumAction) AlbumPosterFallbackRatio else null,
                         enableFullscreenPreview = false,
                         onClick = if (onImageClick != null && allRawUrls.isNotEmpty()) {
                             { onImageClick(allRawUrls, 0) }
                         } else {
                             null
-                        }
+                        },
+                        maxAdaptiveHeight = if (isAlbumAction) AlbumPosterMaxHeight else null
                     )
                 }
 
