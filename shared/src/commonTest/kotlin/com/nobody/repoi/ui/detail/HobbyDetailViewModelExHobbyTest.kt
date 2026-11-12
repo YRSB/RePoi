@@ -10,6 +10,7 @@ import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
