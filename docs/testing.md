@@ -119,16 +119,22 @@ gh run watch <run-id> --exit-status
 
 ### 定向测试 CI（快速内环）
 
-改完单个仓储/ViewModel 测试时，用 `tests-targeted.yml` 只跑匹配的 JVM 用例（通常 1–2 分钟）：
+改完单个仓储/ViewModel 测试时，给同一份 `tests.yml` 传 `filter`，只跑匹配的 JVM 用例
+（实测约 1 分钟；完整两目标约 2–3 分钟）：
 
 ```bash
-gh workflow run tests-targeted.yml --ref <branch> -f filter='*CoverFreshness*'
-gh run list --workflow "Tests Targeted" --branch <branch> --limit 1
+gh workflow run tests.yml --ref <branch> -f filter='*CoverFreshness*'
+gh run list --workflow Tests --branch <branch> --limit 1
 gh run watch <run-id> --exit-status
 ```
 
-`filter` 是 Gradle `--tests` 通配模式（可按类或方法）。它只做快速反馈，**不是合并门禁**：
-交付前仍必须以 `tests.yml`（或 PR 的 `ci.yml`）全量绿为准。
+`filter` 是 Gradle `--tests` 通配模式（可按类或方法）；留空或不传即完整 `:shared:jvmTest`
+与 `:shared:testAndroidHostTest`。定向模式只做快速反馈，**不是合并门禁**：
+交付前仍必须以不带 `filter` 的 `tests.yml`（或 PR 的 `ci.yml`）全量绿为准。
+
+> 为什么不做成独立 workflow：GitHub 只允许 `workflow_dispatch` 触发默认分支上已存在的
+> workflow；新文件要等合并进 main 后才可手动派发，临时分支无法立即用。扩展现有 `tests.yml`
+> 的 `filter` 模式可以当天生效，也避免两份渐变的工作流逻辑。
 
 
 ---
