@@ -38,6 +38,31 @@ data class TabSearchState(
     val isLoaded: Boolean = false
 )
 
+/**
+ * 周边分类的筛选快照：排序、分类、厂商与年份随 Tab 独立保存。
+ * 厂商/年份候选列表也归属该快照，避免不同分类串用聚合结果。
+ */
+data class HobbySearchFilterState(
+    val order: String = "",
+    val categoryId: Int = HobbyAllCategory.id,
+    val company: SearchCompanyAggregate? = null,
+    val year: String? = null,
+    val availableCompanies: List<SearchCompanyAggregate> = emptyList(),
+    val availableYears: List<SearchYearAggregate> = emptyList()
+)
+
+/** 相册分类的筛选快照。 */
+data class AlbumSearchFilterState(
+    val order: String = "",
+    val category: AlbumSubCategory = AlbumSubCategory.ALL
+)
+
+/** 角色/要素分类的筛选快照。 */
+data class ElementsSearchFilterState(
+    val category: ElementsSubCategory = ElementsSubCategory.ALL,
+    val attribute: Int = 0
+)
+
 data class SearchUiState(
     val keyword: String = "",
     val selectedTab: SearchTab = SearchTab.HOBBY,
@@ -53,19 +78,13 @@ data class SearchUiState(
     val tabStates: Map<SearchTab, TabSearchState> = SearchTab.entries.associateWith { TabSearchState() },
     val searchSessionId: Int = 0,
 
-    // 排序与筛选
-    val order: String = "",
-    val selectedCompany: SearchCompanyAggregate? = null,
-    val selectedYear: String? = null,
-    val selectedHobbyCategory: Int = HobbyAllCategory.id,
+    // 排序与筛选：每个可筛分类各自持有独立快照，互不覆盖
+    val hobbyFilter: HobbySearchFilterState = HobbySearchFilterState(),
+    val albumFilter: AlbumSearchFilterState = AlbumSearchFilterState(),
+    val elementsFilter: ElementsSearchFilterState = ElementsSearchFilterState(),
     val hobbyCategories: List<CategoryItem> = emptyList(),
-    val selectedAlbumCategory: AlbumSubCategory = AlbumSubCategory.ALL,
-    val selectedElementsCategory: ElementsSubCategory = ElementsSubCategory.ALL,
-    val selectedAttribute: Int = 0,
     val attributeMap: Map<Int, List<AttributeItem>> = emptyMap(),
-    val isLoadingAttributes: Boolean = false,
-    val availableCompanies: List<SearchCompanyAggregate> = emptyList(),
-    val availableYears: List<SearchYearAggregate> = emptyList()
+    val isLoadingAttributes: Boolean = false
 ) {
     /** 当前前台分类的独立状态（不存在时返回默认空状态）。 */
     val currentTabState: TabSearchState
@@ -82,6 +101,22 @@ data class SearchUiState(
     val isRefreshing: Boolean get() = currentTabState.isRefreshing
     val isLoadingMore: Boolean get() = currentTabState.isLoadingMore
     val errorMessage: String? get() = currentTabState.errorMessage
+
+    // 筛选只读派生访问器：按活动分类从对应快照取值，避免 UI 与快照双真相源
+    val order: String
+        get() = when (selectedTab) {
+            SearchTab.HOBBY -> hobbyFilter.order
+            SearchTab.ALBUM -> albumFilter.order
+            else -> ""
+        }
+    val selectedCompany: SearchCompanyAggregate? get() = hobbyFilter.company
+    val selectedYear: String? get() = hobbyFilter.year
+    val selectedHobbyCategory: Int get() = hobbyFilter.categoryId
+    val availableCompanies: List<SearchCompanyAggregate> get() = hobbyFilter.availableCompanies
+    val availableYears: List<SearchYearAggregate> get() = hobbyFilter.availableYears
+    val selectedAlbumCategory: AlbumSubCategory get() = albumFilter.category
+    val selectedElementsCategory: ElementsSubCategory get() = elementsFilter.category
+    val selectedAttribute: Int get() = elementsFilter.attribute
 
     val isFilterActive: Boolean
         get() = com.nobody.repoi.ui.search.isFilterActive(
@@ -150,15 +185,12 @@ class SearchViewModel(
                 isSuggestionsVisible = false,
                 searchSessionId = sessionId,
                 tabStates = emptyTabStates(),
-                order = "",
-                selectedCompany = initialCompany,
-                selectedYear = null,
-                selectedHobbyCategory = HobbyAllCategory.id,
-                selectedAlbumCategory = AlbumSubCategory.ALL,
-                selectedElementsCategory = ElementsSubCategory.ALL,
-                selectedAttribute = 0,
-                availableCompanies = if (initialCompany != null) listOf(initialCompany) else emptyList(),
-                availableYears = emptyList()
+                hobbyFilter = HobbySearchFilterState(
+                    company = initialCompany,
+                    availableCompanies = if (initialCompany != null) listOf(initialCompany) else emptyList()
+                ),
+                albumFilter = AlbumSearchFilterState(),
+                elementsFilter = ElementsSearchFilterState()
             )
         }
         if (shouldSubmit) {
@@ -242,32 +274,34 @@ class SearchViewModel(
             loadHotwordsForTab(tab)
         }
         if (tab == SearchTab.WORKS_ELEMENT) {
-            loadElementAttributes(state.selectedElementsCategory.categoryId)
+            loadElementAttributes(state.elementsFilter.category.categoryId)
         }
     }
 
     fun onHobbyCategoryChange(categoryId: Int) {
-        if (_uiState.value.selectedHobbyCategory == categoryId) return
-        _uiState.update { it.copy(selectedHobbyCategory = categoryId) }
+        if (_uiState.value.hobbyFilter.categoryId == categoryId) return
+        _uiState.update { it.copy(hobbyFilter = it.hobbyFilter.copy(categoryId = categoryId)) }
         reloadTabIfSubmitted(SearchTab.HOBBY)
     }
 
     fun onElementsCategoryChange(subCategory: ElementsSubCategory) {
-        if (_uiState.value.selectedElementsCategory == subCategory) return
-        _uiState.update { it.copy(selectedElementsCategory = subCategory, selectedAttribute = 0) }
+        if (_uiState.value.elementsFilter.category == subCategory) return
+        _uiState.update {
+            it.copy(elementsFilter = it.elementsFilter.copy(category = subCategory, attribute = 0))
+        }
         loadElementAttributes(subCategory.categoryId)
         reloadTabIfSubmitted(SearchTab.WORKS_ELEMENT)
     }
 
     fun onAttributeChange(attributeId: Int) {
-        if (_uiState.value.selectedAttribute == attributeId) return
-        _uiState.update { it.copy(selectedAttribute = attributeId) }
+        if (_uiState.value.elementsFilter.attribute == attributeId) return
+        _uiState.update { it.copy(elementsFilter = it.elementsFilter.copy(attribute = attributeId)) }
         reloadTabIfSubmitted(SearchTab.WORKS_ELEMENT)
     }
 
     fun onAlbumCategoryChange(subCategory: AlbumSubCategory) {
-        if (_uiState.value.selectedAlbumCategory == subCategory) return
-        _uiState.update { it.copy(selectedAlbumCategory = subCategory) }
+        if (_uiState.value.albumFilter.category == subCategory) return
+        _uiState.update { it.copy(albumFilter = it.albumFilter.copy(category = subCategory)) }
         reloadTabIfSubmitted(SearchTab.ALBUM)
     }
 
@@ -284,9 +318,7 @@ class SearchViewModel(
                 isSubmitted = true,
                 isSuggestionsVisible = false,
                 searchSessionId = sessionId,
-                tabStates = emptyTabStates(),
-                availableCompanies = emptyList(),
-                availableYears = emptyList()
+                tabStates = emptyTabStates()
             )
         }
         viewModelScope.launch {
@@ -297,22 +329,66 @@ class SearchViewModel(
     }
 
     fun onSortChange(newOrder: String) {
-        if (_uiState.value.order == newOrder) return
-        _uiState.update { it.copy(order = newOrder) }
-        val tab = _uiState.value.selectedTab
-        if (isTabFilterable(tab)) {
-            reloadTabIfSubmitted(tab)
+        val state = _uiState.value
+        val tab = state.selectedTab
+        val currentOrder = when (tab) {
+            SearchTab.HOBBY -> state.hobbyFilter.order
+            SearchTab.ALBUM -> state.albumFilter.order
+            else -> return
         }
+        if (currentOrder == newOrder) return
+        _uiState.update { current ->
+            when (tab) {
+                SearchTab.HOBBY -> current.copy(hobbyFilter = current.hobbyFilter.copy(order = newOrder))
+                SearchTab.ALBUM -> current.copy(albumFilter = current.albumFilter.copy(order = newOrder))
+                else -> current
+            }
+        }
+        reloadTabIfSubmitted(tab)
     }
 
     fun onFilterChange(company: SearchCompanyAggregate?, year: String?) {
-        _uiState.update {
-            it.copy(
-                selectedCompany = company,
-                selectedYear = year
-            )
-        }
+        val current = _uiState.value.hobbyFilter
+        if (current.company == company && current.year == year) return
+        _uiState.update { it.copy(hobbyFilter = it.hobbyFilter.copy(company = company, year = year)) }
         reloadTabIfSubmitted(SearchTab.HOBBY)
+    }
+
+    /**
+     * 重置当前活动可筛分类的筛选值（保留已加载的厂商/年份候选），只重载该分类一次。
+     * 相比逐个调用 setter，可避免连续多次请求。
+     */
+    fun onResetFilters() {
+        val state = _uiState.value
+        val tab = state.selectedTab
+        val changed = when (tab) {
+            SearchTab.HOBBY -> with(state.hobbyFilter) {
+                order.isNotEmpty() || categoryId != HobbyAllCategory.id || company != null || year != null
+            }
+            SearchTab.ALBUM -> state.albumFilter != AlbumSearchFilterState()
+            SearchTab.WORKS_ELEMENT -> state.elementsFilter != ElementsSearchFilterState()
+            else -> false
+        }
+        if (!changed) return
+        _uiState.update { current ->
+            when (tab) {
+                SearchTab.HOBBY -> current.copy(
+                    hobbyFilter = current.hobbyFilter.copy(
+                        order = "",
+                        categoryId = HobbyAllCategory.id,
+                        company = null,
+                        year = null
+                    )
+                )
+                SearchTab.ALBUM -> current.copy(albumFilter = AlbumSearchFilterState())
+                SearchTab.WORKS_ELEMENT -> current.copy(elementsFilter = ElementsSearchFilterState())
+                else -> current
+            }
+        }
+        if (tab == SearchTab.WORKS_ELEMENT) {
+            loadElementAttributes(ElementsSubCategory.ALL.categoryId)
+        }
+        reloadTabIfSubmitted(tab)
     }
 
     fun onRefresh(tab: SearchTab = _uiState.value.selectedTab) {
@@ -335,16 +411,22 @@ class SearchViewModel(
 
         val sessionId = state.searchSessionId
         val keyword = state.keyword
-        // 冻结该 Tab 归属的筛选/排序快照，避免全局字段跨分类泄漏（按 Tab 存储留给 #131）
-        val order = state.order.takeIf { tab == SearchTab.HOBBY || tab == SearchTab.ALBUM }
-        val company = state.selectedCompany?.nodeId.takeIf { tab == SearchTab.HOBBY }
-        val releaseYear = state.selectedYear.takeIf { tab == SearchTab.HOBBY }
-        val attribute = state.selectedAttribute
+        // 冻结目标 Tab 归属的筛选快照，后台重载也不会串用其他分类的条件
+        val hobby = state.hobbyFilter
+        val album = state.albumFilter
+        val elements = state.elementsFilter
+        val order = when (tab) {
+            SearchTab.HOBBY -> hobby.order
+            SearchTab.ALBUM -> album.order
+            else -> null
+        }
+        val company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY }
+        val releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY }
         val targetCategory = resolveSearchCategory(
             tab,
-            state.selectedHobbyCategory,
-            state.selectedAlbumCategory,
-            state.selectedElementsCategory
+            hobby.categoryId,
+            album.category,
+            elements.category
         )
 
         tabJobs[tab]?.cancel()
@@ -381,7 +463,7 @@ class SearchViewModel(
                     order = order,
                     company = company,
                     releaseYear = releaseYear,
-                    attribute = attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
+                    attribute = elements.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
                     aggregate = false
                 )
                 result.onSuccess { payload ->
@@ -543,16 +625,22 @@ class SearchViewModel(
 
         val state = _uiState.value
         val keyword = state.keyword
-        // 冻结该 Tab 归属的筛选/排序快照，避免全局字段跨分类泄漏（按 Tab 存储留给 #131）
-        val order = state.order.takeIf { tab == SearchTab.HOBBY || tab == SearchTab.ALBUM }
-        val company = state.selectedCompany?.nodeId.takeIf { tab == SearchTab.HOBBY }
-        val releaseYear = state.selectedYear.takeIf { tab == SearchTab.HOBBY }
-        val attribute = state.selectedAttribute
+        // 冻结目标 Tab 归属的筛选快照，后台重载也不会串用其他分类的条件
+        val hobby = state.hobbyFilter
+        val album = state.albumFilter
+        val elements = state.elementsFilter
+        val order = when (tab) {
+            SearchTab.HOBBY -> hobby.order
+            SearchTab.ALBUM -> album.order
+            else -> null
+        }
+        val company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY }
+        val releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY }
         val targetCategory = resolveSearchCategory(
             tab,
-            state.selectedHobbyCategory,
-            state.selectedAlbumCategory,
-            state.selectedElementsCategory
+            hobby.categoryId,
+            album.category,
+            elements.category
         )
 
         tabJobs[tab] = viewModelScope.launch {
@@ -601,7 +689,7 @@ class SearchViewModel(
                     order = order,
                     company = company,
                     releaseYear = releaseYear,
-                    attribute = attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
+                    attribute = elements.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
                     aggregate = true
                 )
                 result.onSuccess { payload ->
@@ -631,8 +719,11 @@ class SearchViewModel(
                                 errorMessage = null,
                                 isLoaded = true
                             )),
-                            availableCompanies = companies ?: current.availableCompanies,
-                            availableYears = years ?: current.availableYears
+                            // 厂商/年份候选只归属周边快照
+                            hobbyFilter = current.hobbyFilter.copy(
+                                availableCompanies = companies ?: current.hobbyFilter.availableCompanies,
+                                availableYears = years ?: current.hobbyFilter.availableYears
+                            )
                         )
                     }
                 }.onFailure { error ->
