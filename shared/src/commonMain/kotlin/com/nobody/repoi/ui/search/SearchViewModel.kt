@@ -19,6 +19,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * 单个搜索分类的独立状态：列表数据、分页游标、加载态与失败信息。
+ *
+ * 每个 Tab 各自持有一份，切回已加载分类时直接复用，不重复请求。
+ */
+data class TabSearchState(
+    val items: List<SearchResultItem> = emptyList(),
+    val userItems: List<SearchUserItem> = emptyList(),
+    val page: Int = 1,
+    val totalCount: Int = 0,
+    val pageCount: Int = 0,
+    val hasMore: Boolean = false,
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val errorMessage: String? = null,
+    val isLoaded: Boolean = false
+)
+
 data class SearchUiState(
     val keyword: String = "",
     val selectedTab: SearchTab = SearchTab.HOBBY,
@@ -30,18 +49,9 @@ data class SearchUiState(
     val suggestions: List<String> = emptyList(),
     val isSuggestionsVisible: Boolean = false,
 
-    // 搜索结果数据
-    val items: List<SearchResultItem> = emptyList(),
-    val userItems: List<SearchUserItem> = emptyList(),
-    val page: Int = 1,
+    // 每个分类独立的搜索结果与分页状态
+    val tabStates: Map<SearchTab, TabSearchState> = SearchTab.entries.associateWith { TabSearchState() },
     val searchSessionId: Int = 0,
-    val totalCount: Int = 0,
-    val pageCount: Int = 0,
-    val hasMore: Boolean = false,
-    val isLoading: Boolean = false,
-    val isRefreshing: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val errorMessage: String? = null,
 
     // 排序与筛选
     val order: String = "",
@@ -57,6 +67,22 @@ data class SearchUiState(
     val availableCompanies: List<SearchCompanyAggregate> = emptyList(),
     val availableYears: List<SearchYearAggregate> = emptyList()
 ) {
+    /** 当前前台分类的独立状态（不存在时返回默认空状态）。 */
+    val currentTabState: TabSearchState
+        get() = tabStates[selectedTab] ?: TabSearchState()
+
+    // 向后兼容的只读派生访问器：统一从 currentTabState 取值，避免双真相源
+    val items: List<SearchResultItem> get() = currentTabState.items
+    val userItems: List<SearchUserItem> get() = currentTabState.userItems
+    val page: Int get() = currentTabState.page
+    val totalCount: Int get() = currentTabState.totalCount
+    val pageCount: Int get() = currentTabState.pageCount
+    val hasMore: Boolean get() = currentTabState.hasMore
+    val isLoading: Boolean get() = currentTabState.isLoading
+    val isRefreshing: Boolean get() = currentTabState.isRefreshing
+    val isLoadingMore: Boolean get() = currentTabState.isLoadingMore
+    val errorMessage: String? get() = currentTabState.errorMessage
+
     val isFilterActive: Boolean
         get() = com.nobody.repoi.ui.search.isFilterActive(
             tab = selectedTab,
@@ -79,7 +105,7 @@ class SearchViewModel(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private var autoFillJob: Job? = null
-    private var searchJob: Job? = null
+    private val tabJobs = mutableMapOf<SearchTab, Job>()
     private var paramsInitialized = false
 
     init {
@@ -112,6 +138,9 @@ class SearchViewModel(
             SearchCompanyAggregate(nodeId = initialCompanyNodeId, itemName = initialCompanyName ?: "厂商", docCount = 0)
         } else null
         val shouldSubmit = initialKeyword.isNotBlank() || initialCompany != null
+
+        cancelAllTabJobs()
+        val sessionId = _uiState.value.searchSessionId + 1
         _uiState.update {
             it.copy(
                 keyword = initialKeyword,
@@ -119,8 +148,8 @@ class SearchViewModel(
                 isSubmitted = shouldSubmit,
                 isParamsReady = true,
                 isSuggestionsVisible = false,
-                items = emptyList(),
-                userItems = emptyList(),
+                searchSessionId = sessionId,
+                tabStates = emptyTabStates(),
                 order = "",
                 selectedCompany = initialCompany,
                 selectedYear = null,
@@ -129,12 +158,11 @@ class SearchViewModel(
                 selectedElementsCategory = ElementsSubCategory.ALL,
                 selectedAttribute = 0,
                 availableCompanies = if (initialCompany != null) listOf(initialCompany) else emptyList(),
-                availableYears = emptyList(),
-                errorMessage = null
+                availableYears = emptyList()
             )
         }
         if (shouldSubmit) {
-            performSearch(initialKeyword)
+            loadTabFirstPage(tab, sessionId, isRefresh = false)
         } else {
             loadHotwordsForTab(tab)
         }
@@ -142,6 +170,7 @@ class SearchViewModel(
             loadElementAttributes(ElementsSubCategory.ALL.categoryId)
         }
     }
+
     fun onSearchExpanded() {
         val currentKeyword = _uiState.value.keyword.trim()
         if (currentKeyword.isNotBlank()) {
@@ -150,19 +179,21 @@ class SearchViewModel(
     }
 
     fun onKeywordChange(newText: String) {
-        _uiState.update {
-            it.copy(
-                keyword = newText,
-                isSubmitted = false,
-                items = if (newText.isBlank()) emptyList() else it.items,
-                userItems = if (newText.isBlank()) emptyList() else it.userItems
-            )
-        }
         if (newText.isBlank()) {
             autoFillJob?.cancel()
-            _uiState.update { it.copy(suggestions = emptyList(), isSuggestionsVisible = false) }
+            cancelAllTabJobs()
+            _uiState.update {
+                it.copy(
+                    keyword = newText,
+                    isSubmitted = false,
+                    suggestions = emptyList(),
+                    isSuggestionsVisible = false,
+                    tabStates = emptyTabStates()
+                )
+            }
             return
         }
+        _uiState.update { it.copy(keyword = newText, isSubmitted = false) }
         loadSuggestions(newText, debounce = true)
     }
 
@@ -184,15 +215,14 @@ class SearchViewModel(
 
     fun onClearKeyword() {
         autoFillJob?.cancel()
+        cancelAllTabJobs()
         _uiState.update {
             it.copy(
                 keyword = "",
                 isSubmitted = false,
                 suggestions = emptyList(),
                 isSuggestionsVisible = false,
-                items = emptyList(),
-                userItems = emptyList(),
-                errorMessage = null
+                tabStates = emptyTabStates()
             )
         }
     }
@@ -202,85 +232,76 @@ class SearchViewModel(
         _uiState.update {
             it.copy(
                 selectedTab = tab,
-                isSuggestionsVisible = false,
-                order = "",
-                selectedCompany = null,
-                selectedYear = null,
-                selectedHobbyCategory = HobbyAllCategory.id,
-                selectedAlbumCategory = AlbumSubCategory.ALL,
-                selectedElementsCategory = ElementsSubCategory.ALL,
-                selectedAttribute = 0,
-                items = emptyList(),
-                userItems = emptyList(),
-                availableCompanies = emptyList(),
-                availableYears = emptyList()
+                isSuggestionsVisible = false
             )
         }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
+        val state = _uiState.value
+        if (state.isSubmitted && state.keyword.isNotBlank()) {
+            ensureTabLoaded(tab)
         } else {
             loadHotwordsForTab(tab)
         }
         if (tab == SearchTab.WORKS_ELEMENT) {
-            loadElementAttributes(_uiState.value.selectedElementsCategory.categoryId)
+            loadElementAttributes(state.selectedElementsCategory.categoryId)
         }
     }
 
     fun onHobbyCategoryChange(categoryId: Int) {
         if (_uiState.value.selectedHobbyCategory == categoryId) return
         _uiState.update { it.copy(selectedHobbyCategory = categoryId) }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
-        }
+        reloadTabIfSubmitted(SearchTab.HOBBY)
     }
 
     fun onElementsCategoryChange(subCategory: ElementsSubCategory) {
         if (_uiState.value.selectedElementsCategory == subCategory) return
         _uiState.update { it.copy(selectedElementsCategory = subCategory, selectedAttribute = 0) }
         loadElementAttributes(subCategory.categoryId)
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
-        }
+        reloadTabIfSubmitted(SearchTab.WORKS_ELEMENT)
     }
 
     fun onAttributeChange(attributeId: Int) {
         if (_uiState.value.selectedAttribute == attributeId) return
         _uiState.update { it.copy(selectedAttribute = attributeId) }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
-        }
+        reloadTabIfSubmitted(SearchTab.WORKS_ELEMENT)
     }
+
     fun onAlbumCategoryChange(subCategory: AlbumSubCategory) {
         if (_uiState.value.selectedAlbumCategory == subCategory) return
         _uiState.update { it.copy(selectedAlbumCategory = subCategory) }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
-        }
+        reloadTabIfSubmitted(SearchTab.ALBUM)
     }
 
     fun onSearch(targetKeyword: String? = null) {
         val searchWord = (targetKeyword ?: _uiState.value.keyword).trim()
         if (searchWord.isBlank()) return
 
+        cancelAllTabJobs()
+        val sessionId = _uiState.value.searchSessionId + 1
+        val tab = _uiState.value.selectedTab
         _uiState.update {
             it.copy(
                 keyword = searchWord,
                 isSubmitted = true,
-                isSuggestionsVisible = false
+                isSuggestionsVisible = false,
+                searchSessionId = sessionId,
+                tabStates = emptyTabStates(),
+                availableCompanies = emptyList(),
+                availableYears = emptyList()
             )
         }
         viewModelScope.launch {
             searchRepository.addSearchHistory(searchWord)
         }
         loadSuggestions(searchWord, debounce = false)
-        performSearch(searchWord)
+        loadTabFirstPage(tab, sessionId, isRefresh = false)
     }
 
     fun onSortChange(newOrder: String) {
         if (_uiState.value.order == newOrder) return
         _uiState.update { it.copy(order = newOrder) }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
+        val tab = _uiState.value.selectedTab
+        if (isTabFilterable(tab)) {
+            reloadTabIfSubmitted(tab)
         }
     }
 
@@ -291,81 +312,95 @@ class SearchViewModel(
                 selectedYear = year
             )
         }
-        if (_uiState.value.isSubmitted && _uiState.value.keyword.isNotBlank()) {
-            performSearch(_uiState.value.keyword)
-        }
+        reloadTabIfSubmitted(SearchTab.HOBBY)
     }
 
-    fun onRefresh() {
-        if (!_uiState.value.isSubmitted || _uiState.value.keyword.isBlank()) return
-        _uiState.update { it.copy(isRefreshing = true) }
-        performSearch(_uiState.value.keyword, isRefresh = true)
-    }
-
-    fun onLoadMore() {
+    fun onRefresh(tab: SearchTab = _uiState.value.selectedTab) {
         val state = _uiState.value
-        if (!state.isSubmitted || state.isLoading || state.isLoadingMore || !state.hasMore) return
+        if (!state.isSubmitted || state.keyword.isBlank()) return
+        val tabState = state.tabStates[tab] ?: return
+        if (tabState.isLoading || tabState.isRefreshing) return
+        loadTabFirstPage(tab, state.searchSessionId, isRefresh = true)
+    }
 
-        val nextPage = state.page + 1
-        _uiState.update { it.copy(isLoadingMore = true) }
+    fun onLoadMore(tab: SearchTab = _uiState.value.selectedTab) {
+        val state = _uiState.value
+        if (!state.isSubmitted || state.keyword.isBlank()) return
+        val tabState = state.tabStates[tab] ?: return
+        if (!tabState.isLoaded || !tabState.hasMore) return
+        if (tabState.isLoading || tabState.isRefreshing || tabState.isLoadingMore) return
 
-        viewModelScope.launch {
-            if (state.selectedTab == SearchTab.USER) {
+        val nextPage = tabState.page + 1
+        updateTabState(tab) { it.copy(isLoadingMore = true) }
+
+        val sessionId = state.searchSessionId
+        val keyword = state.keyword
+        // 冻结该 Tab 归属的筛选/排序快照，避免全局字段跨分类泄漏（按 Tab 存储留给 #131）
+        val order = state.order.takeIf { tab == SearchTab.HOBBY || tab == SearchTab.ALBUM }
+        val company = state.selectedCompany?.nodeId.takeIf { tab == SearchTab.HOBBY }
+        val releaseYear = state.selectedYear.takeIf { tab == SearchTab.HOBBY }
+        val attribute = state.selectedAttribute
+        val targetCategory = resolveSearchCategory(
+            tab,
+            state.selectedHobbyCategory,
+            state.selectedAlbumCategory,
+            state.selectedElementsCategory
+        )
+
+        tabJobs[tab]?.cancel()
+        tabJobs[tab] = viewModelScope.launch {
+            if (tab == SearchTab.USER) {
                 val result = searchRepository.searchUsers(
-                    keyword = state.keyword,
+                    keyword = keyword,
                     page = nextPage,
                     pageSize = 10
                 )
                 result.onSuccess { payload ->
+                    if (!isCurrentSession(sessionId)) return@onSuccess
                     val newUsers = payload.userList.orEmpty()
-                    _uiState.update { current ->
-                        val combined = current.userItems + newUsers
+                    updateTabState(tab) { current ->
                         current.copy(
-                            userItems = combined,
+                            userItems = current.userItems + newUsers,
                             page = nextPage,
-                            isLoadingMore = false,
-                            hasMore = newUsers.size >= 10
+                            totalCount = current.totalCount + newUsers.size,
+                            hasMore = newUsers.size >= 10,
+                            isLoadingMore = false
                         )
                     }
                 }.onFailure {
-                    _uiState.update { it.copy(isLoadingMore = false) }
+                    if (!isCurrentSession(sessionId)) return@onFailure
+                    updateTabState(tab) { it.copy(isLoadingMore = false) }
                 }
             } else {
-                val targetCategory = resolveSearchCategory(
-                    state.selectedTab,
-                    state.selectedHobbyCategory,
-                    state.selectedAlbumCategory,
-                    state.selectedElementsCategory
-                )
                 val result = searchRepository.search(
                     category = targetCategory,
-                    itemType = state.selectedTab.itemType,
-                    keyword = state.keyword,
+                    itemType = tab.itemType,
+                    keyword = keyword,
                     page = nextPage,
                     pageSize = 30,
-                    order = state.order,
-                    company = state.selectedCompany?.nodeId,
-                    releaseYear = state.selectedYear,
-                    attribute = state.selectedAttribute.takeIf { state.selectedTab == SearchTab.WORKS_ELEMENT },
+                    order = order,
+                    company = company,
+                    releaseYear = releaseYear,
+                    attribute = attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
                     aggregate = false
                 )
                 result.onSuccess { payload ->
+                    if (!isCurrentSession(sessionId)) return@onSuccess
                     val newItems = payload.result.orEmpty()
-                    _uiState.update { current ->
-                        val combined = current.items + newItems
-                        val total = payload.query?.totalCount ?: current.totalCount
+                    updateTabState(tab) { current ->
                         val pageCount = payload.query?.pageCount ?: current.pageCount
                         current.copy(
-                            items = combined,
+                            items = current.items + newItems,
                             page = nextPage,
-                            totalCount = total,
+                            totalCount = payload.query?.totalCount ?: current.totalCount,
                             pageCount = pageCount,
-                            isLoadingMore = false,
-                            hasMore = nextPage < pageCount && newItems.isNotEmpty()
+                            hasMore = nextPage < pageCount && newItems.isNotEmpty(),
+                            isLoadingMore = false
                         )
                     }
                 }.onFailure {
-                    _uiState.update { it.copy(isLoadingMore = false) }
+                    if (!isCurrentSession(sessionId)) return@onFailure
+                    updateTabState(tab) { it.copy(isLoadingMore = false) }
                 }
             }
         }
@@ -404,6 +439,7 @@ class SearchViewModel(
             }
         }
     }
+
     private fun loadHotwordsForTab(tab: SearchTab) {
         if (_uiState.value.hotwordsMap.containsKey(tab.categoryId)) return
 
@@ -447,103 +483,165 @@ class SearchViewModel(
         }
     }
 
-    private fun performSearch(keyword: String, isRefresh: Boolean = false) {
-        searchJob?.cancel()
-        val currentTab = _uiState.value.selectedTab
+    // ── 分类状态与请求编排 ──────────────────────────────────────────
 
-        if (!isRefresh) {
-            _uiState.update {
+    private fun emptyTabStates(): Map<SearchTab, TabSearchState> =
+        SearchTab.entries.associateWith { TabSearchState() }
+
+    private fun cancelAllTabJobs() {
+        tabJobs.values.forEach { it.cancel() }
+        tabJobs.clear()
+    }
+
+    private fun isCurrentSession(sessionId: Int): Boolean =
+        _uiState.value.searchSessionId == sessionId
+
+    private fun updateTabState(tab: SearchTab, transform: (TabSearchState) -> TabSearchState) {
+        _uiState.update { state ->
+            val current = state.tabStates[tab] ?: TabSearchState()
+            state.copy(tabStates = state.tabStates + (tab to transform(current)))
+        }
+    }
+
+    /** 懒加载：仅当目标 Tab 尚未加载且没有进行中的请求时拉取第 1 页。 */
+    private fun ensureTabLoaded(tab: SearchTab) {
+        val tabState = _uiState.value.tabStates[tab] ?: return
+        if (tabState.isLoaded || tabState.isLoading || tabState.isRefreshing) return
+        loadTabFirstPage(tab, _uiState.value.searchSessionId, isRefresh = false)
+    }
+
+    /**
+     * 筛选/排序变更：只重置并重载其归属分类的第 1 页，其他分类状态与请求不受影响。
+     * 未提交搜索时仅更新筛选字段，不发请求。
+     */
+    private fun reloadTabIfSubmitted(tab: SearchTab) {
+        val state = _uiState.value
+        if (!state.isSubmitted || state.keyword.isBlank()) return
+        _uiState.update { it.copy(tabStates = it.tabStates + (tab to TabSearchState())) }
+        loadTabFirstPage(tab, state.searchSessionId, isRefresh = false)
+    }
+
+    private fun loadTabFirstPage(tab: SearchTab, sessionId: Int, isRefresh: Boolean) {
+        tabJobs[tab]?.cancel()
+
+        if (isRefresh) {
+            updateTabState(tab) {
+                it.copy(isRefreshing = true, isLoadingMore = false, errorMessage = null)
+            }
+        } else {
+            updateTabState(tab) {
                 it.copy(
                     isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
                     errorMessage = null,
                     page = 1,
-                    hasMore = false,
-                    searchSessionId = it.searchSessionId + 1
+                    hasMore = false
                 )
             }
         }
 
-        searchJob = viewModelScope.launch {
-            if (currentTab == SearchTab.USER) {
+        val state = _uiState.value
+        val keyword = state.keyword
+        // 冻结该 Tab 归属的筛选/排序快照，避免全局字段跨分类泄漏（按 Tab 存储留给 #131）
+        val order = state.order.takeIf { tab == SearchTab.HOBBY || tab == SearchTab.ALBUM }
+        val company = state.selectedCompany?.nodeId.takeIf { tab == SearchTab.HOBBY }
+        val releaseYear = state.selectedYear.takeIf { tab == SearchTab.HOBBY }
+        val attribute = state.selectedAttribute
+        val targetCategory = resolveSearchCategory(
+            tab,
+            state.selectedHobbyCategory,
+            state.selectedAlbumCategory,
+            state.selectedElementsCategory
+        )
+
+        tabJobs[tab] = viewModelScope.launch {
+            if (tab == SearchTab.USER) {
                 val result = searchRepository.searchUsers(
                     keyword = keyword,
                     page = 1,
                     pageSize = 10
                 )
                 result.onSuccess { payload ->
+                    if (!isCurrentSession(sessionId)) return@onSuccess
                     val userList = payload.userList.orEmpty()
-                    _uiState.update {
+                    updateTabState(tab) {
                         it.copy(
                             userItems = userList,
                             items = emptyList(),
                             page = 1,
+                            totalCount = userList.size,
+                            pageCount = 1,
+                            hasMore = userList.size >= 10,
                             isLoading = false,
                             isRefreshing = false,
-                            hasMore = userList.size >= 10,
-                            errorMessage = null
+                            isLoadingMore = false,
+                            errorMessage = null,
+                            isLoaded = true
                         )
                     }
                 }.onFailure { error ->
-                    _uiState.update {
+                    if (!isCurrentSession(sessionId)) return@onFailure
+                    updateTabState(tab) {
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
+                            isLoadingMore = false,
                             errorMessage = error.message ?: "搜索失败，请稍后重试"
                         )
                     }
                 }
             } else {
-                val state = _uiState.value
-                val targetCategory = resolveSearchCategory(
-                    currentTab,
-                    state.selectedHobbyCategory,
-                    state.selectedAlbumCategory,
-                    state.selectedElementsCategory
-                )
                 val result = searchRepository.search(
                     category = targetCategory,
-                    itemType = currentTab.itemType,
+                    itemType = tab.itemType,
                     keyword = keyword,
                     page = 1,
                     pageSize = 30,
-                    order = state.order,
-                    company = state.selectedCompany?.nodeId,
-                    releaseYear = state.selectedYear,
-                    attribute = state.selectedAttribute.takeIf { currentTab == SearchTab.WORKS_ELEMENT },
+                    order = order,
+                    company = company,
+                    releaseYear = releaseYear,
+                    attribute = attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
                     aggregate = true
                 )
                 result.onSuccess { payload ->
+                    if (!isCurrentSession(sessionId)) return@onSuccess
                     val resultItems = payload.result.orEmpty()
                     val total = payload.query?.totalCount ?: resultItems.size
                     val pageCount = payload.query?.pageCount ?: 1
+                    val companies = if (tab == SearchTab.HOBBY) {
+                        payload.companys?.filter { it.docCount > 0 && !it.itemName.isNullOrBlank() }.orEmpty()
+                    } else null
+                    val years = if (tab == SearchTab.HOBBY) {
+                        payload.releaseYear?.filter { it.docCount > 0 && !it.keyAsString.isNullOrBlank() }.orEmpty()
+                    } else null
                     _uiState.update { current ->
+                        val tabState = current.tabStates[tab] ?: TabSearchState()
                         current.copy(
-                            items = resultItems,
-                            userItems = emptyList(),
-                            page = 1,
-                            totalCount = total,
-                            pageCount = pageCount,
-                            hasMore = 1 < pageCount && resultItems.isNotEmpty(),
-                            availableCompanies = if (state.selectedTab == SearchTab.HOBBY) {
-                                payload.companys?.filter { it.docCount > 0 && !it.itemName.isNullOrBlank() }.orEmpty()
-                            } else {
-                                emptyList()
-                            },
-                            availableYears = if (state.selectedTab == SearchTab.HOBBY) {
-                                payload.releaseYear?.filter { it.docCount > 0 && !it.keyAsString.isNullOrBlank() }.orEmpty()
-                            } else {
-                                emptyList()
-                            },
-                            isLoading = false,
-                            isRefreshing = false,
-                            errorMessage = null
+                            tabStates = current.tabStates + (tab to tabState.copy(
+                                items = resultItems,
+                                userItems = emptyList(),
+                                page = 1,
+                                totalCount = total,
+                                pageCount = pageCount,
+                                hasMore = 1 < pageCount && resultItems.isNotEmpty(),
+                                isLoading = false,
+                                isRefreshing = false,
+                                isLoadingMore = false,
+                                errorMessage = null,
+                                isLoaded = true
+                            )),
+                            availableCompanies = companies ?: current.availableCompanies,
+                            availableYears = years ?: current.availableYears
                         )
                     }
                 }.onFailure { error ->
-                    _uiState.update {
+                    if (!isCurrentSession(sessionId)) return@onFailure
+                    updateTabState(tab) {
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
+                            isLoadingMore = false,
                             errorMessage = error.message ?: "搜索失败，请稍后重试"
                         )
                     }
