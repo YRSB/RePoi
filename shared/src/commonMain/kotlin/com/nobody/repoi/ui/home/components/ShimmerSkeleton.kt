@@ -132,11 +132,11 @@ fun ActionCardSkeleton(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏骨架】：海报封面 (1:1 默认占位) ──
+            // ── 【左侧栏骨架】：海报封面 (9:13 黄金比例标准定框占位，见 ADR-0015) ──
             Box(
                 modifier = Modifier
                     .width(96.dp)
-                    .aspectRatio(1.0f)
+                    .aspectRatio(9f / 13f)
                     .clip(MaterialTheme.shapes.small)
                     .shimmerBackground()
             )

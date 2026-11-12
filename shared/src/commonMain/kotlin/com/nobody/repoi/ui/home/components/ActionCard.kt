@@ -91,7 +91,7 @@ fun ActionCard(
     val isCommentSameAsFigure = isOfficialNotice && !mainComment.isNullOrBlank() && !figureName.isNullOrBlank() &&
         (mainComment.equals(figureName, ignoreCase = true) || mainComment.equals(relateItem?.name, ignoreCase = true) || mainComment.equals(relateItem?.nameCN, ignoreCase = true))
 
-    // 海报高度交给 PoiAsyncImage 的 adaptiveRatio：先读纵横比缓存占位，加载成功后再回写
+    // 左侧海报槽位收敛至 9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中完全呈现，零裁切零跳变，见 ADR-0015）
     // 附图来自 pic/ 家族（MediaCategory 无 pic 槽位），先用扩展 resolvePictureUrl 解析成绝对 URL，
     // 再交给基元通用重载直通 Coil；缩略档位对齐旧 getPicSmallUrl 的 pic/s/
     val extraImageUrls = remember(displayExtraImages) {
@@ -118,16 +118,16 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：Hpoi 官方同款自适应海报（宽定死 96dp，相册无图时展示浅天蓝纯文本卡片）──
+            // ── 【左侧栏】：9:13 黄金比例刚性定框海报（宽定死 96dp，ContentScale.Fit 完整呈现零裁切零跳变，相册无图时展示纯文本卡片）──
             if (shouldShowLeftCover) {
                 if (mediaInfo.isAlbumNoCover) {
                     val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
-                    // 相册无图沿用官方 17:24 黄金比例纯文本卡（圆角由 AlbumTextCover 自身裁剪）
+                    // 相册无图沿用 9:13 黄金比例纯文本卡（圆角由 AlbumTextCover 自身裁剪）
                     AlbumTextCover(
                         title = albumTitle,
                         modifier = Modifier
                             .width(96.dp)
-                            .aspectRatio(17f / 24f),
+                            .aspectRatio(9f / 13f),
                         textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
                     )
                 } else {
@@ -137,12 +137,11 @@ fun ActionCard(
                         contentDescription = "条目海报",
                         modifier = Modifier
                             .width(96.dp)
+                            .aspectRatio(9f / 13f)
                             .clip(MaterialTheme.shapes.small),
-                        adaptiveRatio = true,
-                        ratioKey = coverUrl,
-                        fallbackRatio = 1.0f,
-                        // 恢复旧 AsyncImage(alignment = TopCenter) 语义：竖版海报按顶部对齐裁切
-                        alignment = Alignment.TopCenter,
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.Center,
+                        adaptiveRatio = false,
                         enableFullscreenPreview = false,
                         onClick = if (onImageClick != null && allRawUrls.isNotEmpty()) {
                             { onImageClick(allRawUrls, 0) }
