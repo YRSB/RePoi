@@ -49,9 +49,9 @@ jobs:
           fi
           echo "Changed files:"
           echo "$DIFF_FILES"
-          NON_DOC_FILES=$(echo "$DIFF_FILES" | grep -v -E '^(\.gitignore|docs/.*|.*\.md)$' || true)
+          NON_DOC_FILES=$(echo "$DIFF_FILES" | grep -v -E '^(\.github/.*|\.gitignore|docs/.*|.*\.md)$' || true)
           if [ -z "$NON_DOC_FILES" ]; then
-            echo "Only documentation/markdown files changed."
+            echo "Only documentation/markdown/workflow/CI files changed."
             echo "skip_ci=true" >> "$GITHUB_OUTPUT"
           else
             echo "Code files changed:"
