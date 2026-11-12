@@ -20,6 +20,7 @@
 ### 3. 统一列表分页加载 (`PagedListLoader`)
 - 分页加载统一采用 `com.nobody.repoi.util.paging.PagedListLoader`，封装触底拉取、防重触发、游标递增与状态机切换。
 - ViewModel 暴露 `StateFlow<PagedListUiState<T>>`，禁止在 ViewModel 中手工维护孤立的 `isFetching` 标志位。
+- **例外（ADR-0017）**：搜索结果页 8 分类需要跨分类独立缓存、首屏懒加载与切页驻留，使用 `SearchUiState.tabStates: Map<SearchTab, TabSearchState>` 维护每 Tab 分页状态；该模式仅限该页面，其他列表仍须使用 `PagedListLoader`。
 
 ### 4. 验证原则：CI 裁决权威 (CI Authority)
 - **严禁本地编译**：为消除开发环境差异并提升开发敏捷度，本项目**严禁在本地执行任何 Gradle 编译、打包或单元测试任务**。

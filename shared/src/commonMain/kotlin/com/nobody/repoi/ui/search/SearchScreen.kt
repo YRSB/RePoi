@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -154,6 +155,9 @@ fun SearchScreen(
         initialPage = SearchTab.entries.indexOf(uiState.selectedTab).coerceAtLeast(0)
     ) { SearchTab.entries.size }
     val coroutineScope = rememberCoroutineScope()
+
+    // 顶栏筛选入口与筛选面板跟随 Pager 当前页（滑动中即时生效，不等落定）
+    val activeTab = SearchTab.entries[pagerState.currentPage.coerceIn(0, SearchTab.entries.lastIndex)]
 
     // 翻页手势或点击 Tab 落定后，同步 ViewModel 的当前分类（相同分类由 ViewModel 幂等处理）
     LaunchedEffect(pagerState) {
@@ -309,9 +313,13 @@ fun SearchScreen(
                 onSearchBarClick = {
                     isSearchInputActive = true
                 },
-                showFilterButton = isTabFilterable(uiState.selectedTab),
-                isFilterActive = uiState.isFilterActive,
-                onFilterClick = { showFilterSheet = true }
+                showFilterButton = isTabFilterable(activeTab),
+                isFilterActive = uiState.isFilterActiveFor(activeTab),
+                onFilterClick = {
+                    // 面板打开后 Pager 不再变化：先把 ViewModel 选中分类对齐当前页，回调才落在正确快照上
+                    if (uiState.selectedTab != activeTab) viewModel.onSelectTab(activeTab)
+                    showFilterSheet = true
+                }
             )
 
             // 2. 常驻分类页签：指示器随 Pager 拖拽进度实时插值
@@ -391,10 +399,10 @@ fun SearchScreen(
                 beyondViewportPageCount = 0
             ) { pageIndex ->
                 val tab = SearchTab.entries[pageIndex]
-                // 页面首次落定为当前页时同步 ViewModel（已选中的分类由 ViewModel 幂等忽略）
-                LaunchedEffect(pagerState.settledPage) {
-                    if (pagerState.settledPage == pageIndex) {
-                        viewModel.onSelectTab(tab)
+                // 页面滑入可见即触发该分类首屏懒加载；选中同步仍由顶层 settledPage 通道负责
+                LaunchedEffect(pagerState.currentPage) {
+                    if (pagerState.currentPage == pageIndex) {
+                        viewModel.onTabVisible(tab)
                     }
                 }
                 SearchTabContent(
@@ -540,8 +548,8 @@ fun SearchScreen(
 
         SearchFilterAdaptiveSheet(
             isWideScreen = isWideScreen,
-            selectedTab = uiState.selectedTab,
-            order = uiState.order,
+            selectedTab = activeTab,
+            order = uiState.orderFor(activeTab),
             onSortChange = { viewModel.onSortChange(it) },
             hobbyState = hobbyState,
             onHobbyCategorySelect = { viewModel.onHobbyCategoryChange(it) },
@@ -576,8 +584,11 @@ private fun SearchTabContent(
     val gridState = rememberLazyGridState()
     val albumStaggeredGridState = rememberLazyStaggeredGridState()
 
-    // 新搜索会话回到顶部：仅当前页列表需要响应
+    // 新搜索会话回到顶部：只响应会话真正变化，页面重入恢复滚动位置时不得复位
+    var handledSessionId by rememberSaveable { mutableIntStateOf(searchSessionId) }
     LaunchedEffect(searchSessionId) {
+        if (handledSessionId == searchSessionId) return@LaunchedEffect
+        handledSessionId = searchSessionId
         if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
             gridState.scrollToItem(0)
         }

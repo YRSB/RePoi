@@ -90,25 +90,27 @@ data class SearchUiState(
     val currentTabState: TabSearchState
         get() = tabStates[selectedTab] ?: TabSearchState()
 
-    // 向后兼容的只读派生访问器：统一从 currentTabState 取值，避免双真相源
-    val items: List<SearchResultItem> get() = currentTabState.items
-    val userItems: List<SearchUserItem> get() = currentTabState.userItems
-    val page: Int get() = currentTabState.page
-    val totalCount: Int get() = currentTabState.totalCount
-    val pageCount: Int get() = currentTabState.pageCount
-    val hasMore: Boolean get() = currentTabState.hasMore
-    val isLoading: Boolean get() = currentTabState.isLoading
-    val isRefreshing: Boolean get() = currentTabState.isRefreshing
-    val isLoadingMore: Boolean get() = currentTabState.isLoadingMore
-    val errorMessage: String? get() = currentTabState.errorMessage
+    /** 指定分类的排序键；无排序能力的分类返回空串。 */
+    fun orderFor(tab: SearchTab): String = when (tab) {
+        SearchTab.HOBBY -> hobbyFilter.order
+        SearchTab.ALBUM -> albumFilter.order
+        else -> ""
+    }
+
+    /** 指定分类是否存在已激活的筛选或排序项（顶栏 Badge 按 Pager 当前页取）。 */
+    fun isFilterActiveFor(tab: SearchTab): Boolean = com.nobody.repoi.ui.search.isFilterActive(
+        tab = tab,
+        order = orderFor(tab),
+        hobbyCategory = hobbyFilter.categoryId,
+        hasCompany = hobbyFilter.company != null,
+        hasYear = hobbyFilter.year != null,
+        albumCategory = albumFilter.category,
+        elementsCategory = elementsFilter.category,
+        attribute = elementsFilter.attribute
+    )
 
     // 筛选只读派生访问器：按活动分类从对应快照取值，避免 UI 与快照双真相源
-    val order: String
-        get() = when (selectedTab) {
-            SearchTab.HOBBY -> hobbyFilter.order
-            SearchTab.ALBUM -> albumFilter.order
-            else -> ""
-        }
+    val order: String get() = orderFor(selectedTab)
     val selectedCompany: SearchCompanyAggregate? get() = hobbyFilter.company
     val selectedYear: String? get() = hobbyFilter.year
     val selectedHobbyCategory: Int get() = hobbyFilter.categoryId
@@ -118,17 +120,7 @@ data class SearchUiState(
     val selectedElementsCategory: ElementsSubCategory get() = elementsFilter.category
     val selectedAttribute: Int get() = elementsFilter.attribute
 
-    val isFilterActive: Boolean
-        get() = com.nobody.repoi.ui.search.isFilterActive(
-            tab = selectedTab,
-            order = order,
-            hobbyCategory = selectedHobbyCategory,
-            hasCompany = selectedCompany != null,
-            hasYear = selectedYear != null,
-            albumCategory = selectedAlbumCategory,
-            elementsCategory = selectedElementsCategory,
-            attribute = selectedAttribute
-        )
+    val isFilterActive: Boolean get() = isFilterActiveFor(selectedTab)
 }
 
 class SearchViewModel(
@@ -278,6 +270,16 @@ class SearchViewModel(
         }
     }
 
+    /**
+     * Pager 呈现某分类（滑入可见）时触发首屏懒加载。
+     * 只拉取该分类数据，不改变当前选中分类——选中同步仍由落定后的 [onSelectTab] 负责。
+     */
+    fun onTabVisible(tab: SearchTab) {
+        val state = _uiState.value
+        if (!state.isSubmitted || state.keyword.isBlank()) return
+        ensureTabLoaded(tab)
+    }
+
     fun onHobbyCategoryChange(categoryId: Int) {
         if (_uiState.value.hobbyFilter.categoryId == categoryId) return
         _uiState.update { it.copy(hobbyFilter = it.hobbyFilter.copy(categoryId = categoryId)) }
@@ -412,79 +414,38 @@ class SearchViewModel(
         val sessionId = state.searchSessionId
         val keyword = state.keyword
         // 冻结目标 Tab 归属的筛选快照，后台重载也不会串用其他分类的条件
-        val hobby = state.hobbyFilter
-        val album = state.albumFilter
-        val elements = state.elementsFilter
-        val order = when (tab) {
-            SearchTab.HOBBY -> hobby.order
-            SearchTab.ALBUM -> album.order
-            else -> null
-        }
-        val company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY }
-        val releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY }
-        val targetCategory = resolveSearchCategory(
-            tab,
-            hobby.categoryId,
-            album.category,
-            elements.category
-        )
+        val criteria = criteriaFor(state, tab)
 
         tabJobs[tab]?.cancel()
         tabJobs[tab] = viewModelScope.launch {
-            if (tab == SearchTab.USER) {
-                val result = searchRepository.searchUsers(
-                    keyword = keyword,
-                    page = nextPage,
-                    pageSize = 10
-                )
-                result.onSuccess { payload ->
+            requestTabPage(tab, page = nextPage, aggregate = false, keyword = keyword, criteria = criteria)
+                .onSuccess { data ->
                     if (!isCurrentSession(sessionId)) return@onSuccess
-                    val newUsers = payload.userList.orEmpty()
                     updateTabState(tab) { current ->
-                        current.copy(
-                            userItems = current.userItems + newUsers,
-                            page = nextPage,
-                            totalCount = current.totalCount + newUsers.size,
-                            hasMore = newUsers.size >= 10,
-                            isLoadingMore = false
-                        )
+                        if (tab == SearchTab.USER) {
+                            current.copy(
+                                userItems = current.userItems + data.users,
+                                page = nextPage,
+                                totalCount = current.totalCount + data.users.size,
+                                hasMore = data.users.size >= 10,
+                                isLoadingMore = false
+                            )
+                        } else {
+                            val pageCount = data.pageCount ?: current.pageCount
+                            current.copy(
+                                items = current.items + data.items,
+                                page = nextPage,
+                                totalCount = data.totalCount ?: current.totalCount,
+                                pageCount = pageCount,
+                                hasMore = nextPage < pageCount && data.items.isNotEmpty(),
+                                isLoadingMore = false
+                            )
+                        }
                     }
                 }.onFailure {
                     if (!isCurrentSession(sessionId)) return@onFailure
                     updateTabState(tab) { it.copy(isLoadingMore = false) }
                 }
-            } else {
-                val result = searchRepository.search(
-                    category = targetCategory,
-                    itemType = tab.itemType,
-                    keyword = keyword,
-                    page = nextPage,
-                    pageSize = 30,
-                    order = order,
-                    company = company,
-                    releaseYear = releaseYear,
-                    attribute = elements.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
-                    aggregate = false
-                )
-                result.onSuccess { payload ->
-                    if (!isCurrentSession(sessionId)) return@onSuccess
-                    val newItems = payload.result.orEmpty()
-                    updateTabState(tab) { current ->
-                        val pageCount = payload.query?.pageCount ?: current.pageCount
-                        current.copy(
-                            items = current.items + newItems,
-                            page = nextPage,
-                            totalCount = payload.query?.totalCount ?: current.totalCount,
-                            pageCount = pageCount,
-                            hasMore = nextPage < pageCount && newItems.isNotEmpty(),
-                            isLoadingMore = false
-                        )
-                    }
-                }.onFailure {
-                    if (!isCurrentSession(sessionId)) return@onFailure
-                    updateTabState(tab) { it.copy(isLoadingMore = false) }
-                }
-            }
         }
     }
 
@@ -603,6 +564,83 @@ class SearchViewModel(
         loadTabFirstPage(tab, state.searchSessionId, isRefresh = false)
     }
 
+    /** 目标分类的请求条件快照：排序/筛选只取自该分类归属的快照。 */
+    private data class TabSearchCriteria(
+        val category: Int,
+        val order: String?,
+        val company: Long?,
+        val releaseYear: String?,
+        val attribute: Int?
+    )
+
+    /** 单个 Tab 单页响应的归一化结果；可空字段为 null 表示响应未携带该部分。 */
+    private data class TabPageData(
+        val items: List<SearchResultItem> = emptyList(),
+        val users: List<SearchUserItem> = emptyList(),
+        val totalCount: Int? = null,
+        val pageCount: Int? = null,
+        val companies: List<SearchCompanyAggregate>? = null,
+        val years: List<SearchYearAggregate>? = null
+    )
+
+    private fun criteriaFor(state: SearchUiState, tab: SearchTab): TabSearchCriteria {
+        val hobby = state.hobbyFilter
+        return TabSearchCriteria(
+            category = resolveSearchCategory(
+                tab,
+                hobby.categoryId,
+                state.albumFilter.category,
+                state.elementsFilter.category
+            ),
+            order = when (tab) {
+                SearchTab.HOBBY -> hobby.order
+                SearchTab.ALBUM -> state.albumFilter.order
+                else -> null
+            },
+            company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY },
+            releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY },
+            attribute = state.elementsFilter.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT }
+        )
+    }
+
+    /** 单页请求编排：USER 走用户接口，其余走主搜；集中参数构造与响应映射。 */
+    private suspend fun requestTabPage(
+        tab: SearchTab,
+        page: Int,
+        aggregate: Boolean,
+        keyword: String,
+        criteria: TabSearchCriteria
+    ): Result<TabPageData> {
+        if (tab == SearchTab.USER) {
+            return searchRepository.searchUsers(keyword = keyword, page = page, pageSize = 10)
+                .map { payload -> TabPageData(users = payload.userList.orEmpty()) }
+        }
+        return searchRepository.search(
+            category = criteria.category,
+            itemType = tab.itemType,
+            keyword = keyword,
+            page = page,
+            pageSize = 30,
+            order = criteria.order,
+            company = criteria.company,
+            releaseYear = criteria.releaseYear,
+            attribute = criteria.attribute,
+            aggregate = aggregate
+        ).map { payload ->
+            TabPageData(
+                items = payload.result.orEmpty(),
+                totalCount = payload.query?.totalCount,
+                pageCount = payload.query?.pageCount,
+                companies = if (tab == SearchTab.HOBBY) {
+                    payload.companys?.filter { it.docCount > 0 && !it.itemName.isNullOrBlank() }.orEmpty()
+                } else null,
+                years = if (tab == SearchTab.HOBBY) {
+                    payload.releaseYear?.filter { it.docCount > 0 && !it.keyAsString.isNullOrBlank() }.orEmpty()
+                } else null
+            )
+        }
+    }
+
     private fun loadTabFirstPage(tab: SearchTab, sessionId: Int, isRefresh: Boolean) {
         tabJobs[tab]?.cancel()
 
@@ -626,105 +664,54 @@ class SearchViewModel(
         val state = _uiState.value
         val keyword = state.keyword
         // 冻结目标 Tab 归属的筛选快照，后台重载也不会串用其他分类的条件
-        val hobby = state.hobbyFilter
-        val album = state.albumFilter
-        val elements = state.elementsFilter
-        val order = when (tab) {
-            SearchTab.HOBBY -> hobby.order
-            SearchTab.ALBUM -> album.order
-            else -> null
-        }
-        val company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY }
-        val releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY }
-        val targetCategory = resolveSearchCategory(
-            tab,
-            hobby.categoryId,
-            album.category,
-            elements.category
-        )
+        val criteria = criteriaFor(state, tab)
 
         tabJobs[tab] = viewModelScope.launch {
-            if (tab == SearchTab.USER) {
-                val result = searchRepository.searchUsers(
-                    keyword = keyword,
-                    page = 1,
-                    pageSize = 10
-                )
-                result.onSuccess { payload ->
+            requestTabPage(tab, page = 1, aggregate = true, keyword = keyword, criteria = criteria)
+                .onSuccess { data ->
                     if (!isCurrentSession(sessionId)) return@onSuccess
-                    val userList = payload.userList.orEmpty()
-                    updateTabState(tab) {
-                        it.copy(
-                            userItems = userList,
-                            items = emptyList(),
-                            page = 1,
-                            totalCount = userList.size,
-                            pageCount = 1,
-                            hasMore = userList.size >= 10,
-                            isLoading = false,
-                            isRefreshing = false,
-                            isLoadingMore = false,
-                            errorMessage = null,
-                            isLoaded = true
-                        )
-                    }
-                }.onFailure { error ->
-                    if (!isCurrentSession(sessionId)) return@onFailure
-                    updateTabState(tab) {
-                        it.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            isLoadingMore = false,
-                            errorMessage = error.message ?: "搜索失败，请稍后重试"
-                        )
-                    }
-                }
-            } else {
-                val result = searchRepository.search(
-                    category = targetCategory,
-                    itemType = tab.itemType,
-                    keyword = keyword,
-                    page = 1,
-                    pageSize = 30,
-                    order = order,
-                    company = company,
-                    releaseYear = releaseYear,
-                    attribute = elements.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT },
-                    aggregate = true
-                )
-                result.onSuccess { payload ->
-                    if (!isCurrentSession(sessionId)) return@onSuccess
-                    val resultItems = payload.result.orEmpty()
-                    val total = payload.query?.totalCount ?: resultItems.size
-                    val pageCount = payload.query?.pageCount ?: 1
-                    val companies = if (tab == SearchTab.HOBBY) {
-                        payload.companys?.filter { it.docCount > 0 && !it.itemName.isNullOrBlank() }.orEmpty()
-                    } else null
-                    val years = if (tab == SearchTab.HOBBY) {
-                        payload.releaseYear?.filter { it.docCount > 0 && !it.keyAsString.isNullOrBlank() }.orEmpty()
-                    } else null
-                    _uiState.update { current ->
-                        val tabState = current.tabStates[tab] ?: TabSearchState()
-                        current.copy(
-                            tabStates = current.tabStates + (tab to tabState.copy(
-                                items = resultItems,
-                                userItems = emptyList(),
+                    if (tab == SearchTab.USER) {
+                        updateTabState(tab) {
+                            it.copy(
+                                userItems = data.users,
+                                items = emptyList(),
                                 page = 1,
-                                totalCount = total,
-                                pageCount = pageCount,
-                                hasMore = 1 < pageCount && resultItems.isNotEmpty(),
+                                totalCount = data.users.size,
+                                pageCount = 1,
+                                hasMore = data.users.size >= 10,
                                 isLoading = false,
                                 isRefreshing = false,
                                 isLoadingMore = false,
                                 errorMessage = null,
                                 isLoaded = true
-                            )),
-                            // 厂商/年份候选只归属周边快照
-                            hobbyFilter = current.hobbyFilter.copy(
-                                availableCompanies = companies ?: current.hobbyFilter.availableCompanies,
-                                availableYears = years ?: current.hobbyFilter.availableYears
                             )
-                        )
+                        }
+                    } else {
+                        val pageCount = data.pageCount ?: 1
+                        _uiState.update { current ->
+                            val tabState = current.tabStates[tab] ?: TabSearchState()
+                            current.copy(
+                                tabStates = current.tabStates + (tab to tabState.copy(
+                                    items = data.items,
+                                    userItems = emptyList(),
+                                    page = 1,
+                                    totalCount = data.totalCount ?: data.items.size,
+                                    pageCount = pageCount,
+                                    hasMore = 1 < pageCount && data.items.isNotEmpty(),
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    isLoadingMore = false,
+                                    errorMessage = null,
+                                    isLoaded = true
+                                )),
+                                // 厂商/年份候选只归属周边快照
+                                hobbyFilter = current.hobbyFilter.copy(
+                                    availableCompanies = data.companies
+                                        ?: current.hobbyFilter.availableCompanies,
+                                    availableYears = data.years ?: current.hobbyFilter.availableYears
+                                )
+                            )
+                        }
                     }
                 }.onFailure { error ->
                     if (!isCurrentSession(sessionId)) return@onFailure
@@ -737,7 +724,6 @@ class SearchViewModel(
                         )
                     }
                 }
-            }
         }
     }
 }
