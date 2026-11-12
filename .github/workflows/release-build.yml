@@ -1,0 +1,136 @@
+# Release Build Workflow
+# 手动触发构建 Android (Release/Unsigned APK) 及 Desktop (Windows MSI / EXE, Linux DEB) 发布产物。
+name: Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: "构建 Android APK"
+        required: true
+        type: boolean
+        default: true
+      build_desktop_windows:
+        description: "构建 Windows 桌面端 (MSI & EXE)"
+        required: true
+        type: boolean
+        default: true
+      build_desktop_linux:
+        description: "构建 Linux 桌面端 (.deb)"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6144M -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
+
+jobs:
+  android-release:
+    name: Build Android Release APK
+    if: ${{ inputs.build_android }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+        with:
+          setup-android: true
+
+      - name: Build Android Release APK
+        shell: bash
+        run: ./gradlew :androidApp:assembleRelease --stacktrace
+
+      - name: Upload Android Release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-release-apk
+          path: androidApp/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  desktop-windows:
+    name: Package Windows Desktop
+    if: ${{ inputs.build_desktop_windows }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Disable Windows Defender
+        shell: pwsh
+        run: |
+          try {
+            Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true
+            Write-Host "Windows Defender 实时防护与 I/O 检查已禁用"
+          } catch {
+            Write-Warning "禁用 Windows Defender 失败：$($_.Exception.Message)"
+          }
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+        with:
+          setup-android: false
+
+      - name: Build & Package Windows Desktop
+        shell: bash
+        run: |
+          for attempt in 1 2; do
+            if ./gradlew :desktopApp:packageDistributionForCurrentOS :desktopApp:createDistributable :desktopApp:packageMsi --stacktrace; then
+              exit 0
+            fi
+            echo "::warning::Windows desktop packaging attempt ${attempt} failed; retrying once"
+          done
+          exit 1
+
+      - name: Assert Windows installer artifacts
+        shell: bash
+        run: |
+          shopt -s nullglob
+          msi=(desktopApp/build/compose/binaries/main/msi/*.msi)
+          exe=(desktopApp/build/compose/binaries/main/app/com.nobody.repoi/*.exe)
+          if [ ${#msi[@]} -eq 0 ]; then echo "missing *.msi under binaries/main/msi"; exit 1; fi
+          if [ ${#exe[@]} -eq 0 ]; then echo "missing *.exe under binaries/main/app"; exit 1; fi
+          for f in "${msi[@]}" "${exe[@]}"; do
+            if [ ! -s "$f" ]; then echo "empty artifact: $f"; exit 1; fi
+            echo "ok: $f"
+          done
+
+      - name: Upload Windows Desktop Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-release-windows
+          path: |
+            desktopApp/build/compose/binaries/main/msi/*.msi
+            desktopApp/build/compose/binaries/main/app/
+          if-no-files-found: error
+
+  desktop-linux:
+    name: Package Linux Desktop (.deb)
+    if: ${{ inputs.build_desktop_linux }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+        with:
+          setup-android: false
+
+      - name: Package Linux Desktop (.deb)
+        shell: bash
+        run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace
+
+      - name: Upload Linux Desktop Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-release-linux
+          path: desktopApp/build/compose/binaries/main/deb/*.deb
+          if-no-files-found: error
