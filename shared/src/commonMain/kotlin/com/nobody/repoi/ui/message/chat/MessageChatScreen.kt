@@ -81,7 +81,9 @@ import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.common.plainTextClipEntry
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.MessageChatNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
@@ -170,7 +172,7 @@ fun MessageChatScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
-                            model = CdnUrlUtils.getCoverSmallUrl(uiState.targetUserHeader ?: ""),
+                            model = MediaPipeline.Default.resolveUrl(uiState.targetUserHeader ?: "", MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                             contentDescription = uiState.targetUserName,
                             modifier = Modifier
                                 .size(34.dp)
@@ -355,7 +357,7 @@ private fun ChatCommodityCard(
             val pic = dataMap.pic
             if (!pic.isNullOrBlank()) {
                 AsyncImage(
-                    model = CdnUrlUtils.getCoverSmallUrl(pic),
+                    model = MediaPipeline.Default.resolveUrl(pic, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                     contentDescription = dataMap.title,
                     modifier = Modifier
                         .size(44.dp)
@@ -429,7 +431,7 @@ private fun ChatBubbleItem(
         ) {
             if (!isSelf) {
                 AsyncImage(
-                    model = CdnUrlUtils.getCoverSmallUrl(targetUserHeader ?: ""),
+                    model = MediaPipeline.Default.resolveUrl(targetUserHeader ?: "", MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                     contentDescription = null,
                     modifier = Modifier
                         .size(32.dp)
@@ -455,7 +457,7 @@ private fun ChatBubbleItem(
                         .combinedClickable(
                             onClick = {
                                 if (item.isPicture) {
-                                    val fullUrl = CdnUrlUtils.getRawCoverUrl(item.content)
+                                    val fullUrl = MediaPipeline.Default.resolveRawUrl(item.content, MediaCategory.HOBBY)
                                     onImageClick(fullUrl)
                                 }
                             },
@@ -464,7 +466,7 @@ private fun ChatBubbleItem(
                 ) {
                     if (item.isPicture) {
                         AsyncImage(
-                            model = CdnUrlUtils.getCoverSrUrl(item.content),
+                            model = MediaPipeline.Default.resolveUrl(item.content, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID),
                             contentDescription = "图片消息",
                             modifier = Modifier
                                 .size(width = 160.dp, height = 200.dp)

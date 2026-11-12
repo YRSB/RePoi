@@ -65,7 +65,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.foundation.shape.CircleShape
 
 /**
@@ -496,7 +498,7 @@ private fun WorksCollectEditHeader(
     isGameVariant: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(cover) { CdnUrlUtils.getCoverSmallUrl(cover) }
+    val coverUrl = remember(cover) { MediaPipeline.Default.resolveUrl(cover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL) }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

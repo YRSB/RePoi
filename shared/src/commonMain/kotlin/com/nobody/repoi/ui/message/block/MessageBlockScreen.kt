@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.BlockItem
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -261,7 +263,7 @@ private fun BlockItemRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = CdnUrlUtils.getCoverSmallUrl(item.header ?: ""),
+                model = MediaPipeline.Default.resolveUrl(item.header ?: "", MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                 contentDescription = item.name,
                 modifier = Modifier
                     .size(44.dp)

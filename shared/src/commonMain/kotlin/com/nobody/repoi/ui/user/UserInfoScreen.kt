@@ -126,7 +126,9 @@ import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import androidx.compose.material3.ElevatedCard
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
 
@@ -268,11 +270,11 @@ fun UserInfoScreen(
                                 onEdit = { viewModel.startEditing() },
                                 onRefresh = { viewModel.loadProfile(profile.id) },
                                 onBannerClick = {
-                                    val raw = CdnUrlUtils.getRawBannerUrl(profile.bnr)
+                                    val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
                                     if (raw.isNotBlank()) imageViewer.show(raw)
                                 },
                                 onAvatarClick = {
-                                    val raw = CdnUrlUtils.getRawHeadUrl(profile.header)
+                                    val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
                                     if (raw.isNotBlank()) imageViewer.show(raw)
                                 },
                                 onNavigateToFriendList = { tab ->
@@ -355,7 +357,7 @@ fun UserInfoScreen(
                                     onEdit = { viewModel.startEditing() },
                                     onRefresh = { viewModel.loadProfile(profile.id) },
                                     onBannerClick = {
-                                        val raw = CdnUrlUtils.getRawBannerUrl(profile.bnr)
+                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
                                         if (raw.isNotBlank()) imageViewer.show(raw)
                                     }
                                 )
@@ -367,7 +369,7 @@ fun UserInfoScreen(
                                     profile = profile,
                                     uiState = uiState,
                                     onAvatarClick = {
-                                        val raw = CdnUrlUtils.getRawHeadUrl(profile.header)
+                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
                                         if (raw.isNotBlank()) imageViewer.show(raw)
                                     },
                                     onNavigateToFriendList = { tab ->
@@ -541,7 +543,7 @@ private fun LazyListScope.userContentFeedItems(
                 ) { action ->
                     ActionCard(
                         actionItem = action,
-                        fallbackAvatarUrl = CdnUrlUtils.getHeadUrl(uiState.profile?.header),
+                        fallbackAvatarUrl = MediaPipeline.Default.resolveUrl(uiState.profile?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
@@ -669,7 +671,7 @@ private fun UserProfileBanner(
     onBannerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bannerUrl = CdnUrlUtils.getBannerUrl(profile.bnr)
+    val bannerUrl = MediaPipeline.Default.resolveUrl(profile.bnr, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
 
     Box(
         modifier = modifier
@@ -794,7 +796,7 @@ private fun UserProfileHeader(
     onNavigateToChat: (targetUserId: Long, targetUserName: String, targetUserHeader: String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val avatarUrl = CdnUrlUtils.getHeadUrl(profile.header)
+    val avatarUrl = MediaPipeline.Default.resolveUrl(profile.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
     val caresCount = uiState.fellowCount?.friendCount ?: profile.cares
     val fansCount = uiState.fellowCount?.fanCount ?: profile.fans
     val praiseCount = uiState.fellowCount?.praiseCount ?: profile.praise

@@ -12,7 +12,9 @@ import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiListCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 // ── 作品收藏卡片（对标原版 UserCollectWorksAdapter + item_collect_works.xml）──
 
@@ -77,7 +79,7 @@ internal fun WorksCollectCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(item.actualCover) { CdnUrlUtils.getCoverSmallUrl(item.actualCover) }
+    val coverUrl = remember(item.actualCover) { MediaPipeline.Default.resolveUrl(item.actualCover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL) }
     val detailId = remember(item.item, item.itemId) { worksDetailItemId(item) }
     val isClickable = detailId > 0L
 

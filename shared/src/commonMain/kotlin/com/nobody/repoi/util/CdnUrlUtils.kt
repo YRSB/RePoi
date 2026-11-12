@@ -296,7 +296,7 @@ object CdnUrlUtils {
         message = "请使用语义明确的 getPicSmallUrl（/s 变体）或 getPicNUrl（/n 变体）",
         replaceWith = ReplaceWith("getPicSmallUrl(path)")
     )
-    fun getPicUrl(path: String?): String = getPicSmallUrl(path)
+    fun getPicUrl(path: String?): String = DefaultMediaPipeline.resolvePicFamilyUrl(path, ImagePurpose.THUMBNAIL)
 
     /** 用户相片中图/大图（`pic/n/`，动态流主图与全屏大图初次加载）。 */
     @Deprecated(
@@ -365,8 +365,11 @@ object CdnUrlUtils {
 
     /** 表情贴纸 URL（`sticker/item/` 目录，非通用媒体变体家族，仅此处使用）。 */
     @Deprecated(
-        message = "请迁移至 MediaPipeline.Default（DefaultMediaPipeline.resolveStickerUrl）",
-        replaceWith = ReplaceWith("DefaultMediaPipeline.resolveStickerUrl(path)")
+        message = "请迁移至 MediaPipeline.Default.resolveStickerUrl(path)",
+        replaceWith = ReplaceWith(
+            "MediaPipeline.Default.resolveStickerUrl(path)",
+            "com.nobody.repoi.data.media.MediaPipeline"
+        )
     )
     fun getStickerUrl(path: String?): String = DefaultMediaPipeline.resolveStickerUrl(path)
 

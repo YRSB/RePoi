@@ -82,7 +82,8 @@ import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
@@ -609,9 +610,9 @@ private fun PreviewItemCard(
     item: HobbyItemSummary,
     onClick: () -> Unit
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(item.cover)
+    val coverUrl = MediaPipeline.Default.resolveCoverUrlOrDefault(item.cover, ImagePurpose.CARD_STANDARD)
     var loadFailed by remember(coverUrl) { mutableStateOf(false) }
-    val isNoCover = CdnUrlUtils.isNoCover(item.cover)
+    val isNoCover = MediaPipeline.Default.isPlaceholder(item.cover)
 
     Card(
         onClick = onClick,

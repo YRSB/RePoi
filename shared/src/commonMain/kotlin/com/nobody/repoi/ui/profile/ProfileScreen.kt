@@ -105,7 +105,9 @@ import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.user.creation.UserCreationCategory
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -444,10 +446,10 @@ private fun ProfileImmersiveHeader(
     onNavigateToUserInfo: (userId: Long) -> Unit = {}
 ) {
     val bannerUrl = remember(profile.bnr) {
-        CdnUrlUtils.getBannerUrl(profile.bnr)
+        MediaPipeline.Default.resolveUrl(profile.bnr, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
     }
     val avatarUrl = remember(profile.header) {
-        CdnUrlUtils.getHeadUrl(profile.header)
+        MediaPipeline.Default.resolveUrl(profile.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1269,7 +1271,7 @@ private fun ProfileAlbumCard(
     onClick: () -> Unit
 ) {
     val coverUrl = remember(album.cover) {
-        CdnUrlUtils.getCoverSmallUrl(album.cover)
+        MediaPipeline.Default.resolveUrl(album.cover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)
     }
 
     Card(
@@ -1459,7 +1461,7 @@ private fun CollectFigureCard(
     onClick: () -> Unit
 ) {
     val coverUrl = remember(item.cover) {
-        CdnUrlUtils.getCoverSmallUrl(item.cover)
+        MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)
     }
 
     Card(

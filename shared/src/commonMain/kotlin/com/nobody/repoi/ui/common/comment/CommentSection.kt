@@ -121,7 +121,9 @@ import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.util.canAddSticker
 import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.CommentFeedEntry
 import com.nobody.repoi.util.buildCommentFeedEntries
@@ -430,7 +432,7 @@ fun CommentItemCard(
         ) {
             // 左侧头像 (36dp 圆形)
             AsyncImage(
-                model = CdnUrlUtils.getHeadUrl(comment.user?.header),
+                model = MediaPipeline.Default.resolveUrl(comment.user?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
                 contentDescription = comment.user?.nickname,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -488,7 +490,7 @@ fun CommentItemCard(
                         comment.emoticonUrls.forEachIndexed { stickerIndex, stickerUrl ->
                             key(stickerIndex) {
                                 AsyncImage(
-                                    model = CdnUrlUtils.getStickerUrl(stickerUrl),
+                                    model = MediaPipeline.Default.resolveStickerUrl(stickerUrl),
                                     contentDescription = null,
                                     modifier = Modifier.height(50.dp)
                                 )
@@ -730,7 +732,7 @@ fun CommentReplyRow(
             verticalAlignment = Alignment.Top
         ) {
             AsyncImage(
-                model = CdnUrlUtils.getHeadUrl(reply.user?.header),
+                model = MediaPipeline.Default.resolveUrl(reply.user?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
                 contentDescription = reply.user?.nickname,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -787,7 +789,7 @@ fun CommentReplyRow(
                         reply.emoticonUrls.forEachIndexed { stickerIndex, stickerUrl ->
                             key(stickerIndex) {
                                 AsyncImage(
-                                    model = CdnUrlUtils.getStickerUrl(stickerUrl),
+                                    model = MediaPipeline.Default.resolveStickerUrl(stickerUrl),
                                     contentDescription = null,
                                     modifier = Modifier.height(40.dp)
                                 )
@@ -1122,7 +1124,7 @@ fun CommentReplyDialog(
                         key(index) {
                             Box(modifier = Modifier.size(48.dp)) {
                                 AsyncImage(
-                                    model = CdnUrlUtils.getStickerUrl(path),
+                                    model = MediaPipeline.Default.resolveStickerUrl(path),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -1203,7 +1205,7 @@ fun CommentReplyDialog(
                             items(packItems.size, key = { it }) { gridIndex ->
                                 val sticker = packItems[gridIndex]
                                 AsyncImage(
-                                    model = CdnUrlUtils.getStickerUrl(sticker.imageUrl),
+                                    model = MediaPipeline.Default.resolveStickerUrl(sticker.imageUrl),
                                     contentDescription = null,
                                     modifier = Modifier
                                         .aspectRatio(1f)

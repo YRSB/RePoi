@@ -69,7 +69,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.PushMessageItem
 import com.nobody.repoi.ui.navigation.MessageNoticeNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -367,7 +369,7 @@ private fun NoticeItemRow(
             val avatarUrl = item.dataMap?.header
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = CdnUrlUtils.getCoverSmallUrl(avatarUrl),
+                    model = MediaPipeline.Default.resolveUrl(avatarUrl, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                     contentDescription = item.dataMap.nickname,
                     modifier = Modifier
                         .size(40.dp)

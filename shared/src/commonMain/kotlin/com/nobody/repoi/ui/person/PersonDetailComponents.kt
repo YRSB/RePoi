@@ -60,7 +60,9 @@ import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.remote.model.PersonWorksItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.material3.ElevatedCard
 
 // ─────────────────────────────────────────────────────────────
@@ -86,7 +88,7 @@ internal fun PersonHeaderSection(
     val displayName = person?.displayName?.ifBlank { null } ?: initialName ?: "人物详情"
     val subName = person?.subName
     val cover = person?.cover?.ifBlank { null } ?: initialCover
-    val coverUrl = CdnUrlUtils.getCoverUrl(cover)
+    val coverUrl = MediaPipeline.Default.resolveUrl(cover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
     val twitterUrl = person?.parsedOtherInfo?.firstOrNull {
         it.key?.contains("推特", ignoreCase = true) == true ||
@@ -352,7 +354,7 @@ internal fun PersonHobbiesSection(
                     modifier = Modifier.fillMaxWidth()
                 ) { entry ->
                     val item = entry.h
-                    val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+                    val coverUrl = MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
                     ElevatedCard(
                         onClick = { onHobbyClick(entry) },
@@ -477,7 +479,7 @@ internal fun PersonWorksSection(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     works.take(6).forEach { entry ->
                         val item = entry.w
-                        val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+                        val coverUrl = MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -602,7 +604,7 @@ internal fun PersonCharactersSection(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     characters.take(6).forEach { entry ->
                         val item = entry.w
-                        val coverUrl = CdnUrlUtils.getCoverUrl(item.cover)
+                        val coverUrl = MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
