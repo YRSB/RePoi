@@ -517,35 +517,24 @@ fun SearchScreen(
 
     // 自适应结果筛选与排序面板
     if (showFilterSheet) {
-        val hobbyState = remember(
-            uiState.hobbyCategories,
-            uiState.selectedHobbyCategory,
-            uiState.availableCompanies,
-            uiState.selectedCompany,
-            uiState.availableYears,
-            uiState.selectedYear
-        ) {
+        val hobbyState = remember(uiState.hobbyCategories, uiState.hobbyFilter) {
             HobbyFilterState(
                 categories = uiState.hobbyCategories,
-                selectedCategory = uiState.selectedHobbyCategory,
-                companies = uiState.availableCompanies,
-                selectedCompany = uiState.selectedCompany,
-                years = uiState.availableYears,
-                selectedYear = uiState.selectedYear
+                selectedCategory = uiState.hobbyFilter.categoryId,
+                companies = uiState.hobbyFilter.availableCompanies,
+                selectedCompany = uiState.hobbyFilter.company,
+                years = uiState.hobbyFilter.availableYears,
+                selectedYear = uiState.hobbyFilter.year
             )
         }
-        val albumState = remember(uiState.selectedAlbumCategory) {
-            AlbumFilterState(selectedCategory = uiState.selectedAlbumCategory)
+        val albumState = remember(uiState.albumFilter) {
+            AlbumFilterState(selectedCategory = uiState.albumFilter.category)
         }
-        val elementsState = remember(
-            uiState.selectedElementsCategory,
-            uiState.attributeMap,
-            uiState.selectedAttribute
-        ) {
+        val elementsState = remember(uiState.elementsFilter, uiState.attributeMap) {
             ElementsFilterState(
-                selectedCategory = uiState.selectedElementsCategory,
-                attributePairs = uiState.attributeMap[uiState.selectedElementsCategory.categoryId].orEmpty().map { it.id to it.name },
-                selectedAttribute = uiState.selectedAttribute
+                selectedCategory = uiState.elementsFilter.category,
+                attributePairs = uiState.attributeMap[uiState.elementsFilter.category.categoryId].orEmpty().map { it.id to it.name },
+                selectedAttribute = uiState.elementsFilter.attribute
             )
         }
 
@@ -556,31 +545,14 @@ fun SearchScreen(
             onSortChange = { viewModel.onSortChange(it) },
             hobbyState = hobbyState,
             onHobbyCategorySelect = { viewModel.onHobbyCategoryChange(it) },
-            onCompanySelect = { viewModel.onFilterChange(it, uiState.selectedYear) },
-            onYearSelect = { viewModel.onFilterChange(uiState.selectedCompany, it) },
+            onCompanySelect = { viewModel.onFilterChange(it, uiState.hobbyFilter.year) },
+            onYearSelect = { viewModel.onFilterChange(uiState.hobbyFilter.company, it) },
             albumState = albumState,
             onAlbumCategorySelect = { viewModel.onAlbumCategoryChange(it) },
             elementsState = elementsState,
             onElementsCategorySelect = { viewModel.onElementsCategoryChange(it) },
             onAttributeSelect = { viewModel.onAttributeChange(it) },
-            onReset = {
-                when (uiState.selectedTab) {
-                    SearchTab.HOBBY -> {
-                        viewModel.onSortChange("")
-                        viewModel.onHobbyCategoryChange(HobbyAllCategory.id)
-                        viewModel.onFilterChange(null, null)
-                    }
-                    SearchTab.ALBUM -> {
-                        viewModel.onSortChange("")
-                        viewModel.onAlbumCategoryChange(AlbumSubCategory.ALL)
-                    }
-                    SearchTab.WORKS_ELEMENT -> {
-                        viewModel.onElementsCategoryChange(ElementsSubCategory.ALL)
-                        viewModel.onAttributeChange(0)
-                    }
-                    else -> {}
-                }
-            },
+            onReset = { viewModel.onResetFilters() },
             onDismiss = { showFilterSheet = false }
         )
     }
@@ -723,7 +695,11 @@ private fun SearchTabContent(
                             }
 
                             if (tabState.isLoadingMore) {
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "search_user_footer") {
+                                item(
+                                    key = "search_user_footer",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    contentType = "search_user_footer"
+                                ) {
                                     LoadingMoreFooter()
                                 }
                             }
@@ -756,7 +732,11 @@ private fun SearchTabContent(
                             }
 
                             if (tabState.isLoadingMore) {
-                                item(span = StaggeredGridItemSpan.FullLine, contentType = "search_album_footer") {
+                                item(
+                                    key = "search_album_footer",
+                                    span = StaggeredGridItemSpan.FullLine,
+                                    contentType = "search_album_footer"
+                                ) {
                                     LoadingMoreFooter()
                                 }
                             }
@@ -798,7 +778,11 @@ private fun SearchTabContent(
                             }
 
                             if (tabState.isLoadingMore) {
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "search_result_footer") {
+                                item(
+                                    key = "search_result_footer",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    contentType = "search_result_footer"
+                                ) {
                                     LoadingMoreFooter()
                                 }
                             }
