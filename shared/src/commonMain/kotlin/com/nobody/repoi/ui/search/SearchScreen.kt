@@ -391,12 +391,19 @@ fun SearchScreen(
                 beyondViewportPageCount = 0
             ) { pageIndex ->
                 val tab = SearchTab.entries[pageIndex]
+                // 页面首次落定为当前页时同步 ViewModel（已选中的分类由 ViewModel 幂等忽略）
+                LaunchedEffect(pagerState.settledPage) {
+                    if (pagerState.settledPage == pageIndex) {
+                        viewModel.onSelectTab(tab)
+                    }
+                }
                 SearchTabContent(
                     tab = tab,
-                    uiState = uiState,
+                    tabState = uiState.tabStates.getValue(tab),
+                    searchSessionId = uiState.searchSessionId,
                     navBarBottomPadding = navBarBottomPadding,
-                    onRefresh = { viewModel.onRefresh() },
-                    onLoadMore = { viewModel.onLoadMore() },
+                    onRefresh = { viewModel.onRefresh(tab) },
+                    onLoadMore = { viewModel.onLoadMore(tab) },
                     onItemClick = { item ->
                         when (tab) {
                             SearchTab.HOBBY -> {
@@ -580,14 +587,14 @@ fun SearchScreen(
 }
 
 /**
- * 单个搜索分类页：独立持有本页列表滚动状态、触底加载与下拉刷新结构。
- * 本 ticket 仍共享全局结果字段，未激活分类不渲染其它分类的数据。
+ * 单个搜索分类页：只消费本页 [tabState]，独立持有滚动状态、触底加载与下拉刷新结构。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchTabContent(
     tab: SearchTab,
-    uiState: SearchUiState,
+    tabState: TabSearchState,
+    searchSessionId: Int,
     navBarBottomPadding: Dp = 0.dp,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
@@ -598,7 +605,7 @@ private fun SearchTabContent(
     val albumStaggeredGridState = rememberLazyStaggeredGridState()
 
     // 新搜索会话回到顶部：仅当前页列表需要响应
-    LaunchedEffect(uiState.searchSessionId) {
+    LaunchedEffect(searchSessionId) {
         if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
             gridState.scrollToItem(0)
         }
@@ -607,12 +614,6 @@ private fun SearchTabContent(
         ) {
             albumStaggeredGridState.scrollToItem(0)
         }
-    }
-
-    // 未激活分类只显示空占位，避免展示其它分类的数据
-    if (uiState.selectedTab != tab) {
-        Box(modifier = Modifier.fillMaxSize())
-        return
     }
 
     // 触底自动加载检测（本页独立订阅）
@@ -633,13 +634,13 @@ private fun SearchTabContent(
     }
 
     LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore && uiState.hasMore && !uiState.isLoadingMore) {
+        if (shouldLoadMore && tabState.hasMore && !tabState.isLoadingMore) {
             onLoadMore()
         }
     }
 
     LaunchedEffect(shouldLoadMoreAlbum) {
-        if (shouldLoadMoreAlbum && uiState.hasMore && !uiState.isLoadingMore) {
+        if (shouldLoadMoreAlbum && tabState.hasMore && !tabState.isLoadingMore) {
             onLoadMore()
         }
     }
@@ -647,21 +648,21 @@ private fun SearchTabContent(
     val pullRefreshState = rememberPullToRefreshState()
 
     PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
+        isRefreshing = tabState.isRefreshing,
         onRefresh = onRefresh,
         state = pullRefreshState,
         modifier = Modifier.fillMaxSize(),
         indicator = {
             PullToRefreshDefaults.LoadingIndicator(
                 state = pullRefreshState,
-                isRefreshing = uiState.isRefreshing,
+                isRefreshing = tabState.isRefreshing,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                uiState.isLoading && !uiState.isRefreshing -> {
+                (tabState.isLoading || !tabState.isLoaded) && tabState.errorMessage == null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -673,7 +674,7 @@ private fun SearchTabContent(
                     }
                 }
 
-                uiState.errorMessage != null && uiState.items.isEmpty() && uiState.userItems.isEmpty() -> {
+                tabState.errorMessage != null && tabState.items.isEmpty() && tabState.userItems.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -682,7 +683,7 @@ private fun SearchTabContent(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = uiState.errorMessage,
+                                text = tabState.errorMessage,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -698,7 +699,7 @@ private fun SearchTabContent(
                 }
 
                 tab == SearchTab.USER -> {
-                    if (uiState.userItems.isEmpty()) {
+                    if (tabState.userItems.isEmpty()) {
                         EmptyResultPlaceholder(modifier = Modifier.fillMaxSize())
                     } else {
                         LazyVerticalGrid(
@@ -714,14 +715,14 @@ private fun SearchTabContent(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            items(uiState.userItems, key = { it.userId }, contentType = { "search_user" }) { user ->
+                            items(tabState.userItems, key = { it.userId }, contentType = { "search_user" }) { user ->
                                 SearchUserCard(
                                     user = user,
                                     onClick = { onUserClick(user) }
                                 )
                             }
 
-                            if (uiState.isLoadingMore) {
+                            if (tabState.isLoadingMore) {
                                 item(span = { GridItemSpan(maxLineSpan) }, contentType = "search_user_footer") {
                                     LoadingMoreFooter()
                                 }
@@ -731,7 +732,7 @@ private fun SearchTabContent(
                 }
 
                 tab == SearchTab.ALBUM -> {
-                    if (uiState.items.isEmpty()) {
+                    if (tabState.items.isEmpty()) {
                         EmptyResultPlaceholder(modifier = Modifier.fillMaxSize())
                     } else {
                         LazyVerticalStaggeredGrid(
@@ -747,14 +748,14 @@ private fun SearchTabContent(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalItemSpacing = 8.dp
                         ) {
-                            items(uiState.items, key = { it.actualId }, contentType = { "search_album" }) { item ->
+                            items(tabState.items, key = { it.actualId }, contentType = { "search_album" }) { item ->
                                 AlbumStaggeredCard(
                                     item = item,
                                     onClick = { onItemClick(item) }
                                 )
                             }
 
-                            if (uiState.isLoadingMore) {
+                            if (tabState.isLoadingMore) {
                                 item(span = StaggeredGridItemSpan.FullLine, contentType = "search_album_footer") {
                                     LoadingMoreFooter()
                                 }
@@ -764,7 +765,7 @@ private fun SearchTabContent(
                 }
 
                 else -> {
-                    if (uiState.items.isEmpty()) {
+                    if (tabState.items.isEmpty()) {
                         EmptyResultPlaceholder(modifier = Modifier.fillMaxSize())
                     } else {
                         LazyVerticalGrid(
@@ -782,7 +783,7 @@ private fun SearchTabContent(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            items(uiState.items, key = { it.actualId }, contentType = { tab.itemType }) { item ->
+                            items(tabState.items, key = { it.actualId }, contentType = { tab.itemType }) { item ->
                                 if (tab == SearchTab.HOBBY) {
                                     HobbySearchCard(
                                         item = item,
@@ -796,7 +797,7 @@ private fun SearchTabContent(
                                 }
                             }
 
-                            if (uiState.isLoadingMore) {
+                            if (tabState.isLoadingMore) {
                                 item(span = { GridItemSpan(maxLineSpan) }, contentType = "search_result_footer") {
                                     LoadingMoreFooter()
                                 }
