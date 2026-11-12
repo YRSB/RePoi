@@ -2,8 +2,8 @@ package com.nobody.repoi.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import com.nobody.repoi.data.local.TestDataStore
+import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -25,7 +24,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.test.fail
 
 /**
  * 封面新鲜度仓储测试。
@@ -44,11 +42,11 @@ class CoverFreshnessRepositoryTest {
         val albumMock: MockApi = MockApi(),
         val preferences: DataStore<Preferences> = TestDataStore.coverFreshnessPrefs(),
     ) {
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api()),
-            AlbumDetailRepository(albumMock.api()),
-            preferences,
-            scope,
+        val repository = testCoverFreshnessRepository(
+            scope = scope,
+            preferences = preferences,
+            hobbyMock = hobbyMock,
+            albumMock = albumMock,
         )
 
         fun stubHobbyCover(cover: String?) {
@@ -73,51 +71,12 @@ class CoverFreshnessRepositoryTest {
         preferences: DataStore<Preferences>,
         hobbyMock: MockApi = MockApi(),
         albumMock: MockApi = MockApi(),
-    ): CoverFreshnessRepository = CoverFreshnessRepository(
-        HobbyDetailRepository(hobbyMock.api()),
-        AlbumDetailRepository(albumMock.api()),
-        preferences,
-        backgroundScope,
+    ): CoverFreshnessRepository = testCoverFreshnessRepository(
+        scope = backgroundScope,
+        preferences = preferences,
+        hobbyMock = hobbyMock,
+        albumMock = albumMock,
     )
-
-    /**
-     * 等待 DataStore 处理完已排队的写入。
-     *
-     * DataStore 的 `data.first()` 可能直接返回内存缓存，看不到「已入队、尚未落定」的写入；
-     * 空 `edit` 会排在所有在途写入之后，用它作为可观测的同步屏障，避免测试断言读到旧缓存。
-     */
-    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
-        edit { }
-    }
-
-    /**
-     * 等待最新封面真正落盘（跨多个防抖窗口的真实 DataStore I/O 同步屏障）。
-     *
-     * **这不是防抖断言的替代品**：500ms 窗口内「未落盘」、窗口后「已落盘」由独立用例
-     * （`rememberFreshCover_defersDiskWriteUntilDebounceElapses`、`rapidWrites_coalesceIntoSamePersistedSnapshot`）
-     * 通过 `advanceTimeBy(400/200)` 精确断言。本 helper 只用于「连续多次写入可能落在不同防抖窗口」时
-     * 推进虚拟时间并重建仓储读取结果；有界（默认 2 轮）失败时给出期望/实际值。
-     */
-    private suspend fun TestScope.awaitPersistedCover(
-        preferences: DataStore<Preferences>,
-        id: Long,
-        type: CoverFreshnessRepository.EntityType,
-        expected: String?,
-        message: String = "等待封面落盘",
-        attempts: Int = 2,
-    ): String? {
-        var observed: String? = null
-        repeat(attempts) {
-            advanceTimeBy(501)
-            advanceUntilIdle()
-            preferences.awaitPendingWrites()
-            val restored = repositoryOver(preferences)
-            restored.ensureWarmed()
-            observed = restored.getCachedCover(id, type)
-            if (observed == expected) return observed
-        }
-        fail("$message：期望落盘值 <$expected>，实际 <$observed>（已等待 $attempts 个防抖窗口）")
-    }
 
     @Test
     fun freshCover_hobby_returnsCoverFromDetailApi() = runTest {
@@ -273,11 +232,10 @@ class CoverFreshnessRepositoryTest {
                 hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
             },
         )
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api(dispatcher)),
-            AlbumDetailRepository(MockApi().api(dispatcher)),
-            TestDataStore.coverFreshnessPrefs(),
-            backgroundScope,
+        val repository = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            hobbyMock = hobbyMock,
+            dispatcher = dispatcher,
         )
 
         val forced = async {
@@ -375,11 +333,10 @@ class CoverFreshnessRepositoryTest {
         var now = nowMillis()
         val prefs = TestDataStore.coverFreshnessPrefs()
         val hobbyMock = MockApi()
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api()),
-            AlbumDetailRepository(MockApi().api()),
-            prefs,
-            backgroundScope,
+        val repository = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            hobbyMock = hobbyMock,
             clock = { now },
         )
         hobbyMock.route(
@@ -401,11 +358,10 @@ class CoverFreshnessRepositoryTest {
         var now = nowMillis()
         val prefs = TestDataStore.coverFreshnessPrefs()
         val hobbyMock = MockApi()
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api()),
-            AlbumDetailRepository(MockApi().api()),
-            prefs,
-            backgroundScope,
+        val repository = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            hobbyMock = hobbyMock,
             clock = { now },
         )
         hobbyMock.route(
@@ -444,11 +400,10 @@ class CoverFreshnessRepositoryTest {
                 hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
             },
         )
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api(dispatcher)),
-            AlbumDetailRepository(MockApi().api(dispatcher)),
-            TestDataStore.coverFreshnessPrefs(),
-            backgroundScope,
+        val repository = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            hobbyMock = hobbyMock,
+            dispatcher = dispatcher,
         )
 
         val owner = launch {
@@ -701,11 +656,11 @@ class CoverFreshnessRepositoryTest {
                 hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
             },
         )
-        val repository = CoverFreshnessRepository(
-            HobbyDetailRepository(hobbyMock.api(dispatcher)),
-            AlbumDetailRepository(MockApi().api(dispatcher)),
-            prefs,
-            backgroundScope,
+        val repository = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            hobbyMock = hobbyMock,
+            dispatcher = dispatcher,
         )
 
         val pending = async { repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY) }

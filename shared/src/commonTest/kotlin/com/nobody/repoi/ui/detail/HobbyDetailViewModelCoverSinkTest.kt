@@ -1,12 +1,8 @@
 package com.nobody.repoi.ui.detail
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import com.nobody.repoi.data.repository.AlbumDetailRepository
+import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
-import com.nobody.repoi.data.repository.HobbyDetailRepository
-import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -80,11 +76,10 @@ class HobbyDetailViewModelCoverSinkTest {
         advanceUntilIdle()
         env.coverFreshnessPreferences.awaitPendingWrites()
 
-        val rebuilt = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(testDispatcher)),
-            AlbumDetailRepository(MockApi().api(testDispatcher)),
-            env.coverFreshnessPreferences,
-            backgroundScope,
+        val rebuilt = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = env.coverFreshnessPreferences,
+            dispatcher = testDispatcher,
         )
         rebuilt.ensureWarmed()
         assertEquals(
@@ -94,8 +89,4 @@ class HobbyDetailViewModelCoverSinkTest {
         )
     }
 
-    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
-    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
-        edit { }
-    }
 }

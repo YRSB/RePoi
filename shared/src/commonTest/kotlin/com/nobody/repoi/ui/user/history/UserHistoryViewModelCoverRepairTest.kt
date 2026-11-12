@@ -2,13 +2,12 @@ package com.nobody.repoi.ui.user.history
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import com.nobody.repoi.data.local.TestDataStore
-import com.nobody.repoi.data.repository.AlbumDetailRepository
+import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
-import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,11 +58,12 @@ class UserHistoryViewModelCoverRepairTest {
         val albumMock = MockApi()
         private val session = FakeUserSession("utoken-test")
 
-        val coverFreshnessRepository = CoverFreshnessRepository(
-            HobbyDetailRepository(detailMock.api(dispatcher)),
-            AlbumDetailRepository(albumMock.api(dispatcher)),
-            preferences,
-            scope,
+        val coverFreshnessRepository = testCoverFreshnessRepository(
+            scope = scope,
+            preferences = preferences,
+            hobbyMock = detailMock,
+            albumMock = albumMock,
+            dispatcher = dispatcher,
         )
 
         /** 冷启动预热需真实 DataStore I/O；在推平虚拟调度器前显式等待，避免测试与读盘竞态。 */
@@ -268,11 +268,10 @@ class UserHistoryViewModelCoverRepairTest {
     @Test
     fun coverLoadFailed_forceRefresh_persistsNewCoverForColdStart() = runTest(testDispatcher) {
         val prefs = TestDataStore.coverFreshnessPrefs()
-        val seeder = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(testDispatcher)),
-            AlbumDetailRepository(MockApi().api(testDispatcher)),
-            prefs,
-            backgroundScope,
+        val seeder = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            dispatcher = testDispatcher,
         )
         seeder.ensureWarmed()
         seeder.rememberFreshCover(
@@ -306,11 +305,10 @@ class UserHistoryViewModelCoverRepairTest {
         advanceUntilIdle()
         prefs.awaitPendingWrites()
 
-        val coldStart = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(testDispatcher)),
-            AlbumDetailRepository(MockApi().api(testDispatcher)),
-            prefs,
-            backgroundScope,
+        val coldStart = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            dispatcher = testDispatcher,
         )
         coldStart.ensureWarmed()
         assertEquals(
@@ -330,11 +328,10 @@ class UserHistoryViewModelCoverRepairTest {
     @Test
     fun coldStart_persistedCache_rendersFreshCoverWithoutDetailRequest() = runTest(testDispatcher) {
         val prefs = TestDataStore.coverFreshnessPrefs()
-        val seeder = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(testDispatcher)),
-            AlbumDetailRepository(MockApi().api(testDispatcher)),
-            prefs,
-            backgroundScope,
+        val seeder = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = prefs,
+            dispatcher = testDispatcher,
         )
         seeder.ensureWarmed()
         seeder.rememberFreshCover(
@@ -356,8 +353,4 @@ class UserHistoryViewModelCoverRepairTest {
         assertEquals(0, env.detailMock.requestCount, "前置重写命中后不应发出详情请求")
     }
 
-    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
-    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
-        edit { }
-    }
 }

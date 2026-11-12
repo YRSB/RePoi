@@ -6,12 +6,12 @@ import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
-import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import io.ktor.client.HttpClient
@@ -59,14 +59,14 @@ class HobbyDetailEnv(
     val commentRepository = CommentRepository(commentMock.api(dispatcher), session)
     val stickerRepository = StickerRepository(detailMock.api(dispatcher))
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
-    val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+    val preferences = ViewPreferencesManager(TestDataStore.inMemory())
     val albumDetailRepository = AlbumDetailRepository(albumMock.api(dispatcher))
     val coverFreshnessPreferences = TestDataStore.coverFreshnessPrefs()
-    val coverFreshnessRepository = CoverFreshnessRepository(
-        detailRepository,
-        albumDetailRepository,
-        coverFreshnessPreferences,
-        scope,
+    val coverFreshnessRepository = testCoverFreshnessRepository(
+        scope = scope,
+        hobbyDetailRepository = detailRepository,
+        albumDetailRepository = albumDetailRepository,
+        preferences = coverFreshnessPreferences,
     )
     val userHistoryRepository = UserHistoryRepository(
         userMock.api(dispatcher), session, coverFreshnessRepository

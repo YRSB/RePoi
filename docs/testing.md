@@ -52,6 +52,9 @@ fun setUpMain() {
 
 @AfterTest
 fun tearDownMain() {
+    // 先取消仍排在 Main 上的任务，再交还平台 dispatcher；否则 reset 后恢复的续体会抛
+    // "Dispatchers.Main was accessed ... after resetMain()"，并污染下一个测试。
+    testDispatcher.cancelChildren()
     Dispatchers.resetMain()
 }
 
@@ -70,6 +73,27 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 
 调度器选型：默认 `StandardTestDispatcher`；仅当用例依赖 launch 体立即执行
 （构造即断言、连续状态机推进）才换 `UnconfinedTestDispatcher`（先例：`SettingsAccountViewModelTest`）。
+
+---
+
+## DataStore 测试：文件实例与内存实例
+
+`TestDataStore` 提供两类实例，按测试目的选择：
+
+| 目的 | 实例 |
+| --- | --- |
+| 冷启动恢复、防抖落盘、跨实例预热 | `TestDataStore.coverFreshnessPrefs()` 等真实文件实例 |
+| ViewModel / UI 编排 | `TestDataStore.inMemory()` |
+
+- **真实文件实例**的写入跑在 DataStore 自己的 IO scope 上，`runTest` 的虚拟时间推不动它。
+  断言落盘前必须 `awaitPendingWrites()`（空 `edit {}` 作为同步屏障），否则 `data.first()`
+  可能读到内存缓存而看不到已入队写入；跨防抖窗口用 `data/repository/TestCoverFreshnessRepository.kt`
+  的 `awaitPersistedCover()`，它只做有界屏障，不替代独立的防抖边界断言。
+- **内存实例**没有文件与内部写协程，`edit` 在调用方协程内完成。ViewModel 测试默认用它，
+  避免真实 I/O 的续体在 `tearDownMain()` 之后恢复并污染下一个测试。
+- 真实文件实例需要显式回收时，把测试自有 scope 传给 `TestDataStore.create(..., scope)`，
+  并在 `@AfterTest` 取消它。
+- 封面新鲜度仓储统一用 `testCoverFreshnessRepository(...)` 构造；构造签名变化只改该工厂。
 
 ---
 
@@ -92,6 +116,19 @@ gh run watch <run-id> --exit-status
 `workflow_dispatch` 使用目标分支上的工作流定义，实施分支需先包含 `tests.yml`（从 main 切出即满足）。
 
 该流水线先单独跑 `:shared:compileTestKotlinJvm`（fast failure），再跑测试任务：测试源的编译错误（类型推断、缺 import）十几秒内就返回，不必等整个矩阵跑完。
+
+### 定向测试 CI（快速内环）
+
+改完单个仓储/ViewModel 测试时，用 `tests-targeted.yml` 只跑匹配的 JVM 用例（通常 1–2 分钟）：
+
+```bash
+gh workflow run tests-targeted.yml --ref <branch> -f filter='*CoverFreshness*'
+gh run list --workflow "Tests Targeted" --branch <branch> --limit 1
+gh run watch <run-id> --exit-status
+```
+
+`filter` 是 Gradle `--tests` 通配模式（可按类或方法）。它只做快速反馈，**不是合并门禁**：
+交付前仍必须以 `tests.yml`（或 PR 的 `ci.yml`）全量绿为准。
 
 
 ---

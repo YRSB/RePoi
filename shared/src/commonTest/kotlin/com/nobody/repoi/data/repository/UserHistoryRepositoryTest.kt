@@ -2,8 +2,8 @@ package com.nobody.repoi.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import com.nobody.repoi.data.local.TestDataStore
+import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
@@ -34,11 +34,11 @@ class UserHistoryRepositoryTest {
         preferences: DataStore<Preferences>,
         hobbyMock: MockApi = MockApi(),
         albumMock: MockApi = MockApi(),
-    ): CoverFreshnessRepository = CoverFreshnessRepository(
-        HobbyDetailRepository(hobbyMock.api()),
-        AlbumDetailRepository(albumMock.api()),
-        preferences,
-        backgroundScope,
+    ): CoverFreshnessRepository = testCoverFreshnessRepository(
+        scope = backgroundScope,
+        preferences = preferences,
+        hobbyMock = hobbyMock,
+        albumMock = albumMock,
     )
 
     /** 模拟冷启动：在真实存储文件上先落盘一条已确认封面，再重建仓储实例。 */
@@ -54,11 +54,6 @@ class UserHistoryRepositoryTest {
         advanceTimeBy(501)
         advanceUntilIdle()
         preferences.awaitPendingWrites()
-    }
-
-    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
-    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
-        edit { }
     }
 
     @Test

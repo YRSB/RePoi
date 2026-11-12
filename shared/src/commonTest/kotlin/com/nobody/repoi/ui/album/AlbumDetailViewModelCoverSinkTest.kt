@@ -1,10 +1,8 @@
 package com.nobody.repoi.ui.album
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
@@ -16,6 +14,7 @@ import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
+import com.nobody.repoi.data.repository.testCoverFreshnessRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
@@ -86,11 +85,11 @@ class AlbumDetailViewModelCoverSinkTest {
 
         val albumRepository = AlbumDetailRepository(albumMock.api(dispatcher))
         val coverFreshnessPreferences = TestDataStore.coverFreshnessPrefs()
-        val coverFreshnessRepository = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(dispatcher)),
-            albumRepository,
-            coverFreshnessPreferences,
-            scope,
+        val coverFreshnessRepository = testCoverFreshnessRepository(
+            scope = scope,
+            hobbyDetailRepository = HobbyDetailRepository(MockApi().api(dispatcher)),
+            albumDetailRepository = albumRepository,
+            preferences = coverFreshnessPreferences,
         )
 
         fun viewModel(): AlbumDetailViewModel {
@@ -109,7 +108,7 @@ class AlbumDetailViewModelCoverSinkTest {
                 UserHistoryRepository(userMock.api(dispatcher), session, coverFreshnessRepository),
                 delegate,
                 ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json)),
-                ViewPreferencesManager(TestDataStore.viewPrefs()),
+                ViewPreferencesManager(TestDataStore.inMemory()),
                 coverFreshnessRepository,
             )
         }
@@ -159,11 +158,10 @@ class AlbumDetailViewModelCoverSinkTest {
         advanceUntilIdle()
         env.coverFreshnessPreferences.awaitPendingWrites()
 
-        val rebuilt = CoverFreshnessRepository(
-            HobbyDetailRepository(MockApi().api(testDispatcher)),
-            AlbumDetailRepository(MockApi().api(testDispatcher)),
-            env.coverFreshnessPreferences,
-            backgroundScope,
+        val rebuilt = testCoverFreshnessRepository(
+            scope = backgroundScope,
+            preferences = env.coverFreshnessPreferences,
+            dispatcher = testDispatcher,
         )
         rebuilt.ensureWarmed()
         assertEquals(
@@ -173,8 +171,4 @@ class AlbumDetailViewModelCoverSinkTest {
         )
     }
 
-    /** 空 `edit` 排在所有在途写入之后，作为 DataStore 落盘的同步屏障。 */
-    private suspend fun DataStore<Preferences>.awaitPendingWrites() {
-        edit { }
-    }
 }
