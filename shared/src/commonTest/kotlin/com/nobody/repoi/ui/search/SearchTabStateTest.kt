@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.search
 
+import app.cash.turbine.test
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.TestDataStore
@@ -216,9 +217,13 @@ class SearchTabStateTest {
 
         val hobbyBefore = viewModel.tabState(SearchTab.HOBBY)
 
-        viewModel.onLoadMore(SearchTab.ALBUM)
-        viewModel.tabState(SearchTab.ALBUM).isLoadingMore shouldBe true
-        viewModel.tabState(SearchTab.HOBBY) shouldBe hobbyBefore
+        viewModel.uiState.test {
+            skipItems(1)
+            viewModel.onLoadMore(SearchTab.ALBUM)
+            val loading = awaitItem()
+            loading.tabStates.getValue(SearchTab.ALBUM).isLoadingMore shouldBe true
+            loading.tabStates.getValue(SearchTab.HOBBY) shouldBe hobbyBefore
+        }
 
         advanceUntilIdle()
 
@@ -243,10 +248,14 @@ class SearchTabStateTest {
 
         val albumBefore = viewModel.tabState(SearchTab.ALBUM)
 
-        viewModel.onRefresh(SearchTab.HOBBY)
-        viewModel.tabState(SearchTab.HOBBY).isRefreshing shouldBe true
-        viewModel.tabState(SearchTab.HOBBY).items.size shouldBe 2
-        viewModel.tabState(SearchTab.ALBUM) shouldBe albumBefore
+        viewModel.uiState.test {
+            skipItems(1)
+            viewModel.onRefresh(SearchTab.HOBBY)
+            val refreshing = awaitItem()
+            refreshing.tabStates.getValue(SearchTab.HOBBY).isRefreshing shouldBe true
+            refreshing.tabStates.getValue(SearchTab.HOBBY).items.size shouldBe 2
+            refreshing.tabStates.getValue(SearchTab.ALBUM) shouldBe albumBefore
+        }
 
         advanceUntilIdle()
 
