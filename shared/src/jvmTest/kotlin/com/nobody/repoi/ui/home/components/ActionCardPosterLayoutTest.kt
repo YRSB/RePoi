@@ -33,8 +33,8 @@ import kotlin.test.assertTrue
  * 锁住 ADR-0016 的分类分流契约，这几条约束都无法由纯 JVM 单测或静态检查覆盖：
  * 1. 常规手办条目：9:13 刚性定框（96dp × 138.7dp），全生命周期零跳动；
  * 2. 相册传图条目未命中纵横比缓存：按 4:3 首帧占位（96dp × 72dp），不再被 9:13 拉满；
- * 3. 相册传图条目命中 9:20 超长比例：槽位封顶 140dp，整卡高度同时受右侧内容与封顶线夹持，
- *    既不溢出卡片、也不被超长竖图撑高（`Row(IntrinsicSize.Min)` 的内在高度路径也被覆盖）。
+ * 3. 相册传图条目命中 9:20 超长比例：槽位高度不设上限，按真实比例撑到 96 / 0.45 ≈ 213.3dp，
+ *    整张卡片随之撑高（`Row(IntrinsicSize.Min)` 的内在高度路径同样无上限）。
  *
  * **零网络**：测试前把 Coil 单例换成不带任何 fetcher 的 `ImageLoader`，
  * 图片请求立即失败并落到破损图标分支，尺寸仍由 `Modifier` 链决定，与真实加载路径一致。
@@ -83,9 +83,9 @@ class ActionCardPosterLayoutTest {
         assertEquals(72f, bounds.height.value, 0.5f, "相册首帧应按 4:3 占位（96×72）")
     }
 
-    /** 相册传图命中 9:20 超长竖图：高度必须被封顶在 140dp，宽度仍为 96dp。 */
+    /** 相册传图命中 9:20 超长竖图：宽度 96dp，高度按比例完全撑开、不设上限。 */
     @Test
-    fun albumAction_withTallCachedRatio_capsHeightAt140dp() = runComposeUiTest {
+    fun albumAction_withTallCachedRatio_expandsToFullPhotoRatio() = runComposeUiTest {
         ImageAspectRatioCache[albumCoverRatioKey()] = 9f / 20f
 
         setContent {
@@ -94,21 +94,19 @@ class ActionCardPosterLayoutTest {
             }
         }
 
+        val expectedHeight = 96f / (9f / 20f)
         val bounds = onNodeWithTag(ActionCardPosterTag, useUnmergedTree = true).getUnclippedBoundsInRoot()
-        assertEquals(96f, bounds.width.value, 0.5f, "封顶后宽度仍应保持 96dp")
-        assertEquals(140f, bounds.height.value, 0.5f, "超长竖图高度应钳制在 140dp 封顶线")
+        assertEquals(96f, bounds.width.value, 0.5f, "相册海报宽度应恒为 96dp")
+        assertEquals(expectedHeight, bounds.height.value, 0.5f, "超长竖图高度应按真实比例完全撑开")
 
-        // 槽位高度必须被卡片真实包含（右侧内容 + 12dp×2 内边距），否则封顶只存在于节点内部
+        // 槽位高度必须被卡片真实包含（12dp×2 内边距），即卡片随图片撑高而非溢出
         val cardHeight = onNodeWithTag(CardContainerTag, useUnmergedTree = true)
             .getUnclippedBoundsInRoot().height.value
-        assertTrue(
-            cardHeight >= 140f + 24f - 1f,
-            "卡片高度应容纳 140dp 槽位而非把图片溢出到卡片外（实际 $cardHeight）"
-        )
-        // 上界挡住未参与内在高度推导的 9:20 原始比例（96 / 0.45 ≈ 213dp）
-        assertTrue(
-            cardHeight <= 180f,
-            "超长竖图不得把整卡撑破右侧高度包络（实际 $cardHeight）"
+        assertEquals(
+            expectedHeight + 24f,
+            cardHeight,
+            1.5f,
+            "卡片高度应由 9:20 竖图撑开，不得把图片裁到卡片外（实际 $cardHeight）"
         )
     }
 

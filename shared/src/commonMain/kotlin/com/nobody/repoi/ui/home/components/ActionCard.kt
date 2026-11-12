@@ -72,9 +72,6 @@ internal const val ActionCardPosterTag = "action_card_poster"
 /** 相册海报槽位的首帧回退比例：4:3（约 72dp 高），居于 16:9 与 1:1 之间，最小化首帧落差。 */
 private const val AlbumPosterFallbackRatio = 4f / 3f
 
-/** 相册海报槽位的最大高度：对齐手办 9:13 的 138.7dp 封顶线，阻断超长竖图向下撑爆卡片。 */
-private val AlbumPosterMaxHeight = 140.dp
-
 @Composable
 fun ActionCard(
     actionItem: ActionItem,
@@ -105,9 +102,9 @@ fun ActionCard(
 
     // 左侧海报槽位分类分流（ADR-0016）：
     // - 常规手办/官方条目维持 9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中完全呈现，零裁切零跳变）；
-    // - 相册传图类条目改走高度自适应（宽 96dp，比例随实拍照片伸缩，顶部对齐），以消除 9:13 竖框
-    //   对横图的上下灰边；同时用 140dp 封顶线阻断 9:16/9:20 手机超长截屏向下撑爆卡片。
-    // 右侧内容天然需要约 134dp，横图（54~96dp）落在其高度包络线内，卡片外框仍由右侧锁死。
+    // - 相册传图类条目改走高度自适应（宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐），
+    //   以消除 9:13 竖框对横图的上下灰边，以及任何限高导致的左右灰边。
+    // 横图/方图落在右侧约 134dp 的高度包络线内，卡片外框由右侧锚定；超长竖图则自然撑高卡片。
     val isAlbumAction = relateItem?.isAlbum == true ||
         actionItem.actionType == 3 ||
         actionItem.actionType == 103 ||
@@ -139,7 +136,7 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：分类分流海报（常规条目 9:13 刚性定框；相册传图宽 96dp 高度自适应、140dp 封顶；相册无图时展示纯文本卡片）──
+            // ── 【左侧栏】：分类分流海报（常规条目 9:13 刚性定框；相册传图宽 96dp、高度随照片比例无上限撑开；相册无图时展示纯文本卡片）──
             if (shouldShowLeftCover) {
                 if (mediaInfo.isAlbumNoCover) {
                     val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
@@ -179,8 +176,7 @@ fun ActionCard(
                             { onImageClick(allRawUrls, 0) }
                         } else {
                             null
-                        },
-                        maxAdaptiveHeight = if (isAlbumAction) AlbumPosterMaxHeight else null
+                        }
                     )
                 }
 
