@@ -228,7 +228,10 @@ fun UserHistoryScreen(
                         onLoadMore = { viewModel.loadMore(category) },
                         onToggleSelect = { id -> viewModel.toggleSelectItem(id) },
                         onNavigateToHobby = onNavigateToHobbyDetail,
-                        onNavigateToAlbum = onNavigateToAlbumDetail
+                        onNavigateToAlbum = onNavigateToAlbumDetail,
+                        onCoverLoadFailed = { rowId, detailId, category ->
+                            viewModel.onCoverLoadFailed(rowId, detailId, category)
+                        }
                     )
                 }
             }
@@ -315,6 +318,7 @@ private fun HistoryTabContent(
     onToggleSelect: (Long) -> Unit,
     onNavigateToHobby: (Long) -> Unit,
     onNavigateToAlbum: (Long) -> Unit,
+    onCoverLoadFailed: (rowId: Long, detailId: Long, category: UserHistoryCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
     PullToRefreshBox(
@@ -340,7 +344,8 @@ private fun HistoryTabContent(
                     isSelectedProvider = isSelectedProvider,
                     onLoadMore = onLoadMore,
                     onToggleSelect = onToggleSelect,
-                    onNavigateToHobby = onNavigateToHobby
+                    onNavigateToHobby = onNavigateToHobby,
+                    onCoverLoadFailed = onCoverLoadFailed
                 )
             }
 
@@ -351,7 +356,8 @@ private fun HistoryTabContent(
                     isSelectedProvider = isSelectedProvider,
                     onLoadMore = onLoadMore,
                     onToggleSelect = onToggleSelect,
-                    onNavigateToAlbum = onNavigateToAlbum
+                    onNavigateToAlbum = onNavigateToAlbum,
+                    onCoverLoadFailed = onCoverLoadFailed
                 )
             }
         }
@@ -370,6 +376,7 @@ private fun HobbyHistoryGridContent(
     onLoadMore: () -> Unit,
     onToggleSelect: (Long) -> Unit,
     onNavigateToHobby: (Long) -> Unit,
+    onCoverLoadFailed: (rowId: Long, detailId: Long, category: UserHistoryCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -443,7 +450,10 @@ private fun HobbyHistoryGridContent(
                                             onNavigateToHobby(item.actualDetailId)
                                         }
                                     },
-                                    onLongClick = { onToggleSelect(item.id) }
+                                    onLongClick = { onToggleSelect(item.id) },
+                                    onCoverLoadFailed = {
+                                        onCoverLoadFailed(item.id, item.actualDetailId, UserHistoryCategory.HOBBY)
+                                    }
                                 )
                             }
                         }
@@ -488,6 +498,7 @@ private fun AlbumHistoryStaggeredGridContent(
     onLoadMore: () -> Unit,
     onToggleSelect: (Long) -> Unit,
     onNavigateToAlbum: (Long) -> Unit,
+    onCoverLoadFailed: (rowId: Long, detailId: Long, category: UserHistoryCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val staggeredGridState = rememberLazyStaggeredGridState()
@@ -550,7 +561,10 @@ private fun AlbumHistoryStaggeredGridContent(
                             onNavigateToAlbum(item.actualDetailId)
                         }
                     },
-                    onLongClick = { onToggleSelect(item.id) }
+                    onLongClick = { onToggleSelect(item.id) },
+                    onCoverLoadFailed = {
+                        onCoverLoadFailed(item.id, item.actualDetailId, UserHistoryCategory.ALBUM)
+                    }
                 )
             }
         }
@@ -606,6 +620,7 @@ private fun HobbyHistoryGridCard(
     isSelectedProvider: () -> Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onCoverLoadFailed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
@@ -658,7 +673,9 @@ private fun HobbyHistoryGridCard(
                 category = MediaCategory.HOBBY,
                 purpose = ImagePurpose.CARD_STANDARD,
                 contentDescription = item.actualTitle,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                // 历史接口的 cover 是写入快照，可能已被服务端重新落盘：失败时按条回源修复
+                onError = onCoverLoadFailed
             )
         }
     )
@@ -674,6 +691,7 @@ private fun AlbumHistoryWaterfallCard(
     isSelectedProvider: () -> Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onCoverLoadFailed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 选择态在叶子内部读取，选中变化时仅本卡片重组
@@ -693,7 +711,9 @@ private fun AlbumHistoryWaterfallCard(
                 contentDescription = item.actualTitle,
                 modifier = Modifier.fillMaxWidth(),
                 adaptiveRatio = true,
-                fallbackRatio = 1.0f
+                fallbackRatio = 1.0f,
+                // 历史接口的 cover 是写入快照，可能已被服务端重新落盘：失败时按条回源修复
+                onError = onCoverLoadFailed
             )
         },
         caption = {

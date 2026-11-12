@@ -64,6 +64,9 @@ object DefaultMediaPipeline : MediaPipeline {
     private const val ZONE_PREFIX = "zone/"
     private const val STICKER_PREFIX = "sticker/item/"
 
+    /** CDN 根路径段：绝对 URL 归一化时以它切分域名前缀与资源路径。 */
+    private const val CDN_MARKER = "gk/"
+
     // ---------------------------------------------------------------- 契约实现
 
     override fun resolveUrl(path: String?, category: MediaCategory, purpose: ImagePurpose): String =
@@ -130,7 +133,7 @@ object DefaultMediaPipeline : MediaPipeline {
     fun buildVariantUrl(path: String?, prefixes: List<String>, targetPrefix: String): String {
         if (path.isNullOrBlank()) return ""
         if (isAbsoluteUrl(path)) {
-            var result: String = path
+            var result: String = canonicalAbsolutes(path)
             for (prefix in prefixes) {
                 if (prefix != targetPrefix) {
                     result = result.replace("/$prefix", "/$targetPrefix")
@@ -140,6 +143,45 @@ object DefaultMediaPipeline : MediaPipeline {
         }
         return "$CDN_BASE_URL$targetPrefix${cleanVariantPath(path, prefixes)}"
     }
+
+    /**
+     * 绝对 URL 的协议/域名归一（仅 hpoi 主域及其子域，外部域名原样返回）。
+     *
+     * 历史快照类列表接口可能存下多年前的绝对地址：`http://` 在 Android 会被明文流量策略直接拒绝，
+     * 旧 CDN 域名也可能已下线，两者都表现为「图片其实在、但列表加载不出来」。此处把 hpoi 系
+     * 绝对地址统一收敛到 [CDN_BASE_URL]，保留 `/gk/` 之后的路径与 query；路径里若没有 `gk/`
+     * 则原样保留整条 URL，避免把非 CDN 资源误改。
+     *
+     * 域名按 authority 精确匹配（`hpoi.net` / `hpoi.net.cn` 及其子域），不做整串子串判断，
+     * 防止 `not-hpoi.net` 或路径/query 中恰好出现 `hpoi.net` 的外部 URL 被误改写；
+     * `gk/` 只在路径段内匹配且忽略大小写，避免 query 里的 `gk/` 把 URL 截断。
+     */
+    private fun canonicalAbsolutes(path: String): String {
+        val host = absoluteHostOf(path) ?: return path
+        if (!host.isHpoiHost()) return path
+        val pathEnd = path.indexOfAny(charArrayOf('?', '#')).let { if (it < 0) path.length else it }
+        val gkIndex = path.substring(0, pathEnd).indexOf(CDN_MARKER, ignoreCase = true)
+        if (gkIndex < 0) return path
+        return CDN_BASE_URL + path.substring(gkIndex + CDN_MARKER.length)
+    }
+
+    /** 取绝对 URL 的 authority 主机名（去 userinfo 与端口）；非绝对 URL 返回 `null`。 */
+    private fun absoluteHostOf(path: String): String? {
+        val schemeEnd = path.indexOf("://")
+        if (schemeEnd < 0) return null
+        val hostStart = schemeEnd + 3
+        val hostEnd = path.indexOfAny(charArrayOf('/', '?', '#'), hostStart)
+            .let { if (it < 0) path.length else it }
+        val host = path.substring(hostStart, hostEnd)
+            .substringAfterLast('@')
+            .substringBefore(':')
+            .lowercase()
+        return host.ifBlank { null }
+    }
+
+    private fun String.isHpoiHost(): Boolean =
+        this == "hpoi.net" || endsWith(".hpoi.net") ||
+            this == "hpoi.net.cn" || endsWith(".hpoi.net.cn")
 
     /** 清理手办/条目封面路径中的变体前缀。 */
     internal fun cleanCoverPath(path: String): String = cleanVariantPath(path, COVER_PREFIXES)

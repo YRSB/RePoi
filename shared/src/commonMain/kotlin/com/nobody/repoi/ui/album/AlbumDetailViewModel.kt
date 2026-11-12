@@ -14,6 +14,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
@@ -138,7 +139,8 @@ class AlbumDetailViewModel(
     private val userHistoryRepository: UserHistoryRepository,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate,
     private val exHobbyRepository: ExHobbyRepository,
-    private val viewPreferencesManager: ViewPreferencesManager
+    private val viewPreferencesManager: ViewPreferencesManager,
+    private val coverFreshnessRepository: CoverFreshnessRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlbumDetailUiState())
@@ -234,6 +236,13 @@ class AlbumDetailViewModel(
             }
 
             if (album != null) {
+                // 详情接口每次都给出当前真实封面：顺手沉淀，历史上过期的封面快照可因此直接命中
+                coverFreshnessRepository.rememberFreshCover(
+                    id = album.actualAlbumId,
+                    type = CoverFreshnessRepository.EntityType.ALBUM,
+                    cover = album.cover
+                )
+
                 // ── 阶段 2：拉取高清图集第 1 页 ──
                 loadPicturesFirstPage(album.id, album.itemId, album.sortType)
 

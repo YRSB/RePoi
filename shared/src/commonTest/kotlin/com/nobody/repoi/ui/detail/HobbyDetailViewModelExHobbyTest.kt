@@ -3,8 +3,10 @@ package com.nobody.repoi.ui.detail
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
+import com.nobody.repoi.data.repository.AlbumDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.MockApi
@@ -82,6 +84,7 @@ class HobbyDetailViewModelExHobbyTest {
         val collectMock = MockApi()
         val commentMock = MockApi()
         val userMock = MockApi()
+        val albumMock = MockApi()
         val session = FakeUserSession("utoken-test")
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
 
@@ -98,7 +101,11 @@ class HobbyDetailViewModelExHobbyTest {
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,
-                UserHistoryRepository(userMock.api(), session)
+                UserHistoryRepository(userMock.api(), session),
+                CoverFreshnessRepository(
+                    HobbyDetailRepository(detailMock.api()),
+                    AlbumDetailRepository(albumMock.api())
+                )
             )
         }
 

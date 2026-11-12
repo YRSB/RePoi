@@ -107,6 +107,42 @@ PoiZoomableImage(
 
 ---
 
+## 列表封面快照失效：`onError` + 按条回源
+
+列表接口（浏览历史 `api/user/read/item/get` 等）的 `cover` 是**写入那一刻的快照**。服务端重新落盘
+封面后旧路径必然 404，而详情接口（`api/item/get-v2` / `api/album/detail`）每次都会给出当前真实封面。
+
+基元本身**不重试**，只把失败事实交出去：
+
+```kotlin
+PoiAsyncImage(
+    path = item.actualCover,
+    category = MediaCategory.HOBBY,
+    purpose = ImagePurpose.CARD_STANDARD,
+    contentDescription = item.actualTitle,
+    onError = { viewModel.onCoverLoadFailed(rowId, detailId, category) }
+)
+```
+
+调用方按条修复（参考 `UserHistoryViewModel.onCoverLoadFailed`）：
+
+1. `CoverFreshnessRepository.freshCover(id, type)` 取当前封面——内部有单飞、负缓存与 30 分钟 TTL；
+2. `PagedListLoader.updateItem { it.id == rowId }` 只替换失败那一行；
+3. `cover` 变化 → `urlText` 变化 → `remember(urlText)` 自动重置失败态，图自然重试。
+
+约束：
+
+- **绝不整页刷新**：N 条历史 = N 个详情请求的代价不可接受；
+- **必须限流**：同时在途 ≤ 3、单条实体本会话最多 2 次（失败上限后可等下次进页面）；
+- **详情页顺手沉淀**：详情页拿到 `detail.cover` 后调 `rememberFreshCover`，历史页下次直接命中，零请求。
+
+`cover/`（含 `pic/`）家族的绝对 URL 会由管道按 authority 判定 hpoi 系域名、取 `gk/` 之后的路径与
+query 归一（`DefaultMediaPipeline.canonicalAbsolutes`，`http://` 一并升级为 CDN 根）；
+`posts/`、`bnr/`、`head/` 等家族仍按原契约透传。但**路径本身变化**只能靠上面的回源修复，
+降档（`sr/`、`raw/`）在文件真没了时一样 404。
+
+---
+
 ## 加一张新图时的检查单
 
 1. 问自己「这是什么东西的图」→ 选 `MediaCategory`。

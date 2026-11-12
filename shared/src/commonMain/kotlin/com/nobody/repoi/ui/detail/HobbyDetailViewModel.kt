@@ -17,6 +17,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
@@ -154,7 +155,8 @@ class HobbyDetailViewModel(
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate,
     private val exHobbyRepository: ExHobbyRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
-    private val userHistoryRepository: UserHistoryRepository
+    private val userHistoryRepository: UserHistoryRepository,
+    private val coverFreshnessRepository: CoverFreshnessRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HobbyDetailUiState())
@@ -293,6 +295,13 @@ class HobbyDetailViewModel(
             val nodeId = detail.actualNodeId
             val actualItemId = if (detail.actualItemId > 0L) detail.actualItemId else param.itemId
             val actualItemType = detail.itemType?.ifBlank { null } ?: param.itemType
+
+            // 详情接口每次都给出当前真实封面：顺手沉淀，历史上过期的封面快照可因此直接命中
+            coverFreshnessRepository.rememberFreshCover(
+                id = actualItemId,
+                type = CoverFreshnessRepository.EntityType.HOBBY,
+                cover = detail.cover
+            )
 
             // ── 阶段 2：并发拉取规格属性、发售情报、官方图集、玩家相册、扩展图库、首批评论与当前用户收藏状态 ──
             if (nodeId > 0) {

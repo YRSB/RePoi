@@ -61,6 +61,58 @@ class MediaPipelineTest {
     }
 
     @Test
+    fun resolveUrl_hobby_canonicalizesLegacyHpoiAbsoluteUrl() {
+        // 历史快照类列表可能存下多年前的绝对地址：http 明文在 Android 直接被拒，旧域名也可能下线
+        val plainHttp = "http://rfx.hpoi.net/gk/cover/n/$relPath"
+        assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(plainHttp, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+
+        val legacyHost = "https://www.hpoi.net/gk/cover/n/$relPath"
+        assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(legacyHost, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+        assertEquals("${base}cover/raw/$relPath", pipeline.resolveRawUrl(legacyHost, MediaCategory.HOBBY))
+
+        // query 必须保留（服务端以 query 区分版本时不能丢）
+        val withQuery = "http://rfx.hpoi.net/gk/cover/n/$relPath?v=2"
+        assertEquals("${base}cover/n/$relPath?v=2", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
+
+        // 非 hpoi 域名与非 CDN 路径原样透传，避免误改外部资源
+        assertEquals(
+            "http://cdn.example.com/cover/n/a.jpg",
+            pipeline.resolveUrl("http://cdn.example.com/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+        assertEquals(
+            "http://rfx.hpoi.net/other/cover/n/a.jpg",
+            pipeline.resolveUrl("http://rfx.hpoi.net/other/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+
+        // 域名按 authority 精确匹配：形似域名、或在 path 中出现 hpoi.net 的外部 URL 不得被改写
+        assertEquals(
+            "https://not-hpoi.net/gk/cover/n/$relPath",
+            pipeline.resolveUrl("https://not-hpoi.net/gk/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+        assertEquals(
+            "https://cdn.example.com/hpoi.net/gk/cover/n/$relPath",
+            pipeline.resolveUrl(
+                "https://cdn.example.com/hpoi.net/gk/cover/n/$relPath",
+                MediaCategory.HOBBY,
+                ImagePurpose.CARD_STANDARD
+            )
+        )
+
+        // gk/ 只在 query 里时不能当成 CDN 根截断路径
+        val gkOnlyInQuery = "https://www.hpoi.net/view?src=gk/cover/n/a.jpg"
+        assertEquals(
+            gkOnlyInQuery,
+            pipeline.resolveUrl(gkOnlyInQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+
+        // 旧快照可能原样保存大小写混合的绝对地址，marker 匹配忽略大小写但保留原始路径
+        assertEquals(
+            "${base}cover/n/$relPath",
+            pipeline.resolveUrl("http://WWW.HPOI.NET/GK/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
+        )
+    }
+
+    @Test
     fun resolveUrl_keepsQueryStringAfterVariantPrefix() {
         val withQuery = "$relPath?v=2"
         assertEquals("${base}cover/n/$withQuery", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
