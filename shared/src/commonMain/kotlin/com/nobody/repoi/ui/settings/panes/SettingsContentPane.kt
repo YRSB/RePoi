@@ -15,12 +15,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Domain
 import androidx.compose.material.icons.outlined.DynamicFeed
@@ -182,7 +182,7 @@ fun SettingsContentPane(
                     }
                 },
                 scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )
@@ -427,7 +427,7 @@ fun SettingsContentPane(
                         title = "私信设置"
                     ) {
                         SettingItem(
-                            icon = Icons.Outlined.Chat,
+                            icon = Icons.AutoMirrored.Outlined.Chat,
                             title = "陌生人私信设置",
                             subtitle = strangerOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0

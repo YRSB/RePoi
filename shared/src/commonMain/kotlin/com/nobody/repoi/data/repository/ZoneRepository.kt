@@ -9,8 +9,10 @@ import com.nobody.repoi.data.remote.model.ZoneHomeTabsPayload
 import com.nobody.repoi.data.remote.model.ZoneInfoPayload
 import com.nobody.repoi.data.remote.model.ZoneItemsPayload
 import com.nobody.repoi.data.remote.model.ZoneItem
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
-import com.nobody.repoi.util.CdnUrlUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -241,13 +243,15 @@ class ZoneRepository(
 
     companion object {
         /**
-         * 按照原版规则拼接专区图标 CDN URL（收敛至 CdnUrlUtils）。
+         * 按照原版规则拼接专区图标 CDN URL（收敛至 MediaPipeline）。
          */
-        fun formatZoneIconUrl(icon: String?): String? = CdnUrlUtils.getZoneIconUrl(icon)
+        fun formatZoneIconUrl(icon: String?): String? =
+            MediaPipeline.Default.resolveUrl(icon, MediaCategory.ZONE, ImagePurpose.THUMBNAIL).ifEmpty { null }
 
         /**
-         * 按照原版规则拼接专区封面大图 CDN URL（收敛至 CdnUrlUtils）。
+         * 按照原版规则拼接专区封面大图 CDN URL（收敛至 MediaPipeline）。
          */
-        fun formatZoneCoverUrl(cover: String?): String? = CdnUrlUtils.getZoneCoverUrl(cover)
+        fun formatZoneCoverUrl(cover: String?): String? =
+            MediaPipeline.Default.resolveUrl(cover, MediaCategory.ZONE, ImagePurpose.CARD_STANDARD).ifEmpty { null }
     }
 }

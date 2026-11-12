@@ -1,6 +1,8 @@
 package com.nobody.repoi.data.remote.model
 
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import kotlinx.serialization.Serializable
 
 /**
@@ -90,7 +92,7 @@ data class ResaleSearchItem(
         get() = pic?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotBlank() }
-            ?.map { CdnUrlUtils.getResalePicUrl(it) }
+            ?.map { MediaPipeline.Default.resolveUrl(it, MediaCategory.RESALE, ImagePurpose.CARD_STANDARD) }
             ?: emptyList()
 
     /**
@@ -102,7 +104,7 @@ data class ResaleSearchItem(
         get() {
             val hCover = hobbyCover
             if (!hCover.isNullOrBlank()) {
-                return CdnUrlUtils.getCoverUrl(hCover)
+                return MediaPipeline.Default.resolveUrl(hCover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
             }
             return userPics.firstOrNull()
         }
@@ -182,7 +184,7 @@ data class ResaleDetailItem(
         get() = pic?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotBlank() }
-            ?.map { CdnUrlUtils.getResalePicUrl(it) }
+            ?.map { MediaPipeline.Default.resolveUrl(it, MediaCategory.RESALE, ImagePurpose.CARD_STANDARD) }
             ?: emptyList()
 
     val displayPriceText: String

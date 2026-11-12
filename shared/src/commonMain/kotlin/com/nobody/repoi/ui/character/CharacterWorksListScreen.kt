@@ -67,12 +67,14 @@ import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.CharacterPerformerItem
 import com.nobody.repoi.data.remote.model.CharacterWorksItem
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterWorksListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.ElevatedCard
 
 /**
@@ -309,7 +311,7 @@ private fun CharacterWorksListItemCard(
     onPersonClick: (Long, String, String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = CdnUrlUtils.getCoverUrl(work.wCover)
+    val coverUrl = MediaPipeline.Default.resolveUrl(work.wCover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth()
@@ -461,7 +463,7 @@ private fun PerformerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val avatarUrl = CdnUrlUtils.getCoverSmallUrl(performer.pCover)
+    val avatarUrl = MediaPipeline.Default.resolveUrl(performer.pCover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)
 
     Surface(
         onClick = onClick,

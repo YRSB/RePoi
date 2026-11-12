@@ -71,7 +71,8 @@ import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.subpage.UserCollectPicCard
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +118,7 @@ fun UserCreationScreen(
     // 获取当前图片列表所有原始 CDN 路径
     val rawImageUrls = remember(uiState.picState.items) {
         uiState.picState.items.mapNotNull { item ->
-            item.actualUrl.takeIf { it.isNotBlank() }?.let { CdnUrlUtils.getRawPicUrl(it) }
+            item.actualUrl.takeIf { it.isNotBlank() }?.let { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
         }
     }
 

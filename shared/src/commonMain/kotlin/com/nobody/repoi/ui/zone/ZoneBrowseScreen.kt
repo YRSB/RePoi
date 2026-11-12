@@ -48,7 +48,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
 import com.nobody.repoi.data.remote.model.ZoneItem
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,7 +265,7 @@ private fun ZoneItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val iconUrl = CdnUrlUtils.getZoneIconUrl(zone.icon)
+    val iconUrl = MediaPipeline.Default.resolveUrl(zone.icon, MediaCategory.ZONE, ImagePurpose.THUMBNAIL).ifEmpty { null }
 
     Column(
         modifier = modifier

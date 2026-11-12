@@ -25,7 +25,9 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 /**
  * 统一的用户圆形头像组件。
@@ -47,7 +49,7 @@ fun UserAvatar(
         } else if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             trimmed
         } else {
-            CdnUrlUtils.getHeadSmallUrl(trimmed)
+            MediaPipeline.Default.resolveUrl(trimmed, MediaCategory.AVATAR, ImagePurpose.THUMBNAIL)
         }
     }
     var loadFailed by remember(cleanUrl) { mutableStateOf(false) }

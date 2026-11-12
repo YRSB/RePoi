@@ -20,7 +20,9 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import com.nobody.repoi.ui.common.card.PoiListCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 // ── 通用 4 页（厂商/系列/角色/人物）卡片 ─────────────────────
 
@@ -41,9 +43,9 @@ internal const val SERIES_ITEM_TYPE = "series"
  */
 internal fun commonCollectCoverUrl(item: UserCollectCommonItem, isListView: Boolean): String =
     if (isListView) {
-        CdnUrlUtils.getCoverSmallUrl(item.actualCover)
+        MediaPipeline.Default.resolveUrl(item.actualCover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL)
     } else {
-        CdnUrlUtils.getCoverSrUrl(item.actualCover)
+        MediaPipeline.Default.resolveUrl(item.actualCover, MediaCategory.HOBBY, ImagePurpose.ADAPTIVE_GRID)
     }
 
 /**

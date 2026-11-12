@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nobody.repoi.util
 
 import kotlin.test.Test

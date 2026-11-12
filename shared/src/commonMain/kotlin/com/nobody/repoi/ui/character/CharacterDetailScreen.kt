@@ -34,7 +34,8 @@ import com.nobody.repoi.ui.navigation.CharacterWorksListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.works.WorksNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 /**
  * 角色/要素维基详情页 (CharacterDetailScreen)。
@@ -207,7 +208,7 @@ fun CharacterDetailScreen(
                         onToggleIntro = { viewModel.toggleIntroExpanded() },
                         onCoverClick = {
                             val cover = character?.cover?.ifBlank { null } ?: navParam.initialCover
-                            val raw = if (!cover.isNullOrBlank()) CdnUrlUtils.getRawCoverUrl(cover) else ""
+                            val raw = if (!cover.isNullOrBlank()) MediaPipeline.Default.resolveRawUrl(cover, MediaCategory.HOBBY) else ""
                             if (raw.isNotBlank()) imageViewer.show(raw)
                         },
                         onTagClick = { tag -> onNavigateToSearch?.invoke(tag) },

@@ -63,7 +63,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.LevelPill
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 /**
  * 好友与社交列表界面 (FriendListScreen)。
@@ -360,7 +362,7 @@ private fun UserFollowItemCard(
             // 用户头像
             AsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
-                    .data(CdnUrlUtils.getHeadUrl(item.header))
+                    .data(MediaPipeline.Default.resolveUrl(item.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD))
                     .crossfade(true)
                     .build(),
                 contentDescription = "用户头像",
@@ -510,7 +512,7 @@ private fun PraiseItemCard(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(CdnUrlUtils.getHeadUrl(item.praiseUser?.header ?: item.header))
+                        .data(MediaPipeline.Default.resolveUrl(item.praiseUser?.header ?: item.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD))
                         .crossfade(true)
                         .build(),
                     contentDescription = "点赞用户头像",
@@ -559,7 +561,7 @@ private fun PraiseItemCard(
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val coverUrl = CdnUrlUtils.getCoverUrlOrDefault(relate.cover ?: relate.path)
+                        val coverUrl = MediaPipeline.Default.resolveCoverUrlOrDefault(relate.cover ?: relate.path, ImagePurpose.CARD_STANDARD)
                         AsyncImage(
                             model = ImageRequest.Builder(LocalPlatformContext.current)
                                 .data(coverUrl)

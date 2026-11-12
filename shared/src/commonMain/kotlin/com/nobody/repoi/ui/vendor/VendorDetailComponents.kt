@@ -87,7 +87,8 @@ import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet
 import androidx.compose.material3.ElevatedCard
@@ -139,7 +140,7 @@ internal fun VendorHeaderSection(
                 ) {
                     if (!coverUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = CdnUrlUtils.getRawCoverUrl(coverUrl),
+                            model = MediaPipeline.Default.resolveRawUrl(coverUrl, MediaCategory.HOBBY),
                             contentDescription = displayName,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -521,7 +522,7 @@ internal fun VendorProductsSection(
                     ) {
                         if (!item.cover.isNullOrBlank()) {
                             AsyncImage(
-                                model = CdnUrlUtils.getRawCoverUrl(item.cover),
+                                model = MediaPipeline.Default.resolveRawUrl(item.cover, MediaCategory.HOBBY),
                                 contentDescription = item.displayName,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -621,7 +622,7 @@ internal fun VendorSeriesSection(
                                 ) {
                                     if (!series.cover.isNullOrBlank()) {
                                         AsyncImage(
-                                            model = CdnUrlUtils.getRawCoverUrl(series.cover),
+                                            model = MediaPipeline.Default.resolveRawUrl(series.cover, MediaCategory.HOBBY),
                                             contentDescription = series.displayName,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()

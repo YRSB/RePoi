@@ -81,7 +81,9 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.common.comment.commentSectionItems
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.HtmlRichTextParser
 import kotlinx.coroutines.launch
 
@@ -114,7 +116,7 @@ fun PostDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val rawPicUrls = remember(uiState.detail?.picList) {
-        uiState.detail?.picList?.map { CdnUrlUtils.getPostsRawUrl(it) } ?: emptyList()
+        uiState.detail?.picList?.map { MediaPipeline.Default.resolveRawUrl(it, MediaCategory.POST) } ?: emptyList()
     }
 
     var showDeletePostConfirm by remember { mutableStateOf(false) }
@@ -334,7 +336,7 @@ fun PostDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
-                                    model = CdnUrlUtils.getHeadUrl(detail.user?.header),
+                                    model = MediaPipeline.Default.resolveUrl(detail.user?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
                                     contentDescription = detail.user?.nickname,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
@@ -621,7 +623,7 @@ private fun PostRelateHobbyCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = CdnUrlUtils.getCoverSmallUrl(item.cover),
+                model = MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                 contentDescription = item.displayName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -769,7 +771,7 @@ private fun PostPicCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val thumbUrl = remember(picPath) { CdnUrlUtils.getPostsUrl(picPath) }
+    val thumbUrl = remember(picPath) { MediaPipeline.Default.resolveUrl(picPath, MediaCategory.POST, ImagePurpose.CARD_STANDARD) }
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
