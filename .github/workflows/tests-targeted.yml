@@ -1,0 +1,68 @@
+# 定向测试流水线：只编译并执行匹配 --tests 过滤器的 JVM 单测。
+#
+# 用途：TDD 内环的快速反馈（通常 1–2 分钟），不替代 tests.yml / ci.yml 的完整门禁。
+# 用法：
+#   gh workflow run tests-targeted.yml --ref <branch> -f filter='*CoverFreshness*'
+#   gh run list --workflow "Tests Targeted" --branch <branch> --limit 1
+#   gh run watch <run-id> --exit-status --interval 30
+name: Tests Targeted
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: 'Gradle --tests 过滤模式（类/方法通配符）'
+        required: true
+        default: '*CoverFreshness*'
+
+concurrency:
+  group: tests-targeted-${{ github.ref }}-${{ inputs.filter }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6144M -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
+
+jobs:
+  targeted:
+    name: Targeted JVM Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Gradle environment
+        uses: ./.github/actions/gradle-setup
+
+      # 先单独编译测试源：类型推断、缺 import 这类错误不必等测试任务启动。
+      - name: Compile tests (fast failure)
+        run: ./gradlew :shared:compileTestKotlinJvm --stacktrace
+
+      - name: Run targeted tests
+        run: >-
+          ./gradlew :shared:jvmTest
+          --tests "${{ inputs.filter }}"
+          --stacktrace 2>&1 | tee targeted-test.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize first failure
+        if: failure()
+        run: |
+          {
+            echo "## 首个失败"
+            echo '```'
+            grep -m5 -E "e: |FAILED" targeted-test.log 2>/dev/null || echo "(未能提取错误行)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: targeted-test-reports
+          path: |
+            shared/build/reports/tests/
+            shared/build/test-results/
+            targeted-test.log
