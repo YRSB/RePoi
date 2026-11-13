@@ -45,7 +45,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.platform.rememberTextSharing
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -245,9 +245,10 @@ fun PostDetailScreen(
         },
         floatingToolbar = {
             val detail = uiState.detail
-            val isAuthor = detail?.user?.effectiveUserId == uiState.currentUserId && uiState.currentUserId > 0L
+            if (detail != null) {
+                val isAuthor = detail.user?.effectiveUserId == uiState.currentUserId && uiState.currentUserId > 0L
 
-            ExpressiveFloatingToolbar {
+                ExpressiveFloatingToolbar {
                 // 1. 回帖主按钮
                 ExpressiveToolbarButton(
                     onClick = { openTopLevelCommentDialog() },
@@ -292,12 +293,18 @@ fun PostDetailScreen(
                 }
             }
         }
+    }
     ) { scaffoldScope ->
 
-        // ── 1. 骨架态或错误态 ──
-        if (uiState.isInitialLoading) {
-            item(key = "post_loading_skeleton") {
-                ShimmerHost { PostDetailSkeleton(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+        // ── 1. 初始加载态或错误态 ──
+        if (uiState.isInitialLoading && uiState.detail == null) {
+            item(key = "post_initial_loading") {
+                Box(
+                    modifier = Modifier.fillParentMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PoiLoadingView()
+                }
             }
         } else if (uiState.detailError != null && uiState.detail == null) {
             item(key = "post_error_state") {
@@ -659,67 +666,6 @@ private fun PostRelateHobbyCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-/**
- * 帖子详情加载骨架。
- */
-@Composable
-private fun PostDetailSkeleton(modifier: Modifier = Modifier) {
-    ElevatedCard(
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 120.dp, height = 14.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(width = 80.dp, height = 10.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(20.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            )
         }
     }
 }

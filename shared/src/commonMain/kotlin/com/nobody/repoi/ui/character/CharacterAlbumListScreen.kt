@@ -40,7 +40,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -62,7 +62,6 @@ import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.PoiAsyncImage
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterAlbumListNavParam
 import androidx.compose.material3.ElevatedCard
 
@@ -130,7 +129,7 @@ fun CharacterAlbumListScreen(
             ) { (isLoading, isError, isEmpty) ->
                 when {
                     isLoading -> {
-                        ShimmerHost { CharacterAlbumListSkeleton(navBarBottomPadding = innerPadding.calculateBottomPadding()) }
+                        PoiLoadingView()
                     }
                     isError -> {
                         CharacterAlbumListError(
@@ -342,43 +341,6 @@ private fun CharacterAlbumStaggeredCard(
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * 角色相册列表骨架屏。
- */
-@Composable
-private fun CharacterAlbumListSkeleton(
-    navBarBottomPadding: androidx.compose.ui.unit.Dp,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalStaggeredGrid(
-        columns = rememberAlbumStaggeredGridColumns(),
-        contentPadding = PaddingValues(
-            start = 8.dp,
-            top = 8.dp,
-            end = 8.dp,
-            bottom = 24.dp + navBarBottomPadding
-        ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp,
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false
-    ) {
-        items(
-            count = 6,
-            key = { "character_album_skeleton_$it" },
-            contentType = { "skeleton" }
-        ) { index ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((180 + (index % 3) * 50).dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .shimmerBackground()
-            )
         }
     }
 }

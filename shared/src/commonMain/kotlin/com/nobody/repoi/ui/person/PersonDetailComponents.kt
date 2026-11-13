@@ -40,7 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +59,6 @@ import com.nobody.repoi.data.remote.model.PersonHobbyEntry
 import com.nobody.repoi.data.remote.model.PersonWorksEntry
 import com.nobody.repoi.data.remote.model.PersonWorksItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
@@ -315,24 +314,7 @@ internal fun PersonHobbiesSection(
             }
 
             if (isLoading && hobbies.isEmpty()) {
-                // 九宫格骨架
-                ShimmerHost {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(3) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(3) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(0.8f)
-                                        .clip(MaterialTheme.shapes.medium)
-                                        .shimmerBackground()
-                                )
-                            }
-                        }
-                    }
-                }
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (hobbies.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -466,15 +448,7 @@ internal fun PersonWorksSection(
             }
 
             if (isLoading && works.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     works.take(6).forEach { entry ->
@@ -591,15 +565,7 @@ internal fun PersonCharactersSection(
             }
 
             if (isLoading && characters.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     characters.take(6).forEach { entry ->
@@ -721,74 +687,8 @@ internal fun PersonFloatingActionBar(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 状态占位组件 (骨架与错误)
+// 状态占位组件 (错误重试)
 // ─────────────────────────────────────────────────────────────
-
-@Composable
-internal fun PersonDetailSkeleton(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .statusBarsPadding()
-            .fillMaxSize()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilledTonalIconButton(
-                onClick = onBack,
-                modifier = Modifier.size(38.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Box(
-            modifier = Modifier
-                .size(76.dp)
-                .clip(CircleShape)
-                .shimmerBackground()
-                .align(Alignment.CenterHorizontally)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .width(140.dp)
-                .height(22.dp)
-                .clip(MaterialTheme.shapes.small)
-                .shimmerBackground()
-                .align(Alignment.CenterHorizontally)
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-
-        repeat(3) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
-                    .clip(MaterialTheme.shapes.large)
-                    .shimmerBackground()
-            )
-        }
-    }
-}
 
 @Composable
 internal fun PersonErrorState(

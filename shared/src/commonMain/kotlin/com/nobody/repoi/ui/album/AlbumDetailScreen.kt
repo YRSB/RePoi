@@ -74,7 +74,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -126,7 +126,6 @@ import com.nobody.repoi.data.repository.FriendState
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
@@ -236,11 +235,6 @@ fun AlbumDetailScreen(
     }
 
     when {
-        // 首屏完整加载态
-        uiState.isInitialLoading && uiState.album == null -> {
-            ShimmerHost { AlbumDetailSkeleton(onBack = onBack) }
-        }
-
         // 错误重试界面
         uiState.errorMessage != null && uiState.album == null -> {
             AlbumErrorState(
@@ -286,7 +280,7 @@ fun AlbumDetailScreen(
                     totalCommentCount = album?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                     hotComments = uiState.hotComments,
                     latestComments = uiState.latestComments,
-                    isCommentsLoading = uiState.isCommentsLoading,
+                    isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && album == null),
                     isLoadingMoreComments = uiState.isLoadingMoreComments,
                     hasMoreComments = uiState.hasMoreComments,
                     commentsError = uiState.commentsError
@@ -320,7 +314,7 @@ fun AlbumDetailScreen(
                 floatingToolbar = {
                     val curAlbum = uiState.album
                     val firstRelatedHobby = uiState.relatedHobbies.firstOrNull()
-                    if (curAlbum != null || !uiState.isInitialLoading) {
+                    if (curAlbum != null) {
                         AlbumFloatingActionBar(
                             isLiked = uiState.isLiked,
                             isCollected = uiState.isCollected,
@@ -362,9 +356,12 @@ fun AlbumDetailScreen(
                     }
                 }
             ) {
-                LazyVerticalStaggeredGrid(
-                    columns = StaggeredGridCells.Adaptive(320.dp),
-                    state = gridState,
+                if (uiState.isInitialLoading && album == null) {
+                    PoiLoadingView()
+                } else {
+                    LazyVerticalStaggeredGrid(
+                        columns = StaggeredGridCells.Adaptive(320.dp),
+                        state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 110.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -414,16 +411,8 @@ fun AlbumDetailScreen(
                         )
                     }
                 } else if (uiState.isPicturesLoading) {
-                    // 图片列表初始加载骨架屏（展示多张不同比例骨架，让用户清晰感知正在加载照片瀑布流）
-                    val placeholderHeights = listOf(320.dp, 240.dp, 360.dp, 280.dp)
-                    items(placeholderHeights.size, key = { "pic_skeleton_$it" }) { index ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(placeholderHeights[index])
-                                .clip(MaterialTheme.shapes.medium)
-                                .shimmerBackground()
-                        )
+                    item(key = "pics_loading", span = StaggeredGridItemSpan.FullLine) {
+                        PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
                     }
                 } else {
                     // 加载完毕且无任何图片时的明确空状态提示
@@ -557,6 +546,7 @@ fun AlbumDetailScreen(
                     }
                 }
 
+                }
                 }
             }
         }
@@ -1112,41 +1102,8 @@ private fun AlbumFloatingActionBar(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 骨架屏加载态与错误重试
+// 错误重试状态占位
 // ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun AlbumDetailSkeleton(
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(top = 56.dp, start = 14.dp, end = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        // 头部卡片骨架
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-                .clip(MaterialTheme.shapes.largeCard)
-                .shimmerBackground()
-        )
-
-        // 图片长图骨架
-        repeat(3) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .shimmerBackground()
-            )
-        }
-    }
-}
 
 @Composable
 private fun AlbumErrorState(

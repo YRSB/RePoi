@@ -31,10 +31,10 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -43,7 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -68,7 +68,6 @@ import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.PoiAsyncImage
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -202,7 +201,7 @@ fun HobbyAlbumListScreen(
             ) { (isLoading, isError, isEmpty) ->
                 when {
                     isLoading -> {
-                        ShimmerHost { HobbyAlbumListSkeleton(navBarBottomPadding = innerPadding.calculateBottomPadding()) }
+                        PoiLoadingView()
                     }
                     isError -> {
                         HobbyAlbumListError(
@@ -275,9 +274,8 @@ fun HobbyAlbumListScreen(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(28.dp),
-                                            strokeWidth = 2.5.dp
+                                        LoadingIndicator(
+                                            modifier = Modifier.size(28.dp)
                                         )
                                     }
                                 }
@@ -401,95 +399,6 @@ private fun HobbyAlbumStaggeredCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * 手办相册列表骨架屏。
- */
-@Composable
-private fun HobbyAlbumListSkeleton(
-    navBarBottomPadding: Dp,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalStaggeredGrid(
-        columns = rememberAlbumStaggeredGridColumns(),
-        contentPadding = PaddingValues(
-            start = 8.dp,
-            top = 8.dp,
-            end = 8.dp,
-            bottom = 24.dp + navBarBottomPadding
-        ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp,
-        userScrollEnabled = false,
-        modifier = modifier.fillMaxSize()
-    ) {
-        items(
-            count = 6,
-            key = { "hobby_album_list_skeleton_$it" },
-            contentType = { "skeleton" }
-        ) { index ->
-            val ratio = when (index % 3) {
-                0 -> 0.75f
-                1 -> 1.2f
-                else -> 0.9f
-            }
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small
-            ) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(ratio)
-                            .shimmerBackground()
-                    )
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .height(14.dp)
-                                .clip(MaterialTheme.shapes.extraSmall)
-                                .shimmerBackground()
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .shimmerBackground()
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = 40.dp, height = 10.dp)
-                                        .clip(MaterialTheme.shapes.extraSmall)
-                                        .shimmerBackground()
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 24.dp, height = 10.dp)
-                                    .clip(MaterialTheme.shapes.extraSmall)
-                                    .shimmerBackground()
-                            )
-                        }
                     }
                 }
             }

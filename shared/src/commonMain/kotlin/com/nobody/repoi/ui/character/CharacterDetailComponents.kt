@@ -53,7 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -78,7 +78,6 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.common.PoiAsyncImage
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import androidx.compose.material3.ElevatedCard
 
 // ─────────────────────────────────────────────────────────────
@@ -326,7 +325,7 @@ internal fun CharacterWorksSection(
             }
 
             if (isLoading && works.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(80.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     works.take(5).forEach { work ->
@@ -521,7 +520,7 @@ internal fun CharacterHobbysSection(
             }
 
             if (isLoading && hobbys.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(140.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 AdaptiveChunkedGrid(
                     items = hobbys.take(9),
@@ -629,27 +628,7 @@ internal fun CharacterAlbumsSection(
             )
 
             if (isLoading && albums.isEmpty()) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(count = 4, key = { "character_detail_skeleton_$it" }, contentType = { "skeleton" }) { index ->
-                        val shimmerWidth = when (index % 3) {
-                            0 -> 140.dp
-                            1 -> 160.dp
-                            else -> 120.dp
-                        }
-                        ShimmerHost {
-                            Box(
-                                modifier = Modifier
-                                    .height(160.dp)
-                                    .width(shimmerWidth)
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .shimmerBackground()
-                            )
-                        }
-                    }
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 14.dp),
@@ -823,7 +802,7 @@ internal fun CharacterRelevantSection(
             )
 
             if (isLoading && characters.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(100.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -899,51 +878,8 @@ private fun CharacterRelevantCard(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 骨架屏与错误重试态
+// 状态占位组件 (错误重试)
 // ─────────────────────────────────────────────────────────────
-
-@Composable
-internal fun CharacterDetailSkeleton(
-    onBack: () -> Unit,
-    isDark: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-        }
-        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(105.dp)
-                        .aspectRatio(9f / 13f)
-                        .clip(MaterialTheme.shapes.medium)
-                        .shimmerBackground()
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxWidth(0.7f).height(20.dp).shimmerBackground())
-                    Box(modifier = Modifier.fillMaxWidth(0.5f).height(14.dp).shimmerBackground())
-                    Box(modifier = Modifier.fillMaxWidth(0.9f).height(14.dp).shimmerBackground())
-                }
-            }
-        }
-        Box(modifier = Modifier.fillMaxWidth().height(40.dp).shimmerBackground())
-        Box(modifier = Modifier.fillMaxWidth().height(160.dp).shimmerBackground())
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp).shimmerBackground())
-    }
-}
 
 @Composable
 internal fun CharacterErrorState(

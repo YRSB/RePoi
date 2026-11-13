@@ -47,7 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -70,7 +70,6 @@ import com.nobody.repoi.data.remote.model.CharacterWorksItem
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.CharacterWorksListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
@@ -143,11 +142,7 @@ fun CharacterWorksListScreen(
                 label = "CharacterWorksListState"
             ) { state ->
                 when (state) {
-                    ScreenState.Loading -> ShimmerHost {
-                        CharacterWorksSkeletonList(
-                            bottomPadding = innerPadding.calculateBottomPadding()
-                        )
-                    }
+                    ScreenState.Loading -> PoiLoadingView()
 
                     ScreenState.Error -> {
                         CharacterWorksErrorState(
@@ -504,81 +499,6 @@ private fun PerformerPill(
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CharacterWorksSkeletonList(
-    bottomPadding: androidx.compose.ui.unit.Dp,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        contentPadding = PaddingValues(
-            start = 14.dp,
-            end = 14.dp,
-            top = 10.dp,
-            bottom = bottomPadding + 24.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false
-    ) {
-        items(count = 6, key = { "character_works_skeleton_$it" }, contentType = { "skeleton" }) {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(84.dp)
-                                .height(112.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .shimmerBackground()
-                        )
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.8f)
-                                    .height(18.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .shimmerBackground()
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .width(72.dp)
-                                    .height(14.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .shimmerBackground()
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.6f)
-                                    .height(12.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .shimmerBackground()
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f)
-                            .height(28.dp)
-                            .clip(CircleShape)
-                            .shimmerBackground()
                     )
                 }
             }

@@ -61,7 +61,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,8 +85,6 @@ import com.nobody.repoi.data.remote.model.CompanyTagItem
 import com.nobody.repoi.data.remote.model.CompanyTagVoteItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.home.components.ActionCard
-import com.nobody.repoi.ui.home.components.ActionCardSkeleton
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.theme.largeCard
@@ -321,7 +319,7 @@ internal fun VendorActionSection(
             }
 
             if (isLoading && actions.isEmpty()) {
-                ShimmerHost { ActionCardSkeleton() }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (actions.isEmpty()) {
                 // 空状态占位
                 Box(
@@ -474,24 +472,7 @@ internal fun VendorProductsSection(
             }
 
             if (isLoading && products.isEmpty()) {
-                // 九宫格骨架占位
-                ShimmerHost {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(3) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(3) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(0.85f)
-                                        .clip(MaterialTheme.shapes.medium)
-                                        .shimmerBackground()
-                                )
-                            }
-                        }
-                    }
-                }
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (products.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -577,15 +558,7 @@ internal fun VendorSeriesSection(
             }
 
             if (isLoading && seriesList.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (seriesList.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -708,70 +681,8 @@ internal fun VendorFloatingActionBar(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 骨架屏加载态与错误重试
+// 错误重试状态占位
 // ─────────────────────────────────────────────────────────────
-
-@Composable
-internal fun VendorDetailSkeleton(
-    onBack: () -> Unit,
-    isDark: Boolean
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(top = 70.dp, start = 14.dp, end = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // 头部卡片骨架
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(MaterialTheme.shapes.largeCard)
-                    .shimmerBackground()
-            )
-
-            // 动态卡片骨架
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .clip(MaterialTheme.shapes.largeCard)
-                    .shimmerBackground()
-            )
-
-            // 产品九宫格骨架
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
-                    .clip(MaterialTheme.shapes.largeCard)
-                    .shimmerBackground()
-            )
-        }
-
-        // 返回按键
-        FilledTonalIconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(14.dp)
-                .size(38.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "返回",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
 
 @Composable
 internal fun VendorErrorState(
