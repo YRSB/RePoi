@@ -27,11 +27,11 @@ import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
@@ -63,6 +63,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.LevelPill
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
@@ -195,15 +196,7 @@ fun FriendListScreen(
                 ) {
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(36.dp),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                            PoiLoadingView()
                         }
 
                         uiState.errorMessage != null && uiState.items.isEmpty() -> {
@@ -299,9 +292,8 @@ fun FriendListScreen(
                                                 .padding(vertical = 16.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(24.dp),
-                                                strokeWidth = 2.dp
+                                            LoadingIndicator(
+                                                modifier = Modifier.size(28.dp)
                                             )
                                         }
                                     }

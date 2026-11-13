@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -106,11 +106,9 @@ fun HobbyLoadingMoreFooter(
     ) {
         when {
             isLoadingMore -> {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.5.dp,
+                LoadingIndicator(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(28.dp)
                         .semantics { contentDescription = "正在加载更多" }
                 )
             }
