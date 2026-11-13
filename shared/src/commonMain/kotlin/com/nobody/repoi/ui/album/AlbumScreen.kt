@@ -37,12 +37,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
@@ -477,7 +477,7 @@ private fun AlbumFeedGrid(
                         .fillMaxWidth()
                         .padding(12.dp)
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    LoadingIndicator(modifier = Modifier.size(28.dp))
                 }
             }
         }
@@ -581,7 +581,7 @@ private fun RankingSections(
                         .fillMaxWidth()
                         .padding(12.dp)
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    LoadingIndicator(modifier = Modifier.size(28.dp))
                 }
             }
         }

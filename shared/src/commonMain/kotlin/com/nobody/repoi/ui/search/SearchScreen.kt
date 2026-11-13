@@ -31,7 +31,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -77,6 +76,7 @@ import com.nobody.repoi.ui.search.components.EveryoneSearchingSection
 import com.nobody.repoi.ui.search.components.GeneralSearchCard
 import com.nobody.repoi.ui.search.components.HobbyFilterState
 import com.nobody.repoi.ui.search.components.HobbySearchCard
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.search.components.LoadingMoreFooter
 import com.nobody.repoi.ui.search.components.SearchFilterAdaptiveSheet
 import com.nobody.repoi.ui.search.components.SearchHistorySection
@@ -608,15 +608,7 @@ private fun SearchTabContent(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 (tabState.isLoading || !tabState.isLoaded) && tabState.errorMessage == null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
+                    PoiLoadingView()
                 }
 
                 tabState.errorMessage != null && tabState.items.isEmpty() && tabState.userItems.isEmpty() -> {
