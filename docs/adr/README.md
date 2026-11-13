@@ -28,6 +28,8 @@
 | [ADR-0014](0014-cover-freshness-persistent-cache.md) | 封面新鲜度持久化缓存与列表前置自愈架构 | **多媒体/持久化/自愈**：DataStore 内存镜像、前置主动重写、永久有效与 1000 条插入序 FIFO 淘汰、404 穿透自愈 | 已采纳 (Accepted) - 2026-11-11 |
 | [ADR-0015](0015-action-card-poster-rigid-box-fit.md) | 动态流卡片海报槽位刚性定框与无裁切完全呈现防跳变架构 | **UI/防跳变/多媒体**：9:13 黄金刚性定框、ContentScale.Fit 居中完全呈现、骨架屏 1:1 等高对齐、彻底消除 CLS | 已被 ADR-0016 修正演进 (Amended by ADR-0016) - 2026-11-12 |
 | [ADR-0016](0016-action-card-categorized-poster-layout.md) | 动态流卡片海报分类分流（手办刚性定框与相册高度自适应）架构 | **UI/防跳变/多媒体**：手办 9:13 黄金刚性定框、相册自适应高度且封顶 140dp、消除相册白边、右侧内容高度锚定 | 已采纳 (Accepted) - 2026-11-12 |
+| [ADR-0017](0017-search-pager-static-header.md) | 搜索结果页常驻顶栏与 HorizontalPager 分类分页架构 | **搜索/UI架构/多页分页**：静态 Column 平铺顶栏、彻底移除嵌套折叠与 topContentPadding、HorizontalPager 8 分类双向联动、分类独立缓存与按需懒加载、页面级独立下拉刷新 | 已采纳 (Accepted) - 2026-11-12 |
+
 
 ---
 
