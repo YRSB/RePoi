@@ -140,3 +140,22 @@
     `gk/` 时生效，`gk/` 之后的路径与 query 保留。
 
 实现与接线细节见 [media.md](media.md#列表封面快照失效onerror--按条回源)。
+
+---
+
+## 11. 用户搜索接口（`api/search/user`）双重 JSON 序列化与空数据缺失 `data` 节点
+
+- **涉及接口**：`POST api/search/user`。
+- **踩坑现象**：
+  1. **Spring MVC 双重 JSON 序列化陷阱**：
+     - 该 Controller 方法在服务端直接返回了序列化后的 JSON 字符串（裸 `String`）；
+     - 当客户端发出的请求头携带 `Accept: application/json`（例如 Ktor 安装了 `ContentNegotiation` 插件）时，Spring MVC 的 Content Negotiation 机制匹配到 `MappingJackson2HttpMessageConverter`，把返回的 `String` 作为普通对象再次进行 JSON 序列化，返回了**被双引号包裹且内部双引号全部转义的字符串字面量**（`"{\"@id\":\"1\",\"success\":true,\"msg\":\"操作成功\",\"code\":200,\"data\":{\"userList\":[...]}}"`）；
+     - Kotlinx Serialization 在试图将该响应解析为 `CommonResponse<UserSearchPayload>` 对象时，在 offset 0 处遇到了双引号 `"` 而非预期的 `{`，触发崩溃：`JsonDecodingException: Unexpected JSON token at offset 0: Expected start of the object '{', but had '"' instead at path: $`；
+     - 原版 Android App 底层使用 OkHttp，默认请求头不包含 `Accept: application/json`，故命中服务端的 `StringHttpMessageConverter`，直接输出原始 JSON，原版因此未暴露该问题。
+  2. **空结果缺失 `data` 节点**：
+     - 当关键词未匹配到任何用户时，服务端返回 `{"@id":"1","success":true,"msg":"操作成功","code":200}`，响应中**完全没有 `data` 字段**；
+     - 若仓储层硬编码判定 `response.success && response.data != null`，会导致空结果被误判为请求失败并抛出 `ApiException(200, "操作成功")`，界面因而展现红色错误与重试按钮，无法展示预期的空结果占位页。
+- **推荐解法**：
+  1. **请求层防御**：在 `HpoiApi.searchUsers` 发包时显式声明 `headers[HttpHeaders.Accept] = "*/*"`，对齐原版 OkHttp 默认行为；
+  2. **解析层深层防御**：在 `RefAware.kt` 的 `decodeRefAware` 与 `decodePlain` 中统一接入 `unwrapDoubleEncodedJson`。通过识别外层双引号与 `JsonPrimitive` 内部 JSON 字符特征，自动解包被双重序列化的 JSON，兼顾各种网络代理与极端环境；
+  3. **仓储层安全兜底**：在 `SearchRepository.searchUsers` 中，当 `response.success` 为 true 时，使用 `response.data ?: UserSearchPayload(userList = emptyList())` 承接空数据，确保返回空列表流转至界面的 `EmptyResultPlaceholder`。

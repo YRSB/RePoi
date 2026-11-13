@@ -94,8 +94,8 @@ class SearchRepository(
             page = page,
             pageSize = pageSize
         )
-        if (response.success && response.data != null) {
-            response.data
+        if (response.success) {
+            response.data ?: UserSearchPayload(userList = emptyList())
         } else {
             throw ApiException(response.code, response.msg ?: "搜索用户失败")
         }

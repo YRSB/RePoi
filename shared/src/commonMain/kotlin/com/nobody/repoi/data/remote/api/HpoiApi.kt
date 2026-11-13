@@ -730,6 +730,7 @@ class HpoiApi(
         page: Int = 1,
         pageSize: Int = 10,
     ): CommonResponse<UserSearchPayload> = client.post("api/search/user") {
+        headers[HttpHeaders.Accept] = "*/*"
         setBody(formOf("keyword" to keyword, "page" to page, "pageSize" to pageSize))
     }.decodeRefAware(json)
 

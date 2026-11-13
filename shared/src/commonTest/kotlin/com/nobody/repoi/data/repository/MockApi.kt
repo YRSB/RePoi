@@ -11,6 +11,7 @@ import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -191,6 +192,11 @@ class RecordedHttpRequest internal constructor(private val request: HttpRequestD
         get() = request.url.encodedPath.ifEmpty { null }
 
     fun queryParameter(name: String): String? = request.url.parameters[name]
+
+    val headers: Headers
+        get() = request.headers
+
+    fun header(name: String): String? = request.headers[name]
 
     /** POST form 字段（`FormDataContent.formData` 还原；非 form 请求返回空 map）。 */
     fun formEntries(): Map<String, String> {
