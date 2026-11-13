@@ -179,8 +179,7 @@ fun LazyListScope.commentSectionItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Loading,
-            CommentFeedEntry.Skeleton -> item(key = "comments_loading", contentType = "comments_loading") {
+            CommentFeedEntry.Loading -> item(key = "comments_loading", contentType = "comments_loading") {
                 PoiLoadingView(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1489,8 +1488,7 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Loading,
-            CommentFeedEntry.Skeleton -> item(key = "comments_loading", span = StaggeredGridItemSpan.FullLine, contentType = "comments_loading") {
+            CommentFeedEntry.Loading -> item(key = "comments_loading", span = StaggeredGridItemSpan.FullLine, contentType = "comments_loading") {
                 PoiLoadingView(
                     modifier = Modifier
                         .fillMaxWidth()

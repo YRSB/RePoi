@@ -10,7 +10,6 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiListCard
-import com.nobody.repoi.ui.common.card.PoiListCardSkeleton
 import com.nobody.repoi.ui.common.card.PoiThumbnail
 
 /**
@@ -46,14 +45,4 @@ fun ZoneEntityCard(
             maxLines = 1
         )
     }
-}
-
-/**
- * 专区通用实体卡片骨架占位
- */
-@Composable
-fun ZoneEntityCardSkeleton(
-    modifier: Modifier = Modifier
-) {
-    PoiListCardSkeleton(modifier = modifier)
 }

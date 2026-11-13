@@ -90,7 +90,7 @@ class CommentFeedEntriesTest {
             hasMore = false,
             commentsError = null
         )
-        assertFalse(entries.any { it is CommentFeedEntry.Loading || it is CommentFeedEntry.Skeleton })
+        assertFalse(entries.any { it is CommentFeedEntry.Loading })
         assertEquals(3, entries.filterIsInstance<CommentFeedEntry.LatestComment>().size)
     }
 

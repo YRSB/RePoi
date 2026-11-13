@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nobody.repoi.data.remote.model.ForumItem
-import com.nobody.repoi.ui.home.components.shimmerBackground
 
 /**
  * 版块订阅卡（对标原版 item_forum_subscribe）。
@@ -191,56 +190,6 @@ fun PlateSubscribeCard(
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * 版块订阅卡骨架屏。
- */
-@Composable
-fun PlateSubscribeCardSkeleton(modifier: Modifier = Modifier) {
-    ElevatedCard(
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 110.dp, height = 18.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .shimmerBackground()
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .height(14.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .shimmerBackground()
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(width = 76.dp, height = 34.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .shimmerBackground()
-            )
         }
     }
 }

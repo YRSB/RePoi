@@ -47,9 +47,8 @@ import com.nobody.repoi.data.remote.model.ForumItem
 import com.nobody.repoi.ui.forum.components.ForumEmptyPlaceholder
 import com.nobody.repoi.ui.forum.components.ForumErrorPlaceholder
 import com.nobody.repoi.ui.forum.components.ForumPaginationFooter
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.forum.components.PlateSubscribeCard
-import com.nobody.repoi.ui.forum.components.PlateSubscribeCardSkeleton
-import com.nobody.repoi.ui.home.components.ShimmerHost
 import kotlinx.coroutines.launch
 
 /**
@@ -302,74 +301,70 @@ private fun PlateTabPage(
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize()
     ) {
-        LazyVerticalStaggeredGrid(
-            columns = rememberPlateGridColumns(),
-            state = gridState,
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
-            verticalItemSpacing = 12.dp,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (isLoading && plates.isEmpty()) {
-                items(
-                    5,
-                    key = { index -> "plate_skeleton_$index" },
-                    contentType = { "plate_skeleton" }
-                ) {
-                    ShimmerHost { PlateSubscribeCardSkeleton() }
-                }
-            } else if (errorMessage != null && plates.isEmpty()) {
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "plates_error",
-                    contentType = "plates_error"
-                ) {
-                    ForumErrorPlaceholder(
-                        message = errorMessage,
-                        onRetry = onRetry,
-                        onLogin = onLogin
-                    )
-                }
-            } else if (plates.isEmpty()) {
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "plates_empty",
-                    contentType = "plates_empty"
-                ) {
-                    ForumEmptyPlaceholder(emptyText)
-                }
-            } else {
-                items(
-                    count = plates.size,
-                    key = { index -> "plate_${plates[index].id}" },
-                    contentType = { "plate_card" }
-                ) { index ->
-                    val plate = plates[index]
-                    PlateSubscribeCard(
-                        plate = plate,
-                        showNewBadge = isUnfocusTab && plate.isNewPlate,
-                        userLevel = userLevel,
-                        isMutating = mutatingIds.contains(plate.id),
-                        isSortMode = isSort,
-                        sortIndex = index,
-                        sortSize = plates.size,
-                        onToggleFocus = { onToggleFocus(plate) },
-                        onMoveUp = { onMove(index, index - 1) },
-                        onMoveDown = { onMove(index, index + 1) }
-                    )
-                }
+        if (isLoading && plates.isEmpty()) {
+            PoiLoadingView()
+        } else {
+            LazyVerticalStaggeredGrid(
+                columns = rememberPlateGridColumns(),
+                state = gridState,
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (errorMessage != null && plates.isEmpty()) {
+                    item(
+                        span = StaggeredGridItemSpan.FullLine,
+                        key = "plates_error",
+                        contentType = "plates_error"
+                    ) {
+                        ForumErrorPlaceholder(
+                            message = errorMessage,
+                            onRetry = onRetry,
+                            onLogin = onLogin
+                        )
+                    }
+                } else if (plates.isEmpty()) {
+                    item(
+                        span = StaggeredGridItemSpan.FullLine,
+                        key = "plates_empty",
+                        contentType = "plates_empty"
+                    ) {
+                        ForumEmptyPlaceholder(emptyText)
+                    }
+                } else {
+                    items(
+                        count = plates.size,
+                        key = { index -> "plate_${plates[index].id}" },
+                        contentType = { "plate_card" }
+                    ) { index ->
+                        val plate = plates[index]
+                        PlateSubscribeCard(
+                            plate = plate,
+                            showNewBadge = isUnfocusTab && plate.isNewPlate,
+                            userLevel = userLevel,
+                            isMutating = mutatingIds.contains(plate.id),
+                            isSortMode = isSort,
+                            sortIndex = index,
+                            sortSize = plates.size,
+                            onToggleFocus = { onToggleFocus(plate) },
+                            onMoveUp = { onMove(index, index - 1) },
+                            onMoveDown = { onMove(index, index + 1) }
+                        )
+                    }
 
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "plates_footer",
-                    contentType = "plates_footer"
-                ) {
-                    ForumPaginationFooter(
-                        isLoadingMore = isLoadingMore,
-                        loadMoreError = loadMoreError,
-                        isEndReached = !hasMore,
-                        onRetry = onLoadMore
-                    )
+                    item(
+                        span = StaggeredGridItemSpan.FullLine,
+                        key = "plates_footer",
+                        contentType = "plates_footer"
+                    ) {
+                        ForumPaginationFooter(
+                            isLoadingMore = isLoadingMore,
+                            loadMoreError = loadMoreError,
+                            isEndReached = !hasMore,
+                            onRetry = onLoadMore
+                        )
+                    }
                 }
             }
         }

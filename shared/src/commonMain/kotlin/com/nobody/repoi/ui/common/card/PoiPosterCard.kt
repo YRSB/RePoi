@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -25,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.home.components.shimmerBackground
 
 /**
  * 网格海报卡基元 (PoiPosterCard)
@@ -177,29 +175,5 @@ private fun PosterContent(
 
         // 4. 多选模式浮层
         selectionOverlay?.invoke(this)
-    }
-}
-
-/**
- * 网格海报卡骨架占位基元 (PoiPosterCardSkeleton)
- */
-@Composable
-fun PoiPosterCardSkeleton(
-    modifier: Modifier = Modifier,
-    aspectRatio: Float? = 9f / 13f,
-    shape: Shape = MaterialTheme.shapes.small
-) {
-    ElevatedCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (aspectRatio != null) Modifier.aspectRatio(aspectRatio) else Modifier),
-        shape = shape
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(shape)
-                .shimmerBackground()
-        )
     }
 }
