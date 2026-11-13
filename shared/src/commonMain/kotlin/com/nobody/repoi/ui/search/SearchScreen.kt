@@ -36,7 +36,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -59,7 +58,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.SearchResultItem
@@ -88,7 +86,6 @@ import com.nobody.repoi.ui.search.components.SearchUserCard
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
-import kotlin.math.abs
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -330,44 +327,9 @@ fun SearchScreen(
                 contentColor = MaterialTheme.colorScheme.primary,
                 divider = {},
                 indicator = {
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier.tabIndicatorLayout { measurable, constraints, tabPositions ->
-                            if (tabPositions.isEmpty()) {
-                                return@tabIndicatorLayout layout(0, 0) {}
-                            }
-                            val page = pagerState.currentPage.coerceIn(0, tabPositions.lastIndex)
-                            // 向高页拖动时偏移为正，向低页拖动时为负
-                            val fraction = pagerState.currentPageOffsetFraction.coerceIn(-1f, 1f)
-                            val neighborPage = if (fraction >= 0f) {
-                                (page + 1).coerceAtMost(tabPositions.lastIndex)
-                            } else {
-                                (page - 1).coerceAtLeast(0)
-                            }
-                            val progress = abs(fraction)
-                            val currentPosition = tabPositions[page]
-                            val neighborPosition = tabPositions[neighborPage]
-                            // 在相邻页签的 left / width / contentWidth 间线性插值，拖拽过程中指示器连续跟随
-                            val tabLeft = lerp(currentPosition.left, neighborPosition.left, progress)
-                            val tabWidthPx = lerp(currentPosition.width, neighborPosition.width, progress)
-                                .roundToPx()
-                            val indicatorWidthPx =
-                                lerp(currentPosition.contentWidth, neighborPosition.contentWidth, progress)
-                                    .roundToPx()
-                                    .coerceAtLeast(1)
-                            val placeable = measurable.measure(
-                                constraints.copy(minWidth = indicatorWidthPx, maxWidth = indicatorWidthPx)
-                            )
-                            // 指示器容器按整行内容宽度布局，使 left 直接落在页签内容的绝对坐标上
-                            val rowContentWidthPx = tabPositions.last().let {
-                                it.left.roundToPx() + it.width.roundToPx()
-                            }
-                            val indicatorLeftPx =
-                                tabLeft.roundToPx() + ((tabWidthPx - indicatorWidthPx) / 2).coerceAtLeast(0)
-                            layout(rowContentWidthPx, placeable.height) {
-                                placeable.place(x = indicatorLeftPx, y = 0)
-                            }
-                        },
-                        width = Dp.Unspecified
+                    SearchTabIndicator(
+                        page = { pagerState.currentPage },
+                        pageOffsetFraction = { pagerState.currentPageOffsetFraction }
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
