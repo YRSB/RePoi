@@ -67,11 +67,13 @@ import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import com.nobody.repoi.ui.home.components.shimmerBackground
-import com.nobody.repoi.util.CdnUrlUtils
 import androidx.compose.material3.Card
 
 internal fun levelTier(level: Int): Int = when {
@@ -292,8 +294,8 @@ private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifie
         ) {
         RankMedal(rank = rank)
         Spacer(modifier = Modifier.width(10.dp))
-        val isNoCover = !item.hasCover || CdnUrlUtils.isNoCover(item.cover)
-        val coverUrl = if (isNoCover) "" else CdnUrlUtils.getCoverUrl(item.cover)
+        val isNoCover = !item.hasCover || MediaPipeline.Default.isPlaceholder(item.cover)
+        val coverUrl = if (isNoCover) "" else MediaPipeline.Default.resolveUrl(item.cover, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
         if (!isNoCover && coverUrl.isNotBlank()) {
             AsyncImage(
                 model = coverUrl,
@@ -327,7 +329,7 @@ private fun RankRow(item: AlbumListItem, rank: Int, onClick: () -> Unit, modifie
             )
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val avatarUrl = CdnUrlUtils.getHeadUrl(item.userAvatar)
+                val avatarUrl = MediaPipeline.Default.resolveUrl(item.userAvatar, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
                 Box(
                     modifier = Modifier
                         .size(18.dp)

@@ -63,13 +63,13 @@ val imageModule = module {
         }.logger(object : CoilLogger {
             override var minLevel: CoilLogger.Level = CoilLogger.Level.Info
 
-            override fun log(tag: String, priority: CoilLogger.Level, message: String?, throwable: Throwable?) {
+            override fun log(tag: String, level: CoilLogger.Level, message: String?, throwable: Throwable?) {
                 val msg = message ?: ""
                 if (throwable != null) {
                     AppLogger.e(tag, msg, throwable)
                     return
                 }
-                when (priority) {
+                when (level) {
                     CoilLogger.Level.Verbose, CoilLogger.Level.Debug -> AppLogger.d(tag, msg)
                     CoilLogger.Level.Info -> AppLogger.i(tag, msg)
                     CoilLogger.Level.Warn -> AppLogger.w(tag, msg)

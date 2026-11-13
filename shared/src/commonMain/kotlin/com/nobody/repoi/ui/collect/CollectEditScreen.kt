@@ -88,7 +88,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
 
@@ -544,7 +546,7 @@ private fun CollectItemHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            val coverUrl = cover?.let { CdnUrlUtils.getCoverUrl(it) } ?: ""
+            val coverUrl = cover?.let { MediaPipeline.Default.resolveUrl(it, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD) } ?: ""
             AsyncImage(
                 model = coverUrl,
                 contentDescription = name,

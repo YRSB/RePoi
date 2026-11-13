@@ -7,7 +7,8 @@ import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.platform.saveImageBytesToGallery
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaPipeline
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -512,7 +513,11 @@ class PictureGalleryViewModel(
      * 当前大图展示用的 URL：[showRaw] 为 true 时走 `pic/raw/`，否则走 `pic/n/`。
      */
     fun currentDisplayUrl(item: UserCollectPicItem, showRaw: Boolean): String =
-        if (showRaw) CdnUrlUtils.getRawPicUrl(item.actualUrl) else CdnUrlUtils.getPicNUrl(item.actualUrl)
+        if (showRaw) {
+            MediaPipeline.Default.resolvePictureUrl(item.actualUrl, ImagePurpose.FULLSCREEN_RAW)
+        } else {
+            MediaPipeline.Default.resolvePictureUrl(item.actualUrl, ImagePurpose.CARD_STANDARD)
+        }
 
     companion object {
         /** 切页后回填收藏态的延迟（原版 `PictureGalleryActivity.t0()` 的 500ms） */

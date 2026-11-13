@@ -2,7 +2,6 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
-import com.nobody.repoi.util.CdnUrlUtils
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -188,32 +187,32 @@ class ZoneRepositoryTest {
 
     @Test
     fun formatZoneIconUrl_rules() {
-        assertNull(CdnUrlUtils.getZoneIconUrl(null))
-        assertNull(CdnUrlUtils.getZoneIconUrl(""))
+        assertNull(ZoneRepository.formatZoneIconUrl(null))
+        assertNull(ZoneRepository.formatZoneIconUrl(""))
 
         // 以 zone/ 开头
-        val zoneUrl = CdnUrlUtils.getZoneIconUrl("zone/figure.png")
+        val zoneUrl = ZoneRepository.formatZoneIconUrl("zone/figure.png")
         assertEquals("https://rfx.hpoi.net/gk/zone/figure.png", zoneUrl)
 
         // 非 zone/ 开头
-        val normalUrl = CdnUrlUtils.getZoneIconUrl("cover.png")
+        val normalUrl = ZoneRepository.formatZoneIconUrl("cover.png")
         assertEquals("https://rfx.hpoi.net/gk/cover/s/cover.png", normalUrl)
 
         // 完整 http url 原样返回
-        val httpUrl = CdnUrlUtils.getZoneIconUrl("https://example.com/icon.png")
+        val httpUrl = ZoneRepository.formatZoneIconUrl("https://example.com/icon.png")
         assertEquals("https://example.com/icon.png", httpUrl)
     }
 
     @Test
     fun formatZoneCoverUrl_rules() {
-        assertNull(CdnUrlUtils.getZoneCoverUrl(null))
+        assertNull(ZoneRepository.formatZoneCoverUrl(null))
 
         // 以 zone/ 开头
-        val zoneCover = CdnUrlUtils.getZoneCoverUrl("zone/banner.jpg")
+        val zoneCover = ZoneRepository.formatZoneCoverUrl("zone/banner.jpg")
         assertEquals("https://rfx.hpoi.net/gk/zone/banner.jpg", zoneCover)
 
         // 非 zone/ 开头
-        val normalCover = CdnUrlUtils.getZoneCoverUrl("banner.jpg")
+        val normalCover = ZoneRepository.formatZoneCoverUrl("banner.jpg")
         assertEquals("https://rfx.hpoi.net/gk/cover/n/banner.jpg", normalCover)
     }
 

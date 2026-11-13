@@ -98,6 +98,17 @@ interface MediaPipeline {
     fun recordAspectRatio(key: String, ratio: Float)
 
     /**
+     * 手办/条目封面「带缺省兜底」解析：命中占位符时回退该用途的官方缺省封面。
+     */
+    fun resolveCoverUrlOrDefault(path: String?, purpose: ImagePurpose): String =
+        if (isPlaceholder(path)) getDefaultCoverUrl(purpose) else resolveUrl(path, MediaCategory.HOBBY, purpose)
+
+    /**
+     * 表情贴纸 URL（`sticker/item/` 目录，仅此处使用，非通用媒体变体家族）。
+     */
+    fun resolveStickerUrl(path: String?): String
+
+    /**
      * 解析用户相片（`pic/`）家族 URL：`THUMBNAIL` → `pic/s/`，
      * `ADAPTIVE_GRID` / `CARD_STANDARD` → `pic/n/`，`FULLSCREEN_RAW` → `pic/raw/`。
      *

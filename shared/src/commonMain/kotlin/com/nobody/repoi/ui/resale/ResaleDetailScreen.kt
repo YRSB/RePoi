@@ -66,7 +66,9 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.resale.components.rememberExternalLinkOpener
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 
 /**
  * 二手出售详情页（对应逆向 ResaleDetailActivity 规范与截图 1）。
@@ -134,7 +136,7 @@ fun ResaleDetailScreen(
                                     tint = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                val avatarUrl = remember(user.header) { CdnUrlUtils.getHeadUrl(user.header) }
+                                val avatarUrl = remember(user.header) { MediaPipeline.Default.resolveUrl(user.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD) }
                                 if (!avatarUrl.isNullOrBlank()) {
                                     AsyncImage(
                                         model = avatarUrl,
@@ -449,7 +451,7 @@ private fun ResaleLinkedHobbyCard(
                 contentAlignment = Alignment.Center
             ) {
                 val coverUrl = remember(item.cover) {
-                    item.cover?.takeIf { it.isNotBlank() }?.let { CdnUrlUtils.getCoverUrl(it) }
+                    item.cover?.takeIf { it.isNotBlank() }?.let { MediaPipeline.Default.resolveUrl(it, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD) }
                 }
                 if (!coverUrl.isNullOrBlank()) {
                     AsyncImage(

@@ -204,7 +204,7 @@ object DefaultMediaPipeline : MediaPipeline {
     /**
      * 手办/条目封面「带缺省兜底」解析：命中占位符时回退该用途的官方缺省封面。
      */
-    internal fun resolveCoverUrlOrDefault(path: String?, purpose: ImagePurpose): String =
+    override fun resolveCoverUrlOrDefault(path: String?, purpose: ImagePurpose): String =
         if (isPlaceholder(path)) getDefaultCoverUrl(purpose) else resolveUrl(path, MediaCategory.HOBBY, purpose)
 
     /**
@@ -217,7 +217,7 @@ object DefaultMediaPipeline : MediaPipeline {
         PicUrlRules.resolve(path, purpose)
 
     /** 表情贴纸 URL（`sticker/item/` 目录，仅此处使用，非通用媒体变体家族）。 */
-    internal fun resolveStickerUrl(path: String?): String {
+    override fun resolveStickerUrl(path: String?): String {
         if (path.isNullOrBlank()) return ""
         if (isAbsoluteUrl(path)) return path
         return "$CDN_BASE_URL$STICKER_PREFIX${path.trimStart('/')}"

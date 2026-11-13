@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nobody.repoi.util
 
 import kotlinx.serialization.json.Json

@@ -78,7 +78,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
-import com.nobody.repoi.util.CdnUrlUtils
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -521,7 +523,7 @@ private fun ContactItemCard(
                 }
             ) {
                 AsyncImage(
-                    model = CdnUrlUtils.getCoverSmallUrl(item.otherHeader ?: ""),
+                    model = MediaPipeline.Default.resolveUrl(item.otherHeader ?: "", MediaCategory.HOBBY, ImagePurpose.THUMBNAIL),
                     contentDescription = item.otherName,
                     modifier = Modifier
                         .size(48.dp)
