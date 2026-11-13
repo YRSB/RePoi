@@ -3,12 +3,14 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.remote.model.ApiException
+import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -123,10 +125,41 @@ class SearchRepositoryTest {
 
         assertTrue(result.isSuccess)
         assertEquals(9L, result.getOrThrow().userList?.first()?.userId)
-        val form = mock.takeRequest().formEntries()
+        val request = mock.takeRequest()
+        val form = request.formEntries()
         assertEquals("胶友", form["keyword"])
         assertEquals("3", form["page"])
         assertEquals("10", form["pageSize"])
+        assertEquals("*/*", request.header(HttpHeaders.Accept))
+    }
+
+    @Test
+    fun searchUsers_handlesDoubleEncodedJsonFromRealApi() = runTest {
+        val (mock, _, repository) = setup()
+        val realApiDoubleEncoded = """"{\"@id\":\"1\",\"success\":true,\"msg\":\"操作成功\",\"code\":200,\"data\":{\"userList\":[{\"def\":2,\"nickname\":\"碧蓝航线\",\"sign\":\"还没有信仰_(:з」∠)_\",\"hp\":0,\"header\":\"none.jpg\",\"atk\":0,\"id\":939873,\"userId\":160541}]}}""""
+        mock.enqueue(realApiDoubleEncoded)
+
+        val result = repository.searchUsers("碧蓝航线")
+
+        assertTrue(result.isSuccess)
+        val users = result.getOrThrow().userList
+        assertNotNull(users)
+        assertEquals(1, users.size)
+        assertEquals(160541L, users[0].userId)
+        assertEquals("碧蓝航线", users[0].nickname)
+    }
+
+    @Test
+    fun searchUsers_emptyDataPayloadReturnsEmptyListInsteadOfThrowing() = runTest {
+        val (mock, _, repository) = setup()
+        // 真实无匹配结果响应：无 data 字段
+        mock.enqueue("""{"@id":"1","success":true,"msg":"操作成功","code":200}""")
+
+        val result = repository.searchUsers("不存在的用户")
+
+        assertTrue(result.isSuccess)
+        val payload = result.getOrThrow()
+        assertTrue(payload.userList.isNullOrEmpty())
     }
 
     @Test
