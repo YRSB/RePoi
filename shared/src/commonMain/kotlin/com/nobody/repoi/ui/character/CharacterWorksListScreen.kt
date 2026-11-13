@@ -202,7 +202,6 @@ fun CharacterWorksListScreen(
             }
         }
     }
-}
 
 @Composable
 private fun CharacterWorksContentList(

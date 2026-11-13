@@ -207,7 +207,6 @@ fun CharacterAlbumListScreen(
             }
         }
     }
-}
 
 /**
  * 角色相册卡片（自适应长宽比瀑布流）。

@@ -277,7 +277,6 @@ fun HobbyAlbumListScreen(
             }
         }
     }
-}
 
 /**
  * 手办相册卡片（自适应长宽比瀑布流）。

@@ -115,4 +115,3 @@ _Avoid_: 搜索嵌套滚动, 单容器切换, 伪 Pager
 **页面加载指示器 (Page Loading Indicator / PoiLoadingView)**:
 在页面或区块未取得初始数据时居中呈现的 Material 3 Expressive 规范动态加载指示基元，统一替代过去模拟内容外轮廓的骨架屏。
 _Avoid_: 骨架屏 (Skeleton Screen), 局部加载框, 旋转进度菊花, 假界面
-
