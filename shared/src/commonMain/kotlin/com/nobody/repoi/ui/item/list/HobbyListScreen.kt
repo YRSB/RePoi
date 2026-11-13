@@ -64,7 +64,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -99,9 +99,8 @@ import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.ui.item.list.components.HobbyEmptyPlaceholder
 import com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet
 import com.nobody.repoi.ui.item.list.components.HobbyGridCard
-import com.nobody.repoi.ui.item.list.components.HobbyGridCardSkeleton
 import com.nobody.repoi.ui.item.list.components.HobbyListCard
-import com.nobody.repoi.ui.item.list.components.HobbyListCardSkeleton
+
 import com.nobody.repoi.ui.item.list.components.HobbyLoadingMoreFooter
 import kotlin.math.roundToInt
 import kotlinx.datetime.TimeZone
@@ -285,43 +284,12 @@ fun HobbyListScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
                 when {
-                uiState.isLoading && !uiState.isRefreshing -> {
-                    // 1:1 动态骨架屏（按固定类型复用，避免与正式卡片混用复用池）
-                    if (uiState.isGridMode) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 120.dp),
-                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = topContentPadding + 8.dp, bottom = 16.dp + navBarBottomPadding),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize(),
-                            userScrollEnabled = false
-                        ) {
-                            items(
-                                8,
-                                key = { index -> "hobby_grid_skeleton_$index" },
-                                contentType = { "hobby_grid_skeleton" }
-                            ) {
-                                ShimmerHost { HobbyGridCardSkeleton() }
-                            }
-                        }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 420.dp),
-                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = topContentPadding + 8.dp, bottom = 16.dp + navBarBottomPadding),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxSize(),
-                            userScrollEnabled = false
-                        ) {
-                            items(
-                                6,
-                                key = { index -> "hobby_list_skeleton_$index" },
-                                contentType = { "hobby_list_skeleton" }
-                            ) {
-                                ShimmerHost { HobbyListCardSkeleton() }
-                            }
-                        }
-                    }
+                uiState.isLoading && uiState.items.isEmpty() -> {
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = topContentPadding, bottom = 16.dp + navBarBottomPadding)
+                    )
                 }
 
                 uiState.errorMessage != null && uiState.items.isEmpty() -> {

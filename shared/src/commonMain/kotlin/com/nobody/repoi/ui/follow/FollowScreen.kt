@@ -51,7 +51,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
@@ -81,7 +81,6 @@ import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
-import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -260,14 +259,11 @@ fun FollowScreen(
                 ) {
                     FollowLoginGuide(onLogin = { onNavigateToLogin?.invoke() })
                 }
-                uiState.isInitialLoading && uiState.items.isEmpty() -> ShimmerHost {
-                    FollowSkeleton(
-                    contentPadding = PaddingValues(
-                        start = 8.dp,
-                        end = 8.dp,
-                        top = topContentPadding + 6.dp,
-                        bottom = bottomContentPadding
-                    )
+                uiState.isInitialLoading && uiState.items.isEmpty() -> {
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = topContentPadding, bottom = bottomContentPadding)
                     )
                 }
                 uiState.errorMessage != null && uiState.items.isEmpty() -> Box(
@@ -455,28 +451,6 @@ fun FollowScreen(
     }
 }
 
-/**
- * 关注屏骨架屏（按固定类型复用，避免与正式卡片混用复用池）。
- */
-@Composable
-private fun FollowSkeleton(
-    columns: StaggeredGridCells = rememberFeedStaggeredGridColumns(),
-    contentPadding: PaddingValues = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)
-) {
-    LazyVerticalStaggeredGrid(
-        columns = columns,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp
-    ) {
-        items(
-            6,
-            key = { index -> "follow_skeleton_$index" },
-            contentType = { "follow_skeleton" }
-        ) { ActionCardSkeleton() }
-    }
-}
 
 @Composable
 private fun FollowEmptyState(selectedTab: FollowTab) {

@@ -52,7 +52,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -90,7 +90,6 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
-import com.nobody.repoi.ui.home.components.shimmerBackground
 
 import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
@@ -250,10 +249,11 @@ fun AlbumScreen(
                     topContentPadding = totalHeaderHeight,
                     bottomContentPadding = bottomContentPadding
                 )
-                uiState.isLoading && uiState.items.isEmpty() -> ShimmerHost {
-                    AlbumFeedSkeleton(
-                    topContentPadding = totalHeaderHeight,
-                    bottomContentPadding = bottomContentPadding
+                uiState.isLoading && uiState.items.isEmpty() -> {
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = totalHeaderHeight, bottom = bottomContentPadding)
                     )
                 }
                 uiState.loginRequired -> Box(
@@ -494,7 +494,11 @@ private fun RankingSections(
     bottomContentPadding: Dp = 16.dp
 ) {
     if (uiState.isSectionsLoading && uiState.sections.isEmpty()) {
-        ShimmerHost { AlbumFeedSkeleton(topContentPadding = topContentPadding, bottomContentPadding = bottomContentPadding) }
+        PoiLoadingView(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = topContentPadding, bottom = bottomContentPadding)
+        )
         return
     }
     if (uiState.sections.isEmpty()) {
@@ -584,34 +588,6 @@ private fun RankingSections(
     }
 }
 
-@Composable
-private fun AlbumFeedSkeleton(
-    topContentPadding: Dp = 0.dp,
-    bottomContentPadding: Dp = 16.dp
-) {
-    // 相册骨架按固定类型复用，避免与正式卡片混用复用池
-    LazyVerticalStaggeredGrid(
-        columns = rememberAlbumStaggeredGridColumns(),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = topContentPadding + 8.dp, bottom = bottomContentPadding),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp,
-        userScrollEnabled = false,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(
-            6,
-            key = { index -> "album_skeleton_$index" },
-            contentType = { "album_skeleton" }
-        ) { index ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((160 + (index % 3) * 40).dp)
-                    .shimmerBackground()
-            )
-        }
-    }
-}
 
 @Composable
 private fun AlbumEmptyState(

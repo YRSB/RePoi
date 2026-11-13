@@ -71,7 +71,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,7 +101,6 @@ import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.home.components.ActionCard
-import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.search.SearchNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -248,24 +247,11 @@ fun HomeFeedScreen(
             ) {
                 when {
                 uiState.isInitialLoading -> {
-                    // 信息流骨架按固定类型复用，避免与正式卡片混用复用池
-                    ShimmerHost {
-                    LazyVerticalStaggeredGrid(
-                        columns = feedColumns,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = totalHeaderHeight + 8.dp, bottom = bottomContentPadding),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalItemSpacing = 8.dp
-                    ) {
-                        items(
-                            6,
-                            key = { index -> "home_skeleton_$index" },
-                            contentType = { "home_skeleton" }
-                        ) {
-                            ActionCardSkeleton()
-                        }
-                    }
-                    }
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = totalHeaderHeight, bottom = bottomContentPadding)
+                    )
                 }
 
                 uiState.errorMessage != null && uiState.items.isEmpty() -> {

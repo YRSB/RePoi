@@ -41,7 +41,7 @@ import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -62,7 +62,6 @@ import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleRegionPickerSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
-import com.nobody.repoi.ui.zone.components.ZoneResaleCardSkeleton
 
 /**
  * 同款二手与全站二手市场页（复用专区已有的二手设计体系与规范组件）。
@@ -215,17 +214,7 @@ fun ResaleMarketScreen(
             ) {
                 when {
                     uiState.isLoading && uiState.items.isEmpty() -> {
-                        LazyVerticalStaggeredGrid(
-                            columns = columns,
-                            contentPadding = PaddingValues(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalItemSpacing = 12.dp,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(count = 6, key = { "resale_market_skeleton_$it" }, contentType = { "skeleton" }) {
-                                ShimmerHost { ZoneResaleCardSkeleton() }
-                            }
-                        }
+                        PoiLoadingView()
                     }
                     uiState.errorMessage != null && uiState.items.isEmpty() -> {
                         Box(
