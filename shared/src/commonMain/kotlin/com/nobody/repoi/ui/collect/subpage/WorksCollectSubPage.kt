@@ -46,8 +46,8 @@ import com.nobody.repoi.ui.collect.components.CollectFilterBottomSheet
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.WorksCollectCard
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.collect.components.worksDetailItemId
 import androidx.compose.foundation.shape.CircleShape
 
@@ -203,7 +203,7 @@ internal fun WorksCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() && !subPageData.isContentHidden -> {

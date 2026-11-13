@@ -67,8 +67,8 @@ import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.components.CollectAlbumCard
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.subpage.UserCollectPicCard
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.data.media.ImagePurpose
@@ -313,7 +313,7 @@ private fun <T> CreationSubPageContent(
         ) {
             when {
                 tabState.isLoading && tabState.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
                 tabState.errorMessage != null && tabState.items.isEmpty() -> {
                     ErrorCollectView(errorMessage = tabState.errorMessage, onRetry = onRetry)

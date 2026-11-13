@@ -37,7 +37,7 @@ import com.nobody.repoi.ui.collect.components.CollectAlbumPictureOrderTabs
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.PoiAsyncImage
 
 // ── 图片子页（key=90000）────────────────────────────────────
@@ -113,7 +113,7 @@ internal fun PictureCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() -> {

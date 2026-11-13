@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.detail.album
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -191,28 +190,20 @@ fun HobbyAlbumListScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
-            Crossfade(
-                targetState = Triple(
-                    uiState.isInitialLoading && uiState.albums.isEmpty(),
-                    uiState.errorMessage != null && uiState.albums.isEmpty(),
-                    uiState.albums.isEmpty()
-                ),
-                label = "HobbyAlbumListStateCrossfade"
-            ) { (isLoading, isError, isEmpty) ->
-                when {
-                    isLoading -> {
-                        PoiLoadingView()
-                    }
-                    isError -> {
-                        HobbyAlbumListError(
-                            errorMessage = uiState.errorMessage ?: "加载失败",
-                            onRetry = { viewModel.retry() }
-                        )
-                    }
-                    isEmpty -> {
-                        HobbyAlbumListEmpty()
-                    }
-                    else -> {
+            when {
+                uiState.isInitialLoading && uiState.albums.isEmpty() -> {
+                    PoiLoadingView()
+                }
+                uiState.errorMessage != null && uiState.albums.isEmpty() -> {
+                    HobbyAlbumListError(
+                        errorMessage = uiState.errorMessage ?: "加载失败",
+                        onRetry = { viewModel.retry() }
+                    )
+                }
+                uiState.albums.isEmpty() -> {
+                    HobbyAlbumListEmpty()
+                }
+                else -> {
                         // 触底加载更多监听
                         val shouldLoadMore by remember {
                             derivedStateOf {

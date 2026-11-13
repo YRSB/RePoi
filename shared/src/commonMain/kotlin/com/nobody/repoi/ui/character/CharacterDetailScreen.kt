@@ -192,12 +192,7 @@ fun CharacterDetailScreen(
             ) {
                 if (uiState.isInitialLoading && character == null) {
                     item(key = "character_detail_initial_loading") {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PoiLoadingView()
-                        }
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
                     // ── 区块 0：角色综合档案卡 ──

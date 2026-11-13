@@ -299,12 +299,7 @@ fun PostDetailScreen(
         // ── 1. 初始加载态或错误态 ──
         if (uiState.isInitialLoading && uiState.detail == null) {
             item(key = "post_initial_loading") {
-                Box(
-                    modifier = Modifier.fillParentMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    PoiLoadingView()
-                }
+                PoiLoadingView(modifier = Modifier.fillParentMaxSize())
             }
         } else if (uiState.detailError != null && uiState.detail == null) {
             item(key = "post_error_state") {

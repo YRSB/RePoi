@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.character
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -132,33 +131,26 @@ fun CharacterWorksListScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
-            Crossfade(
-                targetState = when {
-                    uiState.isInitialLoading && uiState.works.isEmpty() -> ScreenState.Loading
-                    uiState.errorMessage != null && uiState.works.isEmpty() -> ScreenState.Error
-                    uiState.works.isEmpty() -> ScreenState.Empty
-                    else -> ScreenState.Content
-                },
-                label = "CharacterWorksListState"
-            ) { state ->
-                when (state) {
-                    ScreenState.Loading -> PoiLoadingView()
+            when {
+                uiState.isInitialLoading && uiState.works.isEmpty() -> {
+                    PoiLoadingView()
+                }
 
-                    ScreenState.Error -> {
-                        CharacterWorksErrorState(
-                            message = uiState.errorMessage ?: "加载失败",
-                            onRetry = { viewModel.retry() }
-                        )
-                    }
+                uiState.errorMessage != null && uiState.works.isEmpty() -> {
+                    CharacterWorksErrorState(
+                        message = uiState.errorMessage ?: "加载失败",
+                        onRetry = { viewModel.retry() }
+                    )
+                }
 
-                    ScreenState.Empty -> {
-                        CharacterWorksEmptyState(
-                            onRetry = { viewModel.refresh() }
-                        )
-                    }
+                uiState.works.isEmpty() -> {
+                    CharacterWorksEmptyState(
+                        onRetry = { viewModel.refresh() }
+                    )
+                }
 
-                    ScreenState.Content -> {
-                        val gridState = rememberLazyGridState()
+                else -> {
+                    val gridState = rememberLazyGridState()
 
                         // 触底加载更多监听
                         val shouldLoadMore by remember {
@@ -210,13 +202,6 @@ fun CharacterWorksListScreen(
             }
         }
     }
-}
-
-private enum class ScreenState {
-    Loading,
-    Error,
-    Empty,
-    Content
 }
 
 @Composable
