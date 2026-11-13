@@ -42,7 +42,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -73,7 +73,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import androidx.compose.material3.Card
 
 internal fun levelTier(level: Int): Int = when {
@@ -173,7 +172,11 @@ fun AlbumRankListScreen(
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             when {
-                uiState.isLoading && uiState.items.isEmpty() -> ShimmerHost { RankListSkeleton(navBarBottomPadding = innerPadding.calculateBottomPadding()) }
+                uiState.isLoading && uiState.items.isEmpty() -> PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                )
                 uiState.errorMessage != null && uiState.items.isEmpty() -> RankListError(
                     errorMessage = uiState.errorMessage ?: "加载失败",
                     onRetry = { viewModel.retry(param) }
@@ -429,76 +432,6 @@ private fun LevelBadge(level: Int) {
     }
 }
 
-@Composable
-private fun RankListSkeleton(
-    navBarBottomPadding: Dp = 0.dp
-) {
-    val isWideSkeleton = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val skeletonRowSize = if (isWideSkeleton) 2 else 1
-    LazyColumn(
-        contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 16.dp + navBarBottomPadding),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        userScrollEnabled = false,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        (0 until 8).chunked(skeletonRowSize).forEachIndexed { rowIndex, rowItems ->
-            item(key = "rank_skeleton_$rowIndex") {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    rowItems.forEach { _ ->
-                        Card(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .shimmerBackground()
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = 72.dp, height = 96.dp)
-                                        .clip(MaterialTheme.shapes.small)
-                                        .shimmerBackground()
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.7f)
-                                            .height(16.dp)
-                                            .clip(MaterialTheme.shapes.extraSmall)
-                                            .shimmerBackground()
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.4f)
-                                            .height(12.dp)
-                                            .clip(MaterialTheme.shapes.extraSmall)
-                                            .shimmerBackground()
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    repeat(skeletonRowSize - rowItems.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun RankListEmpty() {
