@@ -27,12 +27,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryScrollableTabRow
@@ -41,7 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,7 +58,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
-import com.nobody.repoi.ui.home.components.ActionCardSkeleton
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
 import com.nobody.repoi.ui.navigation.VendorActionsNavParam
 import com.nobody.repoi.util.paging.LoadStage
@@ -68,7 +67,7 @@ import com.nobody.repoi.util.paging.LoadStage
  *
  * 样式体系严格与 PoiShelf 首页动态 (`HomeFeedScreen`) 和关注动态 (`FollowScreen`) 保持一致：
  * 采用 [rememberFeedStaggeredGridColumns] 自适应瀑布流网格布局，动态条目统一使用 [ActionCard]，
- * 初始加载态采用 [ActionCardSkeleton]，全屏大图接入 [LocalImageViewer]，路由跳转统一经由 `onActionClick` 由宿主单点接线。
+ * 初始加载态采用 [PoiLoadingView]，全屏大图接入 [LocalImageViewer]，路由跳转统一经由 `onActionClick` 由宿主单点接线。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,15 +212,7 @@ fun VendorActionsScreen(
         ) {
             when {
                 pagedState.stage == LoadStage.InitialLoading && pagedState.items.isEmpty() -> {
-                    LazyVerticalStaggeredGrid(
-                        columns = feedColumns,
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = navBarBottomPadding + 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalItemSpacing = 8.dp,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(count = 6, key = { "vendor_actions_skeleton_$it" }, contentType = { "skeleton" }) { ShimmerHost { ActionCardSkeleton() } }
-                    }
+                    PoiLoadingView()
                 }
 
                 pagedState.items.isEmpty() && pagedState.stage != LoadStage.InitialLoading && pagedState.initialError != null -> {
@@ -289,10 +280,10 @@ fun VendorActionsScreen(
                                             .padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(28.dp),
-                                            strokeWidth = 2.5.dp,
-                                            color = MaterialTheme.colorScheme.primary
+                                        LoadingIndicator(
+                                            modifier = Modifier.size(28.dp)
+
+
                                         )
                                     }
                                 }
