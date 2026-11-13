@@ -126,6 +126,7 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.CommentFeedEntry
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.util.buildCommentFeedEntries
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.util.FaceTextItem
@@ -177,6 +178,13 @@ fun LazyListScope.commentSectionItems(
                     currentMode = filterMode,
                     onModeChange = onFilterModeChange,
                     isDark = isDark
+                )
+            }
+            CommentFeedEntry.Loading -> item(key = "comments_loading", contentType = "comments_loading") {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
                 )
             }
             CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", contentType = "comments_skeleton") {
@@ -1527,6 +1535,13 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     currentMode = filterMode,
                     onModeChange = onFilterModeChange,
                     isDark = isDark
+                )
+            }
+            CommentFeedEntry.Loading -> item(key = "comments_loading", span = StaggeredGridItemSpan.FullLine, contentType = "comments_loading") {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
                 )
             }
             CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", span = StaggeredGridItemSpan.FullLine, contentType = "comments_skeleton") {

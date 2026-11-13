@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 
 // ── 通用状态组件 ──────────────────────────────────────────
 // 骨架屏已下线：8 个子页首屏统一用 LoadingCollectView（居中加载指示器）
@@ -114,33 +115,17 @@ internal fun LazyGridScope.renderPagingFooter(
 /**
  * 初始加载态。
  *
- * **不用骨架屏，改用居中加载指示器**，两条理由：
- *
- * 1. **对齐原版**：Hpoi `UserCollectPictureFragment` / `UserCollectAlbumFragment` 均无骨架屏，
- *    首屏加载走 `u2.m(view, isRefresh, isEnd)` 的四态切换（空列表 + 底部 loading）。
- *    本项目与原版保持一致。
- * 2. **骨架屏在本页会掉链子**：骨架要预演真实布局才能消除跳变，而收藏页卡片高度依赖图片真实比例
- *    （服务端 `width`/`height` 返回 0，首屏无从得知），骨架与实内容的差异反而更大；
- *    再加上 8 个 Tab 共用一套列数策略，一旦策略调整，骨架与实内容会同时失配。
- *
- * 采用 M3 Expressive 原生 `LoadingIndicator`：自带容器形态，比裸色转圈更稳定、不随背景跳色。
- *
- * **刻意不加文字提示**：加载态出现在「内容区整块为空」的位置，用户已经知道在加载；
- * 再叠一行文案只会拉高视觉重心、且在慢网下变成一行被反复盯着看的静态噪声。
+ * 委托至全局统一 [PoiLoadingView]（ADR-0018）。
  */
 @Composable
 internal fun LoadingCollectView(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        LoadingIndicator()
-    }
+    PoiLoadingView(modifier = modifier)
 }
 
 /**
  * 空状态展示。
  */
+
 @Composable
 internal fun EmptyCollectView(
     title: String,

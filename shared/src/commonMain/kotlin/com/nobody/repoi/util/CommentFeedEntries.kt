@@ -6,6 +6,7 @@ import com.nobody.repoi.ui.common.comment.CommentFilterMode
 sealed interface CommentFeedEntry {
     data object Header : CommentFeedEntry
     data object Skeleton : CommentFeedEntry
+    data object Loading : CommentFeedEntry
     data class HotComment(val key: String, val comment: CommentItem, val showDivider: Boolean = true) : CommentFeedEntry
     data object LatestDivider : CommentFeedEntry
     data class LatestComment(val key: String, val comment: CommentItem) : CommentFeedEntry
@@ -33,7 +34,7 @@ fun buildCommentFeedEntries(
     val entries = mutableListOf<CommentFeedEntry>()
     if (showHeader) entries.add(CommentFeedEntry.Header)
     if (isLoading && hotComments.isEmpty() && latestComments.isEmpty()) {
-        entries.add(CommentFeedEntry.Skeleton)
+        entries.add(CommentFeedEntry.Loading)
         return entries
     }
     when (filterMode) {
