@@ -308,12 +308,7 @@ fun HobbyDetailScreen(
         ) {
             if (isInitialLoading) {
                 item(key = "hobby_detail_initial_loading") {
-                    Box(
-                        modifier = Modifier.fillParentMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        PoiLoadingView()
-                    }
+                    PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                 }
             } else {
                     // ── 区块 0：官方经典双列 Header + 官图缩略预览栏（上下文由屏级下传）──

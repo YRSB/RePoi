@@ -72,8 +72,8 @@ import com.nobody.repoi.ui.collect.CollectStateOption
 import com.nobody.repoi.ui.collect.HobbyOrderOption
 import com.nobody.repoi.ui.collect.UserCollectUiState
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
 import kotlinx.coroutines.launch
 
@@ -297,14 +297,11 @@ internal fun HobbyCollectSubPage(
             ) {
                 when {
                     hobbyData.isLoading && hobbyData.items.isEmpty() -> {
-                        Box(
+                        PoiLoadingView(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = controlBarHeightDp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            LoadingCollectView()
-                        }
+                                .padding(top = controlBarHeightDp)
+                        )
                     }
 
                     hobbyData.errorMessage != null && hobbyData.items.isEmpty() -> {

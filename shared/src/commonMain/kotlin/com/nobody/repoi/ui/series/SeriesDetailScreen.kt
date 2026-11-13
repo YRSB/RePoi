@@ -183,12 +183,7 @@ fun SeriesDetailScreen(
             ) {
                 if (uiState.isInitialLoading && series == null) {
                     item(key = "series_detail_initial_loading") {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PoiLoadingView()
-                        }
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
                     // ── 区块 0：系列主体头部 ──

@@ -184,12 +184,7 @@ fun PersonDetailScreen(
             ) {
                 if (uiState.isInitialLoading && person == null) {
                     item(key = "person_detail_initial_loading") {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PoiLoadingView()
-                        }
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
                     // ── 区块 0：主体综合资料卡 ──

@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.character
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,27 +118,19 @@ fun CharacterAlbumListScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
-            Crossfade(
-                targetState = Triple(
-                    uiState.isInitialLoading && uiState.albums.isEmpty(),
-                    uiState.errorMessage != null && uiState.albums.isEmpty(),
-                    uiState.albums.isEmpty()
-                ),
-                label = "CharacterAlbumListStateCrossfade"
-            ) { (isLoading, isError, isEmpty) ->
-                when {
-                    isLoading -> {
-                        PoiLoadingView()
-                    }
-                    isError -> {
-                        CharacterAlbumListError(
-                            errorMessage = uiState.errorMessage ?: "加载失败",
-                            onRetry = { viewModel.retry() }
-                        )
-                    }
-                    isEmpty -> {
-                        CharacterAlbumListEmpty()
-                    }
+            when {
+                uiState.isInitialLoading && uiState.albums.isEmpty() -> {
+                    PoiLoadingView()
+                }
+                uiState.errorMessage != null && uiState.albums.isEmpty() -> {
+                    CharacterAlbumListError(
+                        errorMessage = uiState.errorMessage ?: "加载失败",
+                        onRetry = { viewModel.retry() }
+                    )
+                }
+                uiState.albums.isEmpty() -> {
+                    CharacterAlbumListEmpty()
+                }
                     else -> {
                         val staggeredGridState = rememberLazyStaggeredGridState()
 

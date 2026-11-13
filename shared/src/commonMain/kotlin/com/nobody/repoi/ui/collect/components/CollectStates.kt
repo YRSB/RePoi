@@ -32,10 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
-import com.nobody.repoi.ui.common.loading.PoiLoadingView
 
 // ── 通用状态组件 ──────────────────────────────────────────
-// 骨架屏已下线：8 个子页首屏统一用 LoadingCollectView（居中加载指示器）
+// 骨架屏已下线：8 个子页首屏统一用 PoiLoadingView（居中加载指示器）
 
 /**
  * 底部流式分页指示器。
@@ -107,16 +106,6 @@ internal fun LazyGridScope.renderPagingFooter(
             }
         }
     }
-}
-
-/**
- * 初始加载态。
- *
- * 委托至全局统一 [PoiLoadingView]（ADR-0018）。
- */
-@Composable
-internal fun LoadingCollectView(modifier: Modifier = Modifier) {
-    PoiLoadingView(modifier = modifier)
 }
 
 /**

@@ -43,7 +43,7 @@ import com.nobody.repoi.ui.collect.components.CollectCommonOrderTabs
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.foundation.shape.CircleShape
 
 // ── 通用实体子页（厂商/系列/角色/人物） ─────────────────────
@@ -166,7 +166,7 @@ internal fun CommonCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() && !subPageData.isContentHidden -> {

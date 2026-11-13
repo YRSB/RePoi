@@ -196,12 +196,7 @@ fun VendorDetailScreen(
             ) {
                 if (uiState.isInitialLoading && company == null) {
                     item(key = "vendor_detail_initial_loading") {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PoiLoadingView()
-                        }
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
                     // ── 区块 0：厂商主体头部（封面+评分微标、中英文名、简介折叠、标签）──

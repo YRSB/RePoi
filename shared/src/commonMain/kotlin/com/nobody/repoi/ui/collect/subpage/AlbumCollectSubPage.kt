@@ -41,8 +41,8 @@ import com.nobody.repoi.ui.collect.components.CollectAlbumPictureOrderTabs
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.SelectionBottomBar
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.foundation.shape.CircleShape
 
 // ── 相册子页（key=70000）────────────────────────────────────
@@ -137,7 +137,7 @@ internal fun AlbumCollectSubPage(
             ) {
                 when {
                     subPageData.isLoading && subPageData.items.isEmpty() -> {
-                        LoadingCollectView()
+                        PoiLoadingView()
                     }
 
                     subPageData.errorMessage != null && subPageData.items.isEmpty() -> {
@@ -301,5 +301,5 @@ internal fun AlbumCollectSubPage(
 }
 
 /**
- * 收藏相册瀑布流骨架相关实现已下线：收藏页统一改用 [LoadingCollectView]（居中加载指示器）。
+ * 收藏相册瀑布流骨架相关实现已下线：收藏页统一改用 [PoiLoadingView]（居中加载指示器）。
  */

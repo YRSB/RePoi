@@ -234,12 +234,7 @@ fun WorksDetailScreen(
         ) {
             if (uiState.isInitialLoading && works == null) {
                 item(key = "works_detail_initial_loading") {
-                    Box(
-                        modifier = Modifier.fillParentMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        PoiLoadingView()
-                    }
+                    PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                 }
             } else {
                         if (works != null) {
