@@ -137,9 +137,9 @@
     `contentType`；**同质列表**（所有项结构相同）可省略——官方原文为 "Consider adding
     `contentType`"，其收益仅在 Compose 跨类型跳过复用时成立。
     依据：https://developer.android.com/develop/ui/compose/lists
-  - **适用范围含骨架屏与占位项**：`items(count = N)` 的固定数量占位块同样适用，不得因为"是假的"就省略。
-  - 写法示例：`items(count = 6, key = { "picture_skeleton_$it" }, contentType = { "skeleton" }) { ... }`
-  - `key` 需在**同一 Lazy 容器内**唯一（跨容器可复用），必要时加页面前缀避免同页多处骨架屏键冲突。
+  - **加载态规范（ADR-0018）**：本项目已全面废止骨架屏（`*Skeleton` 与 `ShimmerHost`）。页面或列表初次加载时一律使用 M3 Expressive 原生 `PoiLoadingView` 居中呈现；严禁再向 Lazy 列表插入伪数据占位项。
+  - **静态占位项与多类型列表**：若 Lazy 容器内存在非加载态的固定数量或混合结构 item，仍必须提供稳定的 `key` 与按需提供 `contentType`。
+  - `key` 需在**同一 Lazy 容器内**唯一（跨容器可复用），避免键冲突。
   - **机械校验**：`scripts/check-ui-rules.ps1` 在 CI `ui-rules` job 中执行——缺 `key` 报错误并阻断合并，
     缺 `contentType` 只提示不阻断。脚本自身的回归用例见 `scripts/test-ui-rules.ps1`。
 
