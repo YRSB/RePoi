@@ -5,7 +5,6 @@ import com.nobody.repoi.ui.common.comment.CommentFilterMode
 
 sealed interface CommentFeedEntry {
     data object Header : CommentFeedEntry
-    data object Skeleton : CommentFeedEntry
     data object Loading : CommentFeedEntry
     data class HotComment(val key: String, val comment: CommentItem, val showDivider: Boolean = true) : CommentFeedEntry
     data object LatestDivider : CommentFeedEntry

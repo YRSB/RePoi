@@ -40,7 +40,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.common.PoiAsyncImage
-import com.nobody.repoi.ui.home.components.shimmerBackground
 
 /**
  * 专区讨论分类下的帖子卡片（风格对齐信息流 ActionCard，严格限制配图高度）。
@@ -292,97 +291,6 @@ fun ZonePostCard(
                         text = "${post.discussCount}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 讨论帖卡片骨架屏（高度和结构与真卡片严格对齐）。
- */
-@Composable
-fun ZonePostCardSkeleton(modifier: Modifier = Modifier) {
-    ElevatedCard(
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .shimmerBackground()
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 80.dp, height = 14.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .shimmerBackground()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(width = 120.dp, height = 10.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .shimmerBackground()
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(18.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .shimmerBackground()
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .shimmerBackground()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(14.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .shimmerBackground()
-            )
-
-            Row(
-                modifier = Modifier.wrapContentWidth(Alignment.Start),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                repeat(3) {
-                    Box(
-                        modifier = Modifier
-                            .size(104.dp)
-                            .clip(MaterialTheme.shapes.small)
-                            .shimmerBackground()
                     )
                 }
             }
