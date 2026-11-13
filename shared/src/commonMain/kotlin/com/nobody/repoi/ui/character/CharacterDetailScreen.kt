@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,12 +91,6 @@ fun CharacterDetailScreen(
     }
 
     when {
-        uiState.isInitialLoading && uiState.character == null -> {
-            Box(modifier = modifier.fillMaxSize()) {
-                ShimmerHost { CharacterDetailSkeleton(onBack = onBack, isDark = isDark) }
-            }
-        }
-
         uiState.errorMessage != null && uiState.character == null -> {
             Box(modifier = modifier.fillMaxSize()) {
                 CharacterErrorState(
@@ -141,7 +135,7 @@ fun CharacterDetailScreen(
                         ?: (uiState.hotComments.size + uiState.latestComments.size),
                     hotComments = uiState.hotComments,
                     latestComments = uiState.latestComments,
-                    isCommentsLoading = uiState.isCommentsLoading,
+                    isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && character == null),
                     isLoadingMoreComments = uiState.isLoadingMoreComments,
                     hasMoreComments = uiState.hasMoreComments,
                     commentsError = uiState.commentsError
@@ -165,7 +159,7 @@ fun CharacterDetailScreen(
                     )
                 },
                 floatingToolbar = {
-                    if (uiState.character != null || !uiState.isInitialLoading) {
+                    if (character != null) {
                         val baseCollect = character?.collect?.toLong() ?: 0L
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         CharacterFloatingActionBar(
@@ -196,8 +190,13 @@ fun CharacterDetailScreen(
                     }
                 }
             ) {
-                // ── 区块 0：角色综合档案卡 ──
-                item(key = "section_header") {
+                if (uiState.isInitialLoading && character == null) {
+                    item(key = "character_detail_initial_loading") {
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                    }
+                } else {
+                    // ── 区块 0：角色综合档案卡 ──
+                    item(key = "section_header") {
                     CharacterHeaderSection(
                         character = character,
                         initialName = navParam.initialName,
@@ -370,4 +369,5 @@ fun CharacterDetailScreen(
             }
         }
     }
+}
 }

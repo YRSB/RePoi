@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +27,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,7 +41,7 @@ import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -62,7 +62,6 @@ import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleRegionPickerSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
-import com.nobody.repoi.ui.zone.components.ZoneResaleCardSkeleton
 
 /**
  * 同款二手与全站二手市场页（复用专区已有的二手设计体系与规范组件）。
@@ -215,17 +214,7 @@ fun ResaleMarketScreen(
             ) {
                 when {
                     uiState.isLoading && uiState.items.isEmpty() -> {
-                        LazyVerticalStaggeredGrid(
-                            columns = columns,
-                            contentPadding = PaddingValues(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalItemSpacing = 12.dp,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(count = 6, key = { "resale_market_skeleton_$it" }, contentType = { "skeleton" }) {
-                                ShimmerHost { ZoneResaleCardSkeleton() }
-                            }
-                        }
+                        PoiLoadingView()
                     }
                     uiState.errorMessage != null && uiState.items.isEmpty() -> {
                         Box(
@@ -316,9 +305,8 @@ fun ResaleMarketScreen(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp
+                                        LoadingIndicator(
+                                            modifier = Modifier.size(28.dp)
                                         )
                                     }
                                 }

@@ -1,28 +1,17 @@
 package com.nobody.repoi.ui.item.list.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,12 +20,8 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiListCard
-import com.nobody.repoi.ui.common.card.PoiListCardSkeleton
 import com.nobody.repoi.ui.common.card.PoiPosterCard
-import com.nobody.repoi.ui.common.card.PoiPosterCardSkeleton
 import com.nobody.repoi.ui.common.card.PoiThumbnail
-import com.nobody.repoi.ui.home.components.shimmerBackground
-import androidx.compose.material3.ElevatedCard
 
 /**
  * 周边网格封面卡片（自适应多列网格）
@@ -173,82 +158,5 @@ fun HpoiInfoBadgeItem(
                 .weight(1f)
                 .padding(start = 4.dp)
         )
-    }
-}
-
-/**
- * 局部通用的骨架占位块，消除模板代码重复并统一使用 ExtraSmallShape
- */
-@Composable
-private fun SkeletonBox(
-    modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.extraSmall
-) {
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .shimmerBackground()
-    )
-}
-
-/**
- * 网格模式 1:1 动态骨架卡片
- */
-@Composable
-fun HobbyGridCardSkeleton(modifier: Modifier = Modifier) {
-    PoiPosterCardSkeleton(
-        modifier = modifier,
-        aspectRatio = 9f / 13f
-    )
-}
-
-/**
- * 单列列表模式 1:1 动态骨架卡片
- */
-@Composable
-fun HobbyListCardSkeleton(modifier: Modifier = Modifier) {
-    PoiListCardSkeleton(
-        modifier = modifier
-    ) {
-        // 标题占位
-        SkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .height(16.dp)
-        )
-
-        // 第 1 行占位
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SkeletonBox(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(14.dp)
-            )
-            SkeletonBox(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(14.dp)
-            )
-        }
-
-        // 第 2 行占位
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SkeletonBox(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(14.dp)
-            )
-            SkeletonBox(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(14.dp)
-            )
-        }
     }
 }

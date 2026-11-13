@@ -31,10 +31,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -43,7 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -64,7 +64,6 @@ import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiAsyncImage
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -153,7 +152,11 @@ fun ExHobbyListScreen(
         ) {
             when {
                 uiState.isLoading && uiState.items.isEmpty() -> {
-                    ShimmerHost { ExHobbyListSkeleton(navBarBottomPadding = innerPadding.calculateBottomPadding()) }
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    )
                 }
                 uiState.errorMessage != null && uiState.items.isEmpty() -> {
                     ExHobbyListError(
@@ -299,10 +302,8 @@ private fun ExHobbyListFooter(
         when {
             isAppending -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
+                    LoadingIndicator(
+                        modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -342,49 +343,6 @@ private fun ExHobbyListFooter(
     }
 }
 
-/**
- * 骨架屏占位。
- */
-@Composable
-private fun ExHobbyListSkeleton(
-    navBarBottomPadding: Dp,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalStaggeredGrid(
-        columns = rememberAlbumStaggeredGridColumns(),
-        contentPadding = PaddingValues(
-            start = 8.dp,
-            top = 8.dp,
-            end = 8.dp,
-            bottom = 24.dp + navBarBottomPadding
-        ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp,
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false
-    ) {
-        val dummyHeights = listOf(180.dp, 240.dp, 160.dp, 220.dp, 200.dp, 190.dp)
-        items(
-            count = 10,
-            key = { "ex_hobby_skeleton_$it" },
-            contentType = { "skeleton" }
-        ) { index ->
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(dummyHeights[index % dummyHeights.size]),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .shimmerBackground()
-                )
-            }
-        }
-    }
-}
 
 /**
  * 空数据占位。

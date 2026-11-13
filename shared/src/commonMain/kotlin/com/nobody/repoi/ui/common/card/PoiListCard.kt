@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.home.components.shimmerBackground
 
 /**
  * 列表条目卡基元 (PoiListCard)
@@ -210,64 +209,6 @@ object PoiThumbnail {
             contentAlignment = Alignment.Center
         ) {
             content()
-        }
-    }
-}
-
-/**
- * 列表条目卡骨架占位基元 (PoiListCardSkeleton)
- */
-@Composable
-fun PoiListCardSkeleton(
-    modifier: Modifier = Modifier,
-    shape: Shape = MaterialTheme.shapes.medium,
-    thumbnailSize: Dp = PoiThumbnail.StandardSquareSize,
-    verticalAlignment: Alignment.Vertical = Alignment.Top,
-    content: (@Composable ColumnScope.() -> Unit)? = null
-) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = shape
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = verticalAlignment
-        ) {
-            // 左侧缩略图骨架占位
-            Box(
-                modifier = Modifier
-                    .size(thumbnailSize)
-                    .clip(MaterialTheme.shapes.small)
-                    .shimmerBackground()
-            )
-
-            // 右侧信息骨架占位
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (content != null) {
-                    content()
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .height(16.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .shimmerBackground()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.4f)
-                            .height(14.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .shimmerBackground()
-                    )
-                }
-            }
         }
     }
 }

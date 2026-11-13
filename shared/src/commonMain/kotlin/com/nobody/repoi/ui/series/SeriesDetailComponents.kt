@@ -62,7 +62,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,7 +83,6 @@ import com.nobody.repoi.data.remote.model.SeriesData
 import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet
@@ -287,7 +286,7 @@ internal fun SeriesHobbysSection(
 
             // 内容九宫格
             if (isLoading && hobbys.isEmpty()) {
-                ShimmerHost { SeriesGridSkeleton() }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (hobbys.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -359,15 +358,7 @@ internal fun SeriesSubSeriesSection(
             )
 
             if (isLoading && subSeriesList.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     subSeriesList.forEach { item ->
@@ -463,15 +454,7 @@ internal fun SeriesRelateSeriesSection(
             )
 
             if (isLoading && relateSeriesList.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 val scrollState = rememberScrollState()
                 Row(
@@ -590,31 +573,7 @@ internal fun SeriesAlbumsSection(
             }
 
             if (isLoading && albums.isEmpty()) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(
-                        count = 4,
-                        key = { "series_album_skeleton_$it" },
-                        contentType = { "skeleton" }
-                    ) { index ->
-                        val shimmerWidth = when (index % 3) {
-                            0 -> 140.dp
-                            1 -> 160.dp
-                            else -> 120.dp
-                        }
-                        ShimmerHost {
-                            Box(
-                                modifier = Modifier
-                                    .height(160.dp)
-                                    .width(shimmerWidth)
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .shimmerBackground()
-                            )
-                        }
-                    }
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 14.dp),
@@ -793,15 +752,7 @@ internal fun SeriesGoodsSection(
             )
 
             if (isLoading && goodsList.isEmpty()) {
-                ShimmerHost {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(110.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .shimmerBackground()
-                    )
-                }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 val scrollState = rememberScrollState()
                 Row(
@@ -936,61 +887,8 @@ internal fun SeriesFloatingActionBar(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 骨架屏与错误占位 (SeriesDetailSkeleton & SeriesErrorState)
+// 错误占位 (SeriesErrorState)
 // ─────────────────────────────────────────────────────────────
-
-@Composable
-internal fun SeriesDetailSkeleton(
-    isDark: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        // 头部展台骨架
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .clip(MaterialTheme.shapes.largeCard)
-                .shimmerBackground()
-        )
-
-        // 周边九宫格骨架
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp)
-                .clip(MaterialTheme.shapes.largeCard)
-                .shimmerBackground()
-        )
-    }
-}
-
-@Composable
-private fun SeriesGridSkeleton() {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        repeat(2) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                repeat(3) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(0.8f)
-                            .clip(MaterialTheme.shapes.medium)
-                            .shimmerBackground()
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 internal fun SeriesErrorState(

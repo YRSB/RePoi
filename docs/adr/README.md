@@ -29,6 +29,8 @@
 | [ADR-0015](0015-action-card-poster-rigid-box-fit.md) | 动态流卡片海报槽位刚性定框与无裁切完全呈现防跳变架构 | **UI/防跳变/多媒体**：9:13 黄金刚性定框、ContentScale.Fit 居中完全呈现、骨架屏 1:1 等高对齐、彻底消除 CLS | 已被 ADR-0016 修正演进 (Amended by ADR-0016) - 2026-11-12 |
 | [ADR-0016](0016-action-card-categorized-poster-layout.md) | 动态流卡片海报分类分流（手办刚性定框与相册高度自适应）架构 | **UI/防跳变/多媒体**：手办 9:13 黄金刚性定框、相册自适应高度且封顶 140dp、消除相册白边、右侧内容高度锚定 | 已采纳 (Accepted) - 2026-11-12 |
 | [ADR-0017](0017-search-pager-static-header.md) | 搜索结果页常驻顶栏与 HorizontalPager 分类分页架构 | **搜索/UI架构/多页分页**：静态 Column 平铺顶栏、彻底移除嵌套折叠与 topContentPadding、HorizontalPager 8 分类双向联动、分类独立缓存与按需懒加载、页面级独立下拉刷新 | 已采纳 (Accepted) - 2026-11-12 |
+| [ADR-0018](0018-deprecate-skeletons-m3e-loading-indicator.md) | 全面废止骨架屏并收敛至 Material 3 Expressive 统一加载指示器架构 | **UI/加载态/基元收敛**：全面移除骨架屏与 Shimmer 时钟、沉淀通用展示基元 PoiLoadingView、28dp 紧凑分页指示器、保留顶栏导航可用性、修正 ADR-0015/0016 骨架屏条款 | 已采纳 (Accepted) - 2026-11-13 |
+
 
 
 ---

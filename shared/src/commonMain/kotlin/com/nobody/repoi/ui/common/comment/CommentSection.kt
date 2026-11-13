@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -84,7 +85,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
@@ -120,12 +120,12 @@ import com.nobody.repoi.data.remote.model.CommentUser
 import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.util.canAddSticker
 import com.nobody.repoi.ui.common.LevelPill
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.CommentMutations
 import com.nobody.repoi.util.CommentFeedEntry
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.util.buildCommentFeedEntries
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.util.FaceTextItem
@@ -179,8 +179,12 @@ fun LazyListScope.commentSectionItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", contentType = "comments_skeleton") {
-                ShimmerHost { CommentsLoadingSkeleton(isDark = isDark) }
+            CommentFeedEntry.Loading -> item(key = "comments_loading", contentType = "comments_loading") {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp)
+                )
             }
             is CommentFeedEntry.HotComment -> item(key = entry.key, contentType = "comment_card") {
                 CommentItemCard(
@@ -1350,10 +1354,8 @@ fun CommentFooter(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
+                    LoadingIndicator(
+                        modifier = Modifier.size(28.dp)
                     )
                     Text(
                         text = "正在拉取更多讨论...",
@@ -1448,49 +1450,6 @@ private fun HotFooterText(hotCount: Int) {
 }
 
 /**
- * 评论区骨架加载占位。
- */
-@Composable
-private fun CommentsLoadingSkeleton(
-    isDark: Boolean
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        repeat(2) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(modifier = Modifier.size(32.dp).clip(CircleShape).shimmerBackground())
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Box(modifier = Modifier.width(80.dp).height(14.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
-                            Box(modifier = Modifier.width(50.dp).height(10.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
-                        }
-                    }
-                    Box(modifier = Modifier.fillMaxWidth(0.9f).height(16.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
-                    Box(modifier = Modifier.fillMaxWidth(0.6f).height(16.dp).clip(MaterialTheme.shapes.extraSmall).shimmerBackground())
-                }
-            }
-        }
-    }
-}
-
-/**
  * 瀑布流版共享评论区：与 [commentSectionItems] 同逻辑，所有条目独占整行。
  * 仅供 LazyVerticalStaggeredGrid 宿主（如相册详情图集流）使用，其他详情页沿用原函数。
  */
@@ -1529,8 +1488,12 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
                     isDark = isDark
                 )
             }
-            CommentFeedEntry.Skeleton -> item(key = "comments_skeleton", span = StaggeredGridItemSpan.FullLine, contentType = "comments_skeleton") {
-                ShimmerHost { CommentsLoadingSkeleton(isDark = isDark) }
+            CommentFeedEntry.Loading -> item(key = "comments_loading", span = StaggeredGridItemSpan.FullLine, contentType = "comments_loading") {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp)
+                )
             }
             is CommentFeedEntry.HotComment -> item(key = entry.key, span = StaggeredGridItemSpan.FullLine, contentType = "comment_card") {
                 CommentItemCard(

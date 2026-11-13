@@ -54,7 +54,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
@@ -100,7 +100,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import androidx.compose.material3.ElevatedCard
@@ -144,9 +143,7 @@ fun WorksDetailScreen(
     var commentUserId by remember { mutableStateOf(viewModel.currentCommentUserId) }
     LaunchedEffect(Unit) { commentUserId = viewModel.resolveCommentUserId() }
 
-    if (uiState.isInitialLoading && uiState.works == null) {
-        ShimmerHost { WorksDetailSkeleton(isDark = isDark, modifier = Modifier.padding(top = 64.dp)) }
-    } else if (uiState.errorMessage != null && uiState.works == null) {
+    if (uiState.errorMessage != null && uiState.works == null) {
         WorksErrorState(
             message = uiState.errorMessage ?: "加载失败",
             onRetry = { viewModel.loadDetail(navParam) },
@@ -185,7 +182,7 @@ fun WorksDetailScreen(
                 totalCommentCount = works?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                 hotComments = uiState.hotComments,
                 latestComments = uiState.latestComments,
-                isCommentsLoading = uiState.isCommentsLoading,
+                isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && works == null),
                 isLoadingMoreComments = uiState.isLoadingMoreComments,
                 hasMoreComments = uiState.hasMoreComments,
                 commentsError = uiState.commentsError
@@ -235,6 +232,11 @@ fun WorksDetailScreen(
                 }
             }
         ) {
+            if (uiState.isInitialLoading && works == null) {
+                item(key = "works_detail_initial_loading") {
+                    PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                }
+            } else {
                         if (works != null) {
                             item(key = "section_header") {
                                 WorksHeaderSection(
@@ -346,6 +348,7 @@ fun WorksDetailScreen(
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                             )
                         }
+            }
         }
     }
 }
@@ -580,7 +583,7 @@ internal fun WorksCharactersSection(
                 }
             }
             if (isLoading && characters.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(64.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     characters.take(6).forEach { character ->
@@ -682,7 +685,7 @@ internal fun WorksHobbysSection(
                 }
             }
             if (isLoading && hobbys.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(120.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 AdaptiveChunkedGrid(
                     items = hobbys.take(9),
@@ -729,7 +732,7 @@ internal fun WorksAlbumsSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
             if (isLoading && albums.isEmpty()) {
-                ShimmerHost { Box(modifier = Modifier.fillMaxWidth().height(96.dp).shimmerBackground()) }
+                PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -783,18 +786,6 @@ internal fun WorksAlbumsSection(
                 }
             }
         }
-    }
-}
-
-@Composable
-internal fun WorksDetailSkeleton(isDark: Boolean, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp).shimmerBackground())
-        Box(modifier = Modifier.fillMaxWidth().height(120.dp).shimmerBackground())
-        Box(modifier = Modifier.fillMaxWidth().height(200.dp).shimmerBackground())
     }
 }
 

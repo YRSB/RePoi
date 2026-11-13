@@ -52,6 +52,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -82,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.UserHistoryItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
@@ -328,9 +330,7 @@ private fun HistoryTabContent(
     ) {
         when {
             tabState.isLoading && tabState.items.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(strokeWidth = 3.dp)
-                }
+                PoiLoadingView()
             }
 
             !tabState.isLoading && tabState.items.isEmpty() -> {
@@ -476,9 +476,8 @@ private fun HobbyHistoryGridContent(
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
+                        LoadingIndicator(
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -577,9 +576,8 @@ private fun AlbumHistoryStaggeredGridContent(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
+                    LoadingIndicator(
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }

@@ -29,12 +29,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -67,8 +67,8 @@ import com.nobody.repoi.ui.collect.AlbumTypeOption
 import com.nobody.repoi.ui.collect.components.CollectAlbumCard
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.subpage.UserCollectPicCard
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.data.media.ImagePurpose
@@ -313,7 +313,7 @@ private fun <T> CreationSubPageContent(
         ) {
             when {
                 tabState.isLoading && tabState.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
                 tabState.errorMessage != null && tabState.items.isEmpty() -> {
                     ErrorCollectView(errorMessage = tabState.errorMessage, onRetry = onRetry)
@@ -421,7 +421,7 @@ private fun FooterIndicator(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                LoadingIndicator(modifier = Modifier.size(28.dp))
             }
         }
         errorMessage != null -> {

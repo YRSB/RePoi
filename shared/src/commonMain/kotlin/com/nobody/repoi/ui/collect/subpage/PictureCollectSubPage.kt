@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -37,7 +37,7 @@ import com.nobody.repoi.ui.collect.components.CollectAlbumPictureOrderTabs
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.PoiAsyncImage
 
 // ── 图片子页（key=90000）────────────────────────────────────
@@ -113,7 +113,7 @@ internal fun PictureCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() -> {
@@ -170,7 +170,7 @@ internal fun PictureCollectSubPage(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        LoadingIndicator(modifier = Modifier.size(28.dp))
                                     }
                                 }
 

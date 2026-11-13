@@ -63,7 +63,7 @@ class CommentFeedEntriesTest {
     }
 
     @Test
-    fun loadingEmpty_returnsHeaderPlusSkeletonOnly() {
+    fun loadingEmpty_returnsHeaderPlusLoadingOnly() {
         val entries = buildCommentFeedEntries(
             filterMode = CommentFilterMode.DEFAULT,
             hotComments = emptyList(),
@@ -74,7 +74,7 @@ class CommentFeedEntriesTest {
             commentsError = null
         )
         assertEquals(
-            listOf(CommentFeedEntry.Header, CommentFeedEntry.Skeleton),
+            listOf(CommentFeedEntry.Header, CommentFeedEntry.Loading),
             entries
         )
     }
@@ -90,7 +90,7 @@ class CommentFeedEntriesTest {
             hasMore = false,
             commentsError = null
         )
-        assertFalse(entries.any { it is CommentFeedEntry.Skeleton })
+        assertFalse(entries.any { it is CommentFeedEntry.Loading })
         assertEquals(3, entries.filterIsInstance<CommentFeedEntry.LatestComment>().size)
     }
 

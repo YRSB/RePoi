@@ -12,7 +12,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.platform.rememberTextSharing
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,12 +91,6 @@ fun VendorDetailScreen(
     var showInfoSheet by rememberSaveable { mutableStateOf(false) }
 
     when {
-        uiState.isInitialLoading && uiState.company == null -> {
-            Box(modifier = modifier.fillMaxSize()) {
-                ShimmerHost { VendorDetailSkeleton(onBack = onBack, isDark = isDark) }
-            }
-        }
-
         uiState.errorMessage != null && uiState.company == null -> {
             Box(modifier = modifier.fillMaxSize()) {
                 VendorErrorState(
@@ -141,7 +135,7 @@ fun VendorDetailScreen(
                     totalCommentCount = company?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                     hotComments = uiState.hotComments,
                     latestComments = uiState.latestComments,
-                    isCommentsLoading = uiState.isCommentsLoading,
+                    isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && company == null),
                     isLoadingMoreComments = uiState.isLoadingMoreComments,
                     hasMoreComments = uiState.hasMoreComments,
                     commentsError = uiState.commentsError
@@ -166,7 +160,7 @@ fun VendorDetailScreen(
                     )
                 },
                 floatingToolbar = {
-                    if (company != null || !uiState.isInitialLoading) {
+                    if (company != null) {
                         val baseCollect = company?.collect ?: 0L
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         VendorFloatingActionBar(
@@ -200,8 +194,13 @@ fun VendorDetailScreen(
                     }
                 }
             ) {
-                // ── 区块 0：厂商主体头部（封面+评分微标、中英文名、简介折叠、标签）──
-                item(key = "section_header") {
+                if (uiState.isInitialLoading && company == null) {
+                    item(key = "vendor_detail_initial_loading") {
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                    }
+                } else {
+                    // ── 区块 0：厂商主体头部（封面+评分微标、中英文名、简介折叠、标签）──
+                    item(key = "section_header") {
                     VendorHeaderSection(
                         company = company,
                         initialName = navParam.initialName,
@@ -294,6 +293,7 @@ fun VendorDetailScreen(
             }
         }
     }
+}
 
     // 屏蔽确认弹窗
     if (showMaskConfirmDialog) {

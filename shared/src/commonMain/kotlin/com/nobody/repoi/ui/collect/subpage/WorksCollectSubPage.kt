@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,8 +46,8 @@ import com.nobody.repoi.ui.collect.components.CollectFilterBottomSheet
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
 import com.nobody.repoi.ui.collect.components.WorksCollectCard
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.collect.components.worksDetailItemId
 import androidx.compose.foundation.shape.CircleShape
 
@@ -203,7 +203,7 @@ internal fun WorksCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() && !subPageData.isContentHidden -> {
@@ -248,9 +248,8 @@ internal fun WorksCollectSubPage(
                                 contentAlignment = Alignment.Center
                             ) {
                                 when {
-                                    subPageData.isPaging -> CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = MaterialTheme.colorScheme.primary
+                                    subPageData.isPaging -> LoadingIndicator(
+                                        modifier = Modifier.size(28.dp)
                                     )
 
                                     subPageData.errorMessage != null -> Surface(

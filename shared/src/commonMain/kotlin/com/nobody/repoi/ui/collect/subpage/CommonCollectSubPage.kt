@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,10 +20,10 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,7 +44,7 @@ import com.nobody.repoi.ui.collect.components.CollectCommonOrderTabs
 import com.nobody.repoi.ui.collect.components.CollectOrderTabRow
 import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
-import com.nobody.repoi.ui.collect.components.LoadingCollectView
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.foundation.shape.CircleShape
 
 // ── 通用实体子页（厂商/系列/角色/人物） ─────────────────────
@@ -166,7 +167,7 @@ internal fun CommonCollectSubPage(
         ) {
             when {
                 subPageData.isLoading && subPageData.items.isEmpty() -> {
-                    LoadingCollectView()
+                    PoiLoadingView()
                 }
 
                 subPageData.errorMessage != null && subPageData.items.isEmpty() && !subPageData.isContentHidden -> {
@@ -274,9 +275,8 @@ private fun CommonCollectPagingFooter(
         contentAlignment = Alignment.Center
     ) {
         when {
-            isPaging -> CircularProgressIndicator(
-                modifier = Modifier.padding(8.dp),
-                color = MaterialTheme.colorScheme.primary
+            isPaging -> LoadingIndicator(
+                modifier = Modifier.size(28.dp)
             )
 
             errorMessage != null -> Surface(

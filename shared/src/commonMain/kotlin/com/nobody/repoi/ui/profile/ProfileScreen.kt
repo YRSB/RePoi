@@ -68,7 +68,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,7 +99,6 @@ import com.nobody.repoi.data.remote.model.CollectTopItem
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.ui.detail.DetailNavParam
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
@@ -190,12 +189,7 @@ fun ProfileScreen(
                     // ═══════════ 2. 已登录态 ═══════════
                     if ((uiState.isLoading || uiState.isRefreshing) && uiState.profile == null) {
                         Box(modifier = Modifier.statusBarsPadding())
-                        ShimmerHost {
-                            ProfileSkeletonLoading(
-                                isDark = isDark,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
+                        PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(top = 120.dp, bottom = 48.dp))
                     } else if (uiState.errorMessage != null && uiState.profile == null) {
                         Box(modifier = Modifier.statusBarsPadding())
                         ProfileErrorCard(
@@ -1807,80 +1801,6 @@ private fun UnauthenticatedImmersiveHeader(
                     label = "获赞",
                     modifier = Modifier.weight(1f),
                     onClick = onLoginClick
-                )
-            }
-        }
-    }
-}
-
-/**
- * 个人中心加载骨架屏
- */
-@Composable
-private fun ProfileSkeletonLoading(
-    isDark: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(66.dp)
-                        .clip(CircleShape)
-                        .shimmerBackground()
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .width(120.dp)
-                            .height(20.dp)
-                            .clip(MaterialTheme.shapes.small)
-                            .shimmerBackground()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(180.dp)
-                            .height(14.dp)
-                            .clip(MaterialTheme.shapes.small)
-                            .shimmerBackground()
-                    )
-                }
-            }
-        }
-
-        repeat(2) {
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .shimmerBackground()
                 )
             }
         }

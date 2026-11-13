@@ -87,10 +87,9 @@ import com.nobody.repoi.ui.forum.components.ForumEmptyPlaceholder
 import com.nobody.repoi.ui.forum.components.ForumErrorPlaceholder
 import com.nobody.repoi.ui.forum.components.ForumHeaderCard
 import com.nobody.repoi.ui.forum.components.ForumPaginationFooter
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
-import com.nobody.repoi.ui.zone.components.ZonePostCardSkeleton
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 
@@ -342,7 +341,7 @@ fun ForumHomeScreen(
             ) { page ->
                 val tab = tabs.getOrNull(page)
                 if (tab == null) {
-                    ForumPostsSkeletonPage()
+                    PoiLoadingView()
                 } else {
                     val gridState = remember(tab.id) {
                         gridStates.getOrPut(tab.id) { LazyStaggeredGridState() }
@@ -559,7 +558,7 @@ private fun ForumPostsPage(
     }
 
     if (!isSelected) {
-        ForumPostsSkeletonPage(modifier = modifier)
+        PoiLoadingView(modifier = modifier)
         return
     }
 
@@ -568,123 +567,96 @@ private fun ForumPostsPage(
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize()
     ) {
-        LazyVerticalStaggeredGrid(
-            columns = rememberForumGridColumns(),
-            state = gridState,
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
-                top = 8.dp,
-                bottom = 88.dp
-            ),
-            verticalItemSpacing = 12.dp,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (uiState.isPostsLoading && displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                items(
-                    5,
-                    key = { index -> "forum_post_skeleton_$index" },
-                    contentType = { "forum_post_skeleton" }
-                ) {
-                    ShimmerHost { ZonePostCardSkeleton() }
-                }
-            } else if (uiState.postsErrorMessage != null && displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "forum_posts_error",
-                    contentType = "forum_posts_error"
-                ) {
-                    ForumErrorPlaceholder(
-                        message = uiState.postsErrorMessage,
-                        onRetry = onRetry
-                    )
-                }
-            } else if (displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "forum_posts_empty",
-                    contentType = "forum_posts_empty"
-                ) {
-                    ForumEmptyPlaceholder("暂无帖子，您可以发布帖子~")
-                }
-            } else {
-                val header = uiState.forumHeader
-                if (header != null) {
+        if (uiState.isPostsLoading && displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
+            PoiLoadingView()
+        } else {
+            LazyVerticalStaggeredGrid(
+                columns = rememberForumGridColumns(),
+                state = gridState,
+                contentPadding = PaddingValues(
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = 8.dp,
+                    bottom = 88.dp
+                ),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (uiState.postsErrorMessage != null && displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
                     item(
                         span = StaggeredGridItemSpan.FullLine,
-                        key = "forum_header_${header.id}",
-                        contentType = "forum_header"
+                        key = "forum_posts_error",
+                        contentType = "forum_posts_error"
                     ) {
-                        ForumHeaderCard(
-                            header = header,
-                            onHeaderClick = onHeaderClick
+                        ForumErrorPlaceholder(
+                            message = uiState.postsErrorMessage,
+                            onRetry = onRetry
                         )
                     }
-                }
-
-                if (uiState.pinnedPosts.isNotEmpty()) {
+                } else if (displayPosts.isEmpty() && uiState.pinnedPosts.isEmpty()) {
                     item(
                         span = StaggeredGridItemSpan.FullLine,
-                        key = "forum_pinned_bar",
-                        contentType = "forum_pinned"
+                        key = "forum_posts_empty",
+                        contentType = "forum_posts_empty"
                     ) {
-                        ZonePinnedPostsBar(
-                            pinnedPosts = uiState.pinnedPosts,
-                            onPostClick = onPostClick
+                        ForumEmptyPlaceholder("暂无帖子，您可以发布帖子~")
+                    }
+                } else {
+                    val header = uiState.forumHeader
+                    if (header != null) {
+                        item(
+                            span = StaggeredGridItemSpan.FullLine,
+                            key = "forum_header_${header.id}",
+                            contentType = "forum_header"
+                        ) {
+                            ForumHeaderCard(
+                                header = header,
+                                onHeaderClick = onHeaderClick
+                            )
+                        }
+                    }
+
+                    if (uiState.pinnedPosts.isNotEmpty()) {
+                        item(
+                            span = StaggeredGridItemSpan.FullLine,
+                            key = "forum_pinned_bar",
+                            contentType = "forum_pinned"
+                        ) {
+                            ZonePinnedPostsBar(
+                                pinnedPosts = uiState.pinnedPosts,
+                                onPostClick = onPostClick
+                            )
+                        }
+                    }
+
+                    items(
+                        items = displayPosts,
+                        key = { item -> "forum_post_${item.id}" },
+                        contentType = { "forum_post" }
+                    ) { post ->
+                        ZonePostCard(
+                            post = post,
+                            onPostClick = onPostClick,
+                            onImageClick = onImageClick,
+                            onUserClick = onUserClick
                         )
                     }
-                }
 
-                items(
-                    items = displayPosts,
-                    key = { item -> "forum_post_${item.id}" },
-                    contentType = { "forum_post" }
-                ) { post ->
-                    ZonePostCard(
-                        post = post,
-                        onPostClick = onPostClick,
-                        onImageClick = onImageClick,
-                        onUserClick = onUserClick
-                    )
-                }
-
-                item(
-                    span = StaggeredGridItemSpan.FullLine,
-                    key = "forum_posts_footer",
-                    contentType = "forum_posts_footer"
-                ) {
-                    ForumPaginationFooter(
-                        isLoadingMore = uiState.isLoadingMore,
-                        loadMoreError = uiState.loadMoreError,
-                        isEndReached = !uiState.hasMore,
-                        onRetry = onLoadMore
-                    )
+                    item(
+                        span = StaggeredGridItemSpan.FullLine,
+                        key = "forum_posts_footer",
+                        contentType = "forum_posts_footer"
+                    ) {
+                        ForumPaginationFooter(
+                            isLoadingMore = uiState.isLoadingMore,
+                            loadMoreError = uiState.loadMoreError,
+                            isEndReached = !uiState.hasMore,
+                            onRetry = onLoadMore
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-/**
- * 非当前页 / Tab 未就绪时的骨架占位。
- */
-@Composable
-private fun ForumPostsSkeletonPage(modifier: Modifier = Modifier) {
-    LazyVerticalStaggeredGrid(
-        columns = rememberForumGridColumns(),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
-        verticalItemSpacing = 12.dp,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false
-    ) {
-        items(
-            5,
-            key = { index -> "forum_post_skeleton_$index" },
-            contentType = { "forum_post_skeleton" }
-        ) {
-            ShimmerHost { ZonePostCardSkeleton() }
         }
     }
 }

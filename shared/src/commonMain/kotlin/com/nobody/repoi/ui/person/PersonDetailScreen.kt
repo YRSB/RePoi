@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,12 +82,6 @@ fun PersonDetailScreen(
     }
 
     when {
-        uiState.isInitialLoading && uiState.person == null -> {
-            Box(modifier = modifier.fillMaxSize()) {
-                ShimmerHost { PersonDetailSkeleton(onBack = onBack, isDark = isDark) }
-            }
-        }
-
         uiState.errorMessage != null && uiState.person == null -> {
             Box(modifier = modifier.fillMaxSize()) {
                 PersonErrorState(
@@ -133,7 +127,7 @@ fun PersonDetailScreen(
                         ?: (uiState.hotComments.size + uiState.latestComments.size),
                     hotComments = uiState.hotComments,
                     latestComments = uiState.latestComments,
-                    isCommentsLoading = uiState.isCommentsLoading,
+                    isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && person == null),
                     isLoadingMoreComments = uiState.isLoadingMoreComments,
                     hasMoreComments = uiState.hasMoreComments,
                     commentsError = uiState.commentsError
@@ -157,7 +151,7 @@ fun PersonDetailScreen(
                     )
                 },
                 floatingToolbar = {
-                    if (uiState.person != null || !uiState.isInitialLoading) {
+                    if (person != null) {
                         val baseCollect = person?.collect?.toLong() ?: 0L
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         PersonFloatingActionBar(
@@ -188,8 +182,13 @@ fun PersonDetailScreen(
                     }
                 }
             ) {
-                // ── 区块 0：主体综合资料卡 ──
-                item(key = "section_header") {
+                if (uiState.isInitialLoading && person == null) {
+                    item(key = "person_detail_initial_loading") {
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                    }
+                } else {
+                    // ── 区块 0：主体综合资料卡 ──
+                    item(key = "section_header") {
                     PersonHeaderSection(
                         person = person,
                         initialName = navParam.initialName,
@@ -318,4 +317,5 @@ fun PersonDetailScreen(
             }
         }
     }
+}
 }

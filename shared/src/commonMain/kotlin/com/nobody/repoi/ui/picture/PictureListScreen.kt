@@ -31,10 +31,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,7 +42,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -63,7 +63,6 @@ import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.navigation.PictureListNavParam
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import androidx.compose.foundation.shape.CircleShape
 
 /**
@@ -142,7 +141,11 @@ fun PictureListScreen(
         ) {
             when {
                 uiState.isLoading && uiState.items.isEmpty() -> {
-                    ShimmerHost { PictureListSkeleton(navBarBottomPadding = innerPadding.calculateBottomPadding()) }
+                    PoiLoadingView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    )
                 }
                 uiState.errorMessage != null && uiState.items.isEmpty() -> {
                     PictureListError(
@@ -308,10 +311,8 @@ private fun PictureListFooter(
         when {
             isAppending -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
+                    LoadingIndicator(
+                        modifier = Modifier.size(28.dp)
                     )
                     Text(
                         text = "正在加载更多图片...",
@@ -353,42 +354,6 @@ private fun PictureListFooter(
     }
 }
 
-/**
- * 瀑布流骨架屏闪烁占位（对齐相册页自适应列数策略）。
- */
-@Composable
-private fun PictureListSkeleton(
-    navBarBottomPadding: androidx.compose.ui.unit.Dp,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalStaggeredGrid(
-        columns = rememberAlbumStaggeredGridColumns(),
-        contentPadding = PaddingValues(
-            start = 8.dp,
-            top = 8.dp,
-            end = 8.dp,
-            bottom = 24.dp + navBarBottomPadding
-        ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalItemSpacing = 8.dp,
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false
-    ) {
-        items(
-            count = 6,
-            key = { "picture_skeleton_$it" },
-            contentType = { "skeleton" }
-        ) { index ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((180 + (index % 3) * 50).dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .shimmerBackground()
-            )
-        }
-    }
-}
 
 /**
  * 错误重试占位界面。

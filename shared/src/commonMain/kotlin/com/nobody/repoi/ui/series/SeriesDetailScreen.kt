@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalUriHandler
 import com.nobody.repoi.platform.rememberTextSharing
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,17 +81,6 @@ fun SeriesDetailScreen(
     var showInfoSheet by rememberSaveable { mutableStateOf(false) }
 
     when {
-        uiState.isInitialLoading && uiState.series == null -> {
-            Box(modifier = modifier.fillMaxSize()) {
-                ShimmerHost {
-                    SeriesDetailSkeleton(
-                        isDark = isDark,
-                        modifier = Modifier.padding(top = 64.dp)
-                    )
-                }
-            }
-        }
-
         uiState.errorMessage != null && uiState.series == null -> {
             Box(modifier = modifier.fillMaxSize()) {
                 SeriesErrorState(
@@ -135,7 +124,7 @@ fun SeriesDetailScreen(
                     totalCommentCount = series?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                     hotComments = uiState.hotComments,
                     latestComments = uiState.latestComments,
-                    isCommentsLoading = uiState.isCommentsLoading,
+                    isCommentsLoading = uiState.isCommentsLoading || (uiState.isInitialLoading && series == null),
                     isLoadingMoreComments = uiState.isLoadingMoreComments,
                     hasMoreComments = uiState.hasMoreComments,
                     commentsError = uiState.commentsError
@@ -192,9 +181,14 @@ fun SeriesDetailScreen(
                     }
                 }
             ) {
-                // ── 区块 0：系列主体头部 ──
-                if (series != null) {
-                    item(key = "section_header") {
+                if (uiState.isInitialLoading && series == null) {
+                    item(key = "series_detail_initial_loading") {
+                        PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                    }
+                } else {
+                    // ── 区块 0：系列主体头部 ──
+                    if (series != null) {
+                        item(key = "section_header") {
                         SeriesHeaderSection(
                             series = series,
                             onShowDetailInfo = { showInfoSheet = true },
@@ -331,6 +325,7 @@ fun SeriesDetailScreen(
             }
         }
     }
+}
 
     // 系列详细信息抽屉
     if (showInfoSheet) {

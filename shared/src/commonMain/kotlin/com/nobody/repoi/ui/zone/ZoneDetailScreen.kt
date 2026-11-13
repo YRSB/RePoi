@@ -60,6 +60,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -77,7 +78,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -123,16 +124,12 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.home.components.ActionCard
-import com.nobody.repoi.ui.home.components.ActionCardSkeleton
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
 import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet
 import com.nobody.repoi.ui.item.list.components.HobbyGridCard
-import com.nobody.repoi.ui.item.list.components.HobbyGridCardSkeleton
 import com.nobody.repoi.ui.item.list.components.HobbyListCard
-import com.nobody.repoi.ui.item.list.components.HobbyListCardSkeleton
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
@@ -141,13 +138,10 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZoneEntityCard
-import com.nobody.repoi.ui.zone.components.ZoneEntityCardSkeleton
 import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
-import com.nobody.repoi.ui.zone.components.ZonePostCardSkeleton
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
-import com.nobody.repoi.ui.zone.components.ZoneResaleCardSkeleton
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
@@ -698,333 +692,282 @@ fun ZoneDetailScreen(
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                 ) {
-                    LazyVerticalStaggeredGrid(
-                        columns = gridColumns,
-                        state = staggeredGridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 8.dp,
-                            end = 8.dp,
-                            top = totalHeaderHeightDp + 8.dp,
-                            bottom = bottomContentPadding
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalItemSpacing = 8.dp
-                    ) {
-                // 3. 内容流渲染列表
-                when {
-                    uiState.isAlbumTab -> {
-                        // 分享 / 相册列表（骨架按固定类型复用）
-                        if (uiState.isAlbumLoading && uiState.albumItems.isEmpty()) {
-                            items(
-                                8,
-                                key = { index -> "zone_album_skeleton_$index" },
-                                contentType = { "zone_album_skeleton" }
-                            ) { index ->
-                                ShimmerHost {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height((180 + (index % 3) * 30).dp)
-                                            .clip(MaterialTheme.shapes.medium)
-                                            .shimmerBackground()
-                                    )
-                                }
-                            }
-                        } else if (uiState.albumErrorMessage != null && uiState.albumItems.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = uiState.albumErrorMessage ?: "加载分享失败",
-                                    onRetry = { viewModel.loadInitialAlbum() }
-                                )
-                            }
-                        } else if (uiState.albumItems.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关分享")
-                            }
-                        } else {
-                            items(
-                                items = uiState.albumItems,
-                                key = { item -> "zone_album_${item.targetAlbumId}" },
-                                contentType = { "album_feed" }
-                            ) { item ->
-                                AlbumFeedCard(
-                                    item = item,
-                                    showTime = true,
-                                    onClick = handleAlbumClick
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = uiState.isAlbumLoadingMore,
-                                    loadMoreError = uiState.albumLoadMoreError,
-                                    isEndReached = !uiState.hasMoreAlbum,
-                                    onRetry = { viewModel.loadNextAlbumPage() }
-                                )
-                            }
-                        }
+                    val isCurrentTabLoading = when {
+                        uiState.isAlbumTab -> uiState.isAlbumLoading && uiState.albumItems.isEmpty()
+                        uiState.isPostsTab -> uiState.isPostsLoading && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()
+                        uiState.isHobbyTab -> uiState.hobbyState.isLoading && uiState.hobbyState.items.isEmpty()
+                        uiState.isResaleTab -> uiState.resaleState.isLoading && uiState.resaleState.items.isEmpty()
+                        uiState.isEntityTab -> uiState.currentEntityState.isLoading && uiState.currentEntityState.items.isEmpty()
+                        uiState.selectedTab == "action" -> uiState.isFeedLoading && uiState.items.isEmpty()
+                        else -> false
                     }
-                    uiState.isPostsTab -> {
-                        // 讨论贴列表（骨架按固定类型复用）
-                        if (uiState.isPostsLoading && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                            items(
-                                5,
-                                key = { index -> "zone_post_skeleton_$index" },
-                                contentType = { "zone_post_skeleton" }
-                            ) {
-                                ShimmerHost { ZonePostCardSkeleton() }
-                            }
-                        } else if (uiState.postsErrorMessage != null && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = uiState.postsErrorMessage ?: "加载讨论失败",
-                                    onRetry = { viewModel.loadInitialPosts() }
+
+                    if (isCurrentTabLoading) {
+                        PoiLoadingView(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = totalHeaderHeightDp + 8.dp,
+                                    bottom = bottomContentPadding
                                 )
-                            }
-                        } else if (uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关讨论")
-                            }
-                        } else {
-                            if (uiState.pinnedPosts.isNotEmpty()) {
+                        )
+                    } else {
+                        LazyVerticalStaggeredGrid(
+                            columns = gridColumns,
+                            state = staggeredGridState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalItemSpacing = 8.dp
+                        ) {
+                    // 3. 内容流渲染列表
+                    when {
+                        uiState.isAlbumTab -> {
+                            if (uiState.albumErrorMessage != null && uiState.albumItems.isEmpty()) {
                                 item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePinnedPostsBar(
-                                        pinnedPosts = uiState.pinnedPosts,
-                                        onPostClick = handlePostClick
+                                    ZoneErrorPlaceholder(
+                                        message = uiState.albumErrorMessage ?: "加载分享失败",
+                                        onRetry = { viewModel.loadInitialAlbum() }
                                     )
                                 }
-                            }
-
-                            items(
-                                items = uiState.postsItems,
-                                key = { item -> "zone_post_${item.id}" },
-                                contentType = { "zone_post" }
-                            ) { post ->
-                                ZonePostCard(
-                                    post = post,
-                                    onPostClick = handlePostClick,
-                                    onImageClick = onCardImageClick,
-                                    onUserClick = onNavigateToUser
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = uiState.isPostsLoadingMore,
-                                    loadMoreError = uiState.postsLoadMoreError,
-                                    isEndReached = !uiState.hasMorePosts,
-                                    onRetry = { viewModel.loadNextPostsPage() }
-                                )
-                            }
-                        }
-                    }
-                    uiState.isHobbyTab -> {
-                        // 产品 (Hobby) 列表（骨架按固定类型复用）
-                        val hobbyState = uiState.hobbyState
-                        if (hobbyState.isLoading && hobbyState.items.isEmpty()) {
-                            if (hobbyState.isGridMode) {
-                                items(
-                                    8,
-                                    key = { index -> "zone_hobby_grid_skeleton_$index" },
-                                    contentType = { "hobby_grid_skeleton" }
-                                ) {
-                                    ShimmerHost { HobbyGridCardSkeleton() }
+                            } else if (uiState.albumItems.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关分享")
                                 }
                             } else {
                                 items(
-                                    6,
-                                    key = { index -> "zone_hobby_list_skeleton_$index" },
-                                    contentType = { "hobby_list_skeleton" }
-                                ) {
-                                    ShimmerHost { HobbyListCardSkeleton() }
+                                    items = uiState.albumItems,
+                                    key = { item -> "zone_album_${item.targetAlbumId}" },
+                                    contentType = { "album_feed" }
+                                ) { item ->
+                                    AlbumFeedCard(
+                                        item = item,
+                                        showTime = true,
+                                        onClick = handleAlbumClick
+                                    )
+                                }
+
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = uiState.isAlbumLoadingMore,
+                                        loadMoreError = uiState.albumLoadMoreError,
+                                        isEndReached = !uiState.hasMoreAlbum,
+                                        onRetry = { viewModel.loadNextAlbumPage() }
+                                    )
                                 }
                             }
-                        } else if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = hobbyState.errorMessage,
-                                    onRetry = { viewModel.loadInitialHobby() }
-                                )
-                            }
-                        } else if (hobbyState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关产品")
-                            }
-                        } else {
-                            if (hobbyState.isGridMode) {
-                                items(
-                                    items = hobbyState.items,
-                                    key = { item -> "zone_hobby_grid_${item.actualItemId}" },
-                                    contentType = { "hobby_grid" }
-                                ) { item ->
-                                    HobbyGridCard(
-                                        item = item,
-                                        onClick = { handleHobbyClick(item) }
+                        }
+                        uiState.isPostsTab -> {
+                            if (uiState.postsErrorMessage != null && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneErrorPlaceholder(
+                                        message = uiState.postsErrorMessage ?: "加载讨论失败",
+                                        onRetry = { viewModel.loadInitialPosts() }
                                     )
+                                }
+                            } else if (uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关讨论")
+                                }
+                            } else {
+                                if (uiState.pinnedPosts.isNotEmpty()) {
+                                    item(span = StaggeredGridItemSpan.FullLine) {
+                                        ZonePinnedPostsBar(
+                                            pinnedPosts = uiState.pinnedPosts,
+                                            onPostClick = handlePostClick
+                                        )
+                                    }
+                                }
+
+                                items(
+                                    items = uiState.postsItems,
+                                    key = { item -> "zone_post_${item.id}" },
+                                    contentType = { "zone_post" }
+                                ) { post ->
+                                    ZonePostCard(
+                                        post = post,
+                                        onPostClick = handlePostClick,
+                                        onImageClick = onCardImageClick,
+                                        onUserClick = onNavigateToUser
+                                    )
+                                }
+
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = uiState.isPostsLoadingMore,
+                                        loadMoreError = uiState.postsLoadMoreError,
+                                        isEndReached = !uiState.hasMorePosts,
+                                        onRetry = { viewModel.loadNextPostsPage() }
+                                    )
+                                }
+                            }
+                        }
+                        uiState.isHobbyTab -> {
+                            val hobbyState = uiState.hobbyState
+                            if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneErrorPlaceholder(
+                                        message = hobbyState.errorMessage,
+                                        onRetry = { viewModel.loadInitialHobby() }
+                                    )
+                                }
+                            } else if (hobbyState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关产品")
+                                }
+                            } else {
+                                if (hobbyState.isGridMode) {
+                                    items(
+                                        items = hobbyState.items,
+                                        key = { item -> "zone_hobby_grid_${item.actualItemId}" },
+                                        contentType = { "hobby_grid" }
+                                    ) { item ->
+                                        HobbyGridCard(
+                                            item = item,
+                                            onClick = { handleHobbyClick(item) }
+                                        )
+                                    }
+                                } else {
+                                    items(
+                                        items = hobbyState.items,
+                                        key = { item -> "zone_hobby_list_${item.actualItemId}" },
+                                        contentType = { "hobby_list" }
+                                    ) { item ->
+                                        HobbyListCard(
+                                            item = item,
+                                            onClick = { handleHobbyClick(item) }
+                                        )
+                                    }
+                                }
+
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = hobbyState.isLoadingMore,
+                                        loadMoreError = hobbyState.loadMoreError,
+                                        isEndReached = hobbyState.isEndReached,
+                                        onRetry = { viewModel.loadNextHobbyPage() }
+                                    )
+                                }
+                            }
+                        }
+                        uiState.isResaleTab -> {
+                            val resaleState = uiState.resaleState
+                            if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneErrorPlaceholder(
+                                        message = resaleState.errorMessage,
+                                        onRetry = { viewModel.loadInitialResale() }
+                                    )
+                                }
+                            } else if (resaleState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关二手条目")
                                 }
                             } else {
                                 items(
-                                    items = hobbyState.items,
-                                    key = { item -> "zone_hobby_list_${item.actualItemId}" },
-                                    contentType = { "hobby_list" }
+                                    items = resaleState.items,
+                                    key = { item -> "zone_resale_${item.id}" },
+                                    contentType = { "zone_resale" }
                                 ) { item ->
-                                    HobbyListCard(
+                                    ZoneResaleCard(
                                         item = item,
-                                        onClick = { handleHobbyClick(item) }
+                                        onClick = { handleResaleClick(item) },
+                                        onUserClick = onNavigateToUser,
+                                        onContactClick = { handleResaleContactClick(item) },
+                                        onMoreClick = { activeMoreResaleItem = item }
+                                    )
+                                }
+
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = resaleState.isLoadingMore,
+                                        loadMoreError = resaleState.loadMoreError,
+                                        isEndReached = resaleState.isEndReached,
+                                        onRetry = { viewModel.loadNextResalePage() }
                                     )
                                 }
                             }
+                        }
+                        uiState.isEntityTab -> {
+                            val entityState = uiState.currentEntityState
+                            if (entityState.errorMessage != null && entityState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneErrorPlaceholder(
+                                        message = entityState.errorMessage,
+                                        onRetry = { viewModel.loadInitialEntity(uiState.selectedTab) }
+                                    )
+                                }
+                            } else if (entityState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关条目")
+                                }
+                            } else {
+                                items(
+                                    items = entityState.items,
+                                    key = { item -> "zone_entity_${uiState.selectedTab}_${item.targetId}" },
+                                    contentType = { "zone_entity" }
+                                ) { item ->
+                                    ZoneEntityCard(
+                                        item = item,
+                                        onClick = { handleEntityClick(item) }
+                                    )
+                                }
 
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = hobbyState.isLoadingMore,
-                                    loadMoreError = hobbyState.loadMoreError,
-                                    isEndReached = hobbyState.isEndReached,
-                                    onRetry = { viewModel.loadNextHobbyPage() }
-                                )
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = entityState.isLoadingMore,
+                                        loadMoreError = entityState.loadMoreError,
+                                        isEndReached = entityState.isEndReached,
+                                        onRetry = { viewModel.loadNextEntityPage(uiState.selectedTab) }
+                                    )
+                                }
                             }
                         }
-                    }
-                    uiState.isResaleTab -> {
-                        // 二手 (Resale) 列表（骨架按固定类型复用）
-                        val resaleState = uiState.resaleState
-                        if (resaleState.isLoading && resaleState.items.isEmpty()) {
-                            items(
-                                6,
-                                key = { index -> "zone_resale_skeleton_$index" },
-                                contentType = { "zone_resale_skeleton" }
-                            ) {
-                                ShimmerHost { ZoneResaleCardSkeleton() }
-                            }
-                        } else if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = resaleState.errorMessage,
-                                    onRetry = { viewModel.loadInitialResale() }
-                                )
-                            }
-                        } else if (resaleState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关二手条目")
-                            }
-                        } else {
-                            items(
-                                items = resaleState.items,
-                                key = { item -> "zone_resale_${item.id}" },
-                                contentType = { "zone_resale" }
-                            ) { item ->
-                                ZoneResaleCard(
-                                    item = item,
-                                    onClick = { handleResaleClick(item) },
-                                    onUserClick = onNavigateToUser,
-                                    onContactClick = { handleResaleContactClick(item) },
-                                    onMoreClick = { activeMoreResaleItem = item }
-                                )
-                            }
+                        uiState.selectedTab == "action" -> {
+                            if (uiState.errorMessage != null && uiState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneErrorPlaceholder(
+                                        message = uiState.errorMessage ?: "加载动态失败",
+                                        onRetry = { viewModel.refresh() }
+                                    )
+                                }
+                            } else if (uiState.items.isEmpty()) {
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZoneEmptyPlaceholder("暂无相关动态")
+                                }
+                            } else {
+                                items(
+                                    items = uiState.items,
+                                    key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
+                                    contentType = { "feed_action" }
+                                ) { item ->
+                                    ActionCard(
+                                        actionItem = item,
+                                        onActionClick = onActionClick,
+                                        onImageClick = onCardImageClick
+                                    )
+                                }
 
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = resaleState.isLoadingMore,
-                                    loadMoreError = resaleState.loadMoreError,
-                                    isEndReached = resaleState.isEndReached,
-                                    onRetry = { viewModel.loadNextResalePage() }
-                                )
+                                item(span = StaggeredGridItemSpan.FullLine) {
+                                    ZonePaginationFooter(
+                                        isLoadingMore = uiState.isLoadingMore,
+                                        loadMoreError = uiState.loadMoreError,
+                                        isEndReached = !uiState.hasMore,
+                                        onRetry = { viewModel.loadNextPage() }
+                                    )
+                                }
                             }
                         }
-                    }
-                    uiState.isEntityTab -> {
-                        // 5 个实体分类 (厂商, 系列, 作品, 角色, 人物) 列表（骨架按固定类型复用）
-                        val entityState = uiState.currentEntityState
-                        if (entityState.isLoading && entityState.items.isEmpty()) {
-                            items(
-                                6,
-                                key = { index -> "zone_entity_skeleton_$index" },
-                                contentType = { "zone_entity_skeleton" }
-                            ) {
-                                ShimmerHost { ZoneEntityCardSkeleton() }
-                            }
-                        } else if (entityState.errorMessage != null && entityState.items.isEmpty()) {
+                        else -> {
+                            // 其他未开放分类占位
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = entityState.errorMessage,
-                                    onRetry = { viewModel.loadInitialEntity(uiState.selectedTab) }
-                                )
+                                ZoneEmptyPlaceholder("该分类正在建设中...")
                             }
-                        } else if (entityState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关条目")
-                            }
-                        } else {
-                            items(
-                                items = entityState.items,
-                                key = { item -> "zone_entity_${uiState.selectedTab}_${item.targetId}" },
-                                contentType = { "zone_entity" }
-                            ) { item ->
-                                ZoneEntityCard(
-                                    item = item,
-                                    onClick = { handleEntityClick(item) }
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = entityState.isLoadingMore,
-                                    loadMoreError = entityState.loadMoreError,
-                                    isEndReached = entityState.isEndReached,
-                                    onRetry = { viewModel.loadNextEntityPage(uiState.selectedTab) }
-                                )
-                            }
-                        }
-                    }
-                    uiState.selectedTab == "action" -> {
-                        // 动态流列表（骨架按固定类型复用）
-                        if (uiState.isFeedLoading && uiState.items.isEmpty()) {
-                            items(
-                                6,
-                                key = { index -> "zone_feed_skeleton_$index" },
-                                contentType = { "feed_skeleton" }
-                            ) {
-                                ShimmerHost { ActionCardSkeleton() }
-                            }
-                        } else if (uiState.errorMessage != null && uiState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = uiState.errorMessage ?: "加载动态失败",
-                                    onRetry = { viewModel.refresh() }
-                                )
-                            }
-                        } else if (uiState.items.isEmpty()) {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关动态")
-                            }
-                        } else {
-                            items(
-                                items = uiState.items,
-                                key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
-                                contentType = { "feed_action" }
-                            ) { item ->
-                                ActionCard(
-                                    actionItem = item,
-                                    onActionClick = onActionClick,
-                                    onImageClick = onCardImageClick
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = uiState.isLoadingMore,
-                                    loadMoreError = uiState.loadMoreError,
-                                    isEndReached = !uiState.hasMore,
-                                    onRetry = { viewModel.loadNextPage() }
-                                )
-                            }
-                        }
-                    }
-                    else -> {
-                        // 其他未开放分类占位
-                        item(span = StaggeredGridItemSpan.FullLine) {
-                            ZoneEmptyPlaceholder("该分类正在建设中...")
                         }
                     }
                 }
@@ -1682,9 +1625,8 @@ private fun ZonePaginationFooter(
     ) {
         when {
             isLoadingMore -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
+                LoadingIndicator(
+                    modifier = Modifier.size(28.dp)
                 )
             }
             loadMoreError != null -> {

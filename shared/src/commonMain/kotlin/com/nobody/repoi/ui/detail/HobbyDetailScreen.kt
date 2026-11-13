@@ -68,7 +68,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.home.components.ShimmerHost
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
@@ -123,7 +123,6 @@ import com.nobody.repoi.ui.common.comment.CommentFeedState
 import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
-import com.nobody.repoi.ui.home.components.shimmerBackground
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
@@ -193,7 +192,7 @@ fun HobbyDetailScreen(
         )
     } else {
         val detail = uiState.detail
-        val initialSkeleton = uiState.isInitialLoading && detail == null
+        val isInitialLoading = uiState.isInitialLoading && detail == null
         // 查看器消费绝对 URL（非 AsyncImage 下游）：保留管道解析，原图档位落 cover/raw/
         val heroImages = buildList {
             val rawCover = detail?.cover ?: navParam.initialCover
@@ -238,12 +237,12 @@ fun HobbyDetailScreen(
             )
         }
 
-        val commentFeedState = remember(uiState, detail, initialSkeleton) {
+        val commentFeedState = remember(uiState, detail, isInitialLoading) {
             CommentFeedState(
                 totalCommentCount = detail?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                 hotComments = uiState.hotComments,
                 latestComments = uiState.latestComments,
-                isCommentsLoading = uiState.isCommentsLoading || initialSkeleton,
+                isCommentsLoading = uiState.isCommentsLoading || isInitialLoading,
                 isLoadingMoreComments = uiState.isLoadingMoreComments,
                 hasMoreComments = uiState.hasMoreComments,
                 commentsError = uiState.commentsError
@@ -307,7 +306,11 @@ fun HobbyDetailScreen(
                 }
             }
         ) {
-
+            if (isInitialLoading) {
+                item(key = "hobby_detail_initial_loading") {
+                    PoiLoadingView(modifier = Modifier.fillParentMaxSize())
+                }
+            } else {
                     // ── 区块 0：官方经典双列 Header + 官图缩略预览栏（上下文由屏级下传）──
                     item(key = "section_hero") {
                         HobbyHeaderOfficialSection(
@@ -343,7 +346,7 @@ fun HobbyDetailScreen(
                                     )
                                 }
                             } else null,
-                            isPicsLoading = uiState.isOfficialPicsLoading || initialSkeleton,
+                            isPicsLoading = uiState.isOfficialPicsLoading,
                             onMoreClick = if (onNavigateToPictureList != null) {
                                 {
                                     onNavigateToPictureList(
@@ -368,7 +371,7 @@ fun HobbyDetailScreen(
                         HobbySpecsSection(
                             detail = detail,
                             infoList = uiState.infoList,
-                            isLoading = uiState.isInfoListLoading || initialSkeleton,
+                            isLoading = uiState.isInfoListLoading,
                             isDark = isDark,
                             onNavigateToHobbyList = onNavigateToHobbyList,
                             onUrlClick = onUrlClick,
@@ -458,11 +461,11 @@ fun HobbyDetailScreen(
                     }
 
                     // ── 区块 2：玩家相册与随手拍（上下文由屏级下传）──
-                    if (uiState.userAlbums.isNotEmpty() || uiState.isUserAlbumsLoading || initialSkeleton) {
+                    if (uiState.userAlbums.isNotEmpty() || uiState.isUserAlbumsLoading) {
                         item(key = "section_user_albums") {
                             HobbyUserAlbumsSection(
                                 albums = uiState.userAlbums,
-                                isLoading = uiState.isUserAlbumsLoading || initialSkeleton,
+                                isLoading = uiState.isUserAlbumsLoading,
                                 isDark = isDark,
                                 onAlbumClick = { album ->
                                     if (onNavigateToAlbum != null && album.id > 0) {
@@ -541,7 +544,7 @@ fun HobbyDetailScreen(
                             )
                         }
                     }
-
+            }
         }
     }
 }
@@ -652,13 +655,7 @@ private fun HobbyHeaderOfficialSection(
                             )
                         }
                         detail == null -> {
-                            ShimmerHost {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .shimmerBackground()
-                                )
-                            }
+                            PoiLoadingView()
                         }
                         else -> {
                             Column(
@@ -807,23 +804,13 @@ private fun HobbyHeaderOfficialSection(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (officialPics.isNotEmpty()) {
+                        if (officialPics.isNotEmpty() || !isPicsLoading) {
                             Text(
                                 text = "官图",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
-                            ShimmerHost {
-                                Box(
-                                    modifier = Modifier
-                                        .width(140.dp)
-                                        .height(15.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .shimmerBackground()
-                                )
-                            }
                         }
                     }
 
@@ -832,19 +819,12 @@ private fun HobbyHeaderOfficialSection(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         if (officialPics.isEmpty()) {
-                            // 官图骨架按固定类型复用，避免与正式官图条目混用复用池
-                            items(
-                                4,
-                                key = { index -> "official_skeleton_$index" },
-                                contentType = { "official_skeleton" }
-                            ) {
-                                ShimmerHost {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(130.dp)
-                                            .clip(RoundedCornerShape(14.dp))
-                                            .shimmerBackground()
-                                    )
+                            if (isPicsLoading) {
+                                item(
+                                    key = "official_loading",
+                                    contentType = "official_loading"
+                                ) {
+                                    PoiLoadingView(modifier = Modifier.size(130.dp))
                                 }
                             }
                         } else {
@@ -999,14 +979,7 @@ private fun HobbySpecsSection(
                     }
                 } else {
                     // 加载占位
-                    ShimmerHost {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
-                                .shimmerBackground()
-                        )
-                    }
+                    PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
                 }
             }
         }
@@ -1504,31 +1477,7 @@ private fun HobbyUserAlbumsSection(
         }
 
         if (isLoading && albums.isEmpty()) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(
-                    count = 4,
-                    key = { "hobby_album_skeleton_$it" },
-                    contentType = { "skeleton" }
-                ) { index ->
-                    val shimmerWidth = when (index % 3) {
-                        0 -> 140.dp
-                        1 -> 160.dp
-                        else -> 120.dp
-                    }
-                    ShimmerHost {
-                        Box(
-                            modifier = Modifier
-                                .height(160.dp)
-                                .width(shimmerWidth)
-                                .clip(MaterialTheme.shapes.medium)
-                                .shimmerBackground()
-                        )
-                    }
-                }
-            }
+            PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
         } else {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
