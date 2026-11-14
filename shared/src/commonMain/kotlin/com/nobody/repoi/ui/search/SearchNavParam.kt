@@ -22,4 +22,3 @@ data class SearchResultNavParam(
     val companyNodeId: Long? = null,
     val companyName: String? = null
 )
-
