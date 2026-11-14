@@ -9,6 +9,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -38,6 +39,7 @@ class SearchLandingViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
@@ -54,7 +56,7 @@ class SearchLandingViewModelTest {
             predicate = { path, _ -> path.endsWith("/api/search/auto/fill") },
             body = { _, _ -> mockApi.ok(autofillJson) }
         )
-        val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
+        val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
         historyManager.clearAll()
         val searchRepo = SearchRepository(mockApi.api(testDispatcher), historyManager)
         val viewModel = SearchLandingViewModel(historyManager, searchRepo)

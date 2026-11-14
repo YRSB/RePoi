@@ -12,6 +12,7 @@ import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -45,6 +46,7 @@ class ProfileViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
@@ -72,7 +74,7 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             userRepo,
             MessageRepository(api, session),
-            ThemeManager(TestDataStore.themePrefs()),
+            ThemeManager(TestDataStore.inMemory()),
             session,
             followRepo,
         )
