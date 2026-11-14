@@ -45,6 +45,7 @@ class ProfileViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
@@ -72,7 +73,7 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             userRepo,
             MessageRepository(api, session),
-            ThemeManager(TestDataStore.themePrefs()),
+            ThemeManager(TestDataStore.inMemory()),
             session,
             followRepo,
         )

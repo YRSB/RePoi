@@ -38,6 +38,7 @@ class SearchLandingViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
@@ -54,7 +55,7 @@ class SearchLandingViewModelTest {
             predicate = { path, _ -> path.endsWith("/api/search/auto/fill") },
             body = { _, _ -> mockApi.ok(autofillJson) }
         )
-        val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
+        val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
         historyManager.clearAll()
         val searchRepo = SearchRepository(mockApi.api(testDispatcher), historyManager)
         val viewModel = SearchLandingViewModel(historyManager, searchRepo)
