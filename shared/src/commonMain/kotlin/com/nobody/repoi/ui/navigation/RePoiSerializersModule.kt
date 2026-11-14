@@ -46,11 +46,12 @@ val RePoiSerializersModule = SerializersModule {
         subclass(HobbyDetailNavKey::class, HobbyDetailNavKey.serializer())
         subclass(FriendListNavKey::class, FriendListNavKey.serializer())
 
-        // 7. 用户与评论互动路由 (4)
+        // 7. 用户与评论互动路由 (5)
         subclass(UserInfoNavKey::class, UserInfoNavKey.serializer())
         subclass(CommentDetailNavKey::class, CommentDetailNavKey.serializer())
         subclass(HobbyCommentsNavKey::class, HobbyCommentsNavKey.serializer())
         subclass(SearchNavKey::class, SearchNavKey.serializer())
+        subclass(SearchResultNavKey::class, SearchResultNavKey.serializer())
 
         // 8. 相册与厂商关联路由 (4)
         subclass(AlbumDetailNavKey::class, AlbumDetailNavKey.serializer())

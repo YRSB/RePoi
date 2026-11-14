@@ -16,6 +16,7 @@ import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
 import com.nobody.repoi.ui.item.list.HobbyListScreen
 import com.nobody.repoi.ui.picture.PictureListScreen
 import com.nobody.repoi.ui.search.SearchScreen
+import com.nobody.repoi.ui.search.toSearchNavParam
 
 /**
  * 注册搜索中心、手办筛选列表、评论列表/楼中楼、图片查看及 ExHobby 扩展等通用交互路由。
@@ -47,6 +48,20 @@ fun EntryProviderScope<NavKey>.interactionEntries(
     ) { key ->
         SearchScreen(
             navParam = key.param,
+            onBack = onBack,
+            onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
+            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) }
+        )
+    }
+
+    entry<SearchResultNavKey> { key ->
+        SearchScreen(
+            navParam = key.param.toSearchNavParam(),
             onBack = onBack,
             onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },

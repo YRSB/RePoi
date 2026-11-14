@@ -91,7 +91,8 @@
 | **消息中心** | 黑名单管理 | `MessageBlockNavKey` | `ui/message/block/MessageBlockScreen` | `MessageBlockViewModel` | `MessageRepository` |
 | **评论互动** | 全屏评论列表 | `HobbyCommentsNavKey` | `ui/comment/HobbyCommentsScreen` | `HobbyCommentsViewModel` | `CommentRepository` |
 | **评论互动** | 评论详情与楼中楼 | `CommentDetailNavKey` | `ui/comment/CommentDetailScreen` | `CommentDetailViewModel` | `CommentRepository` |
-| **搜索与通用** | 全局搜索中心 | `SearchNavKey` | `ui/search/SearchScreen` | `SearchViewModel` | `SearchRepository` |
+| **搜索与通用** | 全局搜索中心 (落地页) | `SearchNavKey` | `ui/search/SearchScreen` | `SearchViewModel` | `SearchRepository` |
+| **搜索与通用** | 搜索结果中心 | `SearchResultNavKey` | `ui/search/SearchScreen` | `SearchViewModel` | `SearchRepository` |
 | **搜索与通用** | 手办条件检索列表 | `HobbyListNavKey` | `ui/item/list/HobbyListScreen` | `HobbyListViewModel` | `HobbyRepository` |
 | **搜索与通用** | 图片列表查看 | `PictureListNavKey` | `ui/picture/PictureListScreen` | `PictureListViewModel` | `PictureRepository` |
 | **扩展与第三方** | ExHobby 扩展图库条目 | `ExHobbyListNavKey` | `ui/exhobby/ExHobbyListScreen` | `ExHobbyViewModel` | `ExHobbyRepository` |

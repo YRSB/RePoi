@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.navigation
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.search.SearchResultNavParam
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -136,10 +137,17 @@ class NavExtensionsTest {
         navigator.selectTab(AppDestinations.ITEMS)
         navigator.navigateToDetail(1001L)
         navigator.navigateToAlbum(2002L)
+        navigator.navigateToSearchResult(keyword = "ALTER", companyNodeId = 3303L)
 
-        assertEquals(3, rootStack.size)
-        val albumKey = assertIs<AlbumDetailNavKey>(rootStack.last())
-        assertEquals(2002L, albumKey.param.albumId)
+        assertEquals(4, rootStack.size)
+        val searchResultKey = assertIs<SearchResultNavKey>(rootStack.last())
+        assertEquals("ALTER", searchResultKey.param.keyword)
+        assertEquals(3303L, searchResultKey.param.companyNodeId)
+
+        navigator.navigateToSearchResult(SearchResultNavParam(keyword = "GSC"))
+        assertEquals(5, rootStack.size)
+        val gscKey = assertIs<SearchResultNavKey>(rootStack.last())
+        assertEquals("GSC", gscKey.param.keyword)
 
         tabState.backStacks.forEach { (_, stack) -> assertEquals(1, stack.size) }
     }
@@ -190,5 +198,18 @@ class NavExtensionsTest {
         assertEquals(5505L, commentKey.param.commentId)
         assertEquals(6606L, commentKey.param.relateNodeId)
         assertEquals(true, commentKey.param.isDiscuss)
+
+        stack.navigateToSearchResult(keyword = "手办", category = 10000, companyNodeId = 2202L, companyName = "Max Factory")
+        assertEquals(9, stack.size)
+        val searchResultKey = assertIs<SearchResultNavKey>(stack.last())
+        assertEquals("手办", searchResultKey.param.keyword)
+        assertEquals(10000, searchResultKey.param.category)
+        assertEquals(2202L, searchResultKey.param.companyNodeId)
+        assertEquals("Max Factory", searchResultKey.param.companyName)
+
+        stack.navigateToSearchResult(SearchResultNavParam(keyword = "粘土人"))
+        assertEquals(10, stack.size)
+        val searchResultParamKey = assertIs<SearchResultNavKey>(stack.last())
+        assertEquals("粘土人", searchResultParamKey.param.keyword)
     }
 }

@@ -13,7 +13,9 @@ import com.nobody.repoi.ui.collect.WorksCollectEditNavParam
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
+import com.nobody.repoi.ui.search.HobbyAllCategory
 import com.nobody.repoi.ui.search.SearchNavParam
+import com.nobody.repoi.ui.search.SearchResultNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
@@ -57,6 +59,23 @@ fun NavBackStack<NavKey>.navigateToSearch(
             initialCategory = category,
             initialCompanyNodeId = companyNodeId,
             initialCompanyName = companyName
+        )
+    )
+)
+fun NavBackStack<NavKey>.navigateToSearchResult(param: SearchResultNavParam = SearchResultNavParam()) =
+    add(SearchResultNavKey(param = param))
+fun NavBackStack<NavKey>.navigateToSearchResult(
+    keyword: String = "",
+    category: Int = HobbyAllCategory.id,
+    companyNodeId: Long? = null,
+    companyName: String? = null
+) = add(
+    SearchResultNavKey(
+        param = SearchResultNavParam(
+            keyword = keyword,
+            category = category,
+            companyNodeId = companyNodeId,
+            companyName = companyName
         )
     )
 )
@@ -141,6 +160,14 @@ fun RePoiNavigator.navigateToSearch(
     companyNodeId: Long? = null,
     companyName: String? = null
 ) = currentBackStack.navigateToSearch(keyword, category, companyNodeId, companyName)
+fun RePoiNavigator.navigateToSearchResult(param: SearchResultNavParam = SearchResultNavParam()) =
+    currentBackStack.navigateToSearchResult(param)
+fun RePoiNavigator.navigateToSearchResult(
+    keyword: String = "",
+    category: Int = HobbyAllCategory.id,
+    companyNodeId: Long? = null,
+    companyName: String? = null
+) = currentBackStack.navigateToSearchResult(keyword, category, companyNodeId, companyName)
 fun RePoiNavigator.navigateToHobbyList(param: HobbyListNavParam) = currentBackStack.navigateToHobbyList(param)
 fun RePoiNavigator.navigateToCollectEdit(param: CollectEditNavParam) = currentBackStack.navigateToCollectEdit(param)
 fun RePoiNavigator.navigateToUserCollect(param: UserCollectNavParam) = currentBackStack.navigateToUserCollect(param)

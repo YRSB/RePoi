@@ -10,6 +10,7 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.search.SearchNavParam
+import com.nobody.repoi.ui.search.SearchResultNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
@@ -70,11 +71,20 @@ class RePoiSerializersModuleTest {
             HobbyDetailNavKey(param = DetailNavParam(itemId = 7001L), id = "fixed-id-hobby-detail"),
             FriendListNavKey(param = FriendListNavParam(userId = 6001L), id = "fixed-id-friend-list"),
 
-            // 6. 用户与评论互动路由 (4)
+            // 6. 用户与评论互动路由 (5)
             UserInfoNavKey(param = UserInfoNavParam(userId = 6001L), id = "fixed-id-user-info"),
             CommentDetailNavKey(param = CommentDetailNavParam(commentId = 8001L, relateNodeId = 7001L), id = "fixed-id-comment-detail"),
             HobbyCommentsNavKey(param = HobbyCommentsNavParam(nodeId = 7001L), id = "fixed-id-hobby-comments"),
             SearchNavKey(param = SearchNavParam(initialKeyword = "初音未来"), id = "fixed-id-search"),
+            SearchResultNavKey(
+                param = SearchResultNavParam(
+                    keyword = "初音未来",
+                    category = 10000,
+                    companyNodeId = 1101L,
+                    companyName = "Good Smile Company"
+                ),
+                id = "fixed-id-search-result"
+            ),
 
             // 7. 相册与厂商关联路由 (4)
             AlbumDetailNavKey(param = AlbumNavParam(albumId = 9001L), id = "fixed-id-album-detail"),
@@ -117,7 +127,7 @@ class RePoiSerializersModuleTest {
             MessageBlockNavKey(id = "fixed-id-message-block")
         )
 
-        assertEquals(47, testRoutes.size, "测试必须全量覆盖全部 47 个 AppNavKey")
+        assertEquals(48, testRoutes.size, "测试必须全量覆盖全部 48 个 AppNavKey")
 
         for (originalKey in testRoutes) {
             val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)
@@ -129,6 +139,29 @@ class RePoiSerializersModuleTest {
                 "多态反序列化后与原实例不相等: ${originalKey::class.simpleName}, json: $encoded"
             )
         }
+    }
+
+    @Test
+    fun testSearchResultNavKeySerializationAndTypeIntegrity() {
+        val originalKey = SearchResultNavKey(
+            param = SearchResultNavParam(
+                keyword = "初音未来",
+                category = 10000,
+                companyNodeId = 1101L,
+                companyName = "Good Smile Company"
+            ),
+            id = "test-search-result-id"
+        )
+        val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)
+        val decoded = json.decodeFromString(polymorphicNavKeySerializer, encoded)
+
+        assertIs<SearchResultNavKey>(decoded)
+        assertEquals("初音未来", decoded.param.keyword)
+        assertEquals(10000, decoded.param.category)
+        assertEquals(1101L, decoded.param.companyNodeId)
+        assertEquals("Good Smile Company", decoded.param.companyName)
+        assertEquals("test-search-result-id", decoded.id)
+        assertEquals(originalKey, decoded)
     }
 
     @Test
