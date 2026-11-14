@@ -15,7 +15,9 @@ import com.nobody.repoi.ui.comment.HobbyCommentsScreen
 import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
 import com.nobody.repoi.ui.item.list.HobbyListScreen
 import com.nobody.repoi.ui.picture.PictureListScreen
-import com.nobody.repoi.ui.search.SearchScreen
+import com.nobody.repoi.ui.search.SearchLandingScreen
+import com.nobody.repoi.ui.search.SearchNavParam
+import com.nobody.repoi.ui.search.SearchResultScreen
 
 /**
  * 注册搜索中心、手办筛选列表、评论列表/楼中楼、图片查看及 ExHobby 扩展等通用交互路由。
@@ -32,22 +34,23 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         )
     }
 
-    entry<SearchNavKey>(
-        metadata = metadata {
-            put(NavDisplay.TransitionKey) {
-                fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(150))
-            }
-            put(NavDisplay.PopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(200))
-            }
-            put(NavDisplay.PredictivePopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(200))
-            }
-        }
-    ) { key ->
-        SearchScreen(
+    entry<SearchNavKey> { key ->
+        SearchLandingScreen(
             navParam = key.param,
             onBack = onBack,
+            onNavigateToResult = { resultParam ->
+                navigator.commitSearchResult(resultParam)
+            }
+        )
+    }
+
+    entry<SearchResultNavKey> { key ->
+        SearchResultScreen(
+            navParam = key.param,
+            onBack = onBack,
+            onSearchFieldClick = { searchParam ->
+                navigator.navigateToSearch(searchParam)
+            },
             onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
             onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },

@@ -11,6 +11,7 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.search.SearchNavParam
+import com.nobody.repoi.ui.search.SearchResultNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
@@ -152,6 +153,12 @@ data class HobbyCommentsNavKey(
 @Serializable
 data class SearchNavKey(
     val param: SearchNavParam = SearchNavParam(),
+    val id: String = newNavId()
+) : AppNavKey
+
+@Serializable
+data class SearchResultNavKey(
+    val param: SearchResultNavParam = SearchResultNavParam(),
     val id: String = newNavId()
 ) : AppNavKey
 

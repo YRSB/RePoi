@@ -29,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
@@ -55,6 +57,7 @@ fun SearchTopBar(
     showFilterButton: Boolean = false,
     isFilterActive: Boolean = false,
     onFilterClick: () -> Unit = {},
+    focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -142,6 +145,7 @@ fun SearchTopBar(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                             .semantics {
                                 contentDescription = "搜索输入框"
                             }

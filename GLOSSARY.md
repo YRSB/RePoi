@@ -112,6 +112,14 @@ _Avoid_: 全量刚性定框, 全量自适应, 裁切海报, 白边海报, 毛玻
 全局搜索结果浏览态中，以静态常驻顶栏（SearchTopBar + PrimaryScrollableTabRow）搭配官方 HorizontalPager 为主体的 8 分类多页架构；各分类内部维持独立的分页加载、数据流缓存、空态呈现与首屏懒加载，手势滑动或 Tab 点击双向驱动页面切换，彻底消除手写单流置换与列表滚动折叠的嵌套竞态。
 _Avoid_: 搜索嵌套滚动, 单容器切换, 伪 Pager
 
+**搜索落地页 (Search Landing Page)**:
+用户发起全站检索时的输入与导流中枢页面，集中呈现实时搜索输入栏、本地搜索历史、大家在找分类热词榜及动态联想建议列表。
+_Avoid_: 搜索初始页, 搜索输入态, 搜索首页
+
+**搜索结果页 (Search Results Page)**:
+呈现特定搜索词及筛选条件下检索成果的独立二级页面，以常驻搜索顶栏搭配 8 分类横向分页器（HorizontalPager）与独立分类筛选器为核心结构。
+_Avoid_: 搜索结果态, 搜索展示页, 检索列表
+
 **页面加载指示器 (Page Loading Indicator / PoiLoadingView)**:
 在页面或区块未取得初始数据时居中呈现的 Material 3 Expressive 规范动态加载指示基元，统一替代过去模拟内容外轮廓的骨架屏。
 _Avoid_: 骨架屏 (Skeleton Screen), 局部加载框, 旋转进度菊花, 假界面
