@@ -65,7 +65,7 @@ import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
 
 /**
- * 左侧海报槽位的测试探针：仅用于 JVM Compose 布局约束断言（ADR-0016），无用户可见语义。
+ * 左侧海报槽位的测试探针：仅用于 JVM Compose 布局约束断言（ADR-0016 / ADR-0021），无用户可见语义。
  */
 internal const val ActionCardPosterTag = "action_card_poster"
 
@@ -104,8 +104,12 @@ fun ActionCard(
     // - 相册传图类：宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐；
     // - 手办/周边：9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中，零裁切零跳变）；
     // - 其余实体（厂商/角色/作品/系列/人物等，含未知类型）：1:1 正方形，贴合其方形封面，避免 9:13 竖框的上下白边。
-    // 横图/方图落在右侧约 134dp 的高度包络线内，卡片外框由右侧锚定；超长竖图则自然撑高卡片。
+    // 相册分支的横图/方图落在右侧约 134dp 的高度包络线内，卡片外框由右侧锚定；超长竖图则自然撑高卡片。
+    // 相册判定与 AppRouteResolver 的分类区间对齐（60000..79999），避免缺 itemType 的相册
+    // 掉进手办/实体分支；RelateItem.isAlbum 自身只覆盖 60000..69999。
+    val relateCategoryId = relateItem?.categoryId ?: 0
     val isAlbumAction = relateItem?.isAlbum == true ||
+        relateCategoryId in 60000..79999 ||
         actionItem.actionType == 3 ||
         actionItem.actionType == 103 ||
         actionItem.actionType == 104

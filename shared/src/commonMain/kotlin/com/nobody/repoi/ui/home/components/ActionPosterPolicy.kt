@@ -30,12 +30,16 @@ private fun isHobbyCategory(categoryId: Int): Boolean = categoryId in 10000..199
  * 解析非相册海报的槽位形状。
  *
  * 只有**能明确识别为手办/周边**（`itemType` 命中别名或分类落在 10000..19999）时才用 9:13 竖框；
- * 其余一律 1:1 正方形——厂商、角色、作品、系列、人物的官方封面多为方图，`picture`/`post`
- * 等用户图片也以方图或横图为主，塞进 9:13 只会留下上下白边。未知类型同样按 1:1 处理，
- * 与 Hpoi 原版海报的 1:1 首帧占位一致。
+ * 其余一律 1:1 正方形——厂商、角色、作品、系列、人物的官方封面多为方图，未知类型同样按 1:1
+ * 处理，与 Hpoi 原版海报的 1:1 首帧占位一致。传图类动态（`actionType` 3/103/104）会先被
+ * [ActionCard] 的相册分支拦截，不参与本判定；真正落到 1:1 的非方图封面只会留下左右留白，
+ * 不再出现竖框的上下白边。
+ *
+ * 无关联条目时 [ActionCard] 不渲染左侧海报（`shouldShowLeftCover` 为 false），此处返回默认的
+ * 1:1，与“其余一律方形”的文案保持一致。
  */
 internal fun ActionItem.resolvePosterShape(): ActionPosterShape {
-    val relate = relateItem ?: return ActionPosterShape.GOLDEN
+    val relate = relateItem ?: return ActionPosterShape.SQUARE
     val itemType = relate.itemType?.trim()?.lowercase()
     return if (itemType in GoldenItemTypes || isHobbyCategory(relate.categoryId)) {
         ActionPosterShape.GOLDEN

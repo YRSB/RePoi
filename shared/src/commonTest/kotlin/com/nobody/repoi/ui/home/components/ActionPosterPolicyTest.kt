@@ -10,43 +10,50 @@ import kotlin.test.assertEquals
  *
  * 与 `ActionCardPosterLayoutTest` 的真实 Compose 布局断言互补：这里锁分类映射，
  * 那里锁最终槽位尺寸，分类漂移与尺寸漂移都能被单独定位。
+ *
+ * `SQUARE` 是默认回退值，因此实体别名/未知类型的 SQUARE 断言主要价值是阻止误把
+ * 手办别名或手办分类区间扩进 `GOLDEN`；真正能证伪区间逻辑的是 10000..19999 的
+ * 边界用例与 `hobby` / `figure` / `item` 别名用例。
  */
 class ActionPosterPolicyTest {
 
     @Test
-    fun `hobby and figure keep golden shape`() {
-        listOf("hobby", "figure", "Figure", "HOBBY").forEach { type ->
+    fun `hobby item types keep golden shape`() {
+        listOf("hobby", "figure", "item", "Hobby", " hobby ").forEach { type ->
             assertEquals(
                 ActionPosterShape.GOLDEN,
                 actionOf(RelateItem(itemType = type)).resolvePosterShape(),
-                "itemType=$type 应保持 9:13"
+                "itemType='$type' 应保持 9:13"
             )
         }
-        assertEquals(
-            ActionPosterShape.GOLDEN,
-            actionOf(RelateItem(categoryId = 10000)).resolvePosterShape(),
-            "手办分类区间应保持 9:13"
-        )
     }
 
     @Test
-    fun `vendor character works series and person use square shape`() {
+    fun `hobby category range keeps golden shape at its boundaries`() {
+        listOf(10000, 19999).forEach { categoryId ->
+            assertEquals(
+                ActionPosterShape.GOLDEN,
+                actionOf(RelateItem(categoryId = categoryId)).resolvePosterShape(),
+                "categoryId=$categoryId 应保持 9:13"
+            )
+        }
+        // 区间外一律方形，顺带锁住 9999 / 20000 两个边界
+        listOf(9999, 20000).forEach { categoryId ->
+            assertEquals(
+                ActionPosterShape.SQUARE,
+                actionOf(RelateItem(categoryId = categoryId)).resolvePosterShape(),
+                "categoryId=$categoryId 应走 1:1"
+            )
+        }
+    }
+
+    @Test
+    fun `entity item types use square shape`() {
         listOf("company", "vendor", "character", "charactar", "series", "person", "works").forEach { type ->
             assertEquals(
                 ActionPosterShape.SQUARE,
                 actionOf(RelateItem(itemType = type)).resolvePosterShape(),
                 "itemType=$type 应走 1:1"
-            )
-        }
-    }
-
-    @Test
-    fun `entity category ranges use square shape even without itemType`() {
-        listOf(20000, 30000, 40000, 40100, 50000, 80000).forEach { categoryId ->
-            assertEquals(
-                ActionPosterShape.SQUARE,
-                actionOf(RelateItem(categoryId = categoryId)).resolvePosterShape(),
-                "categoryId=$categoryId 应走 1:1"
             )
         }
     }
@@ -66,8 +73,8 @@ class ActionPosterPolicyTest {
     }
 
     @Test
-    fun `missing relate item keeps golden shape`() {
-        assertEquals(ActionPosterShape.GOLDEN, actionOf(null).resolvePosterShape())
+    fun `missing relate item keeps square default`() {
+        assertEquals(ActionPosterShape.SQUARE, actionOf(null).resolvePosterShape())
     }
 
     private fun actionOf(relateItem: RelateItem?) = ActionItem(id = 1L, relateItem = relateItem)
