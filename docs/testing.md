@@ -162,7 +162,6 @@ CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-ru
 | `*MessageCenterViewModelTest*` | 消息中心多 Tab 并发时序不稳 | 同上 |
 | `*MessageChatViewModelTest*` | 聊天长轮询依赖真实延迟 | 注入可暂停的时钟后 |
 | `*MessageNoticeViewModelTest*` | 通知列表分页时序不稳 | 同上 |
-| `*SearchViewModelTest*` | 搜索防抖依赖真实时间 | 注入 TestDispatcher 时间后 |
 | `*SettingsViewModelTest*` | 设置页多 DataStore 并发读 | 内存 DataStore 后 |
 
 > 注意：`*HobbyDetailViewModel*` 曾以整类通配排除，会把收藏联动断言一并吞掉。

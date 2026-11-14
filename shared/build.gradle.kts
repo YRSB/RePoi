@@ -180,7 +180,6 @@ tasks.withType<Test>().configureEach {
         excludeTestsMatching("*MessageCenterViewModelTest*")
         excludeTestsMatching("*MessageChatViewModelTest*")
         excludeTestsMatching("*MessageNoticeViewModelTest*")
-        excludeTestsMatching("*SearchViewModelTest*")
         excludeTestsMatching("*SettingsViewModelTest*")
         // UserCollectViewModelTest 已完成 MVI 化（Intent + PagedListLoader）并补齐调度器三件套，
         // 重新纳入 CI 执行范围；不要再加回过滤，否则断言会静默失效。

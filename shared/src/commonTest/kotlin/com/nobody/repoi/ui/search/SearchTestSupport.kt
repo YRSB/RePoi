@@ -15,7 +15,6 @@ import kotlinx.serialization.json.Json
  *
  * 路由按 `path == api/search` + form `category` 分发，断言与请求顺序无关。
  */
-internal class SearchTestEnv(val mock: MockApi, val viewModel: SearchViewModel)
 internal class SearchResultTestEnv(val mock: MockApi, val viewModel: SearchResultViewModel)
 
 internal fun TestScope.createSearchResultTestEnv(
@@ -34,20 +33,6 @@ internal fun TestScope.createSearchResultTestEnv(
 
 internal fun SearchResultViewModel.tabState(tab: SearchTab): TabSearchState =
     uiState.value.tabStates.getValue(tab)
-
-internal fun TestScope.createSearchTestEnv(
-    testDispatcher: CoroutineDispatcher,
-    json: Json
-): SearchTestEnv {
-    val mock = MockApi().apply { stubSearchEndpoints() }
-    val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
-    val api = mock.api(testDispatcher)
-    val viewModel = SearchViewModel(
-        SearchRepository(api, historyManager),
-        CategoryManager(api, backgroundScope)
-    )
-    return SearchTestEnv(mock, viewModel)
-}
 
 /** 主搜分页响应：第 1 页 2 条、第 2 页 1 条，`pageCount = 3` 便于验证触底加载。 */
 internal fun MockApi.searchPageJson(category: String, page: Int): String {
@@ -123,12 +108,3 @@ internal fun List<RecordedHttpRequest>.searchCategories(): List<String> =
 /** 最后一次主搜索请求的表单参数。 */
 internal fun List<RecordedHttpRequest>.lastSearchForm(): Map<String, String> =
     searchRequests().last().formEntries()
-
-internal fun SearchViewModel.tabState(tab: SearchTab): TabSearchState =
-    uiState.value.tabStates.getValue(tab)
-
-/** 提交一次周边搜索（第 1 页由调用方 `advanceUntilIdle` 驱动落地）。 */
-internal fun SearchViewModel.submitAndLoadHobby() {
-    onKeywordChange("初音未来")
-    onSearch()
-}

@@ -110,7 +110,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             },
             onNavigateToLogin = { navigator.navigateToLogin() },
             onNavigateToSearch = { companyNodeId ->
-                navigator.navigateToSearch(
+                navigator.navigateToSearchResult(
                     category = 10000,
                     companyNodeId = companyNodeId,
                     companyName = key.param.initialName
@@ -141,7 +141,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
             onNavigateToAlbumList = { albumListParam -> navigator.navigateToHobbyAlbumList(albumListParam) },
             onNavigateToSearch = { keyword ->
-                navigator.navigateToSearch(keyword = keyword, category = 10000)
+                navigator.navigateToSearchResult(keyword = keyword, category = 10000)
             },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
@@ -154,7 +154,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onBack = onBack,
             onNavigateToHobby = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
-            onNavigateToSearch = { keyword -> navigator.navigateToSearch(keyword = keyword) },
+            onNavigateToSearch = { keyword -> navigator.navigateToSearchResult(keyword = keyword) },
             onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
@@ -171,7 +171,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToSearch = { keyword ->
-                navigator.navigateToSearch(keyword = keyword, category = 10000)
+                navigator.navigateToSearchResult(keyword = keyword, category = 10000)
             },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
@@ -190,7 +190,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
             onNavigateToAlbumList = { albumListParam -> navigator.navigateToCharacterAlbumList(albumListParam) },
-            onNavigateToSearch = { keyword -> navigator.navigateToSearch(keyword = keyword) },
+            onNavigateToSearch = { keyword -> navigator.navigateToSearchResult(keyword = keyword) },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
         )

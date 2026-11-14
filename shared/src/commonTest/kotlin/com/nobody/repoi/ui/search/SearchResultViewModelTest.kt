@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.search
 
 import app.cash.turbine.test
+import com.nobody.repoi.data.remote.model.SearchCompanyAggregate
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -304,6 +305,157 @@ class SearchResultViewModelTest {
 
         viewModel.uiState.value.selectedHobbyCategory shouldBe HobbyAllCategory.id
         viewModel.tabState(SearchTab.HOBBY).isLoaded shouldBe true
+        env.mock.takeAllRequests().searchCategories() shouldBe listOf("10000")
+    }
+
+    @Test
+    fun filters_areIsolatedPerTabAndSurviveSwitching() = runTest(testDispatcher) {
+        val env = createEnv()
+        val viewModel = env.viewModel
+        val company = SearchCompanyAggregate(nodeId = 42, itemName = "GoodSmile", docCount = 5)
+
+        viewModel.initParam(SearchResultNavParam(keyword = "初音未来"))
+        advanceUntilIdle()
+
+        viewModel.onSortChange("hits")
+        viewModel.onHobbyCategoryChange(100)
+        viewModel.onFilterChange(company, "2024")
+        advanceUntilIdle()
+
+        viewModel.onSelectTab(SearchTab.ALBUM)
+        advanceUntilIdle()
+        viewModel.onSortChange("addTime")
+        viewModel.onAlbumCategoryChange(AlbumSubCategory.FIGURE)
+        advanceUntilIdle()
+
+        viewModel.onSelectTab(SearchTab.HOBBY)
+        advanceUntilIdle()
+
+        val hobby = viewModel.uiState.value.hobbyFilter
+        hobby.order shouldBe "hits"
+        hobby.categoryId shouldBe 100
+        hobby.company shouldBe company
+        hobby.year shouldBe "2024"
+        hobby.availableCompanies shouldBe listOf(company)
+        hobby.availableYears.mapNotNull { it.keyAsString } shouldBe listOf("2024")
+
+        val album = viewModel.uiState.value.albumFilter
+        album.order shouldBe "addTime"
+        album.category shouldBe AlbumSubCategory.FIGURE
+
+        // 切回周边后派生访问器取的是周边快照
+        viewModel.uiState.value.order shouldBe "hits"
+        viewModel.uiState.value.selectedCompany shouldBe company
+        viewModel.uiState.value.selectedYear shouldBe "2024"
+    }
+
+    @Test
+    fun elementsFilterChange_sendsElementsCategoryAndAttribute() = runTest(testDispatcher) {
+        val env = createEnv()
+        val viewModel = env.viewModel
+
+        viewModel.initParam(SearchResultNavParam(keyword = "初音未来"))
+        advanceUntilIdle()
+        env.mock.takeAllRequests()
+
+        viewModel.onSelectTab(SearchTab.WORKS_ELEMENT)
+        advanceUntilIdle()
+        viewModel.onElementsCategoryChange(ElementsSubCategory.CHARACTER)
+        viewModel.onAttributeChange(7)
+        advanceUntilIdle()
+
+        val elementsForm = env.mock.takeAllRequests().lastSearchForm()
+        elementsForm["category"] shouldBe "40100"
+        elementsForm["attribute"] shouldBe "7"
+        elementsForm["order"] shouldBe null
+        elementsForm["company"] shouldBe null
+        elementsForm["releaseYear"] shouldBe null
+    }
+
+    @Test
+    fun isFilterActive_andTabScopedAccessors_followTargetTab() = runTest(testDispatcher) {
+        val env = createEnv()
+        val viewModel = env.viewModel
+
+        viewModel.initParam(SearchResultNavParam(keyword = "初音未来"))
+        advanceUntilIdle()
+
+        viewModel.uiState.value.isFilterActive shouldBe false
+
+        viewModel.onHobbyCategoryChange(100)
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe true
+
+        viewModel.onSelectTab(SearchTab.COMPANY)
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe false
+
+        viewModel.onSelectTab(SearchTab.HOBBY)
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe true
+
+        // 相册筛选独立生效，不影响周边 Badge
+        viewModel.onResetFilters()
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe false
+
+        viewModel.onSelectTab(SearchTab.ALBUM)
+        advanceUntilIdle()
+        viewModel.onSortChange("hits")
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe true
+
+        viewModel.onSelectTab(SearchTab.HOBBY)
+        advanceUntilIdle()
+        viewModel.uiState.value.isFilterActive shouldBe false
+
+        // 顶栏按 Pager 当前页取筛选态：selectedTab 是 HOBBY，也须能读到 ALBUM 的快照
+        viewModel.uiState.value.orderFor(SearchTab.ALBUM) shouldBe "hits"
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.ALBUM) shouldBe true
+        viewModel.uiState.value.orderFor(SearchTab.HOBBY) shouldBe ""
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.HOBBY) shouldBe false
+        viewModel.uiState.value.orderFor(SearchTab.COMPANY) shouldBe ""
+        viewModel.uiState.value.isFilterActiveFor(SearchTab.COMPANY) shouldBe false
+    }
+
+    @Test
+    fun onResetFilters_onlyResetsAndReloadsActiveTab_keepingOtherTabs() = runTest(testDispatcher) {
+        val env = createEnv()
+        val viewModel = env.viewModel
+        val company = SearchCompanyAggregate(nodeId = 42, itemName = "GoodSmile", docCount = 5)
+
+        viewModel.initParam(SearchResultNavParam(keyword = "初音未来"))
+        viewModel.onSortChange("hits")
+        viewModel.onHobbyCategoryChange(100)
+        viewModel.onFilterChange(company, "2024")
+        advanceUntilIdle()
+
+        viewModel.onSelectTab(SearchTab.ALBUM)
+        advanceUntilIdle()
+        viewModel.onSortChange("addTime")
+        viewModel.onAlbumCategoryChange(AlbumSubCategory.FIGURE)
+        advanceUntilIdle()
+
+        viewModel.onSelectTab(SearchTab.HOBBY)
+        advanceUntilIdle()
+        val albumFilterBefore = viewModel.uiState.value.albumFilter
+        val albumStateBefore = viewModel.tabState(SearchTab.ALBUM)
+        env.mock.takeAllRequests()
+
+        viewModel.onResetFilters()
+        advanceUntilIdle()
+
+        val hobby = viewModel.uiState.value.hobbyFilter
+        hobby.order shouldBe ""
+        hobby.categoryId shouldBe HobbyAllCategory.id
+        hobby.company shouldBe null
+        hobby.year shouldBe null
+        // 候选列表保留，避免重置后筛选面板选项消失
+        hobby.availableCompanies shouldBe listOf(company)
+        hobby.availableYears.mapNotNull { it.keyAsString } shouldBe listOf("2024")
+
+        viewModel.uiState.value.albumFilter shouldBe albumFilterBefore
+        viewModel.tabState(SearchTab.ALBUM) shouldBe albumStateBefore
         env.mock.takeAllRequests().searchCategories() shouldBe listOf("10000")
     }
 }
