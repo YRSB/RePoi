@@ -27,11 +27,12 @@
 | [ADR-0013](0013-card-primitives-convergence.md) | 沉淀核心卡片展示基元与全业务实体卡收敛架构 | **UI/卡片基元/深模块**：PoiPosterCard、PoiListCard、PoiCaptionGridCard、PoiThumbnail，消除样式漂移，全量收敛手办/专区/搜索/收藏/相册/历史卡片 | 已采纳并全量推广 (Accepted & Deployed) - 2026-11-11 |
 | [ADR-0014](0014-cover-freshness-persistent-cache.md) | 封面新鲜度持久化缓存与列表前置自愈架构 | **多媒体/持久化/自愈**：DataStore 内存镜像、前置主动重写、永久有效与 1000 条插入序 FIFO 淘汰、404 穿透自愈 | 已采纳 (Accepted) - 2026-11-11 |
 | [ADR-0015](0015-action-card-poster-rigid-box-fit.md) | 动态流卡片海报槽位刚性定框与无裁切完全呈现防跳变架构 | **UI/防跳变/多媒体**：9:13 黄金刚性定框、ContentScale.Fit 居中完全呈现、骨架屏 1:1 等高对齐、彻底消除 CLS | 已被 ADR-0016 修正演进 (Amended by ADR-0016) - 2026-11-12 |
-| [ADR-0016](0016-action-card-categorized-poster-layout.md) | 动态流卡片海报分类分流（手办刚性定框与相册高度自适应）架构 | **UI/防跳变/多媒体**：手办 9:13 黄金刚性定框、相册自适应高度且封顶 140dp、消除相册白边、右侧内容高度锚定 | 已采纳 (Accepted) - 2026-11-12 |
+| [ADR-0016](0016-action-card-categorized-poster-layout.md) | 动态流卡片海报分类分流（手办刚性定框与相册高度自适应）架构 | **UI/防跳变/多媒体**：手办 9:13 黄金刚性定框、相册自适应高度且不设上限、消除相册白边、右侧内容高度锚定 | 已被 ADR-0021 修订演进 (Amended by ADR-0021) - 2026-11-12 |
 | [ADR-0017](0017-search-pager-static-header.md) | 搜索结果页常驻顶栏与 HorizontalPager 分类分页架构 | **搜索/UI架构/多页分页**：静态 Column 平铺顶栏、彻底移除嵌套折叠与 topContentPadding、HorizontalPager 8 分类双向联动、分类独立缓存与按需懒加载、页面级独立下拉刷新 | 已采纳 (Accepted) - 2026-11-12 |
 | [ADR-0018](0018-deprecate-skeletons-m3e-loading-indicator.md) | 全面废止骨架屏并收敛至 Material 3 Expressive 统一加载指示器架构 | **UI/加载态/基元收敛**：全面移除骨架屏与 Shimmer 时钟、沉淀通用展示基元 PoiLoadingView、28dp 紧凑分页指示器、保留顶栏导航可用性、修正 ADR-0015/0016 骨架屏条款 | 已采纳 (Accepted) - 2026-11-13 |
 | [ADR-0019](0019-search-split-navigation-and-predictive-back.md) | 搜索路由两级解耦与 Material 3 Expressive 预测性返回动效架构 | **搜索/导航拓扑/动效**：解耦 SearchNavKey 与 SearchResultNavKey、回归 Navigation 3 原生单根栈与 MaterialSharedAxis.Z 预测性返回、重搜栈深收敛、拆分 SearchLandingViewModel 与 SearchResultViewModel | 已采纳 (Accepted) - 2026-11-14 |
 | [ADR-0020](0020-zone-category-bar-and-forum-entry.md) | 专区分类栏纯化与讨论板顶栏解耦重构 | **社区/导航拓扑/Tab栏纯化**：清除分类栏伪Tab、TabRow挂载尾部常驻专区广场锚点、讨论板提升至TopAppBar动作区、消除与底栏重叠的冗余头像 | 已采纳 (Accepted) - 2026-11-14 |
+| [ADR-0021](0021-action-card-entity-poster-square.md) | 动态流卡片非相册海报按实体分流（手办 9:13 与其余 1:1） | **UI/防跳变/多媒体**：手办/周边 9:13 刚性定框、厂商/角色/作品/系列/人物及未知类型 1:1 正方形、纯分类器 ActionPosterShape、相册策略保持 ADR-0016 现状 | 已采纳 (Accepted) - 2026-11-14 |
 
 
 

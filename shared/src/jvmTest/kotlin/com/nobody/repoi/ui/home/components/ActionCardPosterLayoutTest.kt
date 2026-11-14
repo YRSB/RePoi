@@ -25,16 +25,17 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * [ActionCard] 左侧海报槽位的**真实布局约束**测试（桌面 JVM Compose UI）。
  *
- * 锁住 ADR-0016 的分类分流契约，这几条约束都无法由纯 JVM 单测或静态检查覆盖：
+ * 锁住 ADR-0016 / ADR-0021 的分类分流契约，这几条约束都无法由纯 JVM 单测或静态检查覆盖：
  * 1. 常规手办条目：9:13 刚性定框（96dp × 138.7dp），全生命周期零跳动；
- * 2. 相册传图条目未命中纵横比缓存：按 4:3 首帧占位（96dp × 72dp），不再被 9:13 拉满；
- * 3. 相册传图条目命中 9:20 超长比例：槽位高度不设上限，按真实比例撑到 96 / 0.45 ≈ 213.3dp，
- *    整张卡片随之撑高（`Row(IntrinsicSize.Min)` 的内在高度路径同样无上限）。
+ * 2. 厂商/角色等非手办实体：1:1 正方形（96dp × 96dp），贴合其方形封面；
+ * 3. 相册传图条目未命中纵横比缓存：按 4:3 首帧占位（96dp × 72dp），不再被 9:13 拉满；
+ * 4. 相册传图条目命中 9:20 超长比例：槽位高度不设上限，按真实比例撑到 96 / 0.45 ≈ 213.3dp，
+ *    整张卡片随之撑高（`Row(IntrinsicSize.Min)` 的内在高度路径同样无上限）；
+ * 5. 仅凭分类区间识别的条目：手办 10000 → 9:13，相册 70000 → 4:3 自适应。
  *
  * **零网络**：测试前把 Coil 单例换成不带任何 fetcher 的 `ImageLoader`，
  * 图片请求立即失败并落到破损图标分支，尺寸仍由 `Modifier` 链决定，与真实加载路径一致。
@@ -110,6 +111,62 @@ class ActionCardPosterLayoutTest {
         )
     }
 
+    /** 厂商动态：封面普遍为正方形，槽位钉死 96dp × 96dp，不再拉成 9:13 竖框。 */
+    @Test
+    fun vendorAction_posterUsesSquareSlot() = runComposeUiTest {
+        setContent {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ActionCard(actionItem = vendorAction())
+            }
+        }
+
+        val bounds = onNodeWithTag(ActionCardPosterTag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(96f, bounds.width.value, 0.5f, "厂商海报槽位宽度应恒为 96dp")
+        assertEquals(96f, bounds.height.value, 0.5f, "厂商海报槽位应为 1:1 正方形")
+    }
+
+    /** 角色动态缺少 itemType 时走 1:1：验证真实组合路径；分类映射的证伪由 ActionPosterPolicyTest 负责。 */
+    @Test
+    fun characterAction_identifiedByCategoryRange_usesSquareSlot() = runComposeUiTest {
+        setContent {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ActionCard(actionItem = characterAction())
+            }
+        }
+
+        val bounds = onNodeWithTag(ActionCardPosterTag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(96f, bounds.width.value, 0.5f, "角色海报槽位宽度应恒为 96dp")
+        assertEquals(96f, bounds.height.value, 0.5f, "仅凭分类区间识别的角色海报也应为 1:1 正方形")
+    }
+
+    /** 缺少 itemType、仅靠 10000 分类区间识别的手办：仍走 9:13。 */
+    @Test
+    fun hobbyAction_identifiedByCategoryRange_staysGolden() = runComposeUiTest {
+        setContent {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ActionCard(actionItem = categoryHobbyAction())
+            }
+        }
+
+        val bounds = onNodeWithTag(ActionCardPosterTag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(96f, bounds.width.value, 0.5f, "仅凭分类区间识别的手办海报宽度应恒为 96dp")
+        assertEquals(96f * 13f / 9f, bounds.height.value, 0.5f, "仅凭分类区间识别的手办仍应保持 9:13")
+    }
+
+    /** 缺少 itemType、仅靠 70000 相册分类区间识别：走相册自适应，首帧 4:3 = 72dp。 */
+    @Test
+    fun albumAction_identifiedByCategoryRange_usesAdaptiveSlot() = runComposeUiTest {
+        setContent {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ActionCard(actionItem = categoryAlbumAction())
+            }
+        }
+
+        val bounds = onNodeWithTag(ActionCardPosterTag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(96f, bounds.width.value, 0.5f, "相册海报槽位宽度应恒为 96dp")
+        assertEquals(72f, bounds.height.value, 0.5f, "仅凭 70000 分类区间识别的相册应按 4:3 占位")
+    }
+
     // ── 夹具 ──────────────────────────────────────────────────────────────
 
     private fun hobbyAction() = ActionItem(
@@ -122,6 +179,62 @@ class ActionCardPosterLayoutTest {
             itemType = "hobby",
             name = "测试手办",
             cover = "2024/hobby.jpg"
+        )
+    )
+
+    private fun vendorAction() = ActionItem(
+        id = 3L,
+        actionType = 102,
+        actionComment = "厂商更新",
+        user = UserProfileSummary(nickname = "测试玩家"),
+        relateItem = RelateItem(
+            id = 31L,
+            itemType = "company",
+            categoryId = 40000,
+            name = "测试厂商",
+            cover = "2024/vendor.jpg"
+        )
+    )
+
+    /** 角色动态：故意不给 itemType，只靠 40100 分类区间识别。 */
+    private fun characterAction() = ActionItem(
+        id = 4L,
+        actionType = 102,
+        actionComment = "角色更新",
+        user = UserProfileSummary(nickname = "测试玩家"),
+        relateItem = RelateItem(
+            id = 41L,
+            categoryId = 40100,
+            name = "测试角色",
+            cover = "2024/character.jpg"
+        )
+    )
+
+    /** 手办动态：故意不给 itemType，只靠 10000 分类区间识别。 */
+    private fun categoryHobbyAction() = ActionItem(
+        id = 5L,
+        actionType = 102,
+        actionComment = "手办更新",
+        user = UserProfileSummary(nickname = "测试玩家"),
+        relateItem = RelateItem(
+            id = 51L,
+            categoryId = 10000,
+            name = "分类手办",
+            cover = "2024/hobby-category.jpg"
+        )
+    )
+
+    /** 相册动态：itemType 缺失，只靠 70000 相册分类区间识别。 */
+    private fun categoryAlbumAction() = ActionItem(
+        id = 6L,
+        actionType = 102,
+        actionComment = "相册更新",
+        user = UserProfileSummary(nickname = "测试玩家"),
+        relateItem = RelateItem(
+            id = 61L,
+            categoryId = 70000,
+            name = "分类相册",
+            cover = "2024/album-category.jpg"
         )
     )
 
