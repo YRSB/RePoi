@@ -192,10 +192,10 @@ class SearchLandingViewModelTest {
         val (viewModel, _, mockApi) = setup()
         advanceUntilIdle()
 
-        // 切换 mock 返回内容
-        mockApi.routeWhen(
-            predicate = { path, _ -> path.endsWith("/api/search/hotword") },
-            body = { _, _ -> mockApi.ok("""{"list":[{"word":"雪初音","count":20}]}""") }
+        // 切换 mock 返回内容（使用 routeWhenSuspend 覆盖初始普通路由）
+        mockApi.routeWhenSuspend(
+            predicate = { path, _, _ -> path.endsWith("/api/search/hotword") },
+            body = { _, _, _ -> mockApi.ok("""{"list":[{"word":"雪初音","count":20}]}""") }
         )
 
         viewModel.refreshHotwords()

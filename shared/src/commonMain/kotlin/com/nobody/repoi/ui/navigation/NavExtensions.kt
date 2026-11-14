@@ -79,6 +79,36 @@ fun NavBackStack<NavKey>.navigateToSearchResult(
         )
     )
 )
+
+/**
+ * 提交搜索结果并执行单根栈深度收敛（ADR-0019 契约）：
+ * 1. 若当前栈顶为 [SearchNavKey]，且紧邻的前一个条目为 [SearchResultNavKey]（从结果页二次拉起落地页重搜），
+ *    原子弹出临时 [SearchNavKey] 与旧 [SearchResultNavKey]，并压入新 [SearchResultNavKey]。
+ * 2. 若当前栈顶为 [SearchNavKey] 但前一个条目不是 [SearchResultNavKey]（从普通入口进入落地页发起首搜），
+ *    保持底层页面与 [SearchNavKey]，直接压入新 [SearchResultNavKey]（侧滑可返回输入现场）。
+ * 3. 无论重搜多少轮，搜索结果页在单根栈中最多只存在 1 个，彻底消除无限膨胀。
+ */
+fun NavBackStack<NavKey>.commitSearchResult(param: SearchResultNavParam = SearchResultNavParam()) {
+    if (size >= 2 && last() is SearchNavKey && this[size - 2] is SearchResultNavKey) {
+        removeLastOrNull()
+        removeLastOrNull()
+    }
+    navigateToSearchResult(param)
+}
+
+fun NavBackStack<NavKey>.commitSearchResult(
+    keyword: String = "",
+    category: Int = HobbyAllCategory.id,
+    companyNodeId: Long? = null,
+    companyName: String? = null
+) = commitSearchResult(
+    SearchResultNavParam(
+        keyword = keyword,
+        category = category,
+        companyNodeId = companyNodeId,
+        companyName = companyName
+    )
+)
 fun NavBackStack<NavKey>.navigateToHobbyList(param: HobbyListNavParam) = add(HobbyListNavKey(param))
 fun NavBackStack<NavKey>.navigateToCollectEdit(param: CollectEditNavParam) = add(CollectEditNavKey(param))
 fun NavBackStack<NavKey>.navigateToUserCollect(param: UserCollectNavParam) = add(UserCollectNavKey(param))
@@ -168,6 +198,19 @@ fun RePoiNavigator.navigateToSearchResult(
     companyNodeId: Long? = null,
     companyName: String? = null
 ) = currentBackStack.navigateToSearchResult(keyword, category, companyNodeId, companyName)
+
+/**
+ * 为 [RePoiNavigator] 提供搜索结果提交与栈收敛扩展。
+ */
+fun RePoiNavigator.commitSearchResult(param: SearchResultNavParam = SearchResultNavParam()) =
+    currentBackStack.commitSearchResult(param)
+
+fun RePoiNavigator.commitSearchResult(
+    keyword: String = "",
+    category: Int = HobbyAllCategory.id,
+    companyNodeId: Long? = null,
+    companyName: String? = null
+) = currentBackStack.commitSearchResult(keyword, category, companyNodeId, companyName)
 fun RePoiNavigator.navigateToHobbyList(param: HobbyListNavParam) = currentBackStack.navigateToHobbyList(param)
 fun RePoiNavigator.navigateToCollectEdit(param: CollectEditNavParam) = currentBackStack.navigateToCollectEdit(param)
 fun RePoiNavigator.navigateToUserCollect(param: UserCollectNavParam) = currentBackStack.navigateToUserCollect(param)

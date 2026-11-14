@@ -39,13 +39,7 @@ fun EntryProviderScope<NavKey>.interactionEntries(
             navParam = key.param,
             onBack = onBack,
             onNavigateToResult = { resultParam ->
-                val stack = navigator.rootBackStack
-                // 重搜栈深收敛：若前置栈为 [..., SearchResultNavKey, SearchNavKey]，弹出旧结果页与临时落地页
-                if (stack.size >= 2 && stack.last() is SearchNavKey && stack[stack.size - 2] is SearchResultNavKey) {
-                    stack.removeLastOrNull()
-                    stack.removeLastOrNull()
-                }
-                navigator.navigateToSearchResult(resultParam)
+                navigator.commitSearchResult(resultParam)
             }
         )
     }
@@ -54,15 +48,8 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         SearchResultScreen(
             navParam = key.param,
             onBack = onBack,
-            onSearchFieldClick = {
-                navigator.navigateToSearch(
-                    SearchNavParam(
-                        initialKeyword = key.param.keyword,
-                        initialCategory = key.param.category,
-                        initialCompanyNodeId = key.param.companyNodeId,
-                        initialCompanyName = key.param.companyName
-                    )
-                )
+            onSearchFieldClick = { searchParam ->
+                navigator.navigateToSearch(searchParam)
             },
             onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },

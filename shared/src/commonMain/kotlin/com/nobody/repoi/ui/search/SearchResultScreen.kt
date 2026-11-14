@@ -93,7 +93,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SearchResultScreen(
     navParam: SearchResultNavParam = SearchResultNavParam(),
     onBack: () -> Unit,
-    onSearchFieldClick: () -> Unit = {},
+    onSearchFieldClick: (SearchNavParam) -> Unit = {},
     onNavigateToDetail: (DetailNavParam) -> Unit,
     onNavigateToAlbum: (AlbumNavParam) -> Unit,
     onNavigateToVendor: ((VendorNavParam) -> Unit)? = null,
@@ -158,7 +158,16 @@ fun SearchResultScreen(
             onClearClick = {},
             placeholderText = "搜索",
             readOnly = true,
-            onSearchBarClick = onSearchFieldClick,
+            onSearchBarClick = {
+                onSearchFieldClick(
+                    SearchNavParam(
+                        initialKeyword = uiState.keyword.ifBlank { navParam.keyword },
+                        initialCategory = activeTab.categoryId,
+                        initialCompanyNodeId = uiState.companyNodeId ?: navParam.companyNodeId,
+                        initialCompanyName = uiState.companyName ?: navParam.companyName
+                    )
+                )
+            },
             showFilterButton = isTabFilterable(activeTab),
             isFilterActive = uiState.isFilterActiveFor(activeTab),
             onFilterClick = {
