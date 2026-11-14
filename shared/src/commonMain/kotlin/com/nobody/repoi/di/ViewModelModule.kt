@@ -37,6 +37,7 @@ import com.nobody.repoi.ui.profile.ProfileViewModel
 import com.nobody.repoi.ui.resale.ResaleDetailViewModel
 import com.nobody.repoi.ui.resale.ResaleMarketViewModel
 import com.nobody.repoi.ui.search.SearchLandingViewModel
+import com.nobody.repoi.ui.search.SearchResultViewModel
 import com.nobody.repoi.ui.search.SearchViewModel
 import com.nobody.repoi.ui.series.SeriesDetailViewModel
 import com.nobody.repoi.ui.settings.SettingsAccountViewModel
@@ -104,6 +105,7 @@ val viewModelModule = module {
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
     viewModel { SearchLandingViewModel(get(), get()) }
+    viewModel { SearchResultViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }
     viewModel { SeriesDetailViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get()) }

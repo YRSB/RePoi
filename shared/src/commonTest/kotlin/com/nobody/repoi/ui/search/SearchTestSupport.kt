@@ -16,6 +16,24 @@ import kotlinx.serialization.json.Json
  * 路由按 `path == api/search` + form `category` 分发，断言与请求顺序无关。
  */
 internal class SearchTestEnv(val mock: MockApi, val viewModel: SearchViewModel)
+internal class SearchResultTestEnv(val mock: MockApi, val viewModel: SearchResultViewModel)
+
+internal fun TestScope.createSearchResultTestEnv(
+    testDispatcher: CoroutineDispatcher,
+    json: Json
+): SearchResultTestEnv {
+    val mock = MockApi().apply { stubSearchEndpoints() }
+    val historyManager = SearchHistoryManager(TestDataStore.inMemory(), json)
+    val api = mock.api(testDispatcher)
+    val viewModel = SearchResultViewModel(
+        SearchRepository(api, historyManager),
+        CategoryManager(api, backgroundScope)
+    )
+    return SearchResultTestEnv(mock, viewModel)
+}
+
+internal fun SearchResultViewModel.tabState(tab: SearchTab): TabSearchState =
+    uiState.value.tabStates.getValue(tab)
 
 internal fun TestScope.createSearchTestEnv(
     testDispatcher: CoroutineDispatcher,

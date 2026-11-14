@@ -16,8 +16,8 @@ import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
 import com.nobody.repoi.ui.item.list.HobbyListScreen
 import com.nobody.repoi.ui.picture.PictureListScreen
 import com.nobody.repoi.ui.search.SearchLandingScreen
-import com.nobody.repoi.ui.search.SearchScreen
-import com.nobody.repoi.ui.search.toSearchNavParam
+import com.nobody.repoi.ui.search.SearchNavParam
+import com.nobody.repoi.ui.search.SearchResultScreen
 
 /**
  * 注册搜索中心、手办筛选列表、评论列表/楼中楼、图片查看及 ExHobby 扩展等通用交互路由。
@@ -39,15 +39,31 @@ fun EntryProviderScope<NavKey>.interactionEntries(
             navParam = key.param,
             onBack = onBack,
             onNavigateToResult = { resultParam ->
+                val stack = navigator.rootBackStack
+                // 重搜栈深收敛：若前置栈为 [..., SearchResultNavKey, SearchNavKey]，弹出旧结果页与临时落地页
+                if (stack.size >= 2 && stack.last() is SearchNavKey && stack[stack.size - 2] is SearchResultNavKey) {
+                    stack.removeLastOrNull()
+                    stack.removeLastOrNull()
+                }
                 navigator.navigateToSearchResult(resultParam)
             }
         )
     }
 
     entry<SearchResultNavKey> { key ->
-        SearchScreen(
-            navParam = key.param.toSearchNavParam(),
+        SearchResultScreen(
+            navParam = key.param,
             onBack = onBack,
+            onSearchFieldClick = {
+                navigator.navigateToSearch(
+                    SearchNavParam(
+                        initialKeyword = key.param.keyword,
+                        initialCategory = key.param.category,
+                        initialCompanyNodeId = key.param.companyNodeId,
+                        initialCompanyName = key.param.companyName
+                    )
+                )
+            },
             onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
             onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
             onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
