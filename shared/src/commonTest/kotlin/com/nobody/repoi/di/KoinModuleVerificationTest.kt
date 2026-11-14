@@ -49,6 +49,7 @@ import com.nobody.repoi.ui.follow.FollowViewModel
 import com.nobody.repoi.ui.gallery.PictureGalleryViewModel
 import com.nobody.repoi.ui.home.HomeFeedViewModel
 import com.nobody.repoi.ui.login.LoginViewModel
+import com.nobody.repoi.ui.search.SearchLandingViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -159,6 +160,7 @@ class KoinModuleVerificationTest {
             val koin = app.koin
             // 验证无需动态 Navigation 参数的核心独立 ViewModel
             koin.getOrNull<HomeFeedViewModel>().shouldNotBeNull()
+            koin.getOrNull<SearchLandingViewModel>().shouldNotBeNull()
             koin.getOrNull<SettingsViewModel>().shouldNotBeNull()
             koin.getOrNull<LoginViewModel>().shouldNotBeNull()
             koin.getOrNull<AlbumViewModel>().shouldNotBeNull()

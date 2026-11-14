@@ -15,6 +15,7 @@ import com.nobody.repoi.ui.comment.HobbyCommentsScreen
 import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
 import com.nobody.repoi.ui.item.list.HobbyListScreen
 import com.nobody.repoi.ui.picture.PictureListScreen
+import com.nobody.repoi.ui.search.SearchLandingScreen
 import com.nobody.repoi.ui.search.SearchScreen
 import com.nobody.repoi.ui.search.toSearchNavParam
 
@@ -33,29 +34,13 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         )
     }
 
-    entry<SearchNavKey>(
-        metadata = metadata {
-            put(NavDisplay.TransitionKey) {
-                fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(150))
-            }
-            put(NavDisplay.PopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(200))
-            }
-            put(NavDisplay.PredictivePopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(200))
-            }
-        }
-    ) { key ->
-        SearchScreen(
+    entry<SearchNavKey> { key ->
+        SearchLandingScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToDetail = { hobbyParam -> navigator.navigateToDetail(hobbyParam) },
-            onNavigateToAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
-            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
-            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
-            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
-            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
-            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) }
+            onNavigateToResult = { resultParam ->
+                navigator.navigateToSearchResult(resultParam)
+            }
         )
     }
 
