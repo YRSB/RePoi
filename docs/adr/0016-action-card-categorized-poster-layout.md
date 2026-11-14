@@ -3,6 +3,8 @@
 ## 状态
 已采纳 (Accepted) - 2026-11-12
 
+> **修订（2026-11-14）**：非相册海报进一步按实体分流——手办/周边维持 9:13，厂商、角色、作品、系列、人物及其余未知实体改为 1:1 正方形；相册高度自适应策略保持不变。见 [ADR-0021](0021-action-card-entity-poster-square.md)。
+
 ## 上下文与问题陈述
 在 [ADR-0015](0015-action-card-poster-rigid-box-fit.md) 中，RePoi 针对全量动态卡片（`ActionCard`）的左侧海报槽位统一锁死为 9:13 黄金刚性定框（`Modifier.width(96.dp).aspectRatio(9f / 13f)`），并采用 `ContentScale.Fit`，成功解决了手办条目解码引发的瀑布流列重排与高度跳变（CLS）。
 

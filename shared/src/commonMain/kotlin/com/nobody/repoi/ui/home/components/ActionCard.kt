@@ -100,15 +100,21 @@ fun ActionCard(
     val isCommentSameAsFigure = isOfficialNotice && !mainComment.isNullOrBlank() && !figureName.isNullOrBlank() &&
         (mainComment.equals(figureName, ignoreCase = true) || mainComment.equals(relateItem?.name, ignoreCase = true) || mainComment.equals(relateItem?.nameCN, ignoreCase = true))
 
-    // 左侧海报槽位分类分流（ADR-0016）：
-    // - 常规手办/官方条目维持 9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中完全呈现，零裁切零跳变）；
-    // - 相册传图类条目改走高度自适应（宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐），
-    //   以消除 9:13 竖框对横图的上下灰边，以及任何限高导致的左右灰边。
+    // 左侧海报槽位分类分流（ADR-0016 / ADR-0021）：
+    // - 相册传图类：宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐；
+    // - 手办/周边：9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中，零裁切零跳变）；
+    // - 其余实体（厂商/角色/作品/系列/人物等，含未知类型）：1:1 正方形，贴合其方形封面，避免 9:13 竖框的上下白边。
     // 横图/方图落在右侧约 134dp 的高度包络线内，卡片外框由右侧锚定；超长竖图则自然撑高卡片。
     val isAlbumAction = relateItem?.isAlbum == true ||
         actionItem.actionType == 3 ||
         actionItem.actionType == 103 ||
         actionItem.actionType == 104
+    // 非相册槽位的刚性比例；null 表示交给相册照片的真实比例
+    val posterAspectRatio: Float? = when {
+        isAlbumAction -> null
+        actionItem.resolvePosterShape() == ActionPosterShape.SQUARE -> 1f
+        else -> 9f / 13f
+    }
 
     // 附图来自 pic/ 家族（MediaCategory 无 pic 槽位），先用扩展 resolvePictureUrl 解析成绝对 URL，
     // 再交给基元通用重载直通 Coil；缩略档位对齐旧 getPicSmallUrl 的 pic/s/
@@ -136,7 +142,7 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：分类分流海报（常规条目 9:13 刚性定框；相册传图宽 96dp、高度随照片比例无上限撑开；相册无图时展示纯文本卡片）──
+            // ── 【左侧栏】：分类分流海报（手办 9:13 刚性定框；非手办实体 1:1；相册传图宽 96dp、高度随照片比例无上限撑开；相册无图时展示纯文本卡片）──
             if (shouldShowLeftCover) {
                 if (mediaInfo.isAlbumNoCover) {
                     val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
@@ -150,18 +156,17 @@ fun ActionCard(
                     )
                 } else {
                     // 点击优先级由基元保证：传了 onClick 就不再触发全屏查看器，避免双触发
-                    val posterModifier = (
-                        if (isAlbumAction) {
-                            Modifier
-                                .width(96.dp)
-                                .clip(MaterialTheme.shapes.small)
-                        } else {
-                            Modifier
-                                .width(96.dp)
-                                .aspectRatio(9f / 13f)
-                                .clip(MaterialTheme.shapes.small)
-                        }
-                    ).testTag(ActionCardPosterTag)
+                    val posterModifier = Modifier
+                        .width(96.dp)
+                        .then(
+                            if (posterAspectRatio != null) {
+                                Modifier.aspectRatio(posterAspectRatio)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .clip(MaterialTheme.shapes.small)
+                        .testTag(ActionCardPosterTag)
 
                     PoiAsyncImage(
                         model = coverUrl,
