@@ -48,12 +48,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -95,7 +97,6 @@ import androidx.compose.material3.ElevatedCard
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.ui.common.FakeSearchField
 import com.nobody.repoi.ui.common.LocalImageViewer
-import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
@@ -113,7 +114,6 @@ fun HomeFeedScreen(
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToForumHome: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
-    onNavigateToProfile: (() -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -434,42 +434,47 @@ fun HomeFeedScreen(
             val selectedTabIndex = uiState.categories
                 .indexOfFirst { it.tabKey == uiState.selectedCategory.tabKey }
                 .coerceAtLeast(0)
-            PrimaryScrollableTabRow(
-                selectedTabIndex = selectedTabIndex,
-                edgePadding = 16.dp,
-                containerColor = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                uiState.categories.forEachIndexed { index, category ->
-                    val isSelected = index == selectedTabIndex
-                    Tab(
-                        selected = isSelected,
-                        onClick = { viewModel.selectCategory(category) },
-                        text = {
-                            Text(
-                                text = category.name,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                }
-                Tab(
-                    selected = false,
-                    onClick = { onNavigateToForumHome?.invoke() },
-                    text = { Text("讨论板") }
-                )
-                Tab(
-                    selected = false,
-                    onClick = { onNavigateToZoneBrowse?.invoke() },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "专区广场",
-                            modifier = Modifier.size(20.dp)
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    edgePadding = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    divider = {},
+                    modifier = Modifier.weight(1f)
+                ) {
+                    uiState.categories.forEachIndexed { index, category ->
+                        val isSelected = index == selectedTabIndex
+                        Tab(
+                            selected = isSelected,
+                            onClick = { viewModel.selectCategory(category) },
+                            text = {
+                                Text(
+                                    text = category.name,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
                         )
                     }
-                )
+                }
+                IconButton(
+                    onClick = { onNavigateToZoneBrowse?.invoke() },
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "专区广场",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+            HorizontalDivider(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
         }
 
         TopAppBar(
@@ -488,6 +493,12 @@ fun HomeFeedScreen(
                 )
             },
             actions = {
+                IconButton(onClick = { onNavigateToForumHome?.invoke() }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Forum,
+                        contentDescription = "讨论板"
+                    )
+                }
                 IconButton(onClick = { onNavigateToMessage?.invoke() }) {
                     BadgedBox(
                         badge = {
@@ -498,13 +509,6 @@ fun HomeFeedScreen(
                     ) {
                         Icon(imageVector = Icons.Outlined.Email, contentDescription = "消息中心")
                     }
-                }
-                IconButton(onClick = { onNavigateToProfile?.invoke() }) {
-                    UserAvatar(
-                        avatarUrl = uiState.userAvatar,
-                        size = 34.dp,
-                        contentDescription = "我的"
-                    )
                 }
             },
             modifier = Modifier
