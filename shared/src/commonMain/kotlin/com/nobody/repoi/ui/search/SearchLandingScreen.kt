@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -30,7 +31,7 @@ import com.nobody.repoi.ui.search.components.SearchTopBar
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * PoiShelf 独立搜索落地页。
+ * RePoi 独立搜索落地页。
  *
  * 承载搜索输入框、搜索历史、大家在找热词榜及实时输入联想。
  * 纯净接入 Navigation 3 单根栈，无私有 BackHandler，原生支持 MaterialSharedAxis.Z 与预测性返回手势。
@@ -49,6 +50,12 @@ fun SearchLandingScreen(
     // 判断大屏环境以适配居中与双栏排版（达到 Expanded 宽度时为大屏双栏，其余为小屏单流）
     val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
 
+    DisposableEffect(Unit) {
+        onDispose {
+            keyboardController?.hide()
+        }
+    }
+
     LaunchedEffect(navParam) {
         viewModel.initParam(navParam)
     }
@@ -58,17 +65,18 @@ fun SearchLandingScreen(
         keyboardController?.show()
     }
 
-    val onPerformSearchAction: (String) -> Unit = { query ->
+    val handleSubmitSearch: (String, Boolean) -> Unit = { query, isDirectSubmit ->
         val trimmed = query.trim()
         if (trimmed.isNotBlank()) {
             keyboardController?.hide()
             viewModel.onSearch(trimmed)
+            val retainCompany = isDirectSubmit && trimmed == navParam.initialKeyword.trim()
             onNavigateToResult(
                 SearchResultNavParam(
                     keyword = trimmed,
                     category = navParam.initialCategory,
-                    companyNodeId = navParam.initialCompanyNodeId,
-                    companyName = navParam.initialCompanyName
+                    companyNodeId = if (retainCompany) navParam.initialCompanyNodeId else null,
+                    companyName = if (retainCompany) navParam.initialCompanyName else null
                 )
             )
         }
@@ -83,7 +91,7 @@ fun SearchLandingScreen(
         SearchTopBar(
             query = uiState.keyword,
             onQueryChange = { viewModel.onKeywordChange(it) },
-            onSearch = onPerformSearchAction,
+            onSearch = { handleSubmitSearch(it, true) },
             onBackClick = {
                 keyboardController?.hide()
                 onBack()
@@ -107,7 +115,7 @@ fun SearchLandingScreen(
                 SearchSuggestionsList(
                     suggestions = uiState.suggestions,
                     query = uiState.keyword,
-                    onSelectWord = onPerformSearchAction
+                    onSelectWord = { handleSubmitSearch(it, false) }
                 )
             } else {
                 // 输入为空时呈现搜索历史面板与大家在找热词流式排布 (支持小屏单列与大屏双栏排布)
@@ -121,14 +129,14 @@ fun SearchLandingScreen(
                                 hotwords = uiState.hotwords,
                                 isLoading = uiState.isLoadingHotwords,
                                 onRefresh = { viewModel.refreshHotwords() },
-                                onSelectWord = onPerformSearchAction
+                                onSelectWord = { handleSubmitSearch(it, false) }
                             )
                         }
 
                         Box(modifier = Modifier.weight(1f)) {
                             SearchHistorySection(
                                 historyList = uiState.searchHistory,
-                                onSelectWord = onPerformSearchAction,
+                                onSelectWord = { handleSubmitSearch(it, false) },
                                 onDeleteItem = { word -> viewModel.onRemoveHistory(word) },
                                 onClearAll = { viewModel.onClearHistory() }
                             )
@@ -138,7 +146,7 @@ fun SearchLandingScreen(
                     if (uiState.searchHistory.isNotEmpty()) {
                         SearchHistorySection(
                             historyList = uiState.searchHistory,
-                            onSelectWord = onPerformSearchAction,
+                            onSelectWord = { handleSubmitSearch(it, false) },
                             onDeleteItem = { word -> viewModel.onRemoveHistory(word) },
                             onClearAll = { viewModel.onClearHistory() }
                         )
@@ -148,7 +156,7 @@ fun SearchLandingScreen(
                         hotwords = uiState.hotwords,
                         isLoading = uiState.isLoadingHotwords,
                         onRefresh = { viewModel.refreshHotwords() },
-                        onSelectWord = onPerformSearchAction
+                        onSelectWord = { handleSubmitSearch(it, false) }
                     )
                 }
             }

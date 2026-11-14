@@ -103,8 +103,8 @@ val viewModelModule = module {
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { ResaleDetailViewModel(get(), get()) }
     viewModel { ResaleMarketViewModel(get(), get()) }
-    viewModel { SearchLandingViewModel(get(), get()) }
-    viewModel { SearchResultViewModel(get(), get()) }
+    viewModelOf(::SearchLandingViewModel)
+    viewModelOf(::SearchResultViewModel)
     viewModel { SeriesDetailViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { SettingsAccountViewModel(get(), get()) }

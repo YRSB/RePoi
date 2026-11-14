@@ -312,13 +312,13 @@ fun SearchResultScreen(
                             }
                         }
                         SearchTab.WORKS_ELEMENT -> {
-                            val charactarId = if (item.itemId > 0) item.itemId else item.actualId
-                            val charactarNodeId = if (item.id > 0) item.id else item.itemNodeId
-                            if (onNavigateToCharacter != null && charactarId > 0) {
+                            val characterId = if (item.itemId > 0) item.itemId else item.actualId
+                            val characterNodeId = if (item.id > 0) item.id else item.itemNodeId
+                            if (onNavigateToCharacter != null && characterId > 0) {
                                 onNavigateToCharacter(
                                     CharacterNavParam(
-                                        characterId = charactarId,
-                                        characterNodeId = charactarNodeId,
+                                        characterId = characterId,
+                                        characterNodeId = characterNodeId,
                                         initialName = item.displayName,
                                         initialCover = item.cover
                                     )

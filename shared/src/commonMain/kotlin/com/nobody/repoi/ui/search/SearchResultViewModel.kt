@@ -211,17 +211,13 @@ class SearchResultViewModel(
     fun onSortChange(newOrder: String) {
         val state = _uiState.value
         val tab = state.selectedTab
-        val currentOrder = when (tab) {
-            SearchTab.HOBBY -> state.hobbyFilter.order
-            SearchTab.ALBUM -> state.albumFilter.order
-            else -> return
-        }
+        if (tab != SearchTab.HOBBY && tab != SearchTab.ALBUM) return
+        val currentOrder = state.orderFor(tab)
         if (currentOrder == newOrder) return
         _uiState.update { current ->
             when (tab) {
                 SearchTab.HOBBY -> current.copy(hobbyFilter = current.hobbyFilter.copy(order = newOrder))
                 SearchTab.ALBUM -> current.copy(albumFilter = current.albumFilter.copy(order = newOrder))
-                else -> current
             }
         }
         reloadTab(tab)
@@ -392,11 +388,7 @@ class SearchResultViewModel(
                 state.albumFilter.category,
                 state.elementsFilter.category
             ),
-            order = when (tab) {
-                SearchTab.HOBBY -> hobby.order
-                SearchTab.ALBUM -> state.albumFilter.order
-                else -> null
-            },
+            order = state.orderFor(tab).ifEmpty { null },
             company = hobby.company?.nodeId.takeIf { tab == SearchTab.HOBBY },
             releaseYear = hobby.year.takeIf { tab == SearchTab.HOBBY },
             attribute = state.elementsFilter.attribute.takeIf { tab == SearchTab.WORKS_ELEMENT }

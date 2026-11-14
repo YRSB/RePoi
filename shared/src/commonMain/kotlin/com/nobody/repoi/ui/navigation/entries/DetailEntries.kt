@@ -17,6 +17,7 @@ import com.nobody.repoi.ui.series.SeriesDetailScreen
 import com.nobody.repoi.ui.vendor.VendorDetailScreen
 import com.nobody.repoi.ui.vendor.actions.VendorActionsScreen
 import com.nobody.repoi.ui.works.WorksDetailScreen
+import com.nobody.repoi.ui.search.HobbyAllCategory
 
 /**
  * 注册手办、相册、角色、厂商、人物、系列与作品等详情链路由。
@@ -111,7 +112,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToLogin = { navigator.navigateToLogin() },
             onNavigateToSearch = { companyNodeId ->
                 navigator.navigateToSearchResult(
-                    category = 10000,
+                    category = HobbyAllCategory.id,
                     companyNodeId = companyNodeId,
                     companyName = key.param.initialName
                 )
@@ -141,7 +142,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
             onNavigateToAlbumList = { albumListParam -> navigator.navigateToHobbyAlbumList(albumListParam) },
             onNavigateToSearch = { keyword ->
-                navigator.navigateToSearchResult(keyword = keyword, category = 10000)
+                navigator.navigateToSearchResult(keyword = keyword, category = HobbyAllCategory.id)
             },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }
@@ -171,7 +172,7 @@ fun EntryProviderScope<NavKey>.detailEntries(
             onNavigateToHobbyList = { listParam -> navigator.navigateToHobbyList(listParam) },
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToSearch = { keyword ->
-                navigator.navigateToSearchResult(keyword = keyword, category = 10000)
+                navigator.navigateToSearchResult(keyword = keyword, category = HobbyAllCategory.id)
             },
             onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
             onNavigateToComments = { commentsParam -> navigator.navigateToHobbyComments(commentsParam) }

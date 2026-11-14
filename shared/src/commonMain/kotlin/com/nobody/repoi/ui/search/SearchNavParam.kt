@@ -23,23 +23,3 @@ data class SearchResultNavParam(
     val companyName: String? = null
 )
 
-/**
- * 兼容/过渡映射：将 [SearchResultNavParam] 转为原有 [SearchNavParam]。
- */
-fun SearchResultNavParam.toSearchNavParam(): SearchNavParam = SearchNavParam(
-    initialKeyword = keyword,
-    initialCategory = category,
-    initialCompanyNodeId = companyNodeId,
-    initialCompanyName = companyName
-)
-
-/**
- * 将 [SearchNavParam] 转为 [SearchResultNavParam]。
- */
-fun SearchNavParam.toSearchResultNavParam(): SearchResultNavParam = SearchResultNavParam(
-    keyword = initialKeyword,
-    category = initialCategory,
-    companyNodeId = initialCompanyNodeId,
-    companyName = initialCompanyName
-)
-

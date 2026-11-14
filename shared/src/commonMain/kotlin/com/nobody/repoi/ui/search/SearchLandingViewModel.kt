@@ -194,11 +194,4 @@ class SearchLandingViewModel(
             searchHistoryManager.addKeyword(searchWord)
         }
     }
-
-    /**
-     * 兼容别名：保存搜索词至历史。
-     */
-    fun saveSearchHistory(keyword: String) {
-        onSearch(keyword)
-    }
 }
