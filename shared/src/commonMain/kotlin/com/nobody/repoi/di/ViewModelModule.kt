@@ -89,7 +89,7 @@ val viewModelModule = module {
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
-    viewModel { HomeFeedViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { HomeFeedViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }

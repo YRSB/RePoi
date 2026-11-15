@@ -17,12 +17,13 @@ import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.home.components.ActionCard
+import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 
 /**
  * 板块共享面板：首页与专区详情共用的「唯一内容渲染入口」。
  *
- * 已实现 [ZoneBoard.Action]（动态）与 [ZoneBoard.Album]（分享/相册，#157）；其余板块先走防御占位——
- * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
+ * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）与 [ZoneBoard.Resale]（二手，#160）；
+ * 其余板块先走防御占位——专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
@@ -161,6 +162,64 @@ fun ZoneBoardPane(
                                     item = item,
                                     showTime = true,
                                     onClick = { album -> itemActions.onAlbumClick?.invoke(album) }
+                                )
+                            }
+
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZonePaginationFooter(
+                                    isLoadingMore = page.isLoadingMore,
+                                    loadMoreError = page.loadMoreError,
+                                    isEndReached = page.isEndReached,
+                                    onRetry = { actions.onLoadMore() }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ZoneBoard.Resale -> {
+            val resaleContent = content as? ZoneBoardContent.Resale
+            if (resaleContent == null) {
+                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+                ZoneEmptyPlaceholder("暂无相关二手条目")
+            } else {
+                LazyVerticalStaggeredGrid(
+                    columns = columns,
+                    state = gridState,
+                    modifier = modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp
+                ) {
+                    val page = resaleContent.page
+                    val errorMessage = page.errorMessage
+                    when {
+                        errorMessage != null && resaleContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneErrorPlaceholder(
+                                    message = errorMessage,
+                                    onRetry = { actions.onRetryInitial() }
+                                )
+                            }
+                        }
+                        resaleContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneEmptyPlaceholder("暂无相关二手条目")
+                            }
+                        }
+                        else -> {
+                            items(
+                                items = resaleContent.items,
+                                key = { item -> "zone_resale_${item.id}" },
+                                contentType = { "zone_resale" }
+                            ) { item ->
+                                ZoneResaleCard(
+                                    item = item,
+                                    onClick = { itemActions.onResaleClick?.invoke(item) },
+                                    onUserClick = itemActions.onResaleUserClick,
+                                    onContactClick = { itemActions.onResaleContactClick?.invoke(item) },
+                                    onMoreClick = { itemActions.onResaleMoreClick?.invoke(item) }
                                 )
                             }
 

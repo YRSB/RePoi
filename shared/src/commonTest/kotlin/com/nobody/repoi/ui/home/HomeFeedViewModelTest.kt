@@ -8,6 +8,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
@@ -66,6 +67,7 @@ class HomeFeedViewModelTest {
         val feedMock: MockApi,
         val zoneMock: MockApi,
         val albumMock: MockApi,
+        val resaleMock: MockApi,
         val accountMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
@@ -107,13 +109,20 @@ class HomeFeedViewModelTest {
             "api/zone/categories",
             """{"success":true,"code":200,"msg":"ok","data":{"visible":true,"categories":[]}}"""
         )
-        return Env(feedMock, zoneMock, albumMock, MockApi(), preferences, zoneRepository, testDispatcher)
+        // 二手板块（#160）默认空响应路由：未切到二手板块时不会发出请求
+        val resaleMock = MockApi()
+        resaleMock.route(
+            "api/resale/search",
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[]}}"""
+        )
+        return Env(feedMock, zoneMock, albumMock, resaleMock, MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
         HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(albumMock.api(dispatcher)),
+            ResaleRepository(resaleMock.api(dispatcher)),
             zoneRepository,
             preferences,
             if (accounts) userSession else FakeUserSession(),
@@ -657,6 +666,7 @@ class HomeFeedViewModelTest {
         val viewModel = HomeFeedViewModel(
             HomeRepository(env.feedMock.api(env.dispatcher)),
             AlbumRepository(env.albumMock.api(env.dispatcher)),
+            ResaleRepository(env.resaleMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
             session,
@@ -679,6 +689,7 @@ class HomeFeedViewModelTest {
         val viewModel = HomeFeedViewModel(
             HomeRepository(env.feedMock.api(env.dispatcher)),
             AlbumRepository(env.albumMock.api(env.dispatcher)),
+            ResaleRepository(env.resaleMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
             session,
@@ -771,9 +782,9 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）与分享（#157）
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）、分享（#157）与二手（#160）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Resale), state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
@@ -792,13 +803,19 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        // 关注聚合还要再隐藏能力矩阵不可用板块（#160：二手 zones 逗号串为交集语义）
+        assertEquals(
+            ZoneBoard.HOME_ORDER.filter {
+                it in ZoneBoard.HOME_IMPLEMENTED && it !in FOLLOW_UNAVAILABLE_BOARDS
+            },
+            state.boards
+        )
+        assertTrue(ZoneBoard.Resale !in state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
     }
 
     @Test
-    fun runtimeFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {
-        // 运行期切「关注」（冷启动 saved follow 会回落 all，见 coldStart_savedFollow_*）
+    fun runtimeFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {        // 运行期切「关注」（冷启动 saved follow 会回落 all，见 coldStart_savedFollow_*）
         val env = env()
         env.stubFeed(items = emptyList())
         val viewModel = env.viewModel()
@@ -810,7 +827,12 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        assertEquals(
+            ZoneBoard.HOME_ORDER.filter {
+                it in ZoneBoard.HOME_IMPLEMENTED && it !in FOLLOW_UNAVAILABLE_BOARDS
+            },
+            state.boards
+        )
     }
 
     @Test
@@ -1040,8 +1062,8 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 不在 boards 中的板块（本阶段仅接入动态，取后续票才加入的二手）：选择被忽略，也不改写偏好
-        viewModel.selectBoard(ZoneBoard.Resale)
+        // 不在 boards 中的板块（讨论由 #158 接入，当前未实现）：选择被忽略，也不改写偏好
+        viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
 
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)

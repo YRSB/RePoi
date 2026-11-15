@@ -6,6 +6,7 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.board.AlbumBoardOptions
@@ -56,6 +57,7 @@ class HomeFeedAlbumBoardTest {
         val feedMock: MockApi,
         val zoneMock: MockApi,
         val albumMock: MockApi,
+        val resaleMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
         val dispatcher: CoroutineDispatcher,
@@ -65,6 +67,7 @@ class HomeFeedAlbumBoardTest {
         fun viewModel(): HomeFeedViewModel = HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(albumMock.api(dispatcher)),
+            ResaleRepository(resaleMock.api(dispatcher)),
             zoneRepository,
             preferences,
             userSession
@@ -86,7 +89,7 @@ class HomeFeedAlbumBoardTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedSubType("recommend")
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
-        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository, testDispatcher)
+        return Env(feedMock, zoneMock, MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun albumItem(id: Long): String =
@@ -136,8 +139,8 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含分享，但未切过去之前零请求
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), viewModel.uiState.value.boards)
+        // 聚合态二级 Tab 自动包含分享/二手，但未切过去之前零请求
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Resale), viewModel.uiState.value.boards)
         assertEquals(0, env.albumMock.requestCount)
 
         viewModel.selectBoard(ZoneBoard.Album)

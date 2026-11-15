@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.board
 
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.ResaleSearchItem
 
 /**
  * 板块级筛选与分页动作集合（由宿主机适配现有 ViewModel / loader 实现）。
@@ -27,6 +28,18 @@ interface ZoneBoardActions {
     /** 分享板块分类切换；`null` = 全部分类。仅单专区作用域会传入非空选项。 */
     fun onSelectAlbumCategory(categoryId: Int?)
 
+    /** 二手板块交易类型切换（`1` 出售 / `2` 求购，见 [ResaleBoardOptions.TYPES]）；宿主负责清列表并重载。 */
+    fun onSelectResaleType(type: Int)
+
+    /** 二手板块成色切换；`null` = 全部成色。宿主负责清列表并重载。 */
+    fun onSelectResalePurity(purity: String?)
+
+    /** 二手板块搜索关键词输入（仅专区详情渲染搜索栏，首页不渲染）。 */
+    fun onResaleKeywordChange(keyword: String)
+
+    /** 二手板块提交搜索（宿主回第一页重载）。 */
+    fun onResaleSearch()
+
     /** 首屏错误态「重试」（宿主按当前板块分派刷新）。 */
     fun onRetryInitial()
 
@@ -45,5 +58,13 @@ data class ZoneBoardItemActions(
     /** 动态卡片图片点击（打开全屏看图）。 */
     val onActionImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
-    val onAlbumClick: ((AlbumListItem) -> Unit)? = null
+    val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
+    /** 二手卡片点击（出售 → 二手详情；求购 → 关联条目详情，由宿主决定）。 */
+    val onResaleClick: ((ResaleSearchItem) -> Unit)? = null,
+    /** 二手卡片发布者点击（跳转用户主页）。 */
+    val onResaleUserClick: ((Long) -> Unit)? = null,
+    /** 二手卡片「联系」点击（私信入口，宿主实现）。 */
+    val onResaleContactClick: ((ResaleSearchItem) -> Unit)? = null,
+    /** 二手卡片三点「更多」点击（宿主弹出更多操作底板/举报弹窗）。 */
+    val onResaleMoreClick: ((ResaleSearchItem) -> Unit)? = null
 )

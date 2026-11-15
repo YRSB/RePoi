@@ -65,6 +65,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
@@ -72,6 +73,7 @@ import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -92,6 +94,7 @@ fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -136,6 +139,22 @@ fun HomeFeedScreen(
                 viewModel.selectAlbumCategory(categoryId)
             }
 
+            override fun onSelectResaleType(type: Int) {
+                viewModel.selectResaleType(type)
+            }
+
+            override fun onSelectResalePurity(purity: String?) {
+                viewModel.selectResalePurity(purity)
+            }
+
+            override fun onResaleKeywordChange(keyword: String) {
+                viewModel.updateResaleKeyword(keyword)
+            }
+
+            override fun onResaleSearch() {
+                viewModel.submitResaleSearch()
+            }
+
             override fun onRetryInitial() {
                 viewModel.retryCurrentBoard()
             }
@@ -163,11 +182,19 @@ fun HomeFeedScreen(
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick) {
+    val handleResaleClick = remember(onNavigateToResaleDetail) {
+        { item: ResaleSearchItem ->
+            if (item.id > 0L && onNavigateToResaleDetail != null) {
+                onNavigateToResaleDetail(item.id)
+            }
+        }
+    }
+    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick, handleResaleClick) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
-            onAlbumClick = handleAlbumClick
+            onAlbumClick = handleAlbumClick,
+            onResaleClick = handleResaleClick
         )
     }
 
@@ -227,6 +254,8 @@ fun HomeFeedScreen(
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
     val feedColumns = rememberFeedStaggeredGridColumns()
+    // 二手列表沿用专区详情的列数策略（竖屏 1 列 / 横屏 2-3 列），与动态瀑布流不同
+    val resaleColumns = rememberResaleStaggeredGridColumns()
 
     // 滚动 / 折叠比例按「作用域 + 板块」键保存（仅内存；持久化为 #156）
     LaunchedEffect(staggeredGridState, scrollBehavior.state) {
@@ -254,6 +283,7 @@ fun HomeFeedScreen(
     // 首次组合不触发（保留首屏恢复的滚动位置）。
     val boardFilterToken = when (uiState.selectedBoard) {
         ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
+        ZoneBoard.Resale -> "${uiState.resale.type}|${uiState.resale.purity ?: "all"}"
         else -> uiState.selectedSubType
     }
     var lastSelection by remember {
@@ -433,10 +463,10 @@ fun HomeFeedScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = if (uiState.selectedBoard == ZoneBoard.Album) {
-                                            "暂无相关分享"
-                                        } else {
-                                            "暂无该分类下的动态情报"
+                                        text = when (uiState.selectedBoard) {
+                                            ZoneBoard.Album -> "暂无相关分享"
+                                            ZoneBoard.Resale -> "暂无相关二手条目"
+                                            else -> "暂无该分类下的动态情报"
                                         },
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -468,7 +498,7 @@ fun HomeFeedScreen(
                             ),
                             actions = boardActions,
                             itemActions = boardItemActions,
-                            columns = feedColumns,
+                            columns = if (uiState.selectedBoard == ZoneBoard.Resale) resaleColumns else feedColumns,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
