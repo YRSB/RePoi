@@ -165,7 +165,7 @@ class HomeFeedAlbumBoardTest {
 
     @Test
     fun albumFollowScope_sendsCommaSeparatedZonesUnion() = runTest(testDispatcher) {
-        val env = env(savedTabKey = "follow")
+        val env = env()
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":100,"nameCN":"手办"},{"nodeId":200,"nameCN":"模型"}]}}"""
@@ -174,6 +174,9 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
+        // #156 冷启动把落盘的 follow 回落「全部」，因此运行期显式切到关注
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
         viewModel.selectBoard(ZoneBoard.Album)
         advanceUntilIdle()
 
@@ -328,8 +331,11 @@ class HomeFeedAlbumBoardTest {
 
     @Test
     fun emptyFollowAlbum_shortCircuitsWithoutRequest() = runTest(testDispatcher) {
-        val env = env(savedTabKey = "follow")
+        val env = env()
         val viewModel = env.viewModel()
+        advanceUntilIdle()
+        // #156 冷启动会回落 follow，这里模拟运行期显式切到「关注」且未关注任何专区
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.zoneScope.isFollowEmpty)
 
