@@ -25,8 +25,12 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
+import com.nobody.repoi.ui.board.PostsBoardOptions
 import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
 import com.nobody.repoi.util.paging.PageChunk
@@ -177,6 +181,28 @@ data class ZoneDetailUiState(
     val currentEntityState: ZoneEntityTabState
         get() = entityTabs[selectedTab] ?: ZoneEntityTabState()
 
+    /**
+     * 讨论板块 → 共享面板内容快照（宿主投影，`ZoneBoardPane` 只读）。
+     *
+     * 置顶帖始终投影：专区详情固定单专区，不涉及聚合态的「无置顶语义」问题。
+     */
+    val postsBoardContent: ZoneBoardContent.Posts
+        get() = ZoneBoardContent.Posts(
+            pinnedPosts = pinnedPosts,
+            items = postsItems,
+            page = ZoneBoardPageView(
+                isLoading = isPostsLoading && postsItems.isEmpty() && pinnedPosts.isEmpty(),
+                isLoadingMore = isPostsLoadingMore,
+                errorMessage = postsErrorMessage,
+                loadMoreError = postsLoadMoreError,
+                isEndReached = !hasMorePosts
+            )
+        )
+
+    /** 讨论板块筛选值快照（3 档排序；讨论没有分类字段，见 `PostsBoardOptions` KDoc）。 */
+    val postsBoardFilters: ZoneBoardFilters
+        get() = ZoneBoardFilters(postsOrder = postsSelectedOrder)
+
     companion object {
         val ENTITY_TAB_TYPES = setOf("company", "series", "works", "charactar", "person")
     }
@@ -214,12 +240,6 @@ class ZoneDetailViewModel(
 
     /** 分享板块 6 档排序（共享定义 [AlbumBoardOptions]，与首页共用，禁止两处硬编码）。 */
     val albumOrders: List<Pair<String, String>> = AlbumBoardOptions.ORDERS
-
-    val postsOrders = listOf(
-        Pair("upd", "回复"),
-        Pair("add", "新贴"),
-        Pair("top", "推荐")
-    )
 
     /** 二手交易类型（共享定义 [ResaleBoardOptions.TYPES]，首页/详情/市场唯一来源）。 */
     val resaleTypes: List<Pair<Int, String>> = ResaleBoardOptions.TYPES
@@ -701,7 +721,7 @@ class ZoneDetailViewModel(
                         pageSize = 20
                     )
                     result.onSuccess { rawList ->
-                        val (pinned, unpinned) = partitionPosts(rawList)
+                        val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
                         val distinctItems = unpinned.distinctBy { it.id }
                         _uiState.update {
                             it.copy(
@@ -945,7 +965,7 @@ class ZoneDetailViewModel(
                 pageSize = 20
             )
             result.onSuccess { rawList ->
-                val (pinned, unpinned) = partitionPosts(rawList)
+                val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
                 val distinctItems = unpinned.distinctBy { it.id }
                 _uiState.update {
                     it.copy(
@@ -966,24 +986,6 @@ class ZoneDetailViewModel(
                     )
                 }
             }
-        }
-    }
-
-    private fun partitionPosts(rawList: List<PostItem>): Pair<List<PostItem>, List<PostItem>> {
-        return if (rawList.any { it.isPinned }) {
-            val pinned = rawList.filter { it.isPinned }.take(5)
-            val unpinned = rawList.filterNot { it.isPinned }
-            pinned to unpinned
-        } else if (rawList.size > 5) {
-            val pinned = rawList.take(5)
-            val unpinned = rawList.drop(5)
-            pinned to unpinned
-        } else if (rawList.size > 2) {
-            val pinned = rawList.take(2)
-            val unpinned = rawList.drop(2)
-            pinned to unpinned
-        } else {
-            emptyList<PostItem>() to rawList
         }
     }
 

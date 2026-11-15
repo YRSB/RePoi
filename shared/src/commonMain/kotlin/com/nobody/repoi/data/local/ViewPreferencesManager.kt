@@ -11,6 +11,7 @@ import com.nobody.repoi.data.remote.model.ActionSubType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -117,25 +118,34 @@ class ViewPreferencesManager(
         prefs[KEY_IMAGE_CACHE_MAX_BYTES] ?: DEFAULT_IMAGE_CACHE_MAX_BYTES
     }
 
-    init {
+    /**
+     * 冷启动预热协程：从 DataStore 一次性恢复内存镜像。
+     *
+     * 不使用持续 collect，避免与本地写入产生持续的异步时序竞态。
+     * 所有「会改写镜像」的读写入口都必须先 [awaitPreheat]，否则预热协程可能在用户写入之后才落定，
+     * 把刚写入的内存镜像覆盖回旧快照（真实竞态：Android host 测试曾偶发 `allInfo` 覆盖 `recommend`）。
+     */
+    private val preheatJob: Job = scope.launch {
         runCatching {
-            scope.launch {
-                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
-                // 不使用持续 collect，避免与本地写入产生异步时序竞态。
-                val prefs = dataStore.data.first()
-                prefs[KEY_HOBBY_LIST_GRID_MODE]?.let { isHobbyListGridMode = it }
-                prefs[KEY_COLLECT_LIST_GRID_MODE]?.let { isCollectListGridMode = it }
-                prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
-                prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = ActionSubType.normalizeKey(it) }
-                prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
-                prefs[KEY_FEED_ZONE_BOARD]?.let { feedZoneBoard = it }
-                prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
-                prefs[KEY_IMAGE_CACHE_MAX_BYTES]?.let { imageCacheMaxBytes = it }
-            }
+            val prefs = dataStore.data.first()
+            prefs[KEY_HOBBY_LIST_GRID_MODE]?.let { isHobbyListGridMode = it }
+            prefs[KEY_COLLECT_LIST_GRID_MODE]?.let { isCollectListGridMode = it }
+            prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
+            prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = ActionSubType.normalizeKey(it) }
+            prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
+            prefs[KEY_FEED_ZONE_BOARD]?.let { feedZoneBoard = it }
+            prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
+            prefs[KEY_IMAGE_CACHE_MAX_BYTES]?.let { imageCacheMaxBytes = it }
         }
     }
 
+    /** 等待冷启动预热落定：保证后续对内存镜像的读写不会被预热协程的旧快照覆盖。 */
+    private suspend fun awaitPreheat() {
+        preheatJob.join()
+    }
+
     suspend fun setHobbyListGridMode(isGrid: Boolean) {
+        awaitPreheat()
         isHobbyListGridMode = isGrid
         dataStore.edit { prefs ->
             prefs[KEY_HOBBY_LIST_GRID_MODE] = isGrid
@@ -143,6 +153,7 @@ class ViewPreferencesManager(
     }
 
     suspend fun setCollectListGridMode(isGrid: Boolean) {
+        awaitPreheat()
         isCollectListGridMode = isGrid
         dataStore.edit { prefs ->
             prefs[KEY_COLLECT_LIST_GRID_MODE] = isGrid
@@ -157,6 +168,7 @@ class ViewPreferencesManager(
      * @param sortType 升降序（1 升 / 2 降）
      */
     suspend fun setCollectHobbyOrder(collectState: String, order: String, sortType: Int) {
+        awaitPreheat()
         dataStore.edit { prefs ->
             prefs[keyOfCollectHobbyOrder(collectState)] = order
             prefs[keyOfCollectHobbySortType(collectState)] = sortType
@@ -199,6 +211,7 @@ class ViewPreferencesManager(
     fun getInitialFeedZoneBoardKey(): String = feedZoneBoard
 
     suspend fun getFeedPreferences(): Pair<Int, String> {
+        awaitPreheat()
         val prefs = dataStore.data.first()
         val catId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
         // 读取侧归一：历史落盘值 all 映射为 allInfo，非法值回落默认项
@@ -209,6 +222,7 @@ class ViewPreferencesManager(
     }
 
     suspend fun setFeedCategory(categoryId: Int) {
+        awaitPreheat()
         feedCategoryId = categoryId
         dataStore.edit { prefs ->
             prefs[KEY_FEED_CATEGORY_ID] = categoryId
@@ -222,6 +236,7 @@ class ViewPreferencesManager(
      * 保证落盘不再出现服务端不识别的 `all`。
      */
     suspend fun setFeedSubType(subType: String) {
+        awaitPreheat()
         val normalized = ActionSubType.normalizeKey(subType)
         feedSubType = normalized
         dataStore.edit { prefs ->
@@ -230,6 +245,7 @@ class ViewPreferencesManager(
     }
 
     suspend fun setFeedZoneTabKey(tabKey: String) {
+        awaitPreheat()
         feedZoneTabKey = tabKey
         dataStore.edit { prefs ->
             prefs[KEY_FEED_ZONE_TAB_KEY] = tabKey
@@ -242,6 +258,7 @@ class ViewPreferencesManager(
      * 调用方保证键的业务合法性（前缀为当前一级 tabKey、type 为可用板块），偏好层不做形状校验。
      */
     suspend fun setFeedZoneBoard(boardKey: String) {
+        awaitPreheat()
         feedZoneBoard = boardKey
         dataStore.edit { prefs ->
             prefs[KEY_FEED_ZONE_BOARD] = boardKey
@@ -265,6 +282,7 @@ class ViewPreferencesManager(
     }
 
     suspend fun setExHobbyEnabled(enabled: Boolean) {
+        awaitPreheat()
         isExHobbyEnabled = enabled
         dataStore.edit { prefs ->
             prefs[KEY_EXHOBBY_ENABLED] = enabled
@@ -272,6 +290,7 @@ class ViewPreferencesManager(
     }
 
     suspend fun setImageCacheMaxBytes(bytes: Long) {
+        awaitPreheat()
         imageCacheMaxBytes = bytes
         dataStore.edit { prefs ->
             prefs[KEY_IMAGE_CACHE_MAX_BYTES] = bytes

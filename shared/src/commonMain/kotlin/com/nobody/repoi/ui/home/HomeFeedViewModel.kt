@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
@@ -16,6 +17,7 @@ import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
+import com.nobody.repoi.ui.board.PostsBoardOptions
 import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
@@ -38,6 +40,47 @@ data class FeedCategory(
     val zoneIds: String = "",
     val id: Int = nodeId.toInt()
 )
+
+/**
+ * 首页讨论板块状态（issue #158）：与动态板块完全独立、按板块懒加载。
+ *
+ * 归属首页 ViewModel 而不是 loader：讨论板块现状是手写 Job + 页码分页（与专区详情一致），
+ * 行为需与详情页保持同一套语义（`hasMore = 原始页大小 >= PAGE_SIZE`、按 id 去重、置顶切分复用
+ * [PostsBoardOptions.partition]），不额外引入分页 loader 以免两端漂移。
+ *
+ * @param order 排序档位（[PostsBoardOptions.ORDERS] 的键）
+ * @param isLoaded 是否已请求过首屏成功——懒加载哨兵，false 表示尚未拿到数据（首屏失败后切回会重试）
+ * @param pinnedPosts 仅单专区有值；聚合态（全部）不切分置顶、始终为空
+ */
+data class HomePostsState(
+    val order: String = PostsBoardOptions.DEFAULT_ORDER,
+    val items: List<PostItem> = emptyList(),
+    val pinnedPosts: List<PostItem> = emptyList(),
+    val page: Int = 1,
+    val isLoaded: Boolean = false,
+    val isInitialLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = true,
+    val errorMessage: String? = null,
+    val loadMoreError: String? = null
+) {
+    /** 首屏/刷新空态判定：置顶帖与普通帖都为空。 */
+    val isEmpty: Boolean
+        get() = items.isEmpty() && pinnedPosts.isEmpty()
+
+    /** 作用域切换时清空内容与分页游标，但保留用户选择的排序（按板块记忆的筛选状态）。 */
+    fun resetForScope(): HomePostsState = copy(
+        items = emptyList(),
+        pinnedPosts = emptyList(),
+        page = 1,
+        isLoaded = false,
+        isInitialLoading = false,
+        isLoadingMore = false,
+        hasMore = true,
+        errorMessage = null,
+        loadMoreError = null
+    )
+}
 
 data class HomeFeedUiState(
     val categories: List<FeedCategory> = listOf(FeedCategory("all", "全部")),
@@ -63,6 +106,8 @@ data class HomeFeedUiState(
     val hasMore: Boolean = true,
     val errorMessage: String? = null,
     val loadMoreError: String? = null,
+    /** 讨论板块状态（仅聚合·全部与单专区可用；关注聚合已由 `homeBoardsFor` 隐藏该板块）。 */
+    val posts: HomePostsState = HomePostsState(),
 
     // 分享（相册）板块状态：与动态板块完全独立、按板块懒加载（首次切到分享才请求）
     val albumItems: List<AlbumListItem> = emptyList(),
@@ -95,10 +140,33 @@ data class HomeFeedUiState(
     val zoneScope: ZoneQueryScope
         get() = selectedCategory.toZoneQueryScope()
 
+    /** 当前二级板块是否为讨论板块。 */
+    val isPostsBoard: Boolean
+        get() = selectedBoard == ZoneBoard.Posts
+
+    /**
+     * 讨论板块 → 共享面板内容快照（宿主投影，pane 只读；请求/去重全部在 ViewModel 完成）。
+     *
+     * 置顶帖只在单专区投影（聚合态无置顶语义），与 `ZoneBoardPane(showPinnedPosts = ...)` 对齐。
+     */
+    val postsBoardContent: ZoneBoardContent.Posts
+        get() = ZoneBoardContent.Posts(
+            pinnedPosts = posts.pinnedPosts,
+            items = posts.items,
+            page = ZoneBoardPageView(
+                isLoading = posts.isInitialLoading,
+                isLoadingMore = posts.isLoadingMore,
+                errorMessage = posts.errorMessage,
+                loadMoreError = posts.loadMoreError,
+                isEndReached = !posts.hasMore
+            )
+        )
+
     /** 当前板块条目数（内容区四态 / 触底翻页 / 折叠可滚动性共用，避免宿主散写 `when`）。 */
     val currentBoardItemCount: Int
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumItems.size
+            ZoneBoard.Posts -> posts.items.size + posts.pinnedPosts.size
             ZoneBoard.Resale -> resale.items.size
             else -> items.size
         }
@@ -107,6 +175,7 @@ data class HomeFeedUiState(
     val currentBoardHasMore: Boolean
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumHasMore
+            ZoneBoard.Posts -> posts.hasMore
             ZoneBoard.Resale -> resale.hasMore
             else -> hasMore
         }
@@ -115,6 +184,7 @@ data class HomeFeedUiState(
     val currentBoardIsLoadingMore: Boolean
         get() = when (selectedBoard) {
             ZoneBoard.Album -> isLoadingMoreAlbum
+            ZoneBoard.Posts -> posts.isLoadingMore
             ZoneBoard.Resale -> resale.isLoadingMore
             else -> isLoadingMore
         }
@@ -123,6 +193,7 @@ data class HomeFeedUiState(
     val currentBoardLoadMoreError: String?
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumLoadMoreError
+            ZoneBoard.Posts -> posts.loadMoreError
             ZoneBoard.Resale -> resale.loadMoreError
             else -> loadMoreError
         }
@@ -131,7 +202,10 @@ data class HomeFeedUiState(
     val isCurrentBoardLoading: Boolean
         get() = when (selectedBoard) {
             ZoneBoard.Album -> isAlbumLoading && albumItems.isEmpty()
-            ZoneBoard.Resale -> resale.isLoading && resale.items.isEmpty()
+            // 讨论板块懒加载：尚未请求过首屏（且无错误）时也按加载态处理，避免闪一帧空态卡片
+            ZoneBoard.Posts -> (posts.isInitialLoading || !posts.isLoaded) && posts.errorMessage == null
+            // 二手板块同样按懒加载处理，避免切到二手瞬间闪一帧空态卡片
+            ZoneBoard.Resale -> (resale.isLoading || !resale.isLoaded) && resale.errorMessage == null
             else -> isInitialLoading
         }
 
@@ -139,6 +213,7 @@ data class HomeFeedUiState(
     val currentBoardErrorMessage: String?
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumErrorMessage
+            ZoneBoard.Posts -> posts.errorMessage
             ZoneBoard.Resale -> resale.errorMessage
             else -> errorMessage
         }
@@ -156,6 +231,7 @@ data class HomeFeedUiState(
                     isEndReached = !albumHasMore
                 )
             )
+            ZoneBoard.Posts -> postsBoardContent
             ZoneBoard.Resale -> ZoneBoardContent.Resale(
                 items = resale.items,
                 page = ZoneBoardPageView(
@@ -185,6 +261,7 @@ data class HomeFeedUiState(
                 albumOrder = albumSelectedOrder,
                 albumCategory = albumSelectedCategory
             )
+            ZoneBoard.Posts -> ZoneBoardFilters(subType = selectedSubType, postsOrder = posts.order)
             ZoneBoard.Resale -> ZoneBoardFilters(
                 resaleType = resale.type,
                 resalePurity = resale.purity,
@@ -256,6 +333,9 @@ class HomeFeedViewModel(
     /** 二级板块列表的异步请求（单专区 `zone/info`）；切专区时先取消，避免过期响应覆盖。 */
     private var boardsJob: Job? = null
 
+    /** 讨论板块的请求 Job（首屏 / 刷新 / 分页共用；切板块不取消，切回时复用已有状态）。 */
+    private var postsJob: Job? = null
+
     /** 分享板块首屏 / 下一页请求（切排序、切分类、切专区时取消，避免过期响应覆盖新列表）。 */
     private var albumJob: Job? = null
 
@@ -318,7 +398,7 @@ class HomeFeedViewModel(
 
     init {
         // 二手板块 loader 状态投影（#160）：items/分页/错误 + 下拉刷新完成后收起刷新指示器。
-        // 收藏（loader 状态机）由 ResaleBoardState.kt 承担，本 VM 只读投影，不重复去重或改游标。
+        // 分页状态机由 ResaleBoardState.kt 承担，本 VM 只读投影，不重复去重或改游标。
         viewModelScope.launch {
             resaleBoardLoader.state.collect { listState ->
                 _uiState.update { state ->
@@ -384,7 +464,9 @@ class HomeFeedViewModel(
                         selectedCategory = matchedCategory,
                         switcherGroups = switcherGroups,
                         boards = nextBoards,
-                        selectedBoard = nextBoard
+                        selectedBoard = nextBoard,
+                        // 作用域变了：讨论板块内容属于旧作用域，必须整体作废，避免把别的专区帖子当成本专区数据
+                        posts = if (categoryChanged) it.posts.resetForScope() else it.posts
                     ).let { next ->
                         if (categoryChanged) {
                             next.resetAlbumForScopeChange().resetResaleForScopeChange()
@@ -399,7 +481,8 @@ class HomeFeedViewModel(
                     cancelAlbumWork()
                     resaleBoardLoader.reset()
                 }
-                // 冷启动恢复到分享/二手板块：恢复路径绕过 selectBoard，需在此补触发懒加载
+                // 冷启动恢复可能直接把落点定在讨论/分享/二手板块（`feed_zone_board` 命中）：补一次懒加载
+                ensurePostsLoaded()
                 if (nextBoard == ZoneBoard.Album) ensureAlbumLoaded()
                 if (nextBoard == ZoneBoard.Resale) ensureResaleLoaded()
                 if (coldStartResolvedTabKey != null) {
@@ -473,7 +556,8 @@ class HomeFeedViewModel(
                 hasMore = true,
                 isInitialLoading = true,
                 errorMessage = null,
-                loadMoreError = null
+                loadMoreError = null,
+                posts = it.posts.resetForScope()
             ).resetAlbumForScopeChange().resetResaleForScopeChange()
         }
         viewModelScope.launch {
@@ -490,15 +574,17 @@ class HomeFeedViewModel(
     /**
      * 切换二级板块：就地切换、不整页重建，不清空其它板块状态。
      *
-     * 分享板块按「懒加载」语义：只有首次切到分享时才请求首屏；切走再切回直接复用已加载的
-     * items / 排序 / 分类状态（滚动位置记忆键见 [homeBoardMemoryKey]）。
-     * 选择同时写回 `feed_zone_board = {tabKey}|{type}`（#156 恢复规则 4）。
+     * 讨论 / 分享板块**按需懒加载**：首次切到该板块时才发起首屏请求；切走再切回复用已有内容与
+     * 分页游标（滚动位置 / 折叠比例由宿主 UI 按「作用域 + 板块」记忆）。
+     * 选择同时写回 `feed_zone_board = {tabKey}|{type}`（#156 冷启动恢复规则）；
+     * 后续 #159–#161 接入新板块时在此按板块补懒加载。
      */
     fun selectBoard(board: ZoneBoard) {
         val current = _uiState.value
         if (current.selectedBoard == board || board !in current.boards) return
         currentBoardSelectionKey = encodeBoardKey(current.selectedCategory.tabKey, board.type)
         _uiState.update { it.copy(selectedBoard = board) }
+        if (board == ZoneBoard.Posts) ensurePostsLoaded()
         viewModelScope.launch { persistBoardSelection() }
         if (board == ZoneBoard.Album) ensureAlbumLoaded()
         if (board == ZoneBoard.Resale) ensureResaleLoaded()
@@ -557,15 +643,6 @@ class HomeFeedViewModel(
         loadInitialAlbum()
     }
 
-    /** 当前板块错误态的重试入口（动态 / 分享 / 二手各自重载首屏）。 */
-    fun retryCurrentBoard() {
-        when (_uiState.value.selectedBoard) {
-            ZoneBoard.Album -> loadInitialAlbum()
-            ZoneBoard.Resale -> retryResale()
-            else -> loadInitialFeed()
-        }
-    }
-
     /** 把 [currentBoardSelectionKey] 写入偏好（空键表示尚未选择，不落盘）。 */
     private suspend fun persistBoardSelection() {
         currentBoardSelectionKey
@@ -573,10 +650,179 @@ class HomeFeedViewModel(
             ?.let { viewPreferencesManager.setFeedZoneBoard(it) }
     }
 
-    /** 板块列表空态的重试入口：重新解析当前作用域板块，并补一次内容刷新。 */
+    /**
+     * 讨论板块排序切换：重置首屏（清空条目 + 页码回 1）并重新请求。
+     *
+     * 与动态板块 `selectSubType` 同语义：切换筛选必须回顶（宿主 `LaunchedEffect` 监听
+     * `posts.order` 复位滚动），且不得沿用旧排序的分页游标。
+     */
+    fun selectPostsOrder(order: String) {
+        if (_uiState.value.posts.order == order) return
+        resetScrollPosition()
+        _uiState.update {
+            it.copy(
+                posts = it.posts.copy(
+                    order = order,
+                    items = emptyList(),
+                    pinnedPosts = emptyList(),
+                    page = 1,
+                    isLoaded = false,
+                    isInitialLoading = true,
+                    isLoadingMore = false,
+                    hasMore = true,
+                    errorMessage = null,
+                    loadMoreError = null
+                )
+            )
+        }
+        loadInitialPosts()
+    }
+
+    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/二手板块重试时误刷动态流。 */
+    fun retrySelectedBoard() {
+        when (_uiState.value.selectedBoard) {
+            ZoneBoard.Album -> loadInitialAlbum()
+            ZoneBoard.Posts -> loadInitialPosts()
+            ZoneBoard.Resale -> retryResale()
+            else -> loadInitialFeed()
+        }
+    }
+
+    /** 当前板块触底翻页：按板块分派，避免讨论/分享/二手板块触底时把动态游标推错。 */
+    fun loadMoreSelectedBoard() {
+        when (_uiState.value.selectedBoard) {
+            ZoneBoard.Album -> loadNextAlbumPage()
+            ZoneBoard.Posts -> loadNextPostsPage()
+            ZoneBoard.Resale -> loadNextResalePage()
+            else -> loadNextPage()
+        }
+    }
+
+    /** 懒加载哨兵：仅在讨论板块被选中、当前作用域允许且尚未请求过时触发首屏。 */
+    private fun ensurePostsLoaded() {
+        val state = _uiState.value
+        if (!state.isPostsBoard) return
+        // 安全闸门：板块列表里没有讨论（如关注聚合按 homeBoardsFor 隐藏）时绝不发请求
+        if (ZoneBoard.Posts !in state.boards) return
+        if (state.zoneScope.isFollowEmpty) return
+        if (state.posts.isLoaded || state.posts.isInitialLoading) return
+        loadInitialPosts()
+    }
+
+    /**
+     * 讨论板块首屏 / 排序切换后的重载。
+     *
+     * 请求参数按作用域派生：单专区 `zoneNodeId=<nodeId>`；聚合·全部省略（`zoneNodeId=null` 即全站）。
+     * 关注聚合没有多专区通道，本方法不会被调用（`homeBoardsFor` 已隐藏该板块 + [ensurePostsLoaded] 兜底）。
+     */
+    fun loadInitialPosts() {
+        val state = _uiState.value
+        if (ZoneBoard.Posts !in state.boards) return
+        if (state.zoneScope.isFollowEmpty) return
+        postsJob?.cancel()
+        postsJob = viewModelScope.launch {
+            _uiState.update { it.copy(posts = it.posts.copy(isInitialLoading = true, errorMessage = null)) }
+            val scope = _uiState.value.zoneScope
+            val result = zoneRepository.getZonePosts(
+                zoneNodeId = scope.zoneNodeId(),
+                order = _uiState.value.posts.order,
+                page = 1,
+                pageSize = PostsBoardOptions.PAGE_SIZE
+            )
+            // 请求期间作用域已切换：丢弃过期响应，避免把别的专区的帖子写进当前状态
+            if (_uiState.value.zoneScope != scope) return@launch
+            result.onSuccess { rawList ->
+                applyPostsFirstPage(rawList)
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        posts = it.posts.copy(
+                            isInitialLoading = false,
+                            errorMessage = error.message ?: "加载讨论失败"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /** 讨论板块触底翻页（页码 + 与置顶/普通帖按 id 去重，与专区详情语义一致）。 */
+    fun loadNextPostsPage() {
+        val state = _uiState.value
+        val posts = state.posts
+        if (!state.isPostsBoard) return
+        if (!posts.isLoaded || posts.isInitialLoading || posts.isLoadingMore || !posts.hasMore) return
+        if (state.isRefreshing) return
+        val nextPage = posts.page + 1
+        _uiState.update { it.copy(posts = it.posts.copy(isLoadingMore = true, loadMoreError = null)) }
+        viewModelScope.launch {
+            val scope = _uiState.value.zoneScope
+            val result = zoneRepository.getZonePosts(
+                zoneNodeId = scope.zoneNodeId(),
+                order = _uiState.value.posts.order,
+                page = nextPage,
+                pageSize = PostsBoardOptions.PAGE_SIZE
+            )
+            if (_uiState.value.zoneScope != scope) return@launch
+            result.onSuccess { newItems ->
+                _uiState.update { current ->
+                    val existingIds = (current.posts.pinnedPosts.map { it.id } +
+                        current.posts.items.map { it.id }).toSet()
+                    val uniqueNewItems = newItems.filterNot { it.id in existingIds }
+                    current.copy(
+                        posts = current.posts.copy(
+                            items = current.posts.items + uniqueNewItems,
+                            page = nextPage,
+                            isLoadingMore = false,
+                            hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
+                                uniqueNewItems.isNotEmpty(),
+                            loadMoreError = null
+                        )
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        posts = it.posts.copy(
+                            isLoadingMore = false,
+                            loadMoreError = error.message ?: "加载更多失败"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /** 讨论首屏结果落地：单专区切分置顶帖，聚合·全部所有条目都进普通列表（无置顶语义）。 */
+    private fun applyPostsFirstPage(rawList: List<PostItem>) {
+        val showPinned = _uiState.value.zoneScope is ZoneQueryScope.Single
+        val (pinned, unpinned) = if (showPinned) {
+            PostsBoardOptions.partition(rawList)
+        } else {
+            emptyList<PostItem>() to rawList
+        }
+        val distinctItems = unpinned.distinctBy { it.id }
+        _uiState.update {
+            it.copy(
+                posts = it.posts.copy(
+                    items = distinctItems,
+                    pinnedPosts = pinned,
+                    page = 1,
+                    isLoaded = true,
+                    isInitialLoading = false,
+                    isLoadingMore = false,
+                    hasMore = rawList.size >= PostsBoardOptions.PAGE_SIZE,
+                    errorMessage = null,
+                    loadMoreError = null
+                )
+            )
+        }
+    }
+
+    /** 板块列表空态的重试入口：重新解析当前作用域板块，并补一次当前板块内容刷新。 */
     fun refreshBoards() {
         syncBoards(_uiState.value.zoneScope)
-        loadInitialFeed()
+        retrySelectedBoard()
     }
 
     fun selectSubType(subType: String) {
@@ -612,8 +858,8 @@ class HomeFeedViewModel(
         val firstBoard = immediateHomeSelectedBoard(scope)
         // 重置同时回到默认专区首板块，并保持二级偏好键与一级/板块选中态一致
         currentBoardSelectionKey = encodeBoardKey(defaultCategory.tabKey, firstBoard.type)
-        _uiState.update { state ->
-            state.copy(
+        _uiState.update {
+            it.copy(
                 selectedCategory = defaultCategory,
                 selectedSubType = defaultSubType,
                 boards = fallbackBoards,
@@ -623,11 +869,15 @@ class HomeFeedViewModel(
                 hasMore = true,
                 isInitialLoading = true,
                 errorMessage = null,
-                loadMoreError = null
+                loadMoreError = null,
+                // 讨论排序属板块级筛选，resetFilters 不重置它（与「筛选状态按板块记忆」一致）；
+                // 但作用域/内容必须作废，切回讨论板块时按当前作用域重新拉取。
+                posts = it.posts.resetForScope()
             ).resetAlbumForScopeChange().resetResaleForScopeChange().let { next ->
                 next.copy(
                     albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
                     albumSelectedCategory = null,
+                    // 二手交易类型/成色属板块级筛选：重置回默认值并作废内容（作用域变化必须重拉）
                     resale = next.resale.copy(
                         type = ResaleBoardOptions.DEFAULT_TYPE,
                         purity = null,
@@ -651,8 +901,8 @@ class HomeFeedViewModel(
     fun refreshFeed() = refresh()
 
     /**
-     * 刷新当前板块：动态走游标首屏，分享走页码第一页，两者共用 [HomeFeedUiState.isRefreshing]，
-     * 下拉指示器 / FAB 无需按板块区分。
+     * 刷新当前板块：动态走游标首屏，分享走页码第一页，讨论走独立首屏重载，三者共用
+     * [HomeFeedUiState.isRefreshing]，下拉指示器 / FAB 无需按板块区分。
      */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
@@ -662,14 +912,17 @@ class HomeFeedViewModel(
                 isRefreshing = true,
                 errorMessage = null,
                 loadMoreError = null,
+                posts = it.posts.copy(errorMessage = null, loadMoreError = null),
                 albumErrorMessage = null,
                 albumLoadMoreError = null,
                 resale = it.resale.copy(errorMessage = null, loadMoreError = null)
             )
         }
         fetchUnreadMessages()
+        // 按当前板块分派刷新：讨论/分享/二手板块是独立请求链路，不能借用动态流的游标
         when (_uiState.value.selectedBoard) {
             ZoneBoard.Album -> refreshAlbum()
+            ZoneBoard.Posts -> refreshPosts()
             ZoneBoard.Resale -> refreshResale()
             else -> refreshActionBoard()
         }
@@ -839,10 +1092,6 @@ class HomeFeedViewModel(
             loadNextAlbumPage()
             return
         }
-        if (currentState.selectedBoard == ZoneBoard.Resale) {
-            loadNextResalePage()
-            return
-        }
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.isInitialLoading || currentState.isRefreshing) return
 
         if (currentState.selectedCategory.tabKey == "follow" && currentState.selectedCategory.zoneIds == "-1") {
@@ -883,6 +1132,38 @@ class HomeFeedViewModel(
                     state.copy(
                         isLoadingMore = false,
                         loadMoreError = error.message ?: "加载更多失败"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 讨论板块下拉刷新 / 回顶刷新：首屏重载并结束 `isRefreshing`。 */
+    private fun refreshPosts() {
+        postsJob?.cancel()
+        postsJob = viewModelScope.launch {
+            val scope = _uiState.value.zoneScope
+            val result = zoneRepository.getZonePosts(
+                zoneNodeId = scope.zoneNodeId(),
+                order = _uiState.value.posts.order,
+                page = 1,
+                pageSize = PostsBoardOptions.PAGE_SIZE
+            )
+            if (_uiState.value.zoneScope != scope) {
+                _uiState.update { it.copy(isRefreshing = false) }
+                return@launch
+            }
+            result.onSuccess { rawList ->
+                applyPostsFirstPage(rawList)
+                _uiState.update { it.copy(isRefreshing = false) }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        posts = it.posts.copy(
+                            isInitialLoading = false,
+                            errorMessage = error.message ?: "刷新失败"
+                        )
                     )
                 }
             }
@@ -1042,6 +1323,9 @@ class HomeFeedViewModel(
     /** 二手板块懒加载入口：首次切到二手才拉首屏；已加载/加载中不重复请求。 */
     private fun ensureResaleLoaded() {
         val state = _uiState.value
+        if (state.selectedBoard != ZoneBoard.Resale) return
+        // 安全闸门：板块列表里没有二手（关注聚合按 homeBoardsFor 隐藏）时绝不发请求
+        if (ZoneBoard.Resale !in state.boards) return
         if (state.resale.isLoaded || state.resale.isLoading) return
         loadInitialResale()
     }
@@ -1049,12 +1333,12 @@ class HomeFeedViewModel(
     /**
      * 二手首屏（懒加载 / 切筛选 / 错误重试共用）：清空列表并回第一页。
      *
-     * 关注作用域下二手板块已被隐藏（`zones` 逗号串为交集语义），这里保持短路不发请求，
-     * 与分享板块同一防御口径：空 `zones` 会被服务端当作全站，属于假「关注」内容。
+     * 关注作用域下二手板块已被隐藏（`zones` 逗号串为交集语义，无法表达关注并集），这里同时做
+     * 板块可用性与空关注短路，绝不下发会被服务端当作全站的空 `zones`。
      */
     fun loadInitialResale() {
         val state = _uiState.value
-        if (state.zoneScope.isFollowEmpty) {
+        if (ZoneBoard.Resale !in state.boards || state.zoneScope.isFollowEmpty) {
             _uiState.update {
                 it.copy(
                     resale = it.resale.copy(
@@ -1092,6 +1376,8 @@ class HomeFeedViewModel(
     /** 二手板块下一页：游标 = 上一批末条 `addDate`，由 loader 计算并按 id 去重追加。 */
     fun loadNextResalePage() {
         val state = _uiState.value
+        if (state.selectedBoard != ZoneBoard.Resale) return
+        if (ZoneBoard.Resale !in state.boards) return
         if (state.resale.isLoadingMore || !state.resale.hasMore || state.resale.isLoading || state.isRefreshing) return
         if (!state.resale.isLoaded || state.zoneScope.isFollowEmpty) return
         resaleBoardLoader.loadMore()
@@ -1100,8 +1386,11 @@ class HomeFeedViewModel(
     /** 二手板块刷新：保持列表可见，参数与首屏一致；完成后由 loader 状态投影收起刷新指示器。 */
     private fun refreshResale() {
         val state = _uiState.value
-        if (!state.resale.isLoaded || state.zoneScope.isFollowEmpty) {
-            // 尚未加载过 / 关注为空：直接按首屏路径处理（后者短路不发请求）
+        if (ZoneBoard.Resale !in state.boards || state.zoneScope.isFollowEmpty) {
+            _uiState.update { it.copy(isRefreshing = false) }
+            return
+        }
+        if (!state.resale.isLoaded) {
             loadInitialResale()
             return
         }
@@ -1215,6 +1504,8 @@ class HomeFeedViewModel(
                     selectedBoard = restoredBoard ?: state.selectedBoard
                 )
             }
+            // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
+            ensurePostsLoaded()
             // 冷启动恢复到分享/二手板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
             if (_uiState.value.selectedBoard == ZoneBoard.Album) ensureAlbumLoaded()
             if (_uiState.value.selectedBoard == ZoneBoard.Resale) ensureResaleLoaded()

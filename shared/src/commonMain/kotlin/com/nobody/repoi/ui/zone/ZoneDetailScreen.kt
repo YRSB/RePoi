@@ -123,10 +123,10 @@ import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
-import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
@@ -146,8 +146,6 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZoneEntityCard
-import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
-import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -258,7 +256,6 @@ fun ZoneDetailScreen(
     }
 
     val gridColumns = when {
-        uiState.isPostsTab -> feedColumns
         uiState.isHobbyTab -> hobbyColumns
         uiState.isEntityTab -> entityColumns
         else -> feedColumns
@@ -558,11 +555,16 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 的现有入口，不改变请求与分页语义
+    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 的现有入口，不改变请求与分页语义。
+    // 触底翻页按当前 Tab 分派（讨论板块有独立分页入口）；重试走 `refresh()`（内部按 Tab 分派）。
     val boardActions = remember(viewModel) {
         object : ZoneBoardActions {
             override fun onSelectSubType(subType: String) {
                 viewModel.selectSubType(subType)
+            }
+
+            override fun onSelectPostsOrder(order: String) {
+                viewModel.selectPostsOrder(order)
             }
 
             override fun onSelectAlbumOrder(order: String) {
@@ -594,23 +596,34 @@ fun ZoneDetailScreen(
             }
 
             override fun onLoadMore() {
-                // 页脚「加载更多失败，点击重试」按当前板块分派（面板不感知板块专属 loader）
+                // 页脚「加载更多失败，点击重试」按当前 Tab 分派（面板不感知板块专属 loader）
                 when {
                     viewModel.uiState.value.isResaleTab -> viewModel.loadNextResalePage()
+                    viewModel.uiState.value.isPostsTab -> viewModel.loadNextPostsPage()
                     viewModel.uiState.value.isAlbumTab -> viewModel.loadNextAlbumPage()
                     else -> viewModel.loadNextPage()
                 }
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick, handleResaleClick) {
+    val boardItemActions = remember(
+        onActionClick,
+        onCardImageClick,
+        handlePostClick,
+        handleAlbumClick,
+        handleResaleClick,
+        onNavigateToUser
+    ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
+            onPostClick = handlePostClick,
+            onPostImageClick = onCardImageClick,
+            onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
             onResaleClick = handleResaleClick,
-            onResaleUserClick = onNavigateToUser,
             onResaleContactClick = handleResaleContactClick,
+            onResaleUserClick = onNavigateToUser,
             onResaleMoreClick = { item -> activeMoreResaleItem = item }
         )
     }
@@ -831,9 +844,29 @@ fun ZoneDetailScreen(
                             columns = gridColumns,
                             modifier = Modifier.fillMaxSize()
                         )
+                    } else if (uiState.isPostsTab) {
+                        // 讨论板块：走共享面板（与首页同一渲染入口），单专区恒展示置顶帖条
+                        ZoneBoardPane(
+                            board = ZoneBoard.Posts,
+                            scope = viewModel.zoneScope,
+                            content = uiState.postsBoardContent,
+                            filters = uiState.postsBoardFilters,
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = feedColumns,
+                            showPinnedPosts = true,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else if (uiState.isResaleTab) {
                         // 二手板块：走共享面板（#160），与首页同一内容渲染入口；
-                        // 搜索栏 / 更多操作 / 举报弹窗仍属专区详情 chrome，留在下方宿主渲染。
+                        // 搜索栏 / 更多操作 / 举报弹窗仍属专区详情 chrome，留在宿主渲染。
                         ZoneBoardPane(
                             board = ZoneBoard.Resale,
                             scope = viewModel.zoneScope,
@@ -880,51 +913,6 @@ fun ZoneDetailScreen(
                         ) {
                     // 3. 内容流渲染列表
                     when {
-                        uiState.isPostsTab -> {
-                            if (uiState.postsErrorMessage != null && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.postsErrorMessage ?: "加载讨论失败",
-                                        onRetry = { viewModel.loadInitialPosts() }
-                                    )
-                                }
-                            } else if (uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关讨论")
-                                }
-                            } else {
-                                if (uiState.pinnedPosts.isNotEmpty()) {
-                                    item(span = StaggeredGridItemSpan.FullLine) {
-                                        ZonePinnedPostsBar(
-                                            pinnedPosts = uiState.pinnedPosts,
-                                            onPostClick = handlePostClick
-                                        )
-                                    }
-                                }
-
-                                items(
-                                    items = uiState.postsItems,
-                                    key = { item -> "zone_post_${item.id}" },
-                                    contentType = { "zone_post" }
-                                ) { post ->
-                                    ZonePostCard(
-                                        post = post,
-                                        onPostClick = handlePostClick,
-                                        onImageClick = onCardImageClick,
-                                        onUserClick = onNavigateToUser
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isPostsLoadingMore,
-                                        loadMoreError = uiState.postsLoadMoreError,
-                                        isEndReached = !uiState.hasMorePosts,
-                                        onRetry = { viewModel.loadNextPostsPage() }
-                                    )
-                                }
-                            }
-                        }
                         uiState.isHobbyTab -> {
                             val hobbyState = uiState.hobbyState
                             if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
@@ -1048,24 +1036,13 @@ fun ZoneDetailScreen(
                         )
                     }
                     uiState.isPostsTab -> {
-                        // 讨论排序胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.postsOrders.forEach { (key, label) ->
-                                val isSelected = uiState.postsSelectedOrder == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectPostsOrder(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 讨论排序胶囊：共享筛选条（回复/新贴/推荐；讨论无分类入口，见 PostsBoardOptions KDoc）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Posts,
+                            filters = uiState.postsBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                     uiState.isHobbyTab -> {
                         val hobbyState = uiState.hobbyState
