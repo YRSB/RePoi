@@ -670,6 +670,29 @@ fun ZoneDetailScreen(
         )
     }
 
+    // 各板块筛选快照只构造一次：内容区（ZoneBoardPane）与筛选条（ZoneBoardFilterBar）读同一份，
+    // 避免同一板块两处各构造一次导致漂移（#150 审查 B5）。
+    val actionBoardFilters = remember(uiState.selectedSubType) {
+        ZoneBoardFilters(subType = uiState.selectedSubType)
+    }
+    val albumBoardFilters = remember(uiState.albumSelectedOrder, uiState.albumSelectedCategory) {
+        ZoneBoardFilters(
+            albumOrder = uiState.albumSelectedOrder,
+            albumCategory = uiState.albumSelectedCategory
+        )
+    }
+    val resaleBoardFilters = remember(
+        uiState.resaleState.type,
+        uiState.resaleState.purity,
+        uiState.resaleState.keyword
+    ) {
+        ZoneBoardFilters(
+            resaleType = uiState.resaleState.type,
+            resalePurity = uiState.resaleState.purity,
+            resaleKeyword = uiState.resaleState.keyword
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -841,7 +864,7 @@ fun ZoneDetailScreen(
                                     isEndReached = !uiState.hasMore
                                 )
                             ),
-                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            filters = actionBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -870,10 +893,7 @@ fun ZoneDetailScreen(
                                     isEndReached = !uiState.hasMoreAlbum
                                 )
                             ),
-                            filters = ZoneBoardFilters(
-                                albumOrder = uiState.albumSelectedOrder,
-                                albumCategory = uiState.albumSelectedCategory
-                            ),
+                            filters = albumBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -922,11 +942,7 @@ fun ZoneDetailScreen(
                                     isEndReached = uiState.resaleState.isEndReached
                                 )
                             ),
-                            filters = ZoneBoardFilters(
-                                resaleType = uiState.resaleState.type,
-                                resalePurity = uiState.resaleState.purity,
-                                resaleKeyword = uiState.resaleState.keyword
-                            ),
+                            filters = resaleBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -1013,10 +1029,7 @@ fun ZoneDetailScreen(
                         // 分享/相册：6 档排序 Chip + 分类入口，统一走共享筛选条（与首页同一实现）
                         ZoneBoardFilterBar(
                             board = ZoneBoard.Album,
-                            filters = ZoneBoardFilters(
-                                albumOrder = uiState.albumSelectedOrder,
-                                albumCategory = uiState.albumSelectedCategory
-                            ),
+                            filters = albumBoardFilters,
                             subTypeOptions = viewModel.subTypes,
                             actions = boardActions,
                             albumCategoryOptions = uiState.albumCategoryOptions
@@ -1048,11 +1061,7 @@ fun ZoneDetailScreen(
                         // 二手：出售/求购分段 + 成色 Chip，统一走共享筛选条（与首页同一实现）
                         ZoneBoardFilterBar(
                             board = ZoneBoard.Resale,
-                            filters = ZoneBoardFilters(
-                                resaleType = uiState.resaleState.type,
-                                resalePurity = uiState.resaleState.purity,
-                                resaleKeyword = uiState.resaleState.keyword
-                            ),
+                            filters = resaleBoardFilters,
                             subTypeOptions = viewModel.subTypes,
                             actions = boardActions
                         )
@@ -1061,7 +1070,7 @@ fun ZoneDetailScreen(
                         // 动态二级子分类胶囊：共享筛选条（选项仍由本页 ViewModel 提供，#153 合入后切共享定义）
                         ZoneBoardFilterBar(
                             board = ZoneBoard.Action,
-                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            filters = actionBoardFilters,
                             subTypeOptions = viewModel.subTypes,
                             actions = boardActions
                         )
