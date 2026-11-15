@@ -918,8 +918,10 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("z100", state.selectedCategory.tabKey)
         assertEquals(100L, state.selectedCategory.nodeId)
-        assertEquals(listOf(ZoneBoard.Action), state.boards)
-        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        // 单专区板块 = 服务端 tabs ∩ 首页已接入集合；首板块恒为动态（不写死后续票新增的板块）
+        assertEquals(ZoneBoard.Action, state.boards.first())
+        assertTrue(state.boards.all { it in ZoneBoard.HOME_IMPLEMENTED })
+        assertEquals(state.boards.first(), state.selectedBoard)
         assertEquals(listOf(2L), state.items.map { it.id })
         // 只为恢复后的专区请求内容，未先发「全部」请求（回落误判会留下无 zoneNodeId 的请求）
         assertEquals("100", env.lastFeedForm()["zoneNodeId"])
@@ -996,8 +998,8 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 未接入的板块不在 boards 中：选择被忽略，也不改写已持久化的二级键
-        viewModel.selectBoard(ZoneBoard.Album)
+        // 不在 boards 中的板块（本阶段仅接入动态，取后续票才加入的二手）：选择被忽略，也不改写偏好
+        viewModel.selectBoard(ZoneBoard.Resale)
         advanceUntilIdle()
 
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
