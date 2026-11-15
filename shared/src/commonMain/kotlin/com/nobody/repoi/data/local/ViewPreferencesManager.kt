@@ -139,8 +139,13 @@ class ViewPreferencesManager(
         }
     }
 
-    /** 等待冷启动预热落定：保证后续对内存镜像的读写不会被预热协程的旧快照覆盖。 */
-    private suspend fun awaitPreheat() {
+    /**
+     * 等待冷启动预热落定：保证后续对内存镜像的读写不会被预热协程的旧快照覆盖。
+     *
+     * 公开为有界等待点（没有轮询 / 真实延时）：除生产读写入口外，测试也用它替代
+     * 「真实时间等待预热完成」的写法，避免 CI 在慢机上偶发失败（#150 审查 B3 / D3）。
+     */
+    suspend fun awaitPreheat() {
         preheatJob.join()
     }
 

@@ -3,7 +3,7 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
 import com.nobody.repoi.data.remote.model.ApiException
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -8,6 +8,7 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneTabItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
@@ -23,10 +24,11 @@ import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.PostsBoardOptions
 import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardCapability
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.util.paging.LoadStage
 import kotlinx.coroutines.Job
@@ -99,6 +101,13 @@ data class HomeFeedUiState(
      * 为空表示该专区没有可用板块，宿主据此隐藏二级 TabRow 并展示板块空态（不渲染空 Tab 条）。
      */
     val boards: List<ZoneBoard> = HOME_AGGREGATE_BOARDS,
+    /**
+     * 单专区下各板块的服务端 Tab 文案（`zone/info.tabs[].title`）；聚合态恒为空 Map。
+     *
+     * 首页二级 Tab 与服务端 title 对齐（A8）：宿主用 [boardTitle] 取名，空则回退枚举文案。
+     * 作用域变化时清空，避免把旧专区的文案套到新板块上。
+     */
+    val boardTitles: Map<ZoneBoard, String> = emptyMap(),
     /** 当前选中的二级板块；切换专区时重置为该专区首板块。 */
     val selectedBoard: ZoneBoard = HOME_AGGREGATE_BOARDS.firstOrNull() ?: ZoneBoard.Action,
     val selectedSubType: String = ActionSubType.DEFAULT.apiValue,
@@ -156,6 +165,10 @@ data class HomeFeedUiState(
     /** 查询作用域（由 [selectedCategory] 派生，避免两处状态漂移）。 */
     val zoneScope: ZoneQueryScope
         get() = selectedCategory.toZoneQueryScope()
+
+    /** 二级 Tab 文案：单专区优先服务端 `tabTitle`，空则回退枚举文案；聚合态无服务端 title。 */
+    fun boardTitle(board: ZoneBoard): String =
+        boardTitles[board]?.takeIf { it.isNotBlank() } ?: board.label
 
     /** 当前二级板块是否为讨论板块。 */
     val isPostsBoard: Boolean
@@ -563,12 +576,17 @@ class HomeFeedViewModel(
                         selectedCategory = matchedCategory,
                         switcherGroups = switcherGroups,
                         boards = nextBoards,
+                        // 作用域变化后旧的单专区 Tab 文案失效，等新的 zone/info 返回再填（A8）
+                        boardTitles = if (categoryChanged) emptyMap() else it.boardTitles,
                         selectedBoard = nextBoard,
                         // 作用域变了：讨论板块内容属于旧作用域，必须整体作废，避免把别的专区帖子当成本专区数据
                         posts = if (categoryChanged) it.posts.resetForScope() else it.posts
                     ).let { next ->
                         if (categoryChanged) {
-                            next.resetAlbumForScopeChange().resetResaleForScopeChange()
+                            // 作用域变化：复位动态板块的追加/刷新态，避免旧作用域在途请求污染新列表（A2）
+                            next.copy(isLoadingMore = false, isRefreshing = false)
+                                .resetAlbumForScopeChange()
+                                .resetResaleForScopeChange()
                         } else {
                             next
                         }
@@ -657,11 +675,15 @@ class HomeFeedViewModel(
             it.copy(
                 selectedCategory = category,
                 boards = fallbackBoards,
+                boardTitles = emptyMap(),
                 selectedBoard = firstBoard,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
                 isInitialLoading = true,
+                // 切作用域必须复位追加/刷新标志，否则旧板块的在途请求会与新区块状态串台（A2）
+                isLoadingMore = false,
+                isRefreshing = false,
                 errorMessage = null,
                 loadMoreError = null,
                 posts = it.posts.resetForScope()
@@ -691,6 +713,8 @@ class HomeFeedViewModel(
      */
     fun selectBoard(board: ZoneBoard) {
         val current = _uiState.value
+        // 能力矩阵安全闸门：当前作用域不可用的板块一律忽略（不让调用点绕开矩阵发请求，A10）
+        if (!ZoneBoardCapability.isAvailableOnHome(current.zoneScope, board)) return
         if (current.selectedBoard == board || board !in current.boards) return
         currentBoardSelectionKey = encodeBoardKey(current.selectedCategory.tabKey, board.type)
         _uiState.update { it.copy(selectedBoard = board) }
@@ -1079,11 +1103,15 @@ class HomeFeedViewModel(
                 selectedCategory = defaultCategory,
                 selectedSubType = defaultSubType,
                 boards = fallbackBoards,
+                boardTitles = emptyMap(),
                 selectedBoard = firstBoard,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
                 isInitialLoading = true,
+                // 重置作用域同样复位追加/刷新标志（A2）
+                isLoadingMore = false,
+                isRefreshing = false,
                 errorMessage = null,
                 loadMoreError = null,
                 // 讨论排序属板块级筛选，resetFilters 不重置它（与「筛选状态按板块记忆」一致）；
@@ -1188,7 +1216,7 @@ class HomeFeedViewModel(
                         albumLoadMoreError = null
                     )
                 }
-                refreshActionBoard()
+                loadActionBoard()
             }
         }
     }
@@ -1207,12 +1235,20 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(isRefreshing = false) }
     }
 
-    private fun refreshActionBoard() {
-        viewModelScope.launch {
+    /**
+     * 动态板块首屏 / 下拉刷新的**唯一实现**（#150 审查 B7：合并原 refreshActionBoard 与 loadInitialFeed）。
+     *
+     * 请求参数一律经 [ZoneQueryScope] 派生（禁止调用点散拼 `zoneNodeId`/`zoneIds`）；响应落地前
+     * 校验作用域未变，过期响应直接丢弃，避免旧专区的条目写进新列表（A2）。
+     */
+    private fun loadActionBoard() {
+        initialLoadJob?.cancel()
+        initialLoadJob = viewModelScope.launch {
             val currentState = _uiState.value
+            val scope = currentState.zoneScope
 
             // 关注 Tab 但未关注任何专区：直接展示空状态，不发网络请求避免降级为查全量
-            if (currentState.selectedCategory.tabKey == "follow" && currentState.selectedCategory.zoneIds == "-1") {
+            if (scope.isFollowEmpty) {
                 _uiState.update {
                     it.copy(
                         items = emptyList(),
@@ -1220,6 +1256,7 @@ class HomeFeedViewModel(
                         isRefreshing = false,
                         isInitialLoading = false,
                         hasMore = false,
+                        errorMessage = null,
                         loadMoreError = null
                     )
                 }
@@ -1230,9 +1267,12 @@ class HomeFeedViewModel(
                 categoryId = 0,
                 subType = currentState.selectedSubType,
                 lastTime = 0L,
-                zoneNodeId = if (currentState.selectedCategory.nodeId > 0L) currentState.selectedCategory.nodeId else null,
-                zoneIds = currentState.selectedCategory.zoneIds.takeIf { it.isNotBlank() && it != "-1" }
+                zoneNodeId = scope.zoneNodeId(),
+                zoneIds = scope.zonesParam()
             )
+
+            // 请求期间作用域已切换：丢弃过期响应，避免把别的专区数据写进当前状态
+            if (_uiState.value.zoneScope != scope) return@launch
 
             result.onSuccess { newList ->
                 val newLastTime = parseCursorTimestamp(newList.lastOrNull()?.actionDate)
@@ -1244,6 +1284,7 @@ class HomeFeedViewModel(
                         isRefreshing = false,
                         isInitialLoading = false,
                         hasMore = distinctList.isNotEmpty() && newLastTime > 0L,
+                        errorMessage = null,
                         loadMoreError = null
                     )
                 }
@@ -1252,7 +1293,7 @@ class HomeFeedViewModel(
                     it.copy(
                         isRefreshing = false,
                         isInitialLoading = false,
-                        errorMessage = error.message ?: "刷新失败"
+                        errorMessage = error.message ?: "加载失败"
                     )
                 }
             }
@@ -1313,57 +1354,8 @@ class HomeFeedViewModel(
         }
     }
 
-    fun loadInitialFeed() {
-        initialLoadJob?.cancel()
-        initialLoadJob = viewModelScope.launch {
-            val currentState = _uiState.value
-
-            // 关注 Tab 但未关注任何专区：直接展示空状态，不发网络请求避免降级为查全量
-            if (currentState.selectedCategory.tabKey == "follow" && currentState.selectedCategory.zoneIds == "-1") {
-                _uiState.update {
-                    it.copy(
-                        items = emptyList(),
-                        lastTime = 0L,
-                        isInitialLoading = false,
-                        hasMore = false,
-                        errorMessage = null,
-                        loadMoreError = null
-                    )
-                }
-                return@launch
-            }
-
-            val result = homeRepository.getHomeFeed(
-                categoryId = 0,
-                subType = currentState.selectedSubType,
-                lastTime = 0L,
-                zoneNodeId = if (currentState.selectedCategory.nodeId > 0L) currentState.selectedCategory.nodeId else null,
-                zoneIds = currentState.selectedCategory.zoneIds.takeIf { it.isNotBlank() && it != "-1" }
-            )
-
-            result.onSuccess { newList ->
-                val newLastTime = parseCursorTimestamp(newList.lastOrNull()?.actionDate)
-                val distinctList = newList.distinctBy { "${it.id}_${it.actionDate}" }
-                _uiState.update {
-                    it.copy(
-                        items = distinctList,
-                        lastTime = newLastTime,
-                        isInitialLoading = false,
-                        hasMore = distinctList.isNotEmpty() && newLastTime > 0L,
-                        errorMessage = null,
-                        loadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isInitialLoading = false,
-                        errorMessage = error.message ?: "加载失败"
-                    )
-                }
-            }
-        }
-    }
+    /** 动态板块首屏 / 错误重试入口（实现见 [loadActionBoard]，与下拉刷新合并为同一份请求逻辑）。 */
+    fun loadInitialFeed() = loadActionBoard()
 
     fun loadNextPage() {
         val currentState = _uiState.value
@@ -1378,9 +1370,9 @@ class HomeFeedViewModel(
         }
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.isInitialLoading || currentState.isRefreshing) return
 
-        if (currentState.selectedCategory.tabKey == "follow" && currentState.selectedCategory.zoneIds == "-1") {
-            return
-        }
+        val scope = currentState.zoneScope
+        // 关注为空：绝不发起「会退化成全站」的请求（空 zones 与省略同形）
+        if (scope.isFollowEmpty) return
 
         _uiState.update { it.copy(isLoadingMore = true, loadMoreError = null) }
 
@@ -1389,9 +1381,15 @@ class HomeFeedViewModel(
                 categoryId = 0,
                 subType = currentState.selectedSubType,
                 lastTime = currentState.lastTime,
-                zoneNodeId = if (currentState.selectedCategory.nodeId > 0L) currentState.selectedCategory.nodeId else null,
-                zoneIds = currentState.selectedCategory.zoneIds.takeIf { it.isNotBlank() && it != "-1" }
+                zoneNodeId = scope.zoneNodeId(),
+                zoneIds = scope.zonesParam()
             )
+
+            // 请求期间作用域已切换：丢弃过期响应并复位追加态，避免旧专区条目污染新列表（A2）
+            if (_uiState.value.zoneScope != scope) {
+                _uiState.update { it.copy(isLoadingMore = false) }
+                return@launch
+            }
 
             result.onSuccess { nextPageList ->
                 val newLastTime = parseCursorTimestamp(nextPageList.lastOrNull()?.actionDate)
@@ -1529,8 +1527,9 @@ class HomeFeedViewModel(
             )
             result.onSuccess { page ->
                 _uiState.update { current ->
-                    // 期间切换了排序 / 分类 / 作用域：本批已过期，直接丢弃
-                    if (current.albumSelectedOrder != requestedOrder ||
+                    // 期间切换了排序 / 分类 / 作用域：本批已过期，直接丢弃（A2 过期响应守卫）
+                    if (current.zoneScope != scope ||
+                        current.albumSelectedOrder != requestedOrder ||
                         current.albumSelectedCategory != requestedCategory ||
                         current.albumPage != requestedPage - 1
                     ) {
@@ -1547,6 +1546,7 @@ class HomeFeedViewModel(
                     )
                 }
             }.onFailure { error ->
+                if (_uiState.value.zoneScope != scope) return@launch
                 _uiState.update {
                     it.copy(
                         isLoadingMoreAlbum = false,
@@ -1596,9 +1596,9 @@ class HomeFeedViewModel(
 
     // ==================== 二手板块（#160） ====================
 
-    /** 组装二手板块当前请求参数：作用域（全部省略 / 单区 nodeId）+ 出售求购 + 成色 + 关键词。 */
+    /** 组装二手板块当前请求参数：作用域（经数据层统一派生）+ 出售求购 + 成色 + 关键词。 */
     private fun HomeFeedUiState.resaleQuery(): ResaleQuery = ResaleQuery(
-        zones = zoneScope.zonesParam(),
+        scope = zoneScope,
         type = resale.type,
         purity = resale.purity,
         keyword = resale.keyword
@@ -1776,15 +1776,19 @@ class HomeFeedViewModel(
         boardsJob = viewModelScope.launch {
             val result = zoneRepository.getZoneInfo(scope.nodeId, reportVisit = false)
             if (_uiState.value.zoneScope != scope) return@launch
-            val boards = result.getOrNull()
-                ?.let { info -> homeBoardsFor(scope, info.tabs) }
+            val info = result.getOrNull()
+            val boards = info
+                ?.let { payload -> homeBoardsFor(scope, payload.tabs) }
                 ?: HOME_BOARD_FALLBACK
+            // 服务端 title 仅在单专区有意义：按板块取首次出现的 tab（与详情 parseTabs 同口径）
+            val titles = buildBoardTitles(info?.tabs.orEmpty())
             _uiState.update { state ->
                 if (state.zoneScope != scope) return@update state
                 // 服务端 tabs 到达后重新套用恢复规则：冷启动保存的板块此时才可能出现在列表中
                 val restoredBoard = boardForSelection(state.selectedCategory.tabKey, boards)
                 state.copy(
                     boards = boards,
+                    boardTitles = titles,
                     selectedBoard = restoredBoard ?: state.selectedBoard
                 )
             }
@@ -1803,6 +1807,22 @@ class HomeFeedViewModel(
     private fun parseCursorTimestamp(dateStr: String?): Long {
         if (dateStr.isNullOrBlank()) return 0L
         return DateTimeFormats.parseServerDateTime(dateStr) ?: 0L
+    }
+
+    /**
+     * 服务端 tabs → 板块文案映射（单专区 Tab 文案来源，A8）。
+     *
+     * 同一板块可能有 `share`/`album` 两个别名，取**首次出现**的 title（与详情 `parseTabs` 同口径）；
+     * 文案统一走 [ZoneBoard.tabTitle]（产品板块恒为「产品」），保证首页与详情一致。
+     */
+    private fun buildBoardTitles(serverTabs: List<ZoneTabItem>): Map<ZoneBoard, String> {
+        if (serverTabs.isEmpty()) return emptyMap()
+        val titles = mutableMapOf<ZoneBoard, String>()
+        for (tab in serverTabs) {
+            val board = ZoneBoard.fromType(tab.type) ?: continue
+            if (board !in titles) titles[board] = board.tabTitle(tab.title)
+        }
+        return titles
     }
 }
 

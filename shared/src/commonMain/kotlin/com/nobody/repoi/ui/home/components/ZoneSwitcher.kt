@@ -199,7 +199,6 @@ internal fun ZoneSwitcherSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         ZoneSwitcherContent(

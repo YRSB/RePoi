@@ -1,11 +1,16 @@
-package com.nobody.repoi.ui.board
+package com.nobody.repoi.data.remote.model
 
 /**
  * 全站 / 关注 / 单专区 三态查询作用域与请求参数派生（纯逻辑，可单测）。
  *
+ * 归属数据层（`data.remote.model`）：仓储签名直接消费本类型（如 `ZoneRepository.getZoneItems`、
+ * `ItemRepository.queryHobbyBoard`、`ResaleRepository.searchResale`），因此不能再放在 `ui.board`
+ * 里造成 data → ui 反向依赖。UI 层（能力矩阵、面板、ViewModel）按需 import。
+ *
  * 依据 `docs/research/aggregate-api-verification.md` §2.4、§4.3、§5：
  * - `zones` 与 `homeScope` 互斥：只要 `homeScope` 非空，服务端会**忽略 `zones`** 而改走服务端作用域，
- *   因此调用方必须保证「[zonesParam] 非空时不下发 [homeScope]」；
+ *   因此调用方必须保证「[zonesParam] 非空时不下发 `homeScope`」。当前产品关注态隐藏，
+ *   生产代码**不下发 `homeScope`**（曾有的 `homeScope()` 派生因全库无调用点已删除，避免保留假 API）；
  * - 讨论板块只认 `zoneNodeId`（String、单值），关注聚合无多专区通道（关注态应隐藏该板块）；
  * - 关注集合为空时必须由上层**短路、不发起请求**：[zonesParam] 返回 null 与 [All] 同形，
  *   若直接上网会被服务端当作「全站」，属于假「关注」内容（比隐藏更危险）。
@@ -38,18 +43,6 @@ sealed interface ZoneQueryScope {
 
     /** `zoneNodeId` 参数：仅 [Single] 有值（动态与讨论板块使用，讨论不接受逗号串）。 */
     fun zoneNodeId(): Long? = (this as? Single)?.nodeId
-
-    /**
-     * `homeScope` 参数（仅产品 / 实体 5 类在**无 zones**时可选使用）。
-     * - [All] → `"all"`；[Follow] → `"follow"`；[Single] → null
-     *
-     * 注意：产品关注态暂不启用；且调用方必须遵守「`zonesParam()` 非空时不得发送本参数」。
-     */
-    fun homeScope(): String? = when (this) {
-        All -> "all"
-        is Follow -> "follow"
-        is Single -> null
-    }
 
     /** 滚动 / 筛选记忆键：`all` / `follow:1,2` / `z123`（对齐原版 `categoryId|supType|zoneNodeId|zoneIds` 的作用域维度）。 */
     fun stateKey(): String = when (this) {

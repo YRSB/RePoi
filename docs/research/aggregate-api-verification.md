@@ -378,3 +378,57 @@ GET api/user-action/list-v3?...&categoryId=0&lastTime=0&pageSize=10&subType=allI
 `39989602 26年10月新番 / 33476094 手办 / 39228575 机甲模型 / 25619129 奥特曼 / 25734924 假面骑士 / 25194324 赛马娘 / 25998424 碧蓝航线 / 39274231 IP作品库 / 39274091 动漫 / 36138460 WF2026上海`
 
 全站专区总数 52（`api/zone/home-tabs.data.zones`），分 6 组：活动/推荐专区、模玩产品、动漫影视IP、游戏IP、文娱爱好、其他。
+
+---
+
+## 附录 C：讨论板块分类参数探测
+
+> 目的：为 #158「讨论板块无分类过滤」与 [docs/home-hierarchy.md](../home-hierarchy.md) §3.4/§4「讨论无分类入口」提供权威依据（#150 审查补充项）。
+> 时间：2026-11-15（与 §2.3/§2.4 同批次探测；匿名 `utoken=` 空串，`appVersion=200135`）。
+
+### C.1 反编译结论
+
+- `ZoneDetailSortablePageFragment.m()` 只在 `type == "album"` 时请求分类接口并渲染分类下拉；讨论分支（`type != album`）构造 `ForumPageFragment` 时固定 `itemType = ""`，bundle 中**没有任何分类参数**。
+- `ForumHomeActivity.type` 的 6 个合法取值为：`""`（空串）、`hobby`、`works`、`works_element`、`company`、`person`。
+
+### C.2 线上实测（`GET api/posts/search`）
+
+固定 `page=1&pageSize=12&order=upd`，逐项追加一个候选参数，比较首屏 id 序列：
+
+| 探测参数 | 取值 | 首屏 id 序列 | 判定 |
+|---|---|---|---|
+| 无附加参数（基线） | — | `41318137, ...` | 基线 |
+| `itemType` | 6 个反编译合法键（见 C.1） | 与基线**完全相同** | 被忽略 |
+| `itemType` | 非法值 `zzz_bogus` | 与基线**完全相同** | 被忽略 |
+| `category` | 手办分类 id `10000` / 非法 `999999999` | 与基线**完全相同** | 被忽略 |
+| `categoryId` | `10000` | 与基线**完全相同** | 被忽略 |
+| `zoneCategoryId` | `10000` | 与基线**完全相同** | 被忽略 |
+| `plateId` | 任意专区/板块 id | 与基线**完全相同** | 被忽略 |
+| `zoneNodeId` | `33476094` | **另一批**（`41299179, ...`）；`999999999` → 空列表 | 生效（仅单值） |
+| `forumNodeId` | 对应论坛节点 | **另一批** | 生效 |
+| `keyword` | 命中词 | 过滤后的子集 | 生效 |
+| `order` | `upd` / `add` / `top` | 序列随排序变化 | 生效 |
+| `page` | `2` | 第二页 | 生效 |
+
+「被忽略」的判定口径是**首屏 id 序列与基线逐条相同**；对照请求在同一分钟内完成，排除 Hpoi 活跃数据漂移（与 §1.5 口径一致）。
+
+### C.3 匿名复现命令
+
+```powershell
+$h = @{ 'User-Agent' = 'okhttp/4.12.0'; 'Referer' = 'https://www.hpoi.net/android' }
+$c = 'platform=android&appVersion=200135&channel=official&machine=SM-S9280&system=34&utoken='
+
+# 基线
+Invoke-RestMethod "https://www.hpoi.net.cn/api/posts/search?$c&page=1&pageSize=12&order=upd" -Headers $h
+
+# 分类类参数：应返回与基线完全相同的 id 序列（说明被忽略）
+Invoke-RestMethod "https://www.hpoi.net.cn/api/posts/search?$c&page=1&pageSize=12&order=upd&category=10000" -Headers $h
+Invoke-RestMethod "https://www.hpoi.net.cn/api/posts/search?$c&page=1&pageSize=12&order=upd&categoryId=10000&zoneCategoryId=10000&plateId=33476094&itemType=works" -Headers $h
+
+# 生效参数对照（返回另一批条目）
+Invoke-RestMethod "https://www.hpoi.net.cn/api/posts/search?$c&page=1&pageSize=12&order=upd&zoneNodeId=33476094" -Headers $h
+```
+
+### C.4 结论
+
+讨论板块实际生效的过滤维度只有 `zoneNodeId`（单值）/ `forumNodeId` / `keyword` / `order` / `page`，**不存在分类过滤通道**。因此客户端不渲染讨论分类入口，也不下发 `itemType` 等分类类参数，避免「看起来能筛、实际被忽略」的假入口（ADR-0022 决策 6）。

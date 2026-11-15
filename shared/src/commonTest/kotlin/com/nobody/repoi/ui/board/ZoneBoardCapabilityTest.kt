@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.board
 
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.remote.model.ZoneTabItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -116,18 +117,19 @@ class ZoneBoardCapabilityTest {
     }
 
     @Test
-    fun tabsFor_putsActionFirstWhenServerOmitsIt() {
+    fun tabsFor_keepsServerListWhenActionIsOmitted() {
+        // 服务端未下发 action 时不再伪造该板块：按服务端集合原样返回（A7）
         assertEquals(
-            listOf(ZoneBoard.Action, ZoneBoard.Album),
+            listOf(ZoneBoard.Album),
             ZoneBoard.tabsFor(tabs("album"))
         )
     }
 
     @Test
-    fun tabsFor_movesActionToFrontWhenServerDoesNotListItFirst() {
-        // 真实样本中 action 恒为第一位；此处只验证防御性置顶（ADR-0022 决策 2「动作板块恒为入口」）
+    fun tabsFor_keepsServerOrderWhenActionIsNotFirst() {
+        // 服务端顺序即展示顺序，不强制把 action 置顶（真实样本中 action 恒为第一位，此处只验证不重排）
         assertEquals(
-            listOf(ZoneBoard.Action, ZoneBoard.Works, ZoneBoard.Album),
+            listOf(ZoneBoard.Works, ZoneBoard.Action, ZoneBoard.Album),
             ZoneBoard.tabsFor(tabs("works", "action", "album"))
         )
     }

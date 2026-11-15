@@ -1,12 +1,17 @@
 package com.nobody.repoi.ui.board.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -17,56 +22,87 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * 板块空态占位。
+ * 板块四态（空 / 错误）的**唯一卡片基元**，由首页与专区详情共享。
  *
- * 从 `ZoneDetailScreen` 的私有件**逐字提升**（签名、文案、留白不变），供专区详情与首页共享。
- * 注：现状为空列表居中文字（无「刷新看看」按钮），与 `docs/home-hierarchy.md` §3.6 的卡片式空态
- * 不一致；该差异属既有行为，本阶段不做视觉变更。
+ * 依据 `docs/home-hierarchy.md` §3.6 与 ADR-0022 决策 4：首页与详情必须同一视觉口径——
+ * 卡片式空态 + 「刷新看看」、卡片式错误 + 「重新加载」；加载态仍由宿主用 `PoiLoadingView`
+ * 展示（禁骨架屏，ADR-0018）。
+ *
+ * 卡片容器统一在 [ZoneBoardStatusCard]，空/错两种语义只差文案与按钮，避免两屏各写一份卡片样式。
  */
 @Composable
-fun ZoneEmptyPlaceholder(text: String) {
+fun ZoneBoardStatusCard(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(24.dp),
+    content: @Composable ColumnScope.() -> Unit
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
+            .padding(vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        ElevatedCard(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(contentPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = content
+            )
+        }
     }
 }
 
 /**
- * 板块首屏错误占位（全行渲染，含「重试」按钮）。
+ * 板块空态卡片：文案 + 可选「刷新看看」。
  *
- * 从 `ZoneDetailScreen` 的私有件**逐字提升**，外观/文案与现状一致。
+ * @param text 空态文案（各板块文案不同，由调用方给出）
+ * @param onRefresh 刷新动作；为 null 时只展示文案（如宿主已有其它引导入口）
+ */
+@Composable
+fun ZoneEmptyPlaceholder(
+    text: String,
+    modifier: Modifier = Modifier,
+    onRefresh: (() -> Unit)? = null
+) {
+    ZoneBoardStatusCard(modifier = modifier) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (onRefresh != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(onClick = onRefresh) {
+                Text("刷新看看")
+            }
+        }
+    }
+}
+
+/**
+ * 板块首屏错误卡片：错误文案（错误色）+「重新加载」按钮。
  */
 @Composable
 fun ZoneErrorPlaceholder(
     message: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp, horizontal = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(onClick = onRetry) {
-                Text("重试")
-            }
+    ZoneBoardStatusCard(modifier = modifier) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(onClick = onRetry) {
+            Text("重新加载")
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.util.paging.KeyedListLoader
@@ -36,7 +37,7 @@ data class HomeResaleBoardState(
 
 /** 二手板块单次请求的参数快照（作用域 + 三级筛选）。 */
 internal data class ResaleQuery(
-    val zones: String?,
+    val scope: ZoneQueryScope,
     val type: Int,
     val purity: String?,
     val keyword: String
@@ -48,15 +49,15 @@ internal data class ResaleQuery(
  * 游标 = 上一批末条 `addDate`；`hasMore` 判定沿用专区详情既有实现
  * （整页 24 条且末条 `addDate` 可解析），去重键为二手条目 id。
  *
- * 作用域参数由调用方经 [ResaleQuery.zones] 传入（[com.nobody.repoi.ui.board.ZoneQueryScope.zonesParam]）：
- * 全部聚合为 `null`（省略）、单专区为 nodeId 字符串；关注聚合不可用，调用方必须在请求前短路。
+ * 作用域参数由调用方经 [ResaleQuery.scope] 传入（数据层 `ZoneQueryScope.zonesParam()` 统一派生）：
+ * 全部聚合省略 `zones`、单专区为 nodeId 字符串；关注聚合不可用，调用方必须在请求前短路。
  */
 internal class ResaleBoardLoader(
     scope: CoroutineScope,
     private val repository: ResaleRepository
 ) {
     private var query = ResaleQuery(
-        zones = null,
+        scope = ZoneQueryScope.All,
         type = ResaleBoardOptions.DEFAULT_TYPE,
         purity = null,
         keyword = ""
@@ -69,7 +70,7 @@ internal class ResaleBoardLoader(
         nextKeyProvider = { _, state -> state.items.lastOrNull()?.addDate },
         fetcher = { cursor ->
             repository.searchResale(
-                zones = query.zones,
+                scope = query.scope,
                 type = query.type,
                 keyword = query.keyword.takeIf { it.isNotBlank() },
                 puritys = query.purity,

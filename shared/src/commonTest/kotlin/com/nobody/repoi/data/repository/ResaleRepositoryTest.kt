@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.repository
 
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -45,7 +46,7 @@ class ResaleRepositoryTest {
         mock.enqueue(mockJson)
 
         val result = repository.searchResale(
-            zones = "33476094",
+            scope = ZoneQueryScope.Single(33476094L),
             type = 1,
             keyword = "测试"
         )
@@ -72,7 +73,7 @@ class ResaleRepositoryTest {
         )
 
         // 「全部」聚合：zones 省略即等价全站（issue #160 验收标准「聚合态以专区集合取数成功」）
-        val result = repository.searchResale(type = 1, lastTime = null)
+        val result = repository.searchResale(scope = ZoneQueryScope.All, type = 1, lastTime = null)
 
         assertTrue(result.isSuccess)
         val form = mock.takeRequest().formEntries()
@@ -88,8 +89,12 @@ class ResaleRepositoryTest {
             """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
         )
 
-        // 放宽为 String 后不再按 Long 过滤：逗号串原样透传（关注聚合的「交集」语义由上层隐藏板块规避）
-        val result = repository.searchResale(zones = "100,200", type = 2, puritys = "11")
+        // 关注作用域：逗号串原样透传（二手多专区是「交集」语义，关注聚合由上层隐藏板块规避）
+        val result = repository.searchResale(
+            scope = ZoneQueryScope.Follow(listOf(100L, 200L)),
+            type = 2,
+            puritys = "11"
+        )
 
         assertTrue(result.isSuccess)
         val form = mock.takeRequest().formEntries()
@@ -115,6 +120,7 @@ class ResaleRepositoryTest {
         mock.enqueue(mockJson)
 
         val result = repository.searchResale(
+            scope = ZoneQueryScope.All,
             hobbyId = 125698L,
             type = 1
         )

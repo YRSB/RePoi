@@ -67,22 +67,20 @@ enum class ZoneBoard(val type: String, val label: String) {
          * 单专区二级 Tab 的能力矩阵：服务端下发顺序 ∩ [available]，未知/未实现板块丢弃。
          *
          * 规则（与专区详情现状 `parseTabs` 行为对齐）：
-         * 1. 保留服务端下发顺序，不按客户端固定顺序重排；
+         * 1. **严格保留服务端下发顺序**，不按客户端固定顺序重排，也不强制把 [Action] 置顶
+         *    （#150 审查 A7：真实样本中 action 恒为第一位，客户端无需也不应自行重排）；
          * 2. 只保留 [available] 内的板块（默认 [CLIENT_WHITELIST]）；
-         * 3. [Action] 保证存在且位于首位——服务端真实样本中 action 恒为第一，此处仅做防御性置顶；
-         * 4. [serverTabs] 为空时返回空列表，是否回退固定列表由调用方决定（详情页回退 10 项）。
+         * 3. [serverTabs] 为空时返回空列表，是否回退固定列表由调用方决定（详情页回退 10 项）。
          */
         fun tabsFor(
             serverTabs: List<ZoneTabItem>,
             available: Set<ZoneBoard> = CLIENT_WHITELIST
         ): List<ZoneBoard> {
             if (serverTabs.isEmpty()) return emptyList()
-            val ordered = serverTabs
+            return serverTabs
                 .mapNotNull { fromType(it.type) }
                 .distinct()
                 .filter { it in available }
-            if (Action !in available) return ordered
-            return listOf(Action) + ordered.filter { it != Action }
         }
     }
 }

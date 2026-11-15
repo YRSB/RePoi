@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
@@ -35,8 +37,10 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *
  * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）、[ZoneBoard.Posts]
  * （讨论，#158）、[ZoneBoard.Hobby]（产品，#159）、[ZoneBoard.Resale]（二手，#160）与实体 5 类
- * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）分支；其余板块先走防御占位——
- * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
+ * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）分支——覆盖客户端白名单全部 10 类，
+ * 因此**没有「建设中」兜底分支**（白名单外类型在能力矩阵已被丢弃，ADR-0022 决策 6「不做假入口」）。
+ * 空态 / 错误态统一使用 [com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder] /
+ * [com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder]（卡片式，§3.6），与首页同一基元。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
@@ -54,6 +58,8 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardActions] 补对应字段与方法。
  * 6. 产品板块的两个弹层（高级筛选 / 分类级联）由本面板按 [filters] 的可见性自渲染，
  *    首页与专区详情都不再各自复制一份（见 #159）。
+ * 7. 六个板块的空/错/加载页脚骨架统一收在 [BoardGridContainer]（#150 审查 B6），
+ *    避免新增板块时再复制一份「错误卡片 + 空卡片 + 分页页脚」。
  *
  * @param board 当前板块
  * @param scope 当前查询作用域（首页 All/Follow/Single；详情固定 Single），面板不自行拼参
@@ -93,52 +99,26 @@ fun ZoneBoardPane(
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
                 ZoneEmptyPlaceholder("暂无相关动态")
             } else {
-                LazyVerticalStaggeredGrid(
+                BoardGridContainer(
+                    itemCount = actionContent.items.size,
+                    page = actionContent.page,
+                    emptyText = "暂无相关动态",
                     columns = columns,
-                    state = gridState,
-                    modifier = modifier.fillMaxSize(),
+                    gridState = gridState,
                     contentPadding = contentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
+                    modifier = modifier,
+                    actions = actions
                 ) {
-                    val page = actionContent.page
-                    val errorMessage = page.errorMessage
-                    when {
-                        errorMessage != null && actionContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = errorMessage,
-                                    onRetry = { actions.onRetryInitial() }
-                                )
-                            }
-                        }
-                        actionContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关动态")
-                            }
-                        }
-                        else -> {
-                            items(
-                                items = actionContent.items,
-                                key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
-                                contentType = { "feed_action" }
-                            ) { item ->
-                                ActionCard(
-                                    actionItem = item,
-                                    onActionClick = itemActions.onActionClick,
-                                    onImageClick = itemActions.onActionImageClick
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = page.isLoadingMore,
-                                    loadMoreError = page.loadMoreError,
-                                    isEndReached = page.isEndReached,
-                                    onRetry = { actions.onLoadMore() }
-                                )
-                            }
-                        }
+                    items(
+                        items = actionContent.items,
+                        key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
+                        contentType = { "feed_action" }
+                    ) { item ->
+                        ActionCard(
+                            actionItem = item,
+                            onActionClick = itemActions.onActionClick,
+                            onImageClick = itemActions.onActionImageClick
+                        )
                     }
                 }
             }
@@ -151,52 +131,26 @@ fun ZoneBoardPane(
             } else {
                 // 相册沿用既有列数策略（手机 2 列 / 平板 3-4 列 / 桌面 5 列），不按动态瀑布流的列数渲染
                 val albumColumns = rememberAlbumStaggeredGridColumns()
-                LazyVerticalStaggeredGrid(
+                BoardGridContainer(
+                    itemCount = albumContent.items.size,
+                    page = albumContent.page,
+                    emptyText = "暂无相关分享",
                     columns = albumColumns,
-                    state = gridState,
-                    modifier = modifier.fillMaxSize(),
+                    gridState = gridState,
                     contentPadding = contentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
+                    modifier = modifier,
+                    actions = actions
                 ) {
-                    val page = albumContent.page
-                    val errorMessage = page.errorMessage
-                    when {
-                        errorMessage != null && albumContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = errorMessage,
-                                    onRetry = { actions.onRetryInitial() }
-                                )
-                            }
-                        }
-                        albumContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关分享")
-                            }
-                        }
-                        else -> {
-                            items(
-                                items = albumContent.items,
-                                key = { item -> "zone_album_${item.targetAlbumId}" },
-                                contentType = { "album_feed" }
-                            ) { item ->
-                                AlbumFeedCard(
-                                    item = item,
-                                    showTime = true,
-                                    onClick = { album -> itemActions.onAlbumClick?.invoke(album) }
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = page.isLoadingMore,
-                                    loadMoreError = page.loadMoreError,
-                                    isEndReached = page.isEndReached,
-                                    onRetry = { actions.onLoadMore() }
-                                )
-                            }
-                        }
+                    items(
+                        items = albumContent.items,
+                        key = { item -> "zone_album_${item.targetAlbumId}" },
+                        contentType = { "album_feed" }
+                    ) { item ->
+                        AlbumFeedCard(
+                            item = item,
+                            showTime = true,
+                            onClick = { album -> itemActions.onAlbumClick?.invoke(album) }
+                        )
                     }
                 }
             }
@@ -209,64 +163,38 @@ fun ZoneBoardPane(
             } else {
                 val onPostClick: (PostItem) -> Unit = itemActions.onPostClick ?: {}
                 val onPostImageClick: (List<String>, Int) -> Unit = itemActions.onPostImageClick ?: { _, _ -> }
-                LazyVerticalStaggeredGrid(
+                BoardGridContainer(
+                    itemCount = postsContent.items.size + postsContent.pinnedPosts.size,
+                    page = postsContent.page,
+                    emptyText = "暂无相关讨论",
                     columns = columns,
-                    state = gridState,
-                    modifier = modifier.fillMaxSize(),
+                    gridState = gridState,
                     contentPadding = contentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
+                    modifier = modifier,
+                    actions = actions,
+                    header = {
+                        // 置顶帖条只在单专区渲染：聚合态（全部）无置顶语义，关注态已隐藏整个板块
+                        if (showPinnedPosts && postsContent.pinnedPosts.isNotEmpty()) {
+                            item(key = "zone_pinned_posts", span = StaggeredGridItemSpan.FullLine) {
+                                ZonePinnedPostsBar(
+                                    pinnedPosts = postsContent.pinnedPosts,
+                                    onPostClick = onPostClick
+                                )
+                            }
+                        }
+                    }
                 ) {
-                    val page = postsContent.page
-                    val pinnedPosts = postsContent.pinnedPosts
-                    val errorMessage = page.errorMessage
-                    when {
-                        errorMessage != null && postsContent.items.isEmpty() && pinnedPosts.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = errorMessage,
-                                    onRetry = { actions.onRetryInitial() }
-                                )
-                            }
-                        }
-                        postsContent.items.isEmpty() && pinnedPosts.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关讨论")
-                            }
-                        }
-                        else -> {
-                            // 置顶帖条只在单专区渲染：聚合态（全部）无置顶语义，关注态已隐藏整个板块
-                            if (showPinnedPosts && pinnedPosts.isNotEmpty()) {
-                                item(key = "zone_pinned_posts", span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePinnedPostsBar(
-                                        pinnedPosts = pinnedPosts,
-                                        onPostClick = onPostClick
-                                    )
-                                }
-                            }
-
-                            items(
-                                items = postsContent.items,
-                                key = { item -> "zone_post_${item.id}" },
-                                contentType = { "zone_post" }
-                            ) { post ->
-                                ZonePostCard(
-                                    post = post,
-                                    onPostClick = onPostClick,
-                                    onImageClick = onPostImageClick,
-                                    onUserClick = itemActions.onPostUserClick
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = page.isLoadingMore,
-                                    loadMoreError = page.loadMoreError,
-                                    isEndReached = page.isEndReached,
-                                    onRetry = { actions.onLoadMore() }
-                                )
-                            }
-                        }
+                    items(
+                        items = postsContent.items,
+                        key = { item -> "zone_post_${item.id}" },
+                        contentType = { "zone_post" }
+                    ) { post ->
+                        ZonePostCard(
+                            post = post,
+                            onPostClick = onPostClick,
+                            onImageClick = onPostImageClick,
+                            onUserClick = itemActions.onPostUserClick
+                        )
                     }
                 }
             }
@@ -277,54 +205,28 @@ fun ZoneBoardPane(
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
                 ZoneEmptyPlaceholder("暂无相关二手条目")
             } else {
-                LazyVerticalStaggeredGrid(
+                BoardGridContainer(
+                    itemCount = resaleContent.items.size,
+                    page = resaleContent.page,
+                    emptyText = "暂无相关二手条目",
                     columns = columns,
-                    state = gridState,
-                    modifier = modifier.fillMaxSize(),
+                    gridState = gridState,
                     contentPadding = contentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
+                    modifier = modifier,
+                    actions = actions
                 ) {
-                    val page = resaleContent.page
-                    val errorMessage = page.errorMessage
-                    when {
-                        errorMessage != null && resaleContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = errorMessage,
-                                    onRetry = { actions.onRetryInitial() }
-                                )
-                            }
-                        }
-                        resaleContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关二手条目")
-                            }
-                        }
-                        else -> {
-                            items(
-                                items = resaleContent.items,
-                                key = { item -> "zone_resale_${item.id}" },
-                                contentType = { "zone_resale" }
-                            ) { item ->
-                                ZoneResaleCard(
-                                    item = item,
-                                    onClick = { itemActions.onResaleClick?.invoke(item) },
-                                    onUserClick = itemActions.onResaleUserClick,
-                                    onContactClick = { itemActions.onResaleContactClick?.invoke(item) },
-                                    onMoreClick = { itemActions.onResaleMoreClick?.invoke(item) }
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = page.isLoadingMore,
-                                    loadMoreError = page.loadMoreError,
-                                    isEndReached = page.isEndReached,
-                                    onRetry = { actions.onLoadMore() }
-                                )
-                            }
-                        }
+                    items(
+                        items = resaleContent.items,
+                        key = { item -> "zone_resale_${item.id}" },
+                        contentType = { "zone_resale" }
+                    ) { item ->
+                        ZoneResaleCard(
+                            item = item,
+                            onClick = { itemActions.onResaleClick?.invoke(item) },
+                            onUserClick = itemActions.onResaleUserClick,
+                            onContactClick = { itemActions.onResaleContactClick?.invoke(item) },
+                            onMoreClick = { itemActions.onResaleMoreClick?.invoke(item) }
+                        )
                     }
                 }
             }
@@ -344,63 +246,37 @@ fun ZoneBoardPane(
                     }
                 }
                 Box(modifier = modifier.fillMaxSize()) {
-                    LazyVerticalStaggeredGrid(
+                    BoardGridContainer(
+                        itemCount = hobbyContent.items.size,
+                        page = hobbyContent.page,
+                        emptyText = "暂无相关产品",
                         columns = hobbyColumns,
-                        state = gridState,
-                        modifier = Modifier.fillMaxSize(),
+                        gridState = gridState,
                         contentPadding = contentPadding,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalItemSpacing = 8.dp
+                        modifier = Modifier,
+                        actions = actions
                     ) {
-                        val page = hobbyContent.page
-                        val errorMessage = page.errorMessage
-                        when {
-                            errorMessage != null && hobbyContent.items.isEmpty() -> {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = errorMessage,
-                                        onRetry = { actions.onRetryInitial() }
-                                    )
-                                }
+                        if (hobbyContent.isGridMode) {
+                            items(
+                                items = hobbyContent.items,
+                                key = { item -> "zone_hobby_grid_${item.actualItemId}" },
+                                contentType = { "hobby_grid" }
+                            ) { item ->
+                                HobbyGridCard(
+                                    item = item,
+                                    onClick = { itemActions.onHobbyClick?.invoke(item) }
+                                )
                             }
-                            hobbyContent.items.isEmpty() -> {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关产品")
-                                }
-                            }
-                            else -> {
-                                if (hobbyContent.isGridMode) {
-                                    items(
-                                        items = hobbyContent.items,
-                                        key = { item -> "zone_hobby_grid_${item.actualItemId}" },
-                                        contentType = { "hobby_grid" }
-                                    ) { item ->
-                                        HobbyGridCard(
-                                            item = item,
-                                            onClick = { itemActions.onHobbyClick?.invoke(item) }
-                                        )
-                                    }
-                                } else {
-                                    items(
-                                        items = hobbyContent.items,
-                                        key = { item -> "zone_hobby_list_${item.actualItemId}" },
-                                        contentType = { "hobby_list" }
-                                    ) { item ->
-                                        HobbyListCard(
-                                            item = item,
-                                            onClick = { itemActions.onHobbyClick?.invoke(item) }
-                                        )
-                                    }
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = page.isLoadingMore,
-                                        loadMoreError = page.loadMoreError,
-                                        isEndReached = page.isEndReached,
-                                        onRetry = { actions.onLoadMore() }
-                                    )
-                                }
+                        } else {
+                            items(
+                                items = hobbyContent.items,
+                                key = { item -> "zone_hobby_list_${item.actualItemId}" },
+                                contentType = { "hobby_list" }
+                            ) { item ->
+                                HobbyListCard(
+                                    item = item,
+                                    onClick = { itemActions.onHobbyClick?.invoke(item) }
+                                )
                             }
                         }
                     }
@@ -446,60 +322,98 @@ fun ZoneBoardPane(
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
                 ZoneEmptyPlaceholder("暂无相关条目")
             } else {
-                LazyVerticalStaggeredGrid(
+                BoardGridContainer(
+                    itemCount = entityContent.items.size,
+                    page = entityContent.page,
+                    emptyText = "暂无相关条目",
                     columns = columns,
-                    state = gridState,
-                    modifier = modifier.fillMaxSize(),
+                    gridState = gridState,
                     contentPadding = contentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
+                    modifier = modifier,
+                    actions = actions
                 ) {
-                    val page = entityContent.page
-                    val errorMessage = page.errorMessage
-                    when {
-                        errorMessage != null && entityContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneErrorPlaceholder(
-                                    message = errorMessage,
-                                    onRetry = { actions.onRetryInitial() }
-                                )
-                            }
-                        }
-                        entityContent.items.isEmpty() -> {
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关条目")
-                            }
-                        }
-                        else -> {
-                            // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
-                            // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
-                            items(
-                                items = entityContent.items,
-                                key = { item -> "zone_entity_${board.type}_${item.targetId}" },
-                                contentType = { "zone_entity_${board.type}" }
-                            ) { item ->
-                                ZoneEntityCard(
-                                    item = item,
-                                    onClick = { itemActions.onEntityClick?.invoke(board, item) }
-                                )
-                            }
-
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZonePaginationFooter(
-                                    isLoadingMore = page.isLoadingMore,
-                                    loadMoreError = page.loadMoreError,
-                                    isEndReached = page.isEndReached,
-                                    onRetry = { actions.onLoadMore() }
-                                )
-                            }
-                        }
+                    // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
+                    // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
+                    items(
+                        items = entityContent.items,
+                        key = { item -> "zone_entity_${board.type}_${item.targetId}" },
+                        contentType = { "zone_entity_${board.type}" }
+                    ) { item ->
+                        ZoneEntityCard(
+                            item = item,
+                            onClick = { itemActions.onEntityClick?.invoke(board, item) }
+                        )
                     }
                 }
             }
         }
-        else -> {
-            // 其余板块尚未迁移到共享面板：仅一行防御占位（详情本阶段仍走原内联分支）
-            ZoneEmptyPlaceholder("该分类正在建设中...")
+    }
+}
+
+/**
+ * 板块内容区的统一瀑布流骨架（#150 审查 B6：六个板块原本各有一份同构实现）。
+ *
+ * 只负责「空态 / 错误态 / 内容 + 分页页脚」三态骨架；条目本身由 [itemsContent] 注入
+ * （条目 DSL 的 `key` / `contentType` 仍在各板块分支内原样声明），讨论板块的置顶帖条由
+ * [header] 注入。空态 / 错误态用的卡片基元与首页四态完全一致（§3.6）。
+ *
+ * @param itemCount 当前板块条目数（含置顶帖等头部内容；为 0 时渲染空态卡片）
+ * @param page 分页快照（加载更多 / 加载失败 / 已到底由页脚消费）
+ * @param emptyText 空态文案（各板块措辞不同）
+ * @param header 内容区顶部附加块（如讨论置顶帖条），仅在有条目时渲染
+ * @param itemsContent 条目列表 DSL（调用方自行声明稳定的 key / contentType）
+ */
+@Composable
+private fun BoardGridContainer(
+    itemCount: Int,
+    page: ZoneBoardPageView,
+    emptyText: String,
+    columns: StaggeredGridCells,
+    gridState: LazyStaggeredGridState,
+    contentPadding: PaddingValues,
+    modifier: Modifier,
+    actions: ZoneBoardActions,
+    header: (LazyStaggeredGridScope.() -> Unit)? = null,
+    itemsContent: LazyStaggeredGridScope.() -> Unit
+) {
+    LazyVerticalStaggeredGrid(
+        columns = columns,
+        state = gridState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalItemSpacing = 8.dp
+    ) {
+        val errorMessage = page.errorMessage
+        when {
+            errorMessage != null && itemCount == 0 -> {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    ZoneErrorPlaceholder(
+                        message = errorMessage,
+                        onRetry = { actions.onRetryInitial() }
+                    )
+                }
+            }
+            itemCount == 0 -> {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    ZoneEmptyPlaceholder(
+                        text = emptyText,
+                        onRefresh = { actions.onRetryInitial() }
+                    )
+                }
+            }
+            else -> {
+                header?.invoke(this)
+                itemsContent()
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    ZonePaginationFooter(
+                        isLoadingMore = page.isLoadingMore,
+                        loadMoreError = page.loadMoreError,
+                        isEndReached = page.isEndReached,
+                        onRetry = { actions.onLoadMore() }
+                    )
+                }
+            }
         }
     }
 }

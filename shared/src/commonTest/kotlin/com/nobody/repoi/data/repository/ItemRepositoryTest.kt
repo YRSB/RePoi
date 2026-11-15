@@ -3,7 +3,7 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.ZoneHobbyFilter
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone

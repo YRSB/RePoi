@@ -5,7 +5,7 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.ZoneHobbyFilter
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import com.nobody.repoi.platform.DateTimeFormats
