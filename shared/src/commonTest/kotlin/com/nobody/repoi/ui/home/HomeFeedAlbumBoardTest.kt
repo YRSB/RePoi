@@ -5,6 +5,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
+import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
@@ -58,6 +59,7 @@ class HomeFeedAlbumBoardTest {
         val zoneMock: MockApi,
         val albumMock: MockApi,
         val resaleMock: MockApi,
+        val hobbyMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
         val dispatcher: CoroutineDispatcher,
@@ -68,6 +70,7 @@ class HomeFeedAlbumBoardTest {
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(albumMock.api(dispatcher)),
             ResaleRepository(resaleMock.api(dispatcher)),
+            ItemRepository(hobbyMock.api(dispatcher)),
             zoneRepository,
             preferences,
             userSession
@@ -89,7 +92,7 @@ class HomeFeedAlbumBoardTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedSubType("recommend")
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
-        return Env(feedMock, zoneMock, MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
+        return Env(feedMock, zoneMock, MockApi(), MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun albumItem(id: Long): String =
@@ -139,10 +142,10 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含分享/讨论/二手/实体板块，但未切过去之前零请求
+        // 聚合态二级 Tab 自动包含分享/讨论/产品/二手/实体板块，但未切过去之前零请求
         assertEquals(
             listOf(
-                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Resale,
+                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
                 ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
                 ZoneBoard.Character, ZoneBoard.Person
             ),

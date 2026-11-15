@@ -13,14 +13,16 @@ import com.nobody.repoi.ui.board.ZoneQueryScope
  * 二手板块（issue #160）：`POST api/resale/search` 的 `zones` 逗号串实测是**交集（AND）语义**
  * （手办+机甲两专区最新二手为 0 条），无法表达关注聚合的并集；同理关注态隐藏。
  *
- * 依据：`docs/research/aggregate-api-verification.md` §3（多专区语义）、§4.2/§4.3、
- * §5「#158 关注聚合无服务端多专区通道 / #160 二手 zones 按交集处理，上线时隐藏该板块」。
+ * 产品板块（issue #159）：`POST api/hobby/query-v2` 的 `zones` 逗号串是**交集**语义（不能表达
+ * 多专区并集），关注聚合只能依赖 `homeScope=follow`；该参数虽被服务端识别，但匿名/伪造 token
+ * 下均回落全站，真实关注过滤需登录态复验，未复验前先隐藏（宁可少一个 Tab，不展示假数据）。
  *
- * #162 会在此基础上补齐完整能力矩阵并加单测：产品（关注态仅 `homeScope=follow`，需登录态复验
- * 后才能上线，当前先隐藏）等。本文件只做已确认无通道板块的最小实现，其余规则保持现状。
+ * 依据：`docs/research/aggregate-api-verification.md` §3（多专区语义）、§4.2/§4.3、§5「#158/#159/#160」。
+ *
+ * #162 会在此基础上补齐完整能力矩阵并加单测。本文件只做已确认无通道板块的最小实现，其余规则保持现状。
  */
 internal val FOLLOW_UNAVAILABLE_BOARDS: Set<ZoneBoard> =
-    setOf(ZoneBoard.Posts, ZoneBoard.Resale)
+    setOf(ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale)
 
 /**
  * 作用域感知的二级板块列表（首页唯一的板块来源，禁止调用点散拼）。

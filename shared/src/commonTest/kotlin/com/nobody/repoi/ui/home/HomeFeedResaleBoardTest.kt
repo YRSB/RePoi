@@ -5,6 +5,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
+import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
@@ -65,6 +66,7 @@ class HomeFeedResaleBoardTest {
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(MockApi().api(dispatcher)),
             ResaleRepository(resaleMock.api(dispatcher)),
+            ItemRepository(MockApi().api(dispatcher)),
             zoneRepository,
             preferences,
             FakeUserSession()
@@ -292,7 +294,7 @@ class HomeFeedResaleBoardTest {
         assertTrue(page1.resale.hasMore)
         assertTrue(page1.currentBoardHasMore)
 
-        viewModel.loadNextPage()
+        viewModel.loadMoreSelectedBoard()
         advanceUntilIdle()
 
         val page2 = viewModel.uiState.value
