@@ -334,9 +334,8 @@ fun HomeFeedScreen(
     // 滚动记忆键：作用域 + 板块，跨「专区 ↔ 板块」切换互不覆盖
     val currentBoardKey = homeBoardMemoryKey(uiState.zoneScope, uiState.selectedBoard)
     val memoryKey by rememberUpdatedState(currentBoardKey)
-    var restored by remember { mutableStateOf(false) }
-    // 切换选择期间暂停快照保存，避免旧板块首帧把新键的滚动位置写坏
-    var savingEnabled by remember { mutableStateOf(true) }
+    // 已完成恢复的键（按 key 记录而不是一次性布尔）：切换回有记忆的板块时仍会恢复，首次进入才回顶
+    var restoredKey by remember { mutableStateOf<String?>(null) }
 
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topBarHeight = statusBarTopPadding + 64.dp
@@ -385,17 +384,18 @@ fun HomeFeedScreen(
                 }
             )
         }.collect { (currentIndex, currentOffset, filterCollapseFraction) ->
-            if (restored && savingEnabled) {
+            // 只写回「已完成恢复」的键：切换瞬间旧板块的首帧不会把新键的位置写坏（A1）
+            if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, currentIndex, currentOffset)
                 viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
             }
         }
     }
 
-    // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
-    // 首次组合不触发（保留首屏恢复的滚动位置）。筛选 token 按板块取当前生效值
-    // （动态 = subType；分享 = 排序 + 分类；讨论 = order；二手 = 出售求购 + 成色；产品 = 全部筛选值），
-    // 因此切换筛选与切换板块走同一套复位逻辑。
+    // 切换筛选：复位到顶 + 展开筛选条，并清空当前键的滚动记忆。
+    // 切换专区 / 板块不在这里复位——交给下方按 key 的恢复逻辑（有记忆则恢复，首次进入才回顶）。
+    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类；讨论 = order；
+    // 二手 = 出售求购 + 成色；产品 = 全部筛选值），因此切换筛选与切换板块用同一套 token 比较。
     val boardFilterToken = when (uiState.selectedBoard) {
         ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
         ZoneBoard.Posts -> uiState.posts.order
@@ -428,27 +428,35 @@ fun HomeFeedScreen(
             boardFilterToken
         )
         if (selection == lastSelection) return@LaunchedEffect
+        val previous = lastSelection
         lastSelection = selection
-        savingEnabled = false
-        viewModel.resetBoardScrollMemory(currentBoardKey)
-        scrollBehavior.state.heightOffset = 0f
-        scrollBehavior.state.contentOffset = 0f
-        staggeredGridState.scrollToItem(0)
-        savingEnabled = true
+        // 仅「同一专区同一板块内的筛选变化」清空记忆并回顶；专区/板块切换由恢复逻辑处理（A1）
+        if (previous.tabKey == selection.tabKey && previous.board == selection.board) {
+            viewModel.resetBoardScrollMemory(currentBoardKey)
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+            staggeredGridState.scrollToItem(0)
+            restoredKey = currentBoardKey
+        }
     }
 
-    // 首屏（含从二级页返回）按当前键恢复滚动位置与折叠比例
-    LaunchedEffect(boardItemCount > 0, currentBoardKey) {
-        if (restored || boardItemCount <= 0) return@LaunchedEffect
-        restored = true
+    // 按「作用域 + 板块」键恢复滚动位置与折叠比例：切到有记忆的板块则恢复，首次进入才回顶；
+    // 首屏（含从二级页返回）同样走这里。restoredKey 在恢复动作完成后才置位，避免恢复过程中的
+    // 中间滚动位置被快照写回覆盖记忆（A1 / US18 / US19）。
+    LaunchedEffect(currentBoardKey, boardItemCount > 0) {
+        if (boardItemCount <= 0) return@LaunchedEffect
+        if (restoredKey == currentBoardKey) return@LaunchedEffect
         val memory = viewModel.scrollMemoryFor(currentBoardKey)
         if (memory.index != 0 || memory.offset != 0) {
             staggeredGridState.scrollToItem(memory.index, memory.offset)
+        } else {
+            // 该键尚无记忆：首次进入该板块，回顶并展开筛选层
+            staggeredGridState.scrollToItem(0)
         }
-        if (memory.filterCollapseFraction > 0f) {
-            scrollBehavior.state.heightOffset =
-                -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
-        }
+        scrollBehavior.state.contentOffset = 0f
+        scrollBehavior.state.heightOffset =
+            -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
+        restoredKey = currentBoardKey
     }
 
     var wasRefreshing by remember { mutableStateOf(false) }
