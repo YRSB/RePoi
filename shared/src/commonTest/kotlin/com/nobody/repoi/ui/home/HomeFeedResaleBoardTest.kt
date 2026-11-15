@@ -349,7 +349,7 @@ class HomeFeedResaleBoardTest {
         assertEquals(0, failed.resale.items.size)
 
         // 重试成功：错误清除、列表就绪
-        viewModel.retryCurrentBoard()
+        viewModel.retrySelectedBoard()
         advanceUntilIdle()
 
         val recovered = viewModel.uiState.value

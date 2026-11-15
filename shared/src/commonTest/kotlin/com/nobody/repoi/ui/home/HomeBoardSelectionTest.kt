@@ -28,6 +28,7 @@ class HomeBoardSelectionTest {
         assertTrue(ZoneBoard.Posts in boards, "全部聚合：讨论板块可上线（省略 zone 过滤即全站）")
         assertTrue(ZoneBoard.Album in boards, "全部聚合：分享板块可上线（zones 省略即全站）")
         assertTrue(ZoneBoard.Resale in boards, "全部聚合：二手板块可上线（zones 省略即全站）")
+        assertTrue(ZoneBoard.ENTITY.all { it in boards }, "全部聚合：实体 5 类均可上线（zones 省略即全站）")
         assertEquals(HomeBoardSelectionBoards.expectedAll, boards)
     }
 
@@ -36,8 +37,15 @@ class HomeBoardSelectionTest {
         val boards = homeBoardsFor(ZoneQueryScope.Follow(listOf(100L, 200L)))
         assertFalse(ZoneBoard.Posts in boards, "关注聚合无多专区通道，讨论板块必须隐藏")
         assertFalse(ZoneBoard.Resale in boards, "关注聚合 zones 逗号串是交集语义，二手板块必须隐藏")
-        // 分享板块的 `zones` 支持逗号串并集，关注聚合可保留
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), boards)
+        // 分享板块的 `zones` 支持逗号串并集，实体 5 类同样支持，关注聚合均可保留
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            boards
+        )
     }
 
     @Test
@@ -46,7 +54,14 @@ class HomeBoardSelectionTest {
         val boards = homeBoardsFor(ZoneQueryScope.Follow(emptyList()))
         assertFalse(ZoneBoard.Posts in boards)
         assertFalse(ZoneBoard.Resale in boards)
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), boards)
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            boards
+        )
     }
 
     @Test
@@ -82,14 +97,21 @@ class HomeBoardSelectionTest {
         assertEquals(homeBoardsFor(ZoneQueryScope.All), HOME_AGGREGATE_BOARDS)
         assertEquals(HOME_AGGREGATE_BOARDS, immediateHomeBoards(ZoneQueryScope.All))
         assertEquals(
-            listOf(ZoneBoard.Action, ZoneBoard.Album),
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
             immediateHomeBoards(ZoneQueryScope.Follow(listOf(1L)))
         )
     }
 
     /** 显式写死「全部聚合」的期望顺序，避免测试只做自指断言。 */
     private object HomeBoardSelectionBoards {
-        val expectedAll: List<ZoneBoard> =
-            listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Resale)
+        val expectedAll: List<ZoneBoard> = listOf(
+            ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Resale,
+            ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+            ZoneBoard.Character, ZoneBoard.Person
+        )
     }
 }

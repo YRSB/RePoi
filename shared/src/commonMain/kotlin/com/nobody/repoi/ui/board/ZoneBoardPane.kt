@@ -18,6 +18,7 @@ import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.home.components.ActionCard
+import com.nobody.repoi.ui.zone.components.ZoneEntityCard
 import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
@@ -26,8 +27,9 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  * 板块共享面板：首页与专区详情共用的「唯一内容渲染入口」。
  *
  * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）、[ZoneBoard.Posts]
- * （讨论，#158）与 [ZoneBoard.Resale]（二手，#160）四个分支；其余板块先走防御占位——
- * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
+ * （讨论，#158）、[ZoneBoard.Resale]（二手，#160）与实体 5 类（厂商/系列/作品/角色/人物，
+ * 共用 `api/zone/items`，#161）分支；其余板块先走防御占位——专区详情其余板块本阶段仍走
+ * `ZoneDetailScreen` 原内联分支，不经过本面板。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
@@ -38,8 +40,8 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *    复用同一滚动状态），本组件不新建状态。
  * 4. 列表项 `key` / `contentType` 必须原样保留（动态为 `contentType = "feed_action"`、
  *    分享为 `contentType = "album_feed"`、讨论为 `contentType = "zone_post"`、二手为
- *    `contentType = "zone_resale"`），不得在 pane 内去重或重算游标，`hasMore` 由宿主投影进
- *    [ZoneBoardPageView]。
+ *    `contentType = "zone_resale"`、实体为 `contentType = "zone_entity_<type>"`），不得在
+ *    pane 内去重或重算游标，`hasMore` 由宿主投影进 [ZoneBoardPageView]。
  * 5. 内部用 `when(board)` 分派而不是泛型化，保留各板块类型安全；迁移新板块时在此加分支并在
  *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardActions] 补对应字段与方法。
  *
@@ -47,7 +49,7 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  * @param scope 当前查询作用域（首页 All/Follow/Single；详情固定 Single），面板不自行拼参
  * @param content 当前板块内容快照
  * @param filters 当前板块筛选值快照（动态消费 `subType`、分享消费 `albumOrder` / `albumCategory`、
- *   讨论消费 `postsOrder`、二手消费 `resaleType` / `resalePurity`）
+ *   讨论消费 `postsOrder`、二手消费 `resaleType` / `resalePurity`；实体 5 类暂无筛选项）
  * @param gridState 宿主持有的瀑布流滚动状态
  * @param contentPadding 宿主注入的内容边距
  * @param actions 筛选 / 分页动作
@@ -298,6 +300,67 @@ fun ZoneBoardPane(
                                     onUserClick = itemActions.onResaleUserClick,
                                     onContactClick = { itemActions.onResaleContactClick?.invoke(item) },
                                     onMoreClick = { itemActions.onResaleMoreClick?.invoke(item) }
+                                )
+                            }
+
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZonePaginationFooter(
+                                    isLoadingMore = page.isLoadingMore,
+                                    loadMoreError = page.loadMoreError,
+                                    isEndReached = page.isEndReached,
+                                    onRetry = { actions.onLoadMore() }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ZoneBoard.Company,
+        ZoneBoard.Series,
+        ZoneBoard.Works,
+        ZoneBoard.Character,
+        ZoneBoard.Person -> {
+            val entityContent = content as? ZoneBoardContent.Entity
+            if (entityContent == null) {
+                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+                ZoneEmptyPlaceholder("暂无相关条目")
+            } else {
+                LazyVerticalStaggeredGrid(
+                    columns = columns,
+                    state = gridState,
+                    modifier = modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp
+                ) {
+                    val page = entityContent.page
+                    val errorMessage = page.errorMessage
+                    when {
+                        errorMessage != null && entityContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneErrorPlaceholder(
+                                    message = errorMessage,
+                                    onRetry = { actions.onRetryInitial() }
+                                )
+                            }
+                        }
+                        entityContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneEmptyPlaceholder("暂无相关条目")
+                            }
+                        }
+                        else -> {
+                            // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
+                            // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
+                            items(
+                                items = entityContent.items,
+                                key = { item -> "zone_entity_${board.type}_${item.targetId}" },
+                                contentType = { "zone_entity_${board.type}" }
+                            ) { item ->
+                                ZoneEntityCard(
+                                    item = item,
+                                    onClick = { itemActions.onEntityClick?.invoke(board, item) }
                                 )
                             }
 

@@ -372,7 +372,7 @@ class ZoneDetailViewModel(
                 pageSize = 20,
                 keySelector = { it.targetId }
             ) { page, size ->
-                zoneRepository.getZoneItems(nodeId = nodeId, itemType = tabType, page = page, pageSize = size)
+                zoneRepository.getZoneItems(scope = zoneScope, itemType = tabType, page = page, pageSize = size)
                     .map { PageChunk(items = it.list, hasMore = it.hasMore) }
             }
             viewModelScope.launch {
