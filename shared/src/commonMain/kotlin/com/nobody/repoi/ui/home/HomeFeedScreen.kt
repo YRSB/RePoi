@@ -648,7 +648,8 @@ fun HomeFeedScreen(
                         onClick = { viewModel.selectBoard(board) },
                         text = {
                             Text(
-                                text = board.label,
+                                // 单专区优先服务端 title、空则回退枚举文案；聚合态无服务端 title（A8）
+                                text = uiState.boardTitle(board),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
