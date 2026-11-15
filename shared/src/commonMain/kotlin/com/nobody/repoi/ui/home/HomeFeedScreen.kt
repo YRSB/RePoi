@@ -1,19 +1,9 @@
 package com.nobody.repoi.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,23 +20,20 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Badge
@@ -55,15 +42,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.TopAppBar
@@ -86,18 +69,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import com.nobody.repoi.platform.isLandscapeOrientation
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
-import com.nobody.repoi.ui.common.FakeSearchField
+import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
+import com.nobody.repoi.ui.home.components.ZoneSwitcherAnchor
+import com.nobody.repoi.ui.home.components.ZoneSwitcherDropdown
+import com.nobody.repoi.ui.home.components.ZoneSwitcherSheet
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.data.remote.model.ActionItem
@@ -112,6 +95,7 @@ fun HomeFeedScreen(
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
+    onNavigateToZoneSettings: (() -> Unit)? = null,
     onNavigateToForumHome: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
@@ -119,6 +103,24 @@ fun HomeFeedScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val staggeredGridState = rememberLazyStaggeredGridState()
     val imageViewer = LocalImageViewer.current
+    val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
+    // ≥ 840dp 用锚定下拉菜单，其余用底部抽屉；两种呈现共享同一份分组与选中态。
+    val useZoneSwitcherDropdown =
+        windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
+    var zoneSwitcherExpanded by remember { mutableStateOf(false) }
+    val onCloseZoneSwitcher = { zoneSwitcherExpanded = false }
+    val onSelectZoneTab: (String) -> Unit = { tabKey ->
+        zoneSwitcherExpanded = false
+        viewModel.selectZoneTab(tabKey)
+    }
+    val onBrowseAllZonesFromSwitcher = {
+        zoneSwitcherExpanded = false
+        onNavigateToZoneBrowse?.invoke()
+    }
+    val onOpenHomeSettingsFromSwitcher = {
+        zoneSwitcherExpanded = false
+        onNavigateToZoneSettings?.invoke()
+    }
 
     // 上拉触底翻页判断 (瀑布流模式)
     val shouldLoadMore by remember {
@@ -139,7 +141,6 @@ fun HomeFeedScreen(
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topBarHeight = statusBarTopPadding + 64.dp
     val density = LocalDensity.current
-    var tabRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -filterRowHeightPx,
@@ -153,9 +154,9 @@ fun HomeFeedScreen(
         scrollBehavior.state.heightOffsetLimit = -filterRowHeightPx
         scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffset.coerceIn(-filterRowHeightPx, 0f)
     }
-    val tabRowHeightDp = with(density) { tabRowHeightPx.toDp() }
     val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
-    val totalHeaderHeight = topBarHeight + tabRowHeightDp + filterRowHeightDp
+    // 一级专区行移除后，头部高度栈只剩「顶栏 + 可折叠筛选行」两层。
+    val totalHeaderHeight = topBarHeight + filterRowHeightDp
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
@@ -284,6 +285,8 @@ fun HomeFeedScreen(
                 }
 
                 uiState.items.isEmpty() -> {
+                    val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
+                        uiState.selectedCategory.zoneIds == "-1"
                     ElevatedCard(
                         shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.elevatedCardColors(
@@ -295,18 +298,29 @@ fun HomeFeedScreen(
                             .padding(top = totalHeaderHeight)
                             .padding(24.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "暂无该分类下的动态情报",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        if (isEmptyFollow) {
+                            // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
+                            EmptyState(
+                                icon = Icons.Outlined.Category,
+                                title = "还没有关注的专区",
+                                description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
+                                actionLabel = "去专区广场",
+                                onAction = { onNavigateToZoneBrowse?.invoke() }
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(onClick = { viewModel.refreshFeed() }) {
-                                Text("刷新看看")
+                        } else {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "暂无该分类下的动态情报",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedButton(onClick = { viewModel.refreshFeed() }) {
+                                    Text("刷新看看")
+                                }
                             }
                         }
                     }
@@ -398,7 +412,7 @@ fun HomeFeedScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = topBarHeight + tabRowHeightDp)
+                .padding(top = topBarHeight)
                 .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
                 .onSizeChanged { size -> if (size.height > 0) filterRowHeightPx = size.height.toFloat() }
                 .clipToBounds()
@@ -422,77 +436,43 @@ fun HomeFeedScreen(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(top = topBarHeight)
-                .onSizeChanged { size -> if (size.height > 0) tabRowHeightPx = size.height.toFloat() }
-                .clipToBounds()
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
-            val selectedTabIndex = uiState.categories
-                .indexOfFirst { it.tabKey == uiState.selectedCategory.tabKey }
-                .coerceAtLeast(0)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PrimaryScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    edgePadding = 16.dp,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    divider = {},
-                    modifier = Modifier.weight(1f)
-                ) {
-                    uiState.categories.forEachIndexed { index, category ->
-                        val isSelected = index == selectedTabIndex
-                        Tab(
-                            selected = isSelected,
-                            onClick = { viewModel.selectCategory(category) },
-                            text = {
-                                Text(
-                                    text = category.name,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = { onNavigateToZoneBrowse?.invoke() },
-                    modifier = Modifier.padding(end = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "专区广场",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            HorizontalDivider(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-        }
-
         TopAppBar(
             title = {
-                FakeSearchField(
-                    onSearchClick = {
+                if (useZoneSwitcherDropdown) {
+                    ZoneSwitcherDropdown(
+                        currentTitle = uiState.selectedCategory.name,
+                        groups = uiState.switcherGroups,
+                        selectedTabKey = uiState.selectedCategory.tabKey,
+                        expanded = zoneSwitcherExpanded,
+                        onExpandedChange = { zoneSwitcherExpanded = it },
+                        onSelect = onSelectZoneTab,
+                        onBrowseAllZones = onBrowseAllZonesFromSwitcher,
+                        onOpenHomeSettings = onOpenHomeSettingsFromSwitcher
+                    )
+                } else {
+                    // 紧凑屏只放锚点；底部抽屉挂在页面根部（见下方 ZoneSwitcherSheet）。
+                    ZoneSwitcherAnchor(
+                        currentTitle = uiState.selectedCategory.name,
+                        expanded = zoneSwitcherExpanded,
+                        onClick = { zoneSwitcherExpanded = true }
+                    )
+                }
+            },
+            actions = {
+                // 搜索仍携带当前专区的初始分类（nodeId 0 → 10000 全部）。
+                IconButton(
+                    onClick = {
                         val categoryId = uiState.selectedCategory.id
                         onNavigateToSearch?.invoke(
                             SearchNavParam(initialCategory = if (categoryId == 0) 10000 else categoryId)
                         )
-                    },
-                    placeholder = "搜索",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 12.dp)
-                )
-            },
-            actions = {
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "搜索"
+                    )
+                }
                 IconButton(onClick = { onNavigateToForumHome?.invoke() }) {
                     Icon(
                         imageVector = Icons.Outlined.Forum,
@@ -538,6 +518,18 @@ fun HomeFeedScreen(
             Icon(
                 imageVector = Icons.Filled.Refresh,
                 contentDescription = "回到顶部并刷新"
+            )
+        }
+
+        // 紧凑屏专区切换器：底部抽屉挂在页面根部，与顶栏锚点共享同一份分组/选中态。
+        if (!useZoneSwitcherDropdown && zoneSwitcherExpanded) {
+            ZoneSwitcherSheet(
+                groups = uiState.switcherGroups,
+                selectedTabKey = uiState.selectedCategory.tabKey,
+                onSelect = onSelectZoneTab,
+                onBrowseAllZones = onBrowseAllZonesFromSwitcher,
+                onOpenHomeSettings = onOpenHomeSettingsFromSwitcher,
+                onDismiss = onCloseZoneSwitcher
             )
         }
     }
