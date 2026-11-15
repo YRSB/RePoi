@@ -65,6 +65,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
@@ -76,9 +77,11 @@ import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
+import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.ZoneSwitcherAnchor
 import com.nobody.repoi.ui.home.components.ZoneSwitcherDropdown
 import com.nobody.repoi.ui.home.components.ZoneSwitcherSheet
+import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.ui.search.SearchNavParam
@@ -92,6 +95,7 @@ fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -100,6 +104,7 @@ fun HomeFeedScreen(
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hobbyCategoryTree by viewModel.hobbyCategoryTree.collectAsStateWithLifecycle()
     val staggeredGridState = rememberLazyStaggeredGridState()
     val imageViewer = LocalImageViewer.current
     val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
@@ -143,6 +148,50 @@ fun HomeFeedScreen(
             override fun onLoadMore() {
                 viewModel.loadNextPage()
             }
+
+            override fun onHobbyOrder(order: String) {
+                viewModel.selectHobbyOrder(order)
+            }
+
+            override fun onHobbyYear(year: Int?) {
+                viewModel.selectHobbyYear(year)
+            }
+
+            override fun onHobbyMonth(month: Int?) {
+                viewModel.selectHobbyMonth(month)
+            }
+
+            override fun onHobbyCategory(categoryId: Int, subCategoryId: Int?) {
+                viewModel.selectHobbyCategory(categoryId, subCategoryId)
+            }
+
+            override fun onHobbyKeywordChange(keyword: String) {
+                viewModel.updateHobbyKeyword(keyword)
+            }
+
+            override fun onHobbySearch() {
+                viewModel.submitHobbySearch()
+            }
+
+            override fun onHobbyAdvancedApply(filterParam: HobbyAdvancedFilterParam) {
+                viewModel.applyHobbyAdvancedFilters(filterParam)
+            }
+
+            override fun onHobbyAdvancedReset() {
+                viewModel.resetHobbyAdvancedFilters()
+            }
+
+            override fun onHobbyViewMode() {
+                viewModel.toggleHobbyViewMode()
+            }
+
+            override fun onHobbyFilterSheetVisible(show: Boolean) {
+                viewModel.setHobbyFilterSheetVisible(show)
+            }
+
+            override fun onHobbyCategoryPickerVisible(show: Boolean) {
+                viewModel.setHobbyCategoryPickerVisible(show)
+            }
         }
     }
     val onCardImageClick = remember(imageViewer) {
@@ -163,11 +212,26 @@ fun HomeFeedScreen(
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick) {
+    val handleHobbyClick = remember(onNavigateToHobby) {
+        { item: HobbyItemSummary ->
+            val actualId = item.actualItemId
+            if (actualId > 0L && onNavigateToHobby != null) {
+                onNavigateToHobby(
+                    DetailNavParam(
+                        itemId = actualId,
+                        initialName = item.displayName,
+                        initialCover = item.cover
+                    )
+                )
+            }
+        }
+    }
+    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick, handleHobbyClick) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
-            onAlbumClick = handleAlbumClick
+            onAlbumClick = handleAlbumClick,
+            onHobbyClick = handleHobbyClick
         )
     }
 
@@ -250,10 +314,24 @@ fun HomeFeedScreen(
     }
 
     // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
-    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类）。
+    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类；产品 = 全部筛选值）。
     // 首次组合不触发（保留首屏恢复的滚动位置）。
     val boardFilterToken = when (uiState.selectedBoard) {
         ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
+        ZoneBoard.Hobby -> with(uiState.hobbyBoard.filter) {
+            listOf(
+                order,
+                categoryId,
+                subCategoryId ?: "all",
+                releaseYear ?: "all",
+                releaseMonth ?: "all",
+                keyword,
+                sex ?: "all",
+                specs ?: "all",
+                scale ?: "all",
+                r18 ?: "all"
+            ).joinToString("|")
+        }
         else -> uiState.selectedSubType
     }
     var lastSelection by remember {
@@ -292,13 +370,13 @@ fun HomeFeedScreen(
     }
 
     var wasRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(uiState.isRefreshing) {
-        if (wasRefreshing && !uiState.isRefreshing && uiState.currentBoardErrorMessage == null) {
+    LaunchedEffect(uiState.currentBoardIsRefreshing) {
+        if (wasRefreshing && !uiState.currentBoardIsRefreshing && uiState.currentBoardErrorMessage == null) {
             staggeredGridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
         }
-        wasRefreshing = uiState.isRefreshing
+        wasRefreshing = uiState.currentBoardIsRefreshing
     }
 
     Box(
@@ -307,7 +385,7 @@ fun HomeFeedScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
+            isRefreshing = uiState.currentBoardIsRefreshing,
             onRefresh = {
                 scope.launch {
                     staggeredGridState.scrollToItem(0)
@@ -321,7 +399,7 @@ fun HomeFeedScreen(
             indicator = {
                 PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
+                    isRefreshing = uiState.currentBoardIsRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = headerStack.totalHeaderHeight)
@@ -375,7 +453,9 @@ fun HomeFeedScreen(
                         )
                     }
 
-                    uiState.currentBoardErrorMessage != null && uiState.currentBoardItemCount == 0 -> {
+                    uiState.currentBoardErrorMessage != null &&
+                        uiState.currentBoardItemCount == 0 &&
+                        uiState.selectedBoard != ZoneBoard.Hobby -> {
                         ElevatedCard(
                             shape = MaterialTheme.shapes.large,
                             colors = CardDefaults.elevatedCardColors(
@@ -404,7 +484,7 @@ fun HomeFeedScreen(
                         }
                     }
 
-                    uiState.currentBoardItemCount == 0 -> {
+                    uiState.currentBoardItemCount == 0 && uiState.selectedBoard != ZoneBoard.Hobby -> {
                         val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
                             uiState.selectedCategory.zoneIds == "-1"
                         ElevatedCard(
@@ -451,9 +531,10 @@ fun HomeFeedScreen(
                     }
 
                     else -> {
-                        // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
-                        // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
-                        // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
+                        // 有内容（或无内容的产品板块）：走共享板块面板（与专区详情同一内容渲染入口）。
+                        // 动态 / 分享的加载、错误、空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚；
+                        // 产品板块的空 / 错态由面板自身占位渲染（与专区详情一致），从而保证产品弹层（高级筛选 /
+                        // 分类级联）始终由同一个面板渲染，首页不再复制一份弹层接线。
                         ZoneBoardPane(
                             board = uiState.selectedBoard,
                             scope = uiState.zoneScope,
@@ -469,6 +550,7 @@ fun HomeFeedScreen(
                             actions = boardActions,
                             itemActions = boardItemActions,
                             columns = feedColumns,
+                            hobbyCategoryTree = hobbyCategoryTree,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -493,7 +575,9 @@ fun HomeFeedScreen(
                     filters = uiState.currentBoardFilters,
                     subTypeOptions = viewModel.subTypes,
                     actions = boardActions,
-                    albumCategoryOptions = uiState.albumCategoryOptions
+                    albumCategoryOptions = uiState.albumCategoryOptions,
+                    hobbyCategoryTree = hobbyCategoryTree,
+                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode
                 )
             }
         }

@@ -3,6 +3,9 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
+import com.nobody.repoi.ui.board.HobbyBoardOptions
+import com.nobody.repoi.ui.board.ZoneHobbyFilter
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import com.nobody.repoi.platform.DateTimeFormats
@@ -93,6 +96,24 @@ class ItemRepository(
     }
 
     /**
+     * 按查询作用域取产品板块列表（首页聚合 / 单专区共用，issue #159）。
+     *
+     * 参数拼装唯一入口：[buildHobbyBoardParams] 保证三处调用点（首页 / 专区详情 / 后续板块）逐字同参：
+     * - 单专区：`zones=<nodeId>`，**绝不传 `homeScope`**（非空 `homeScope` 会覆盖 `zones` 导致变全站）；
+     * - 全部聚合：省略 `zones`（等价全站，不必传 `homeScope=all`）；
+     * - 关注聚合：产品板块不可用（`zones` 逗号串是交集语义、`homeScope=follow` 待登录态复验），
+     *   调用方必须按 `homeBoardsFor(Follow)` 隐藏该板块并短路，不得走到这里。
+     */
+    suspend fun queryHobbyBoard(
+        scope: ZoneQueryScope,
+        page: Int = 1,
+        pageSize: Int = HobbyBoardOptions.PAGE_SIZE,
+        filters: ZoneHobbyFilter = ZoneHobbyFilter()
+    ): Result<List<HobbyItemSummary>> = queryHobbyList(
+        buildHobbyBoardParams(scope = scope, page = page, pageSize = pageSize, filters = filters)
+    )
+
+    /**
      * 计算热门预订的 releaseStart (今+2月)
      */
     fun calculatePreOrderStartDate(): String = shiftMonths(2)
@@ -110,4 +131,34 @@ class ItemRepository(
             shifted.day.toString().padStart(2, '0')
         }"
     }
+}
+
+/**
+ * 产品板块请求参数拼装（`POST api/hobby/query-v2` 表单）。
+ *
+ * 与专区详情历史实现逐字一致（参数集合与插入顺序都不变），并在其上收敛作用域：
+ * 仅写入 `scope.zonesParam()`，**不写 `homeScope`**（见 `docs/research/aggregate-api-verification.md`
+ * §2.2/§4.3：产品接口只要 `homeScope` 非空就会忽略 `zones`）。
+ */
+internal fun buildHobbyBoardParams(
+    scope: ZoneQueryScope,
+    page: Int,
+    pageSize: Int,
+    filters: ZoneHobbyFilter
+): MutableMap<String, String> {
+    val params = mutableMapOf<String, String>()
+    params["page"] = page.toString()
+    params["pageSize"] = pageSize.toString()
+    params["category"] = (filters.subCategoryId ?: filters.categoryId).toString()
+    params["order"] = filters.order
+    scope.zonesParam()?.let { params["zones"] = it }
+
+    filters.releaseYear?.let { if (it > 0) params["releaseYear"] = it.toString() }
+    filters.releaseMonth?.let { if (it > 0) params["releaseMonth"] = it.toString() }
+    if (filters.keyword.isNotBlank()) params["keyword"] = filters.keyword.trim()
+    filters.sex?.let { if (it != -1) params["sex"] = it.toString() }
+    filters.specs?.let { if (it.isNotBlank()) params["specs"] = it }
+    filters.scale?.let { if (it.isNotBlank() && it != "0") params["scale"] = it }
+    filters.r18?.let { if (it != -1) params["r18"] = it.toString() }
+    return params
 }

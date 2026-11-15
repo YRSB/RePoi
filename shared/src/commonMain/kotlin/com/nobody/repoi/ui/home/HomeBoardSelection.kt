@@ -13,6 +13,30 @@ import com.nobody.repoi.ui.board.ZoneQueryScope
 val HOME_AGGREGATE_BOARDS: List<ZoneBoard> =
     ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }
 
+/**
+ * 「关注」聚合态不可上线的板块（`homeScope=follow` 待登录态复验 / 无多专区通道）。
+ *
+ * 依据 `docs/research/aggregate-api-verification.md` §4/§4.2：
+ * - 产品（#159）：`zones` 逗号串是交集语义，`homeScope=follow` 匿名/伪造 token 均回落全站，
+ *   需登录态复验后才能上线，当前先隐藏；
+ * - 讨论（#158）：`posts/search` 无多专区通道，关注捷径必须隐藏。
+ *
+ * 「关注」态宁可少一个 Tab，也不能展示被服务端降级成全站的假内容。
+ */
+val FOLLOW_UNAVAILABLE_BOARDS: Set<ZoneBoard> = setOf(ZoneBoard.Hobby)
+
+/**
+ * 当前作用域可用的二级板块列表（首页二级 Tab 数据源）。
+ *
+ * - 聚合「全部」：`HOME_ORDER ∩ HOME_IMPLEMENTED`；
+ * - 聚合「关注」：同上再剔除 [FOLLOW_UNAVAILABLE_BOARDS]（不可用即隐藏，不展示「暂不支持」占位）；
+ * - 单专区：服务端 `tabs` ∩ `HOME_IMPLEMENTED`（由 ViewModel 异步装配，不用本函数）。
+ */
+fun homeBoardsFor(scope: ZoneQueryScope): List<ZoneBoard> = when (scope) {
+    is ZoneQueryScope.Follow -> HOME_AGGREGATE_BOARDS.filter { it !in FOLLOW_UNAVAILABLE_BOARDS }
+    else -> HOME_AGGREGATE_BOARDS
+}
+
 /** 单专区板块请求中 / 失败时的兜底板块列表（本阶段仅动态板块）。 */
 val HOME_BOARD_FALLBACK: List<ZoneBoard> = listOf(ZoneBoard.Action)
 
@@ -46,7 +70,7 @@ internal fun FeedCategory.toZoneQueryScope(): ZoneQueryScope = when (tabKey) {
  */
 internal fun immediateHomeBoards(scope: ZoneQueryScope): List<ZoneBoard> = when (scope) {
     is ZoneQueryScope.Single -> HOME_BOARD_FALLBACK
-    else -> HOME_AGGREGATE_BOARDS
+    else -> homeBoardsFor(scope)
 }
 
 /** 同步兜底板块列表的首板块（切换作用域时 `selectedBoard` 的落点），列表为空时退化为动态板块。 */
