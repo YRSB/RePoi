@@ -2,8 +2,11 @@ package com.nobody.repoi.data.local
 
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -70,6 +73,37 @@ class ViewPreferencesManagerTest {
         assertEquals("recommend", manager.getInitialFeedSubType())
         assertEquals("recommend", manager.feedSubTypeFlow.first())
         assertEquals("recommend", store.data.first()[key])
+    }
+
+    @Test
+    fun feedZoneBoard_persistsAndMirrorsSelection() = runTest {
+        val manager = manager()
+        // 值格式 {tabKey}|{type}
+        manager.setFeedZoneBoard("z100|album")
+
+        assertEquals("z100|album", manager.feedZoneBoard)
+        assertEquals("z100|album", manager.getInitialFeedZoneBoardKey())
+        assertEquals("z100|album", manager.feedZoneBoardFlow.first())
+    }
+
+    @Test
+    fun feedZoneBoard_preheatsFromDataStoreOnColdStart() = runTest {
+        // 模拟上次会话已落盘：先写 DataStore 再重建管理器，验证 init 预热回填内存镜像
+        val store = TestDataStore.inMemory()
+        val key = stringPreferencesKey("feed_zone_board")
+        store.edit { prefs -> prefs[key] = "follow|action" }
+        val manager = ViewPreferencesManager(store)
+
+        // 预热协程跑在真实 IO 调度器上，这里在 Default 上做有界真实时间等待
+        withContext(Dispatchers.Default) {
+            var waitedMs = 0
+            while (manager.getInitialFeedZoneBoardKey().isEmpty() && waitedMs < 2_000) {
+                delay(10)
+                waitedMs += 10
+            }
+        }
+
+        assertEquals("follow|action", manager.getInitialFeedZoneBoardKey())
     }
 
     @Test

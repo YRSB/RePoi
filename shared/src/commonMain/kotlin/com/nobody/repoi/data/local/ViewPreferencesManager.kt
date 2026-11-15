@@ -39,6 +39,7 @@ class ViewPreferencesManager(
     private val feedCategoryIdRef = AtomicInt(0)
     private val feedSubTypeRef = AtomicReference(ActionSubType.DEFAULT.apiValue)
     private val feedZoneTabKeyRef = AtomicReference("all")
+    private val feedZoneBoardRef = AtomicReference("")
     private val exHobbyEnabledRef = AtomicBoolean(true)
     private val imageCacheMaxBytesRef = AtomicLong(DEFAULT_IMAGE_CACHE_MAX_BYTES)
 
@@ -61,6 +62,11 @@ class ViewPreferencesManager(
     var feedZoneTabKey: String
         get() = feedZoneTabKeyRef.load()
         private set(value) { feedZoneTabKeyRef.store(value) }
+
+    /** 首页二级板块偏好键，值格式 `{tabKey}|{type}`（如 `all|action`、`z100|album`）；未设置时为空串。 */
+    var feedZoneBoard: String
+        get() = feedZoneBoardRef.load()
+        private set(value) { feedZoneBoardRef.store(value) }
 
     var isExHobbyEnabled: Boolean
         get() = exHobbyEnabledRef.load()
@@ -91,6 +97,10 @@ class ViewPreferencesManager(
         prefs[KEY_FEED_ZONE_TAB_KEY] ?: "all"
     }
 
+    val feedZoneBoardFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_FEED_ZONE_BOARD] ?: ""
+    }
+
     val cachedFocusZonesJsonFlow: Flow<String?> = dataStore.data.map { prefs ->
         prefs[KEY_CACHED_FOCUS_ZONES]
     }
@@ -118,6 +128,7 @@ class ViewPreferencesManager(
                 prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
                 prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = ActionSubType.normalizeKey(it) }
                 prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
+                prefs[KEY_FEED_ZONE_BOARD]?.let { feedZoneBoard = it }
                 prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
                 prefs[KEY_IMAGE_CACHE_MAX_BYTES]?.let { imageCacheMaxBytes = it }
             }
@@ -179,6 +190,14 @@ class ViewPreferencesManager(
      */
     fun getInitialFeedZoneTabKey(): String = feedZoneTabKey
 
+    /**
+     * 同步获取初始首页二级板块键（值格式 `{tabKey}|{type}`；从未选择过时返回空串）。
+     *
+     * 前缀校验与「不可用回落首板块」规则由 `ui/home/HomeSelectionRestore.kt` 的纯函数负责，
+     * 偏好层只做透传，避免恢复语义散落在数据层。
+     */
+    fun getInitialFeedZoneBoardKey(): String = feedZoneBoard
+
     suspend fun getFeedPreferences(): Pair<Int, String> {
         val prefs = dataStore.data.first()
         val catId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
@@ -214,6 +233,18 @@ class ViewPreferencesManager(
         feedZoneTabKey = tabKey
         dataStore.edit { prefs ->
             prefs[KEY_FEED_ZONE_TAB_KEY] = tabKey
+        }
+    }
+
+    /**
+     * 写入首页二级板块偏好键（值格式 `{tabKey}|{type}`）。
+     *
+     * 调用方保证键的业务合法性（前缀为当前一级 tabKey、type 为可用板块），偏好层不做形状校验。
+     */
+    suspend fun setFeedZoneBoard(boardKey: String) {
+        feedZoneBoard = boardKey
+        dataStore.edit { prefs ->
+            prefs[KEY_FEED_ZONE_BOARD] = boardKey
         }
     }
 
@@ -261,6 +292,7 @@ class ViewPreferencesManager(
         private val KEY_FEED_CATEGORY_ID = intPreferencesKey("feed_category_id")
         private val KEY_FEED_SUB_TYPE = stringPreferencesKey("feed_sub_type")
         private val KEY_FEED_ZONE_TAB_KEY = stringPreferencesKey("feed_zone_tab_key")
+        private val KEY_FEED_ZONE_BOARD = stringPreferencesKey("feed_zone_board")
         private val KEY_CACHED_FOCUS_ZONES = stringPreferencesKey("cached_focus_zones_json")
         private val KEY_CACHED_ZONE_SETTINGS = stringPreferencesKey("cached_zone_settings_json")
         private val KEY_EXHOBBY_ENABLED = booleanPreferencesKey("is_exhobby_enabled")
