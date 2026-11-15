@@ -4,6 +4,7 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 
 /**
@@ -12,16 +13,18 @@ import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
  * 设计约束：pane 不注入仓储、不注入偏好、不直接改 ViewModel；所有交互都经过本接口，
  * 便于首页与专区详情各自适配，也便于纯逻辑测试。
  *
- * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、产品（#159）。迁移其余板块时在此接口上
- * **按板块追加方法**（新板块方法给默认空实现，避免其它宿主的匿名对象被迫同步补齐），
- * `ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐。
- * 讨论板块**没有分类过滤**（原版无入口、接口无参数，见 [PostsBoardOptions] KDoc），分类回调只为分享板块提供。
+ * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、实体 5 类（#161）与产品（#159）。
+ * 迁移其余板块时在此接口上**按板块追加方法**（新板块方法给默认空实现，避免其它宿主的匿名对象被迫同步补齐），
+ * `ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（后续板块 ticket）。
+ * 讨论板块**没有分类过滤**（原版无入口、接口无参数，见 [PostsBoardOptions] KDoc），
+ * 分类回调只为分享与产品板块提供。
  */
 interface ZoneBoardActions {
     /**
      * 动态板块 9 项筛选切换。
      *
-     * 键值/文案由共享定义 `ActionSubType` 派生，本接口签名不变。
+     * A 阶段键值/文案沿用 `ZoneDetailViewModel.subTypes`（旧键 `all`）；#153 合入后改由共享定义注入，
+     * 本接口签名不变。
      */
     fun onSelectSubType(subType: String)
 
@@ -77,7 +80,7 @@ interface ZoneBoardActions {
 }
 
 /**
- * 板块条目点击动作（宿主导航 / 图片浏览回调的窄化子集）。
+ * 板块条目点击动作（宿主 15 个导航 / 图片浏览回调的窄化子集）。
  *
  * 新增板块时按需在此追加字段（全部可空、带默认值），宿主只填当前板块需要的回调，pane 只透传。
  */
@@ -94,6 +97,13 @@ data class ZoneBoardItemActions(
     val onPostUserClick: ((userId: Long) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
     val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
+    /**
+     * 实体卡片点击（厂商/系列/作品/角色/人物）。
+     *
+     * 第一个参数是当前板块（决定跳转哪类详情页），宿主据此构造对应 NavParam；
+     * pane 不感知导航类型，保持与专区详情/首页导航解耦。
+     */
+    val onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     /** 产品卡片点击（跳转产品详情）。 */
     val onHobbyClick: ((HobbyItemSummary) -> Unit)? = null
 )

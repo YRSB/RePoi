@@ -816,13 +816,14 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合（动态 #155、分享 #157、讨论 #158、产品 #159 等）
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合（动态 #155 / 分享 #157 / 讨论 #158 / 产品 #159 / 实体 #161）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
         assertTrue(ZoneBoard.Action in state.boards)
         assertTrue(ZoneBoard.Album in state.boards)
         assertTrue(ZoneBoard.Posts in state.boards)
         assertTrue(ZoneBoard.Hobby in state.boards)
-        // 顺序必须与 HOME_ORDER 一致（不按接入顺序/枚举顺序漂移）
+        assertTrue(state.boards.any { it.isEntity })
+        // 顺序必须与 HOME_ORDER 一致
         assertEquals(state.boards.sortedBy { ZoneBoard.HOME_ORDER.indexOf(it) }, state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
@@ -842,11 +843,17 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
-        // 关注聚合无多专区通道（讨论 `posts/search` 只认单值 zoneNodeId；产品 zones 逗号串是交集）：
-        // 讨论 / 产品板块必须隐藏，绝不能把全站内容当成「关注专区内容」展示
-        assertEquals(homeBoardsFor(state.zoneScope), state.boards)
+        // 关注聚合无多专区通道（`posts/search` 只认单值 zoneNodeId，逗号串退化为全站）：
+        // 讨论板块必须隐藏，绝不能把全站帖子当成「关注专区讨论」展示；分享板块与实体 5 类有 zones 通道可用
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertFalse(ZoneBoard.Posts in state.boards)
-        assertFalse(ZoneBoard.Hobby in state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
     }
 
@@ -864,7 +871,7 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
-        // 空关注同样按作用域感知列表隐藏讨论 / 产品板块（并短路不发请求）
+        // 空关注同样按作用域感知列表隐藏讨论 / 产品板块（并短路不发请求），分享与实体 5 类保留
         assertEquals(homeBoardsFor(state.zoneScope), state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
         assertFalse(ZoneBoard.Hobby in state.boards)
@@ -886,8 +893,7 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community，客户端只保留已接入的白名单板块
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 服务端下发 action/album/shop_item/community，客户端只保留已接入的白名单板块`n        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         // zone/info 请求带上专区 nodeId
         val infoRequest = env.zoneMock.lastRequest()
@@ -974,9 +980,9 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(ZoneBoard.Action), viewModel.uiState.value.boards)
 
         // 不在当前 boards 中：选择被忽略
-        viewModel.selectBoard(ZoneBoard.Album)
-        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
         viewModel.selectBoard(ZoneBoard.Hobby)
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        viewModel.selectBoard(ZoneBoard.Album)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
         // 重复选择当前板块为 no-op
         viewModel.selectBoard(ZoneBoard.Action)
@@ -1029,7 +1035,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedBoardTypeUnavailable_fallsBackToFirstBoard() = runTest(testDispatcher) {
-        // 前缀匹配但 type 非法（永远不在板块列表中）→ 回落该专区首板块
+        // 前缀匹配但当前板块列表没有 hobby（未接入）→ 回落该专区首板块
         val env = env(savedTabKey = "all", savedBoardKey = "all|bogus_board")
         env.stubFeed(items = emptyList())
 
@@ -1095,23 +1101,17 @@ class HomeFeedViewModelTest {
 
     @Test
     fun selectBoard_unavailableBoardDoesNotChangePersistedBoardKey() = runTest(testDispatcher) {
-        // 单专区只下发 action：分享不在 boards 中，选择被忽略且不改写二级偏好键
         val env = env(savedBoardKey = "all|action")
         env.stubFeed(items = emptyList())
-        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
-        env.stubZoneInfo(100L, tabs = listOf("action"))
         val viewModel = env.viewModel()
         advanceUntilIdle()
-        viewModel.selectCategory(
-            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
-        )
-        advanceUntilIdle()
 
-        viewModel.selectBoard(ZoneBoard.Album)
+        // 不在 boards 中的板块（本阶段仅接入动态，取后续票才加入的二手）：选择被忽略，也不改写偏好
+        viewModel.selectBoard(ZoneBoard.Resale)
         advanceUntilIdle()
 
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
-        assertEquals("z100|action", env.preferences.getInitialFeedZoneBoardKey())
+        assertEquals("all|action", env.preferences.getInitialFeedZoneBoardKey())
     }
 
     @Test
@@ -1214,7 +1214,7 @@ class HomeFeedViewModelTest {
         // 懒加载：停在动态板块时绝不请求讨论接口
         assertEquals(0, env.postsRequests)
         assertEquals(
-            listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts),
+            ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED },
             viewModel.uiState.value.boards
         )
 
@@ -1349,7 +1349,14 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertFalse(ZoneBoard.Posts in state.boards)
 
         // 直接尝试选中讨论板块：不在当前列表，必须被忽略且不发请求

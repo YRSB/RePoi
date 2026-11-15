@@ -67,6 +67,7 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
@@ -99,6 +100,13 @@ fun HomeFeedScreen(
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
     onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
+    /**
+     * 实体卡片点击（厂商/系列/作品/角色/人物）。
+     *
+     * 首页不感知详情路由类型：由 `TopLevelEntries` 按板块类型分发到对应详情页导航，
+     * 与共享面板「导航经 itemActions 注入」的约束一致。
+     */
+    onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -256,7 +264,8 @@ fun HomeFeedScreen(
         handlePostClick,
         handleAlbumClick,
         handleHobbyClick,
-        onNavigateToUser
+        onNavigateToUser,
+        onEntityClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -265,7 +274,8 @@ fun HomeFeedScreen(
             onPostImageClick = onCardImageClick,
             onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
-            onHobbyClick = handleHobbyClick
+            onHobbyClick = handleHobbyClick,
+            onEntityClick = onEntityClick
         )
     }
 
@@ -555,9 +565,10 @@ fun HomeFeedScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = when (uiState.selectedBoard) {
-                                            ZoneBoard.Posts -> "暂无相关讨论"
-                                            ZoneBoard.Album -> "暂无相关分享"
+                                        text = when {
+                                            uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
+                                            uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
+                                            uiState.selectedBoard.isEntity -> "暂无相关条目"
                                             else -> "暂无该分类下的动态情报"
                                         },
                                         style = MaterialTheme.typography.bodyLarge,
@@ -573,10 +584,9 @@ fun HomeFeedScreen(
                     }
 
                     else -> {
-                        // 有内容（或无内容的产品板块）：走共享板块面板（与专区详情同一内容渲染入口）。
-                        // 动态 / 分享 / 讨论的加载、错误、空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚；
-                        // 产品板块的空 / 错态由面板自身占位渲染（与专区详情一致），从而保证产品弹层（高级筛选 /
-                        // 分类级联）始终由同一个面板渲染，首页不再复制一份弹层接线。
+                        // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
+                        // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
+                        // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
                         ZoneBoardPane(
                             board = uiState.selectedBoard,
                             scope = uiState.zoneScope,

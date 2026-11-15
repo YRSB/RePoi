@@ -128,6 +128,13 @@ data class HomeFeedUiState(
     val isAlbumLoaded: Boolean = false,
 
     /**
+     * 实体 5 类板块状态：按 [ZoneBoard]（仅实体板块有键）懒加载，切走再切回保留。
+     *
+     * 首次切到某实体板块才请求；作用域切换时整体清空（见 `EntityBoardLoader.reset`）。
+     */
+    val entityBoards: Map<ZoneBoard, EntityBoardState> = emptyMap(),
+
+    /**
      * 产品板块状态（#159）：板块逻辑全部在 `HomeHobbyBoard.kt` 的 `HomeHobbyBoardController`，
      * 本字段只是控制器状态的投影，供内容区 / 筛选条 / 四态断言读取。
      */
@@ -168,8 +175,12 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> albumItems.size
             ZoneBoard.Posts -> posts.items.size + posts.pinnedPosts.size
             ZoneBoard.Hobby -> hobbyBoard.itemCount
-            else -> items.size
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.items.size else items.size
         }
+
+    /** 实体板块的只读状态快照（非实体板块取默认值，调用方仅在实体板块消费）。 */
+    private val currentEntityBoardState: EntityBoardState
+        get() = entityBoards[selectedBoard] ?: EntityBoardState()
 
     /** 当前板块是否还有下一页。 */
     val currentBoardHasMore: Boolean
@@ -177,7 +188,7 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> albumHasMore
             ZoneBoard.Posts -> posts.hasMore
             ZoneBoard.Hobby -> hobbyBoard.hasMore
-            else -> hasMore
+            else -> if (selectedBoard.isEntity) !currentEntityBoardState.isEndReached else hasMore
         }
 
     /** 当前板块是否正在追加下一页。 */
@@ -186,7 +197,7 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> isLoadingMoreAlbum
             ZoneBoard.Posts -> posts.isLoadingMore
             ZoneBoard.Hobby -> hobbyBoard.isLoadingMore
-            else -> isLoadingMore
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.isLoadingMore else isLoadingMore
         }
 
     /** 当前板块追加失败信息（页脚重试用）。 */
@@ -195,7 +206,7 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> albumLoadMoreError
             ZoneBoard.Posts -> posts.loadMoreError
             ZoneBoard.Hobby -> hobbyBoard.loadMoreError
-            else -> loadMoreError
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.loadMoreError else loadMoreError
         }
 
     /** 当前板块是否正在下拉刷新（产品刷新态由板块状态承载，其余板块共用全局 [isRefreshing]）。 */
@@ -212,7 +223,11 @@ data class HomeFeedUiState(
             // 讨论板块懒加载：尚未请求过首屏（且无错误）时也按加载态处理，避免闪一帧空态卡片
             ZoneBoard.Posts -> (posts.isInitialLoading || !posts.isLoaded) && posts.errorMessage == null
             ZoneBoard.Hobby -> hobbyBoard.isLoading && hobbyBoard.items.isEmpty()
-            else -> isInitialLoading
+            else -> if (selectedBoard.isEntity) {
+                currentEntityBoardState.isLoading && currentEntityBoardState.items.isEmpty()
+            } else {
+                isInitialLoading
+            }
         }
 
     /** 当前板块首屏错误（仅在列表为空时展示错误态）。 */
@@ -221,7 +236,7 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> albumErrorMessage
             ZoneBoard.Posts -> posts.errorMessage
             ZoneBoard.Hobby -> hobbyBoard.errorMessage
-            else -> errorMessage
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.errorMessage else errorMessage
         }
 
     /** 当前板块内容快照（传给共享面板 `ZoneBoardPane`，保证两屏同一渲染口径）。 */
@@ -238,19 +253,34 @@ data class HomeFeedUiState(
                 )
             )
             ZoneBoard.Posts -> postsBoardContent
-            else -> ZoneBoardContent.Action(
-                items = items,
-                page = ZoneBoardPageView(
-                    isLoading = isInitialLoading,
-                    isLoadingMore = isLoadingMore,
-                    errorMessage = errorMessage,
-                    loadMoreError = loadMoreError,
-                    isEndReached = !hasMore
+            ZoneBoard.Hobby -> hobbyBoard.content
+            else -> if (selectedBoard.isEntity) {
+                val entityState = currentEntityBoardState
+                ZoneBoardContent.Entity(
+                    items = entityState.items,
+                    page = ZoneBoardPageView(
+                        isLoading = entityState.isLoading,
+                        isLoadingMore = entityState.isLoadingMore,
+                        errorMessage = entityState.errorMessage,
+                        loadMoreError = entityState.loadMoreError,
+                        isEndReached = entityState.isEndReached
+                    )
                 )
-            )
+            } else {
+                ZoneBoardContent.Action(
+                    items = items,
+                    page = ZoneBoardPageView(
+                        isLoading = isInitialLoading,
+                        isLoadingMore = isLoadingMore,
+                        errorMessage = errorMessage,
+                        loadMoreError = loadMoreError,
+                        isEndReached = !hasMore
+                    )
+                )
+            }
         }
 
-    /** 当前板块筛选值快照（传给共享面板/筛选条）。 */
+    /** 当前板块筛选值快照（传给共享面板/筛选条）。实体 5 类暂无筛选项，保持默认值。 */
     val currentBoardFilters: ZoneBoardFilters
         get() = when (selectedBoard) {
             ZoneBoard.Album -> ZoneBoardFilters(
@@ -258,7 +288,8 @@ data class HomeFeedUiState(
                 albumCategory = albumSelectedCategory
             )
             ZoneBoard.Posts -> ZoneBoardFilters(subType = selectedSubType, postsOrder = posts.order)
-            else -> ZoneBoardFilters(subType = selectedSubType)
+            ZoneBoard.Hobby -> hobbyBoard.filters
+            else -> if (selectedBoard.isEntity) ZoneBoardFilters() else ZoneBoardFilters(subType = selectedSubType)
         }
 }
 
@@ -328,6 +359,29 @@ class HomeFeedViewModel(
     )
     val uiState: StateFlow<HomeFeedUiState> = _uiState.asStateFlow()
 
+    /**
+     * 实体 5 类板块的懒加载 / 分页控制器（#161）。
+     *
+     * 状态经回调写回 [HomeFeedUiState.entityBoards]；请求作用域在懒加载/分页调用点传入，
+     * 作用域切换时由 [resetEntityBoards] 整体重建（不同 `zones` 不可复用同一 loader）。
+     */
+    private val entityBoardLoader: EntityBoardLoader = EntityBoardLoader(
+        coroutineScope = viewModelScope,
+        repository = zoneRepository,
+        onStateChanged = { board, state ->
+            _uiState.update { it.copy(entityBoards = it.entityBoards + (board to state)) }
+        }
+    )
+
+    /**
+     * 产品板块控制器（#159）：状态、请求与筛选动作都在 `HomeHobbyBoard.kt`，
+     * 本 ViewModel 只负责挂状态、转发动作与在作用域变化时重置。
+     */
+    private val hobbyBoardController = HomeHobbyBoardController(
+        repository = itemRepository,
+        scope = viewModelScope
+    )
+
     private var initialLoadJob: Job? = null
 
     /** 二级板块列表的异步请求（单专区 `zone/info`）；切专区时先取消，避免过期响应覆盖。 */
@@ -341,15 +395,6 @@ class HomeFeedViewModel(
 
     /** 分享板块分类候选请求（单专区；切专区时取消）。 */
     private var albumCategoriesJob: Job? = null
-
-    /**
-     * 产品板块控制器（#159）：状态、请求与筛选动作都在 `HomeHobbyBoard.kt`，
-     * 本 ViewModel 只负责挂状态、转发动作与在作用域变化时重置。
-     */
-    private val hobbyBoardController = HomeHobbyBoardController(
-        repository = itemRepository,
-        scope = viewModelScope
-    )
 
     // 各「作用域 + 板块」的滚动记忆（仅内存；persist 到 DataStore 属 #156）
     private val boardScrollMemories = mutableMapOf<String, HomeBoardScrollMemory>()
@@ -465,13 +510,18 @@ class HomeFeedViewModel(
                 if (categoryChanged) {
                     // 切专区：弃掉分享板块的旧列表/分类候选，等下次切到分享再懒加载
                     cancelAlbumWork()
+                    // 实体 5 类同样按作用域失效：旧 zones 的 loader 与条目不可跨专区复用
+                    resetEntityBoards()
                     // 产品板块同理：清空列表并取消在途请求，筛选偏好保留
                     hobbyBoardController.onScopeChanged()
                 }
-                // 冷启动恢复可能直接把落点定在讨论/分享/产品板块（`feed_zone_board` 命中）：补一次懒加载
+                // 冷启动恢复可能直接把落点定在讨论/分享/实体/产品板块（`feed_zone_board` 命中）：补一次懒加载
                 ensurePostsLoaded()
-                if (nextBoard == ZoneBoard.Album) ensureAlbumLoaded()
-                if (nextBoard == ZoneBoard.Hobby) ensureHobbyLoaded()
+                when {
+                    nextBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                    nextBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
+                    nextBoard.isEntity -> ensureEntityLoaded(nextBoard)
+                }
                 if (coldStartResolvedTabKey != null) {
                     // 冷启动落点确定（含回落「全部」）：补上被推迟的首屏加载，专区变化时装配板块
                     loadInitialFeed()
@@ -553,7 +603,9 @@ class HomeFeedViewModel(
             persistBoardSelection()
         }
         cancelAlbumWork()
+        resetEntityBoards()
         hobbyBoardController.onScopeChanged()
+        if (firstBoard.isEntity) ensureEntityLoaded(firstBoard)
         syncBoards(scope)
         loadInitialFeed()
     }
@@ -561,10 +613,10 @@ class HomeFeedViewModel(
     /**
      * 切换二级板块：就地切换、不整页重建，不清空其它板块状态。
      *
-     * 讨论 / 分享 / 产品板块**按需懒加载**：首次切到该板块时才发起首屏请求；切走再切回复用已有内容与
+     * 讨论 / 分享板块**按需懒加载**：首次切到该板块时才发起首屏请求；切走再切回复用已有内容与
      * 分页游标（滚动位置 / 折叠比例由宿主 UI 按「作用域 + 板块」记忆）。
      * 选择同时写回 `feed_zone_board = {tabKey}|{type}`（#156 冷启动恢复规则）；
-     * 后续 #160–#161 接入新板块时在此按板块补懒加载。
+     * 后续 #159–#161 接入新板块时在此按板块补懒加载。
      */
     fun selectBoard(board: ZoneBoard) {
         val current = _uiState.value
@@ -573,8 +625,28 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(selectedBoard = board) }
         if (board == ZoneBoard.Posts) ensurePostsLoaded()
         viewModelScope.launch { persistBoardSelection() }
-        if (board == ZoneBoard.Album) ensureAlbumLoaded()
-        if (board == ZoneBoard.Hobby) ensureHobbyLoaded()
+        when {
+            board == ZoneBoard.Album -> ensureAlbumLoaded()
+            board == ZoneBoard.Hobby -> ensureHobbyLoaded()
+            board.isEntity -> ensureEntityLoaded(board)
+        }
+    }
+
+    /** 实体板块懒加载入口：首次切到才请求首屏；已加载/已请求过不重复（失败后也不自动重试）。 */
+    private fun ensureEntityLoaded(board: ZoneBoard) {
+        if (!board.isEntity) return
+        entityBoardLoader.ensureLoaded(board, _uiState.value.zoneScope)
+    }
+
+    /**
+     * 切专区 / 重置筛选时丢弃实体板块的 loader 与状态。
+     *
+     * 实体请求参数由 `scope.zonesParam()` 决定，旧 loader 的闭包仍持有旧作用域，必须整体重建；
+     * 不清滚动记忆（切回同一作用域时仍按「作用域+板块」键恢复）。
+     */
+    private fun resetEntityBoards() {
+        entityBoardLoader.reset()
+        _uiState.update { if (it.entityBoards.isEmpty()) it else it.copy(entityBoards = emptyMap()) }
     }
 
     /** 分享板块懒加载入口：首次切到分享时拉首屏 + 单专区分类候选；已加载/加载中不重复请求。 */
@@ -585,6 +657,79 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(isAlbumLoading = true) }
         loadInitialAlbum()
         syncAlbumCategories()
+    }
+
+    /** 产品板块懒加载入口：首次切到产品时才请求首屏；已加载 / 加载中不重复请求。 */
+    private fun ensureHobbyLoaded() {
+        hobbyBoardController.ensureLoaded(_uiState.value.zoneScope)
+    }
+
+    // ==================== 产品（hobby）板块动作转发（#159） ====================
+
+    /** 产品 6 档排序切换（非法键由控制器忽略）。 */
+    fun selectHobbyOrder(order: String) {
+        resetScrollPosition()
+        hobbyBoardController.selectOrder(_uiState.value.zoneScope, order)
+    }
+
+    /** 产品发售年份切换。 */
+    fun selectHobbyYear(year: Int?) {
+        resetScrollPosition()
+        hobbyBoardController.selectYear(_uiState.value.zoneScope, year)
+    }
+
+    /** 产品发售月份切换。 */
+    fun selectHobbyMonth(month: Int?) {
+        resetScrollPosition()
+        hobbyBoardController.selectMonth(_uiState.value.zoneScope, month)
+    }
+
+    /** 产品分类级联选择。 */
+    fun selectHobbyCategory(categoryId: Int, subCategoryId: Int?) {
+        resetScrollPosition()
+        hobbyBoardController.selectCategory(_uiState.value.zoneScope, categoryId, subCategoryId)
+    }
+
+    /** 产品关键词输入（不触发请求）。 */
+    fun updateHobbyKeyword(keyword: String) {
+        hobbyBoardController.updateKeyword(keyword)
+    }
+
+    /** 提交产品关键词搜索。 */
+    fun submitHobbySearch() {
+        resetScrollPosition()
+        hobbyBoardController.submitSearch(_uiState.value.zoneScope)
+    }
+
+    /** 产品高级筛选「确定」。 */
+    fun applyHobbyAdvancedFilters(filterParam: HobbyAdvancedFilterParam) {
+        resetScrollPosition()
+        hobbyBoardController.setFilterSheetVisible(false)
+        hobbyBoardController.applyAdvanced(_uiState.value.zoneScope, filterParam)
+    }
+
+    /** 产品高级筛选「重置」。 */
+    fun resetHobbyAdvancedFilters() {
+        resetScrollPosition()
+        hobbyBoardController.setFilterSheetVisible(false)
+        hobbyBoardController.resetAdvanced(_uiState.value.zoneScope)
+    }
+
+    /** 产品高级筛选弹层显隐。 */
+    fun setHobbyFilterSheetVisible(show: Boolean) {
+        hobbyBoardController.setFilterSheetVisible(show)
+    }
+
+    /** 产品分类级联弹层显隐。 */
+    fun setHobbyCategoryPickerVisible(show: Boolean) {
+        hobbyBoardController.setCategoryPickerVisible(show)
+    }
+
+    /** 产品网格 / 列表切换：同时写回偏好（单向数据流，控制器不直接读写偏好）。 */
+    fun toggleHobbyViewMode() {
+        val nextMode = !_uiState.value.hobbyBoard.isGridMode
+        hobbyBoardController.updateGridMode(nextMode)
+        viewModelScope.launch { viewPreferencesManager.setHobbyListGridMode(nextMode) }
     }
 
     /**
@@ -665,97 +810,34 @@ class HomeFeedViewModel(
         loadInitialPosts()
     }
 
-    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/产品板块重试时误刷动态流。 */
+    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/实体/产品板块重试时误刷动态流。 */
     fun retrySelectedBoard() {
-        when (_uiState.value.selectedBoard) {
+        when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadInitialAlbum()
             ZoneBoard.Posts -> loadInitialPosts()
             ZoneBoard.Hobby -> hobbyBoardController.loadInitial(_uiState.value.zoneScope)
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> entityBoardLoader.retry(board)
             else -> loadInitialFeed()
         }
     }
 
-    /** 当前板块触底翻页：按板块分派，避免讨论/分享/产品板块触底时把动态游标推错。 */
+    /** 当前板块触底翻页：按板块分派，避免讨论/分享/实体/产品板块触底时把动态游标推错。 */
     fun loadMoreSelectedBoard() {
-        when (_uiState.value.selectedBoard) {
+        when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadNextAlbumPage()
             ZoneBoard.Posts -> loadNextPostsPage()
             ZoneBoard.Hobby -> hobbyBoardController.loadNextPage(_uiState.value.zoneScope)
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> entityBoardLoader.loadMore(board)
             else -> loadNextPage()
         }
-    }
-
-    /** 产品板块懒加载入口：首次切到产品时才请求首屏；已加载 / 加载中不重复请求。 */
-    private fun ensureHobbyLoaded() {
-        hobbyBoardController.ensureLoaded(_uiState.value.zoneScope)
-    }
-
-    // ==================== 产品（hobby）板块动作转发（#159） ====================
-
-    /** 产品 6 档排序切换（非法键由控制器忽略）。 */
-    fun selectHobbyOrder(order: String) {
-        resetScrollPosition()
-        hobbyBoardController.selectOrder(_uiState.value.zoneScope, order)
-    }
-
-    /** 产品发售年份切换。 */
-    fun selectHobbyYear(year: Int?) {
-        resetScrollPosition()
-        hobbyBoardController.selectYear(_uiState.value.zoneScope, year)
-    }
-
-    /** 产品发售月份切换。 */
-    fun selectHobbyMonth(month: Int?) {
-        resetScrollPosition()
-        hobbyBoardController.selectMonth(_uiState.value.zoneScope, month)
-    }
-
-    /** 产品分类级联选择。 */
-    fun selectHobbyCategory(categoryId: Int, subCategoryId: Int?) {
-        resetScrollPosition()
-        hobbyBoardController.selectCategory(_uiState.value.zoneScope, categoryId, subCategoryId)
-    }
-
-    /** 产品关键词输入（不触发请求）。 */
-    fun updateHobbyKeyword(keyword: String) {
-        hobbyBoardController.updateKeyword(keyword)
-    }
-
-    /** 提交产品关键词搜索。 */
-    fun submitHobbySearch() {
-        resetScrollPosition()
-        hobbyBoardController.submitSearch(_uiState.value.zoneScope)
-    }
-
-    /** 产品高级筛选「确定」。 */
-    fun applyHobbyAdvancedFilters(filterParam: HobbyAdvancedFilterParam) {
-        resetScrollPosition()
-        hobbyBoardController.setFilterSheetVisible(false)
-        hobbyBoardController.applyAdvanced(_uiState.value.zoneScope, filterParam)
-    }
-
-    /** 产品高级筛选「重置」。 */
-    fun resetHobbyAdvancedFilters() {
-        resetScrollPosition()
-        hobbyBoardController.setFilterSheetVisible(false)
-        hobbyBoardController.resetAdvanced(_uiState.value.zoneScope)
-    }
-
-    /** 产品高级筛选弹层显隐。 */
-    fun setHobbyFilterSheetVisible(show: Boolean) {
-        hobbyBoardController.setFilterSheetVisible(show)
-    }
-
-    /** 产品分类级联弹层显隐。 */
-    fun setHobbyCategoryPickerVisible(show: Boolean) {
-        hobbyBoardController.setCategoryPickerVisible(show)
-    }
-
-    /** 产品网格 / 列表切换：同时写回偏好（单向数据流，控制器不直接读写偏好）。 */
-    fun toggleHobbyViewMode() {
-        val nextMode = !_uiState.value.hobbyBoard.isGridMode
-        hobbyBoardController.updateGridMode(nextMode)
-        viewModelScope.launch { viewPreferencesManager.setHobbyListGridMode(nextMode) }
     }
 
     /** 懒加载哨兵：仅在讨论板块被选中、当前作用域允许且尚未请求过时触发首屏。 */
@@ -945,6 +1027,7 @@ class HomeFeedViewModel(
             viewPreferencesManager.setFeedSubType(defaultSubType)
             persistBoardSelection()
         }
+        resetEntityBoards()
         hobbyBoardController.onScopeChanged()
         syncBoards(scope)
         loadInitialFeed()
@@ -953,16 +1036,16 @@ class HomeFeedViewModel(
     fun refreshFeed() = refresh()
 
     /**
-     * 刷新当前板块：动态走游标首屏，分享 / 讨论 / 产品走各自首屏重载。
+     * 刷新当前板块：动态走游标首屏，分享/讨论走各自独立首屏，实体走页码第一页，产品走板块控制器。
      *
-     * 动态 / 分享 / 讨论共用 [HomeFeedUiState.isRefreshing]（下拉指示器 / FAB 无需按板块区分）；
-     * 产品的刷新态由板块控制器承载（[HomeFeedUiState.currentBoardIsRefreshing]），避免两处布尔漂移。
+     * 动态 / 分享 / 讨论 / 实体共用 [HomeFeedUiState.isRefreshing]；产品的刷新态由板块控制器承载
+     * （[HomeFeedUiState.currentBoardIsRefreshing]），避免两处布尔漂移。
      */
     fun refresh() {
         if (_uiState.value.currentBoardIsRefreshing) return
         resetScrollPosition()
         fetchUnreadMessages()
-        // 按当前板块分派刷新：讨论/分享/产品是独立请求链路，不能借用动态流的游标
+        // 按当前板块分派刷新：讨论/分享/实体/产品是独立请求链路，不能借用动态流的游标
         when (_uiState.value.selectedBoard) {
             ZoneBoard.Album -> {
                 _uiState.update {
@@ -994,6 +1077,11 @@ class HomeFeedViewModel(
                 // 产品刷新只重置本板块的错误位；全局 isRefreshing 不参与，避免与板块状态双写
                 hobbyBoardController.refresh(_uiState.value.zoneScope)
             }
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> refreshEntityBoard()
             else -> {
                 _uiState.update {
                     it.copy(
@@ -1008,6 +1096,20 @@ class HomeFeedViewModel(
                 refreshActionBoard()
             }
         }
+    }
+
+    /**
+     * 实体板块刷新：页码回第一页，参数与首屏一致（`scope` + `itemType`）。
+     *
+     * 刷新态交给板块 loader（与专区详情既有语义一致），全局 [HomeFeedUiState.isRefreshing]
+     * 立即复位，避免下拉指示器长期悬挂。
+     */
+    private fun refreshEntityBoard() {
+        val board = _uiState.value.selectedBoard
+        if (!board.isEntity) return
+        ensureEntityLoaded(board)
+        entityBoardLoader.refresh(board)
+        _uiState.update { it.copy(isRefreshing = false) }
     }
 
     private fun refreshActionBoard() {
@@ -1172,6 +1274,11 @@ class HomeFeedViewModel(
         val currentState = _uiState.value
         if (currentState.selectedBoard == ZoneBoard.Album) {
             loadNextAlbumPage()
+            return
+        }
+        if (currentState.selectedBoard.isEntity) {
+            // 实体板块：分页守卫（hasMore / 阶段）与去重由 loader 统一负责
+            entityBoardLoader.loadMore(currentState.selectedBoard)
             return
         }
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.isInitialLoading || currentState.isRefreshing) return
@@ -1471,9 +1578,12 @@ class HomeFeedViewModel(
             }
             // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
             ensurePostsLoaded()
-            // 冷启动恢复到分享 / 产品板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
-            if (_uiState.value.selectedBoard == ZoneBoard.Album) ensureAlbumLoaded()
-            if (_uiState.value.selectedBoard == ZoneBoard.Hobby) ensureHobbyLoaded()
+            // 冷启动恢复到分享/实体/产品板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
+            when {
+                _uiState.value.selectedBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                _uiState.value.selectedBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
+                _uiState.value.selectedBoard.isEntity -> ensureEntityLoaded(_uiState.value.selectedBoard)
+            }
         }
     }
 
