@@ -23,6 +23,8 @@ import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.AlbumBoardOptions
+import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
@@ -121,7 +123,11 @@ data class ZoneDetailUiState(
     val loadMoreError: String? = null,
 
     // 分享/相册 Tab 状态
-    val albumSelectedOrder: String = "top",
+    val albumSelectedOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
+    /** 相册分类；`null` = 全部分类（原版仅单专区展示分类入口）。 */
+    val albumSelectedCategory: Int? = null,
+    /** 相册分类候选（服务端 `api/zone/categories?itemType=album`；少于 2 个有效项时为空）。 */
+    val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     val albumItems: List<AlbumListItem> = emptyList(),
     val albumPage: Int = 1,
     val isAlbumLoading: Boolean = false,
@@ -205,14 +211,8 @@ class ZoneDetailViewModel(
     val subTypes: List<Pair<String, String>> =
         ActionSubType.ordered.map { it.apiValue to it.label }
 
-    val albumOrders = listOf(
-        Pair("top", "推荐"),
-        Pair("add", "最新创建"),
-        Pair("update", "最近更新"),
-        Pair("picCount", "图片数量"),
-        Pair("hits", "总热度"),
-        Pair("hitsDay", "一天热度")
-    )
+    /** 分享板块 6 档排序（共享定义 [AlbumBoardOptions]，与首页共用，禁止两处硬编码）。 */
+    val albumOrders: List<Pair<String, String>> = AlbumBoardOptions.ORDERS
 
     val postsOrders = listOf(
         Pair("upd", "回复"),
@@ -248,6 +248,7 @@ class ZoneDetailViewModel(
 
     private var feedJob: Job? = null
     private var albumJob: Job? = null
+    private var albumCategoriesJob: Job? = null
     private var postsJob: Job? = null
 
     // 实体分类加载控制器缓存
@@ -404,6 +405,8 @@ class ZoneDetailViewModel(
         nodeId = id
         tabScrollPositions.clear()
         entityLoaders.clear()
+        albumJob?.cancel()
+        albumCategoriesJob?.cancel()
         hobbyLoader.reset(clearItems = true)
         resaleLoader.reset(clearItems = true)
         _uiState.update {
@@ -430,6 +433,8 @@ class ZoneDetailViewModel(
                 hasMoreAlbum = true,
                 albumErrorMessage = null,
                 albumLoadMoreError = null,
+                albumSelectedCategory = null,
+                albumCategoryOptions = emptyList(),
                 postsSelectedOrder = "upd",
                 postsItems = emptyList(),
                 pinnedPosts = emptyList(),
@@ -497,6 +502,10 @@ class ZoneDetailViewModel(
         _uiState.update { it.copy(selectedTab = tabType) }
         val isAlbum = tabType == "album" || tabType == "share"
         val isPosts = tabType == "posts"
+        if (isAlbum) {
+            // 分类候选懒加载：仅单专区接口可用，切到分享时同步一次（已加载则复用）
+            syncAlbumCategories()
+        }
         if (isAlbum && _uiState.value.albumItems.isEmpty() && !_uiState.value.isAlbumLoading) {
             loadInitialAlbum()
         } else if (isPosts && _uiState.value.postsItems.isEmpty() && !_uiState.value.isPostsLoading) {
@@ -558,6 +567,7 @@ class ZoneDetailViewModel(
     }
 
     fun selectAlbumOrder(order: String) {
+        if (order !in AlbumBoardOptions.ORDER_KEYS) return
         if (_uiState.value.albumSelectedOrder == order) return
         _uiState.update {
             it.copy(
@@ -571,6 +581,51 @@ class ZoneDetailViewModel(
             )
         }
         loadInitialAlbum()
+    }
+
+    /** 切换相册分类（`null` = 全部分类）：清列表 + 回第一页 + 重新请求。 */
+    fun selectAlbumCategory(categoryId: Int?) {
+        if (_uiState.value.albumSelectedCategory == categoryId) return
+        _uiState.update {
+            it.copy(
+                albumSelectedCategory = categoryId,
+                albumItems = emptyList(),
+                albumPage = 1,
+                hasMoreAlbum = true,
+                isAlbumLoading = true,
+                albumErrorMessage = null,
+                albumLoadMoreError = null
+            )
+        }
+        loadInitialAlbum()
+    }
+
+    /**
+     * 相册分类候选：`GET api/zone/categories?nodeId=&itemType=album`（反编译原版分类菜单来源）。
+     *
+     * 有效候选少于 2 个时原版不展示分类入口，此处同样置空；请求完成后校验专区未切换，避免串区。
+     */
+    private fun syncAlbumCategories() {
+        val requestNodeId = nodeId
+        if (requestNodeId <= 0L) return
+        if (_uiState.value.albumCategoryOptions.isNotEmpty()) return
+        albumCategoriesJob?.cancel()
+        albumCategoriesJob = viewModelScope.launch {
+            val result = albumRepository.getAlbumCategories(requestNodeId)
+            if (nodeId != requestNodeId) return@launch
+            val options = result.getOrNull().orEmpty()
+                .map { AlbumCategoryOption(it.categoryId, it.name.orEmpty()) }
+                .filter { it.id > 0 && it.name.isNotBlank() }
+                .takeIf { it.size > 1 }
+                .orEmpty()
+            _uiState.update {
+                it.copy(
+                    albumCategoryOptions = options,
+                    albumSelectedCategory = it.albumSelectedCategory
+                        .takeIf { selected -> options.any { option -> option.id == selected } }
+                )
+            }
+        }
     }
 
     fun selectPostsOrder(order: String) {
@@ -607,13 +662,16 @@ class ZoneDetailViewModel(
 
         when {
             _uiState.value.isAlbumTab -> {
+                // 分类候选懒加载兜底：切到分享前请求失败/未触发时再补一次
+                if (_uiState.value.albumCategoryOptions.isEmpty()) syncAlbumCategories()
                 viewModelScope.launch {
                     val currentOrder = _uiState.value.albumSelectedOrder
                     val result = albumRepository.getAlbums(
                         page = 1,
-                        pageSize = 24,
+                        pageSize = AlbumBoardOptions.PAGE_SIZE,
                         orderString = currentOrder,
-                        zones = nodeId.toString()
+                        zones = nodeId.toString(),
+                        category = _uiState.value.albumSelectedCategory
                     )
                     result.onSuccess { page ->
                         val distinctList = page.items.distinctBy { it.targetAlbumId }
@@ -812,9 +870,10 @@ class ZoneDetailViewModel(
             val currentOrder = _uiState.value.albumSelectedOrder
             val result = albumRepository.getAlbums(
                 page = 1,
-                pageSize = 24,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
                 orderString = currentOrder,
-                zones = nodeId.toString()
+                zones = nodeId.toString(),
+                category = _uiState.value.albumSelectedCategory
             )
             result.onSuccess { page ->
                 val distinctList = page.items.distinctBy { it.targetAlbumId }
@@ -849,9 +908,10 @@ class ZoneDetailViewModel(
         viewModelScope.launch {
             val result = albumRepository.getAlbums(
                 page = nextPage,
-                pageSize = 24,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
                 orderString = currentState.albumSelectedOrder,
-                zones = nodeId.toString()
+                zones = nodeId.toString(),
+                category = currentState.albumSelectedCategory
             )
             result.onSuccess { page ->
                 _uiState.update { state ->
