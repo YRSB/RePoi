@@ -87,6 +87,7 @@ import com.nobody.repoi.data.remote.model.OrderStaticPayload
 import com.nobody.repoi.data.remote.model.WorksAlbumPayload
 import com.nobody.repoi.data.remote.model.WorksCharacterPayload
 import com.nobody.repoi.data.remote.model.WorksDetailPayload
+import com.nobody.repoi.data.remote.model.ZoneCategoriesPayload
 import com.nobody.repoi.data.remote.model.ZoneFocusPayload
 import com.nobody.repoi.data.remote.model.ZoneHomeTabsPayload
 import com.nobody.repoi.data.remote.model.ZoneInfoPayload
@@ -267,6 +268,21 @@ class HpoiApi(
     suspend fun getZoneInfo(nodeId: Long): CommonResponse<ZoneInfoPayload> =
         client.get("api/zone/info") {
             parameter("nodeId", nodeId)
+        }.decodeRefAware(json)
+
+    /**
+     * 专区板块分类选项（相册板块传 `itemType = "album"`）。
+     *
+     * 证据：反编译 `ZoneDetailSortablePageFragment.m()`（原版分类菜单来源）。单专区专用；
+     * 分类 id 与手办分类树不同域，禁止与 `CategoryManager` 混用。
+     */
+    suspend fun getZoneCategories(
+        nodeId: Long,
+        itemType: String,
+    ): CommonResponse<ZoneCategoriesPayload> =
+        client.get("api/zone/categories") {
+            parameter("nodeId", nodeId)
+            parameter("itemType", itemType)
         }.decodeRefAware(json)
 
     suspend fun getZoneItems(
