@@ -27,9 +27,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
@@ -118,7 +116,6 @@ import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
-import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -994,28 +991,9 @@ fun ZoneDetailScreen(
                             columns = entityColumns,
                             modifier = Modifier.fillMaxSize()
                         )
-                    } else {
-                        LazyVerticalStaggeredGrid(
-                            columns = gridColumns,
-                            state = staggeredGridState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 8.dp,
-                                end = 8.dp,
-                                top = totalHeaderHeightDp + 8.dp,
-                                bottom = bottomContentPadding
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalItemSpacing = 8.dp
-                        ) {
-                    // 3. 其余尚未迁移的板块：仅一行防御占位（产品/二手等均已走共享面板）
-                    item(span = StaggeredGridItemSpan.FullLine) {
-                        ZoneEmptyPlaceholder("该分类正在建设中...")
                     }
                 }
             }
-        }
-    }
 
             // 2. 中层随动折叠筛选栏（吸附于常驻栏正下方，随列表滚动平滑折叠）
             Box(

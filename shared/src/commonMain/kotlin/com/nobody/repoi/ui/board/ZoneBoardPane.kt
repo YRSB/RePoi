@@ -36,8 +36,10 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *
  * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）、[ZoneBoard.Posts]
  * （讨论，#158）、[ZoneBoard.Hobby]（产品，#159）、[ZoneBoard.Resale]（二手，#160）与实体 5 类
- * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）分支；其余板块先走防御占位——
- * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
+ * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）分支——覆盖客户端白名单全部 10 类，
+ * 因此**没有「建设中」兜底分支**（白名单外类型在能力矩阵已被丢弃，ADR-0022 决策 6「不做假入口」）。
+ * 空态 / 错误态统一使用 [com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder] /
+ * [com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder]（卡片式，§3.6），与首页同一基元。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
@@ -115,7 +117,7 @@ fun ZoneBoardPane(
                         }
                         actionContent.items.isEmpty() -> {
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关动态")
+                                ZoneEmptyPlaceholder("暂无相关动态", onRefresh = { actions.onRetryInitial() })
                             }
                         }
                         else -> {
@@ -173,7 +175,7 @@ fun ZoneBoardPane(
                         }
                         albumContent.items.isEmpty() -> {
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关分享")
+                                ZoneEmptyPlaceholder("暂无相关分享", onRefresh = { actions.onRetryInitial() })
                             }
                         }
                         else -> {
@@ -232,7 +234,7 @@ fun ZoneBoardPane(
                         }
                         postsContent.items.isEmpty() && pinnedPosts.isEmpty() -> {
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关讨论")
+                                ZoneEmptyPlaceholder("暂无相关讨论", onRefresh = { actions.onRetryInitial() })
                             }
                         }
                         else -> {
@@ -299,7 +301,7 @@ fun ZoneBoardPane(
                         }
                         resaleContent.items.isEmpty() -> {
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关二手条目")
+                                ZoneEmptyPlaceholder("暂无相关二手条目", onRefresh = { actions.onRetryInitial() })
                             }
                         }
                         else -> {
@@ -366,7 +368,7 @@ fun ZoneBoardPane(
                             }
                             hobbyContent.items.isEmpty() -> {
                                 item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关产品")
+                                    ZoneEmptyPlaceholder("暂无相关产品", onRefresh = { actions.onRetryInitial() })
                                 }
                             }
                             else -> {
@@ -468,7 +470,7 @@ fun ZoneBoardPane(
                         }
                         entityContent.items.isEmpty() -> {
                             item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("暂无相关条目")
+                                ZoneEmptyPlaceholder("暂无相关条目", onRefresh = { actions.onRetryInitial() })
                             }
                         }
                         else -> {
@@ -498,9 +500,6 @@ fun ZoneBoardPane(
                 }
             }
         }
-        else -> {
-            // 其余板块尚未迁移到共享面板：仅一行防御占位（详情本阶段仍走原内联分支）
-            ZoneEmptyPlaceholder("该分类正在建设中...")
-        }
+
     }
 }

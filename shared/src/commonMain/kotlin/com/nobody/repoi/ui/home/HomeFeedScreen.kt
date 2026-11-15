@@ -2,14 +2,11 @@ package com.nobody.repoi.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -23,15 +20,11 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -69,6 +62,7 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
@@ -76,8 +70,10 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
-import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.components.ZoneBoardStatusCard
+import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
+import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -498,34 +494,16 @@ fun HomeFeedScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
                 when {
-                    // 该专区没有任何已接入板块：不渲染空 Tab 条，只给板块空态与刷新入口
+                    // 该专区没有任何已接入板块：不渲染空 Tab 条，只给卡片式空态与刷新入口（§3.6）
                     uiState.boards.isEmpty() -> {
-                        ElevatedCard(
-                            shape = MaterialTheme.shapes.large,
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                        ZoneEmptyPlaceholder(
+                            text = "该专区暂无可用板块",
+                            onRefresh = { viewModel.refreshBoards() },
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(top = headerStack.totalHeaderHeight)
                                 .padding(24.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "该专区暂无可用板块",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedButton(onClick = { viewModel.refreshBoards() }) {
-                                    Text("刷新看看")
-                                }
-                            }
-                        }
+                        )
                     }
 
                     boardLoading -> {
@@ -539,51 +517,29 @@ fun HomeFeedScreen(
                         )
                     }
 
-                    boardErrorEmpty && uiState.selectedBoard != ZoneBoard.Hobby -> {
-                        ElevatedCard(
-                            shape = MaterialTheme.shapes.large,
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                    // 卡片式错误态：与专区详情共用同一基元；产品板块同样纳入四态（A5 / Spec c5）
+                    boardErrorEmpty -> {
+                        ZoneErrorPlaceholder(
+                            message = boardErrorMessage ?: "数据加载失败",
+                            onRetry = { viewModel.retrySelectedBoard() },
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(top = headerStack.totalHeaderHeight)
                                 .padding(24.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = boardErrorMessage ?: "数据加载失败",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Button(onClick = { viewModel.retrySelectedBoard() }) {
-                                    Text("重新加载")
-                                }
-                            }
-                        }
+                        )
                     }
 
-                    boardContentEmpty && uiState.selectedBoard != ZoneBoard.Hobby -> {
-                        val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
-                            uiState.selectedCategory.zoneIds == "-1"
-                        ElevatedCard(
-                            shape = MaterialTheme.shapes.large,
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(top = headerStack.totalHeaderHeight)
-                                .padding(24.dp)
-                        ) {
-                            if (isEmptyFollow && uiState.selectedBoard != ZoneBoard.Posts) {
-                                // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
+                    // 卡片式空态：与专区详情共用同一基元；关注为空时换成引导页（不发起请求）
+                    boardContentEmpty -> {
+                        if (uiState.zoneScope.isFollowEmpty && uiState.selectedBoard != ZoneBoard.Posts) {
+                            // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
+                            ZoneBoardStatusCard(
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(top = headerStack.totalHeaderHeight)
+                                    .padding(24.dp)
+                            ) {
                                 EmptyState(
                                     icon = Icons.Outlined.Category,
                                     title = "还没有关注的专区",
@@ -591,28 +547,22 @@ fun HomeFeedScreen(
                                     actionLabel = "去专区广场",
                                     onAction = { onNavigateToZoneBrowse?.invoke() }
                                 )
-                            } else {
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = when {
-                                            uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
-                                            uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
-                                            uiState.selectedBoard == ZoneBoard.Resale -> "暂无相关二手条目"
-                                            uiState.selectedBoard.isEntity -> "暂无相关条目"
-                                            else -> "暂无该分类下的动态情报"
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    OutlinedButton(onClick = { viewModel.refreshFeed() }) {
-                                        Text("刷新看看")
-                                    }
-                                }
                             }
+                        } else {
+                            ZoneEmptyPlaceholder(
+                                text = when {
+                                    uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
+                                    uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
+                                    uiState.selectedBoard == ZoneBoard.Resale -> "暂无相关二手条目"
+                                    uiState.selectedBoard.isEntity -> "暂无相关条目"
+                                    else -> "暂无该分类下的动态情报"
+                                },
+                                onRefresh = { viewModel.refreshFeed() },
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(top = headerStack.totalHeaderHeight)
+                                    .padding(24.dp)
+                            )
                         }
                     }
 
