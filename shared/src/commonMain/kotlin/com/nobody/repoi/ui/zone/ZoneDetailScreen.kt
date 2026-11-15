@@ -261,11 +261,11 @@ fun ZoneDetailScreen(
         }
     }
 
+    // 列数自适应（实体 5 类走 pane，列数由 entityColumns 直接注入；相册列数由 pane 内部按相册规则计算）
     val gridColumns = when {
         uiState.isPostsTab -> feedColumns
         uiState.isHobbyTab -> hobbyColumns
         uiState.isResaleTab -> resaleColumns
-        uiState.isEntityTab -> entityColumns
         else -> feedColumns
     }
 
