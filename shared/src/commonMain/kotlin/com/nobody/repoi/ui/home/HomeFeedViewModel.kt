@@ -13,6 +13,7 @@ import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MessageRepository
+import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
@@ -20,12 +21,14 @@ import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.PostsBoardOptions
+import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
+import com.nobody.repoi.util.paging.LoadStage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +131,13 @@ data class HomeFeedUiState(
     val isAlbumLoaded: Boolean = false,
 
     /**
+     * 二手（`resale_item`）板块状态（issue #160）：独立懒加载、游标分页 + 出售/求购/成色筛选。
+     *
+     * 状态与请求构造封装在 `ResaleBoardState.kt`，本 VM 只做注册、委派与投影，避免中心状态类膨胀。
+     */
+    val resale: HomeResaleBoardState = HomeResaleBoardState(),
+
+    /**
      * 实体 5 类板块状态：按 [ZoneBoard]（仅实体板块有键）懒加载，切走再切回保留。
      *
      * 首次切到某实体板块才请求；作用域切换时整体清空（见 `EntityBoardLoader.reset`）。
@@ -174,6 +184,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumItems.size
             ZoneBoard.Posts -> posts.items.size + posts.pinnedPosts.size
+            ZoneBoard.Resale -> resale.items.size
             ZoneBoard.Hobby -> hobbyBoard.itemCount
             else -> if (selectedBoard.isEntity) currentEntityBoardState.items.size else items.size
         }
@@ -187,6 +198,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumHasMore
             ZoneBoard.Posts -> posts.hasMore
+            ZoneBoard.Resale -> resale.hasMore
             ZoneBoard.Hobby -> hobbyBoard.hasMore
             else -> if (selectedBoard.isEntity) !currentEntityBoardState.isEndReached else hasMore
         }
@@ -196,6 +208,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> isLoadingMoreAlbum
             ZoneBoard.Posts -> posts.isLoadingMore
+            ZoneBoard.Resale -> resale.isLoadingMore
             ZoneBoard.Hobby -> hobbyBoard.isLoadingMore
             else -> if (selectedBoard.isEntity) currentEntityBoardState.isLoadingMore else isLoadingMore
         }
@@ -205,6 +218,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumLoadMoreError
             ZoneBoard.Posts -> posts.loadMoreError
+            ZoneBoard.Resale -> resale.loadMoreError
             ZoneBoard.Hobby -> hobbyBoard.loadMoreError
             else -> if (selectedBoard.isEntity) currentEntityBoardState.loadMoreError else loadMoreError
         }
@@ -222,6 +236,8 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> isAlbumLoading && albumItems.isEmpty()
             // 讨论板块懒加载：尚未请求过首屏（且无错误）时也按加载态处理，避免闪一帧空态卡片
             ZoneBoard.Posts -> (posts.isInitialLoading || !posts.isLoaded) && posts.errorMessage == null
+            // 二手板块同样按懒加载处理，避免切到二手瞬间闪一帧空态卡片
+            ZoneBoard.Resale -> (resale.isLoading || !resale.isLoaded) && resale.errorMessage == null
             ZoneBoard.Hobby -> hobbyBoard.isLoading && hobbyBoard.items.isEmpty()
             else -> if (selectedBoard.isEntity) {
                 currentEntityBoardState.isLoading && currentEntityBoardState.items.isEmpty()
@@ -235,6 +251,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumErrorMessage
             ZoneBoard.Posts -> posts.errorMessage
+            ZoneBoard.Resale -> resale.errorMessage
             ZoneBoard.Hobby -> hobbyBoard.errorMessage
             else -> if (selectedBoard.isEntity) currentEntityBoardState.errorMessage else errorMessage
         }
@@ -253,6 +270,16 @@ data class HomeFeedUiState(
                 )
             )
             ZoneBoard.Posts -> postsBoardContent
+            ZoneBoard.Resale -> ZoneBoardContent.Resale(
+                items = resale.items,
+                page = ZoneBoardPageView(
+                    isLoading = resale.isLoading,
+                    isLoadingMore = resale.isLoadingMore,
+                    errorMessage = resale.errorMessage,
+                    loadMoreError = resale.loadMoreError,
+                    isEndReached = !resale.hasMore
+                )
+            )
             ZoneBoard.Hobby -> hobbyBoard.content
             else -> if (selectedBoard.isEntity) {
                 val entityState = currentEntityBoardState
@@ -288,6 +315,11 @@ data class HomeFeedUiState(
                 albumCategory = albumSelectedCategory
             )
             ZoneBoard.Posts -> ZoneBoardFilters(subType = selectedSubType, postsOrder = posts.order)
+            ZoneBoard.Resale -> ZoneBoardFilters(
+                resaleType = resale.type,
+                resalePurity = resale.purity,
+                resaleKeyword = resale.keyword
+            )
             ZoneBoard.Hobby -> hobbyBoard.filters
             else -> if (selectedBoard.isEntity) ZoneBoardFilters() else ZoneBoardFilters(subType = selectedSubType)
         }
@@ -296,6 +328,7 @@ data class HomeFeedUiState(
 class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
     private val albumRepository: AlbumRepository,
+    private val resaleRepository: ResaleRepository,
     private val itemRepository: ItemRepository,
     private val zoneRepository: ZoneRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
@@ -396,6 +429,12 @@ class HomeFeedViewModel(
     /** 分享板块分类候选请求（单专区；切专区时取消）。 */
     private var albumCategoriesJob: Job? = null
 
+    /**
+     * 二手板块游标分页控制器（#160）：请求拼参与分页状态机封装在
+     * `ResaleBoardState.kt`，本 VM 只做状态投影与作用域/筛选委派。
+     */
+    private val resaleBoardLoader = ResaleBoardLoader(viewModelScope, resaleRepository)
+
     // 各「作用域 + 板块」的滚动记忆（仅内存；persist 到 DataStore 属 #156）
     private val boardScrollMemories = mutableMapOf<String, HomeBoardScrollMemory>()
 
@@ -445,6 +484,29 @@ class HomeFeedViewModel(
     }
 
     init {
+        // 二手板块 loader 状态投影（#160）：items/分页/错误 + 下拉刷新完成后收起刷新指示器。
+        // 分页状态机由 ResaleBoardState.kt 承担，本 VM 只读投影，不重复去重或改游标。
+        viewModelScope.launch {
+            resaleBoardLoader.state.collect { listState ->
+                _uiState.update { state ->
+                    val refreshFinished = state.isRefreshing &&
+                        state.selectedBoard == ZoneBoard.Resale &&
+                        listState.stage == LoadStage.Idle
+                    state.copy(
+                        resale = state.resale.copy(
+                            items = listState.items,
+                            hasMore = listState.hasMore,
+                            isLoading = listState.isLoading,
+                            isLoadingMore = listState.isLoadingMore,
+                            errorMessage = listState.initialError,
+                            loadMoreError = listState.appendError
+                        ),
+                        isRefreshing = if (refreshFinished) false else state.isRefreshing
+                    )
+                }
+            }
+        }
+
         // 产品板块状态投影：控制器持有板块逻辑，ViewModel 只把快照挂到 UI 状态
         viewModelScope.launch {
             hobbyBoardController.state.collect { hobbyBoard ->
@@ -504,21 +566,29 @@ class HomeFeedViewModel(
                         selectedBoard = nextBoard,
                         // 作用域变了：讨论板块内容属于旧作用域，必须整体作废，避免把别的专区帖子当成本专区数据
                         posts = if (categoryChanged) it.posts.resetForScope() else it.posts
-                    ).let { next -> if (categoryChanged) next.resetAlbumForScopeChange() else next }
+                    ).let { next ->
+                        if (categoryChanged) {
+                            next.resetAlbumForScopeChange().resetResaleForScopeChange()
+                        } else {
+                            next
+                        }
+                    }
                 }
 
                 if (categoryChanged) {
-                    // 切专区：弃掉分享板块的旧列表/分类候选，等下次切到分享再懒加载
+                    // 切专区：弃掉分享/二手/实体/产品板块的旧列表与分类候选，等下次切到对应板块再懒加载
                     cancelAlbumWork()
+                    resaleBoardLoader.reset()
                     // 实体 5 类同样按作用域失效：旧 zones 的 loader 与条目不可跨专区复用
                     resetEntityBoards()
                     // 产品板块同理：清空列表并取消在途请求，筛选偏好保留
                     hobbyBoardController.onScopeChanged()
                 }
-                // 冷启动恢复可能直接把落点定在讨论/分享/实体/产品板块（`feed_zone_board` 命中）：补一次懒加载
+                // 冷启动恢复可能直接把落点定在讨论/分享/二手/实体/产品板块（`feed_zone_board` 命中）：补一次懒加载
                 ensurePostsLoaded()
                 when {
                     nextBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                    nextBoard == ZoneBoard.Resale -> ensureResaleLoaded()
                     nextBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
                     nextBoard.isEntity -> ensureEntityLoaded(nextBoard)
                 }
@@ -595,7 +665,7 @@ class HomeFeedViewModel(
                 errorMessage = null,
                 loadMoreError = null,
                 posts = it.posts.resetForScope()
-            ).resetAlbumForScopeChange()
+            ).resetAlbumForScopeChange().resetResaleForScopeChange()
         }
         viewModelScope.launch {
             viewPreferencesManager.setFeedZoneTabKey(category.tabKey)
@@ -603,6 +673,7 @@ class HomeFeedViewModel(
             persistBoardSelection()
         }
         cancelAlbumWork()
+        resaleBoardLoader.reset()
         resetEntityBoards()
         hobbyBoardController.onScopeChanged()
         if (firstBoard.isEntity) ensureEntityLoaded(firstBoard)
@@ -627,6 +698,7 @@ class HomeFeedViewModel(
         viewModelScope.launch { persistBoardSelection() }
         when {
             board == ZoneBoard.Album -> ensureAlbumLoaded()
+            board == ZoneBoard.Resale -> ensureResaleLoaded()
             board == ZoneBoard.Hobby -> ensureHobbyLoaded()
             board.isEntity -> ensureEntityLoaded(board)
         }
@@ -810,11 +882,12 @@ class HomeFeedViewModel(
         loadInitialPosts()
     }
 
-    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/实体/产品板块重试时误刷动态流。 */
+    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/二手/实体/产品板块重试时误刷动态流。 */
     fun retrySelectedBoard() {
         when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadInitialAlbum()
             ZoneBoard.Posts -> loadInitialPosts()
+            ZoneBoard.Resale -> retryResale()
             ZoneBoard.Hobby -> hobbyBoardController.loadInitial(_uiState.value.zoneScope)
             ZoneBoard.Company,
             ZoneBoard.Series,
@@ -825,11 +898,12 @@ class HomeFeedViewModel(
         }
     }
 
-    /** 当前板块触底翻页：按板块分派，避免讨论/分享/实体/产品板块触底时把动态游标推错。 */
+    /** 当前板块触底翻页：按板块分派，避免讨论/分享/二手/实体/产品板块触底时把动态游标推错。 */
     fun loadMoreSelectedBoard() {
         when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadNextAlbumPage()
             ZoneBoard.Posts -> loadNextPostsPage()
+            ZoneBoard.Resale -> loadNextResalePage()
             ZoneBoard.Hobby -> hobbyBoardController.loadNextPage(_uiState.value.zoneScope)
             ZoneBoard.Company,
             ZoneBoard.Series,
@@ -1015,12 +1089,21 @@ class HomeFeedViewModel(
                 // 讨论排序属板块级筛选，resetFilters 不重置它（与「筛选状态按板块记忆」一致）；
                 // 但作用域/内容必须作废，切回讨论板块时按当前作用域重新拉取。
                 posts = it.posts.resetForScope()
-            ).resetAlbumForScopeChange().copy(
-                albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
-                albumSelectedCategory = null
-            )
+            ).resetAlbumForScopeChange().resetResaleForScopeChange().let { next ->
+                next.copy(
+                    albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
+                    albumSelectedCategory = null,
+                    // 二手交易类型/成色属板块级筛选：重置回默认值并作废内容（作用域变化必须重拉）
+                    resale = next.resale.copy(
+                        type = ResaleBoardOptions.DEFAULT_TYPE,
+                        purity = null,
+                        keyword = ""
+                    )
+                )
+            }
         }
         resetBoardScrollMemory(homeBoardMemoryKey(scope, firstBoard))
+        resaleBoardLoader.reset()
         viewModelScope.launch {
             viewPreferencesManager.setFeedZoneTabKey(defaultCategory.tabKey)
             viewPreferencesManager.setFeedCategory(defaultCategory.id)
@@ -1045,7 +1128,7 @@ class HomeFeedViewModel(
         if (_uiState.value.currentBoardIsRefreshing) return
         resetScrollPosition()
         fetchUnreadMessages()
-        // 按当前板块分派刷新：讨论/分享/实体/产品是独立请求链路，不能借用动态流的游标
+        // 按当前板块分派刷新：讨论/分享/二手/实体/产品是独立请求链路，不能借用动态流的游标
         when (_uiState.value.selectedBoard) {
             ZoneBoard.Album -> {
                 _uiState.update {
@@ -1072,6 +1155,18 @@ class HomeFeedViewModel(
                     )
                 }
                 refreshPosts()
+            }
+            ZoneBoard.Resale -> {
+                // 二手刷新：清本板块错误位并置全局刷新态，结束后由 loader 状态投影收起指示器
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = true,
+                        errorMessage = null,
+                        loadMoreError = null,
+                        resale = it.resale.copy(errorMessage = null, loadMoreError = null)
+                    )
+                }
+                refreshResale()
             }
             ZoneBoard.Hobby -> {
                 // 产品刷新只重置本板块的错误位；全局 isRefreshing 不参与，避免与板块状态双写
@@ -1499,6 +1594,123 @@ class HomeFeedViewModel(
         albumCategoriesJob?.cancel()
     }
 
+    // ==================== 二手板块（#160） ====================
+
+    /** 组装二手板块当前请求参数：作用域（全部省略 / 单区 nodeId）+ 出售求购 + 成色 + 关键词。 */
+    private fun HomeFeedUiState.resaleQuery(): ResaleQuery = ResaleQuery(
+        zones = zoneScope.zonesParam(),
+        type = resale.type,
+        purity = resale.purity,
+        keyword = resale.keyword
+    )
+
+    /** 二手板块懒加载入口：首次切到二手才拉首屏；已加载/加载中不重复请求。 */
+    private fun ensureResaleLoaded() {
+        val state = _uiState.value
+        if (state.selectedBoard != ZoneBoard.Resale) return
+        // 安全闸门：板块列表里没有二手（关注聚合按 homeBoardsFor 隐藏）时绝不发请求
+        if (ZoneBoard.Resale !in state.boards) return
+        if (state.resale.isLoaded || state.resale.isLoading) return
+        loadInitialResale()
+    }
+
+    /**
+     * 二手首屏（懒加载 / 切筛选 / 错误重试共用）：清空列表并回第一页。
+     *
+     * 关注作用域下二手板块已被隐藏（`zones` 逗号串为交集语义，无法表达关注并集），这里同时做
+     * 板块可用性与空关注短路，绝不下发会被服务端当作全站的空 `zones`。
+     */
+    fun loadInitialResale() {
+        val state = _uiState.value
+        if (ZoneBoard.Resale !in state.boards || state.zoneScope.isFollowEmpty) {
+            _uiState.update {
+                it.copy(
+                    resale = it.resale.copy(
+                        items = emptyList(),
+                        hasMore = false,
+                        isLoading = false,
+                        isLoadingMore = false,
+                        errorMessage = null,
+                        loadMoreError = null,
+                        isLoaded = true
+                    )
+                )
+            }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                resale = it.resale.copy(
+                    items = emptyList(),
+                    hasMore = true,
+                    isLoading = true,
+                    isLoadingMore = false,
+                    errorMessage = null,
+                    loadMoreError = null,
+                    isLoaded = true
+                )
+            )
+        }
+        resaleBoardLoader.loadInitial(state.resaleQuery())
+    }
+
+    /** 错误态手动重试：与首屏一致，但忽略「已加载」去重。 */
+    private fun retryResale() = loadInitialResale()
+
+    /** 二手板块下一页：游标 = 上一批末条 `addDate`，由 loader 计算并按 id 去重追加。 */
+    fun loadNextResalePage() {
+        val state = _uiState.value
+        if (state.selectedBoard != ZoneBoard.Resale) return
+        if (ZoneBoard.Resale !in state.boards) return
+        if (state.resale.isLoadingMore || !state.resale.hasMore || state.resale.isLoading || state.isRefreshing) return
+        if (!state.resale.isLoaded || state.zoneScope.isFollowEmpty) return
+        resaleBoardLoader.loadMore()
+    }
+
+    /** 二手板块刷新：保持列表可见，参数与首屏一致；完成后由 loader 状态投影收起刷新指示器。 */
+    private fun refreshResale() {
+        val state = _uiState.value
+        if (ZoneBoard.Resale !in state.boards || state.zoneScope.isFollowEmpty) {
+            _uiState.update { it.copy(isRefreshing = false) }
+            return
+        }
+        if (!state.resale.isLoaded) {
+            loadInitialResale()
+            return
+        }
+        resaleBoardLoader.refresh(state.resaleQuery())
+    }
+
+    /** 二手板块交易类型切换（1 出售 / 2 求购）：清列表 + 回第一页重载。 */
+    fun selectResaleType(type: Int) {
+        if (!ResaleBoardOptions.isValidType(type) || _uiState.value.resale.type == type) return
+        resetScrollPosition()
+        _uiState.update {
+            it.copy(resale = it.resale.copy(type = type))
+        }
+        loadInitialResale()
+    }
+
+    /** 二手板块成色切换（`null` = 全部成色）：清列表 + 回第一页重载。 */
+    fun selectResalePurity(purity: String?) {
+        if (!ResaleBoardOptions.isValidPurity(purity) || _uiState.value.resale.purity == purity) return
+        resetScrollPosition()
+        _uiState.update {
+            it.copy(resale = it.resale.copy(purity = purity))
+        }
+        loadInitialResale()
+    }
+
+    /** 二手搜索关键词输入（仅专区详情渲染搜索栏；首页不产生该输入）。 */
+    fun updateResaleKeyword(keyword: String) {
+        _uiState.update { it.copy(resale = it.resale.copy(keyword = keyword)) }
+    }
+
+    /** 二手搜索提交：按当前关键词回第一页重载。 */
+    fun submitResaleSearch() {
+        loadInitialResale()
+    }
+
     private fun setupAccountState() {
         viewModelScope.launch {
             var lastToken: String? = null
@@ -1578,9 +1790,10 @@ class HomeFeedViewModel(
             }
             // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
             ensurePostsLoaded()
-            // 冷启动恢复到分享/实体/产品板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
+            // 冷启动恢复到分享/二手/实体/产品板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
             when {
                 _uiState.value.selectedBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                _uiState.value.selectedBoard == ZoneBoard.Resale -> ensureResaleLoaded()
                 _uiState.value.selectedBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
                 _uiState.value.selectedBoard.isEntity -> ensureEntityLoaded(_uiState.value.selectedBoard)
             }

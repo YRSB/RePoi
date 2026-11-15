@@ -67,6 +67,7 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
@@ -77,6 +78,7 @@ import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -99,6 +101,8 @@ fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    /** 二手条目点击（跳二手详情）。 */
+    onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
     /**
      * 实体卡片点击（厂商/系列/作品/角色/人物）。
@@ -160,6 +164,22 @@ fun HomeFeedScreen(
 
             override fun onSelectAlbumCategory(categoryId: Int?) {
                 viewModel.selectAlbumCategory(categoryId)
+            }
+
+            override fun onSelectResaleType(type: Int) {
+                viewModel.selectResaleType(type)
+            }
+
+            override fun onSelectResalePurity(purity: String?) {
+                viewModel.selectResalePurity(purity)
+            }
+
+            override fun onResaleKeywordChange(keyword: String) {
+                viewModel.updateResaleKeyword(keyword)
+            }
+
+            override fun onResaleSearch() {
+                viewModel.submitResaleSearch()
             }
 
             override fun onRetryInitial() {
@@ -244,6 +264,13 @@ fun HomeFeedScreen(
             }
         }
     }
+    val handleResaleClick = remember(onNavigateToResaleDetail) {
+        { item: ResaleSearchItem ->
+            if (item.id > 0L && onNavigateToResaleDetail != null) {
+                onNavigateToResaleDetail(item.id)
+            }
+        }
+    }
     val handleHobbyClick = remember(onNavigateToHobby) {
         { item: HobbyItemSummary ->
             val actualId = item.actualItemId
@@ -263,6 +290,7 @@ fun HomeFeedScreen(
         onCardImageClick,
         handlePostClick,
         handleAlbumClick,
+        handleResaleClick,
         handleHobbyClick,
         onNavigateToUser,
         onEntityClick
@@ -274,6 +302,7 @@ fun HomeFeedScreen(
             onPostImageClick = onCardImageClick,
             onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
+            onResaleClick = handleResaleClick,
             onHobbyClick = handleHobbyClick,
             onEntityClick = onEntityClick
         )
@@ -343,6 +372,8 @@ fun HomeFeedScreen(
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
     val feedColumns = rememberFeedStaggeredGridColumns()
+    // 二手列表沿用专区详情的列数策略（竖屏 1 列 / 横屏 2-3 列），与动态瀑布流不同
+    val resaleColumns = rememberResaleStaggeredGridColumns()
 
     // 滚动 / 折叠比例按「作用域 + 板块」键保存（仅内存；持久化为 #156）
     LaunchedEffect(staggeredGridState, scrollBehavior.state) {
@@ -367,11 +398,12 @@ fun HomeFeedScreen(
 
     // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
     // 首次组合不触发（保留首屏恢复的滚动位置）。筛选 token 按板块取当前生效值
-    // （动态 = subType；分享 = 排序 + 分类；讨论 = order；产品 = 全部筛选值），
+    // （动态 = subType；分享 = 排序 + 分类；讨论 = order；二手 = 出售求购 + 成色；产品 = 全部筛选值），
     // 因此切换筛选与切换板块走同一套复位逻辑。
     val boardFilterToken = when (uiState.selectedBoard) {
         ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
         ZoneBoard.Posts -> uiState.posts.order
+        ZoneBoard.Resale -> "${uiState.resale.type}|${uiState.resale.purity ?: "all"}"
         ZoneBoard.Hobby -> with(uiState.hobbyBoard.filter) {
             listOf(
                 order,
@@ -568,6 +600,7 @@ fun HomeFeedScreen(
                                         text = when {
                                             uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
                                             uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
+                                            uiState.selectedBoard == ZoneBoard.Resale -> "暂无相关二手条目"
                                             uiState.selectedBoard.isEntity -> "暂无相关条目"
                                             else -> "暂无该分类下的动态情报"
                                         },
@@ -601,7 +634,7 @@ fun HomeFeedScreen(
                             ),
                             actions = boardActions,
                             itemActions = boardItemActions,
-                            columns = feedColumns,
+                            columns = if (uiState.selectedBoard == ZoneBoard.Resale) resaleColumns else feedColumns,
                             hobbyCategoryTree = hobbyCategoryTree,
                             // 置顶帖条是单专区语义：聚合态（全部）不渲染
                             showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,

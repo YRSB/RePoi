@@ -6,6 +6,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.board.ZoneBoard
@@ -64,6 +65,7 @@ class HomeFeedEntityBoardTest {
         fun viewModel(): HomeFeedViewModel = HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(MockApi().api(dispatcher)),
+            ResaleRepository(MockApi().api(dispatcher)),
             ItemRepository(MockApi().api(dispatcher)),
             zoneRepository,
             preferences,

@@ -15,7 +15,8 @@ class ResaleRepository(
     /**
      * 多维检索二手交易列表。
      *
-     * @param zones 专区节点 ID (如指定则筛选该专区下的二手)
+     * @param zones 专区过滤参数（单专区为 nodeId 字符串；聚合「全部」省略即全站；关注聚合不可用，
+     *   因为多专区逗号串在服务端是**交集**语义，见 `docs/research/aggregate-api-verification.md` §5）
      * @param hobbyId 关联手办 ID (如指定则筛选该手办的同款二手)
      * @param type 交易类型: 1 出售, 2 求购 (默认 1)
      * @param keyword 检索关键词
@@ -26,7 +27,7 @@ class ResaleRepository(
      * @param pageSize 每页条数 (默认 24)
      */
     suspend fun searchResale(
-        zones: Long? = null,
+        zones: String? = null,
         type: Int = 1,
         keyword: String? = null,
         category: String? = null,
@@ -42,7 +43,7 @@ class ResaleRepository(
         params["pageSize"] = pageSize.toString()
         params["state"] = "1"
 
-        zones?.takeIf { it > 0L }?.let { params["zones"] = it.toString() }
+        zones?.trim()?.takeIf { it.isNotBlank() }?.let { params["zones"] = it }
         val targetItemId = itemId?.takeIf { it > 0L } ?: hobbyId?.takeIf { it > 0L }
         targetItemId?.let { params["itemId"] = it.toString() }
         keyword?.trim()?.takeIf { it.isNotBlank() }?.let { params["keyword"] = it }

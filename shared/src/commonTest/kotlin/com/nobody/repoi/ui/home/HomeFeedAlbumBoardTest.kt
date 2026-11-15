@@ -7,6 +7,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.board.AlbumBoardOptions
@@ -57,6 +58,7 @@ class HomeFeedAlbumBoardTest {
         val feedMock: MockApi,
         val zoneMock: MockApi,
         val albumMock: MockApi,
+        val resaleMock: MockApi,
         val hobbyMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
@@ -67,6 +69,7 @@ class HomeFeedAlbumBoardTest {
         fun viewModel(): HomeFeedViewModel = HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(albumMock.api(dispatcher)),
+            ResaleRepository(resaleMock.api(dispatcher)),
             ItemRepository(hobbyMock.api(dispatcher)),
             zoneRepository,
             preferences,
@@ -89,7 +92,7 @@ class HomeFeedAlbumBoardTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedSubType("recommend")
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
-        return Env(feedMock, zoneMock, MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
+        return Env(feedMock, zoneMock, MockApi(), MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun albumItem(id: Long): String =
@@ -139,8 +142,15 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含分享/讨论/实体板块，但未切过去之前零请求
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, viewModel.uiState.value.boards)
+        // 聚合态二级 Tab 自动包含分享/讨论/产品/二手/实体板块，但未切过去之前零请求
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            viewModel.uiState.value.boards
+        )
         assertTrue(ZoneBoard.Album in viewModel.uiState.value.boards)
         assertEquals(0, env.albumMock.requestCount)
 

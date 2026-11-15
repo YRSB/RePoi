@@ -4,6 +4,7 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 
@@ -13,7 +14,7 @@ import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
  * 设计约束：pane 不注入仓储、不注入偏好、不直接改 ViewModel；所有交互都经过本接口，
  * 便于首页与专区详情各自适配，也便于纯逻辑测试。
  *
- * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、实体 5 类（#161）与产品（#159）。
+ * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、二手（#160）、实体 5 类（#161）与产品（#159）。
  * 迁移其余板块时在此接口上**按板块追加方法**（新板块方法给默认空实现，避免其它宿主的匿名对象被迫同步补齐），
  * `ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（后续板块 ticket）。
  * 讨论板块**没有分类过滤**（原版无入口、接口无参数，见 [PostsBoardOptions] KDoc），
@@ -36,6 +37,18 @@ interface ZoneBoardActions {
 
     /** 讨论板块排序切换（键值见 [PostsBoardOptions.ORDERS]），宿主据此重置并重载首屏。 */
     fun onSelectPostsOrder(order: String)
+
+    /** 二手板块交易类型切换（`1` 出售 / `2` 求购，见 [ResaleBoardOptions.TYPES]）；宿主负责清列表并重载。 */
+    fun onSelectResaleType(type: Int)
+
+    /** 二手板块成色切换；`null` = 全部成色。宿主负责清列表并重载。 */
+    fun onSelectResalePurity(purity: String?)
+
+    /** 二手板块搜索关键词输入（仅专区详情渲染搜索栏，首页不渲染）。 */
+    fun onResaleKeywordChange(keyword: String)
+
+    /** 二手板块提交搜索（宿主回第一页重载）。 */
+    fun onResaleSearch()
 
     /** 首屏错误态「重试」（宿主按当前板块分派刷新）。 */
     fun onRetryInitial()
@@ -97,6 +110,14 @@ data class ZoneBoardItemActions(
     val onPostUserClick: ((userId: Long) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
     val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
+    /** 二手卡片点击（出售 → 二手详情；求购 → 关联条目详情，由宿主决定）。 */
+    val onResaleClick: ((ResaleSearchItem) -> Unit)? = null,
+    /** 二手卡片发布者点击（跳转用户主页）。 */
+    val onResaleUserClick: ((Long) -> Unit)? = null,
+    /** 二手卡片「联系」点击（私信入口，宿主实现）。 */
+    val onResaleContactClick: ((ResaleSearchItem) -> Unit)? = null,
+    /** 二手卡片三点「更多」点击（宿主弹出更多操作底板/举报弹窗）。 */
+    val onResaleMoreClick: ((ResaleSearchItem) -> Unit)? = null,
     /**
      * 实体卡片点击（厂商/系列/作品/角色/人物）。
      *
