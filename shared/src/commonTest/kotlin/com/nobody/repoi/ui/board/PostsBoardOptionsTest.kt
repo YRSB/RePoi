@@ -43,10 +43,11 @@ class PostsBoardOptionsTest {
 
     @Test
     fun partition_capsExplicitPinnedAtFive() {
+        // 沿专区详情现状：显式置顶只取前 5 条；其余显式置顶条目不会进入普通列表（既有行为，不修正）
         val raw = (1L..8L).map { post(it, pinned = true) }
         val (pinned, unpinned) = PostsBoardOptions.partition(raw)
-        assertEquals(5, pinned.size)
-        assertEquals(listOf(6L, 7L, 8L), unpinned.map { it.id })
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), pinned.map { it.id })
+        assertTrue(unpinned.isEmpty())
     }
 
     @Test

@@ -200,7 +200,12 @@ class HomeFeedViewModelTest {
         )
     }
 
-    /** 讨论接口请求计数（`api/posts/search`）；未命中其它路由时也会被调用，用于断言「未发起请求」。 */
+    /**
+     * 讨论接口（`api/posts/search`）路由与计数。
+     *
+     * 注意：讨论请求经 `ZoneRepository` 发出，而本测试的 `ZoneRepository` 背后是 [Env.zoneMock]，
+     * 因此必须挂在 zoneMock 上（挂 feedMock 会让请求落到「无路由 → 500」并误判）。
+     */
     private fun Env.stubPosts(
         zoneNodeId: Long? = null,
         order: String = "upd",
@@ -209,7 +214,7 @@ class HomeFeedViewModelTest {
         ids: List<Long> = emptyList(),
         pinnedIds: Set<Long> = emptySet(),
     ) {
-        feedMock.routeWhen(
+        zoneMock.routeWhen(
             predicate = { path, _, query ->
                 if (!path.contains("api/posts/search")) return@routeWhen false
                 this.postsRequests += 1
@@ -1145,7 +1150,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, env.postsRequests)
-        val recorded = env.feedMock.lastRequest()
+        val recorded = env.zoneMock.lastRequest()
         assertTrue(recorded.encodedPath.orEmpty().contains("api/posts/search"))
         // 全部聚合：省略 zone 过滤（不能下发 zones，更不能下发逗号串——会被当作用域过滤）
         assertNull(recorded.queryParameter("zoneNodeId"))
@@ -1181,7 +1186,7 @@ class HomeFeedViewModelTest {
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
 
-        val recorded = env.feedMock.lastRequest()
+        val recorded = env.zoneMock.lastRequest()
         assertEquals("100", recorded.queryParameter("zoneNodeId"))
         assertNull(recorded.queryParameter("zones"))
         val state = viewModel.uiState.value
@@ -1206,7 +1211,7 @@ class HomeFeedViewModelTest {
         viewModel.selectPostsOrder("add")
         advanceUntilIdle()
 
-        val recorded = env.feedMock.lastRequest()
+        val recorded = env.zoneMock.lastRequest()
         assertEquals("add", recorded.queryParameter("order"))
         assertEquals("1", recorded.queryParameter("page"))
         val state = viewModel.uiState.value
@@ -1228,7 +1233,7 @@ class HomeFeedViewModelTest {
         viewModel.loadNextPostsPage()
         advanceUntilIdle()
 
-        val recorded = env.feedMock.lastRequest()
+        val recorded = env.zoneMock.lastRequest()
         assertEquals("2", recorded.queryParameter("page"))
         assertNull(recorded.queryParameter("zoneNodeId"))
         val state = viewModel.uiState.value
@@ -1307,7 +1312,7 @@ class HomeFeedViewModelTest {
 
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
-        assertEquals("100", env.feedMock.lastRequest().queryParameter("zoneNodeId"))
+        assertEquals("100", env.zoneMock.lastRequest().queryParameter("zoneNodeId"))
         assertEquals(listOf(9L), viewModel.uiState.value.posts.items.map { it.id })
     }
 }
