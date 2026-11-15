@@ -22,6 +22,8 @@ import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
@@ -185,6 +187,14 @@ class ZoneDetailViewModel(
 
     var nodeId: Long = 0L
         private set
+
+    /**
+     * 当前专区查询作用域：专区详情固定单专区。
+     *
+     * 必须写成 getter——[nodeId] 在 [setNodeId] 中变化，构造期缓存会一直停留在 0。
+     */
+    val zoneScope: ZoneQueryScope
+        get() = ZoneQueryScope.Single(nodeId)
 
     val subTypes = listOf(
         Pair("recommend", "推荐"),
@@ -465,48 +475,23 @@ class ZoneDetailViewModel(
     }
 
     private fun parseTabs(serverTabs: List<ZoneTabItem>?): List<Pair<String, String>> {
-        val tabTitleMap = mapOf(
-            "action" to "动态",
-            "album" to "分享",
-            "share" to "分享",
-            "posts" to "讨论",
-            "hobby" to "产品",
-            "resale_item" to "二手",
-            "company" to "厂商",
-            "series" to "系列",
-            "works" to "作品",
-            "charactar" to "角色",
-            "person" to "人物",
-            "community" to "社区"
-        )
+        val rawTabs = serverTabs.orEmpty().filter { it.type.isNotBlank() }
 
-        val rawTabs = serverTabs?.filter { it.type.isNotBlank() && it.type != "shop_item" }
-            ?.takeIf { it.isNotEmpty() }
-            ?: listOf(
-                ZoneTabItem("action", "动态"),
-                ZoneTabItem("album", "分享"),
-                ZoneTabItem("posts", "讨论"),
-                ZoneTabItem("hobby", "产品"),
-                ZoneTabItem("resale_item", "二手"),
-                ZoneTabItem("company", "厂商"),
-                ZoneTabItem("series", "系列"),
-                ZoneTabItem("works", "作品"),
-                ZoneTabItem("charactar", "角色"),
-                ZoneTabItem("person", "人物")
-            )
-        val result = rawTabs.filter { it.type != "shop_item" }.map { tab ->
-            val label = if (tab.type == "hobby") {
-                "产品"
-            } else {
-                tab.title.takeIf { it.isNotBlank() } ?: (tabTitleMap[tab.type] ?: tab.type)
-            }
-            tab.type to label
+        // 服务端未下发任何板块时，回退客户端固定 10 项（现状兜底行为，保持）
+        if (rawTabs.isEmpty()) {
+            return ZoneBoard.HOME_ORDER.map { it.type to it.label }
         }
-        // 确保动态 tab 始终在首位
-        return if (result.any { it.first == "action" }) {
-            result
-        } else {
-            listOf("action" to "动态") + result
+
+        // 能力矩阵：服务端顺序 ∩ 客户端白名单，未知/未实现（shop_item、community）丢弃
+        val boards = ZoneBoard.tabsFor(rawTabs, ZoneBoard.CLIENT_WHITELIST)
+        if (boards.isEmpty()) {
+            return ZoneBoard.HOME_ORDER.map { it.type to it.label }
+        }
+
+        // Tab 文案来自服务端 title，为空才回退枚举文案（产品板块恒为「产品」，与现状一致）
+        return boards.map { board ->
+            val serverTitle = rawTabs.firstOrNull { ZoneBoard.fromType(it.type) == board }?.title
+            board.type to board.tabTitle(serverTitle)
         }
     }
 
