@@ -60,7 +60,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -118,12 +117,22 @@ import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardActions
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardItemActions
+import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.board.ZoneBoardPane
+import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
+import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
+import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
 import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
@@ -555,6 +564,29 @@ fun ZoneDetailScreen(
         }
     }
 
+    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 的现有入口，不改变请求与分页语义
+    val boardActions = remember(viewModel) {
+        object : ZoneBoardActions {
+            override fun onSelectSubType(subType: String) {
+                viewModel.selectSubType(subType)
+            }
+
+            override fun onRetryInitial() {
+                viewModel.refresh()
+            }
+
+            override fun onLoadMore() {
+                viewModel.loadNextPage()
+            }
+        }
+    }
+    val boardItemActions = remember(onActionClick, onCardImageClick) {
+        ZoneBoardItemActions(
+            onActionClick = onActionClick,
+            onActionImageClick = onCardImageClick
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -710,6 +742,34 @@ fun ZoneDetailScreen(
                                     top = totalHeaderHeightDp + 8.dp,
                                     bottom = bottomContentPadding
                                 )
+                        )
+                    } else if (uiState.selectedTab == "action") {
+                        // 动态板块：走共享面板（唯一内容渲染入口），其余板块本阶段仍用下方内联分支
+                        ZoneBoardPane(
+                            board = ZoneBoard.Action,
+                            scope = viewModel.zoneScope,
+                            content = ZoneBoardContent.Action(
+                                items = uiState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.isFeedLoading,
+                                    isLoadingMore = uiState.isLoadingMore,
+                                    errorMessage = uiState.errorMessage,
+                                    loadMoreError = uiState.loadMoreError,
+                                    isEndReached = !uiState.hasMore
+                                )
+                            ),
+                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = feedColumns,
+                            modifier = Modifier.fillMaxSize()
                         )
                     } else {
                         LazyVerticalStaggeredGrid(
@@ -924,41 +984,6 @@ fun ZoneDetailScreen(
                                         loadMoreError = entityState.loadMoreError,
                                         isEndReached = entityState.isEndReached,
                                         onRetry = { viewModel.loadNextEntityPage(uiState.selectedTab) }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.selectedTab == "action" -> {
-                            if (uiState.errorMessage != null && uiState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.errorMessage ?: "加载动态失败",
-                                        onRetry = { viewModel.refresh() }
-                                    )
-                                }
-                            } else if (uiState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关动态")
-                                }
-                            } else {
-                                items(
-                                    items = uiState.items,
-                                    key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
-                                    contentType = { "feed_action" }
-                                ) { item ->
-                                    ActionCard(
-                                        actionItem = item,
-                                        onActionClick = onActionClick,
-                                        onImageClick = onCardImageClick
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isLoadingMore,
-                                        loadMoreError = uiState.loadMoreError,
-                                        isEndReached = !uiState.hasMore,
-                                        onRetry = { viewModel.loadNextPage() }
                                     )
                                 }
                             }
@@ -1191,24 +1216,13 @@ fun ZoneDetailScreen(
                         }
                     }
                     uiState.selectedTab == "action" -> {
-                        // 动态二级子分类胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.subTypes.forEach { (key, label) ->
-                                val isSelected = uiState.selectedSubType == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectSubType(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 动态二级子分类胶囊：共享筛选条（选项仍由本页 ViewModel 提供，#153 合入后切共享定义）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Action,
+                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                 }
             }
@@ -1565,82 +1579,4 @@ private fun FilterDropdownChip(
         ),
         border = null
     )
-}
-
-@Composable
-private fun ZoneEmptyPlaceholder(text: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ZoneErrorPlaceholder(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp, horizontal = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(onClick = onRetry) {
-                Text("重试")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ZonePaginationFooter(
-    isLoadingMore: Boolean,
-    loadMoreError: String?,
-    isEndReached: Boolean,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            isLoadingMore -> {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            loadMoreError != null -> {
-                OutlinedButton(onClick = onRetry) {
-                    Text("加载更多失败，点击重试")
-                }
-            }
-            isEndReached -> {
-                Text(
-                    text = "已经到底啦",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-        }
-    }
 }
