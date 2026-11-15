@@ -15,6 +15,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 - **Architecture**（KMP 单 shared 模块、Koin 依赖注入、单向数据流与分页加载器）：查阅 [CODING_STANDARDS.md#架构与数据流-architecture--di](CODING_STANDARDS.md#架构与数据流-architecture--di)
 - **Libraries**（KMP 依赖选型与 klibs.io MCP 权威校验）：查阅 [CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection](CODING_STANDARDS.md#5-跨平台依赖引入规范-kmp-library-selection)
 - **UI**（Material 3 Expressive 规范、自适应双窗格、悬浮栏、网格与 CDN 图片变体）：查阅 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)
+- **Home**（首页三级信息架构、专区切换器、子板块与板块筛选矩阵、状态键）：查阅 [docs/home-hierarchy.md](docs/home-hierarchy.md)
 - **Theme**（六维主题配置、`resolvePoiColorScheme`、色彩弹簧过渡、冷启动落定门禁、启动遮罩）：查阅 [docs/theme.md](docs/theme.md)
 - **Collect**（收藏状态池、8 类列表与去重键、`UserCollectIntent`、画廊脏位恢复感知、排序记忆、滚动键）：查阅 [docs/collect.md](docs/collect.md)
 - **Media**（图片显示、CDN 变体档位、404 避坑、`PoiAsyncImage` / `PoiZoomableImage`、全屏看图）：查阅 [docs/media.md](docs/media.md)
