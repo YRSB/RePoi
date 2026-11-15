@@ -123,6 +123,13 @@ data class HomeFeedUiState(
     /** 是否已发起过首屏请求（懒加载去重 + 失败/空态后不自动重试）。 */
     val isAlbumLoaded: Boolean = false,
 
+    /**
+     * 实体 5 类板块状态：按 [ZoneBoard]（仅实体板块有键）懒加载，切走再切回保留。
+     *
+     * 首次切到某实体板块才请求；作用域切换时整体清空（见 `EntityBoardLoader.reset`）。
+     */
+    val entityBoards: Map<ZoneBoard, EntityBoardState> = emptyMap(),
+
     val userAvatar: String? = null,
     val unreadMessageCount: Int = 0
 ) {
@@ -157,15 +164,19 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumItems.size
             ZoneBoard.Posts -> posts.items.size + posts.pinnedPosts.size
-            else -> items.size
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.items.size else items.size
         }
+
+    /** 实体板块的只读状态快照（非实体板块取默认值，调用方仅在实体板块消费）。 */
+    private val currentEntityBoardState: EntityBoardState
+        get() = entityBoards[selectedBoard] ?: EntityBoardState()
 
     /** 当前板块是否还有下一页。 */
     val currentBoardHasMore: Boolean
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumHasMore
             ZoneBoard.Posts -> posts.hasMore
-            else -> hasMore
+            else -> if (selectedBoard.isEntity) !currentEntityBoardState.isEndReached else hasMore
         }
 
     /** 当前板块是否正在追加下一页。 */
@@ -173,7 +184,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> isLoadingMoreAlbum
             ZoneBoard.Posts -> posts.isLoadingMore
-            else -> isLoadingMore
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.isLoadingMore else isLoadingMore
         }
 
     /** 当前板块追加失败信息（页脚重试用）。 */
@@ -181,7 +192,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumLoadMoreError
             ZoneBoard.Posts -> posts.loadMoreError
-            else -> loadMoreError
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.loadMoreError else loadMoreError
         }
 
     /** 当前板块首屏加载中（宿主统一用 `PoiLoadingView` 展示）。 */
@@ -190,7 +201,11 @@ data class HomeFeedUiState(
             ZoneBoard.Album -> isAlbumLoading && albumItems.isEmpty()
             // 讨论板块懒加载：尚未请求过首屏（且无错误）时也按加载态处理，避免闪一帧空态卡片
             ZoneBoard.Posts -> (posts.isInitialLoading || !posts.isLoaded) && posts.errorMessage == null
-            else -> isInitialLoading
+            else -> if (selectedBoard.isEntity) {
+                currentEntityBoardState.isLoading && currentEntityBoardState.items.isEmpty()
+            } else {
+                isInitialLoading
+            }
         }
 
     /** 当前板块首屏错误（仅在列表为空时展示错误态）。 */
@@ -198,7 +213,7 @@ data class HomeFeedUiState(
         get() = when (selectedBoard) {
             ZoneBoard.Album -> albumErrorMessage
             ZoneBoard.Posts -> posts.errorMessage
-            else -> errorMessage
+            else -> if (selectedBoard.isEntity) currentEntityBoardState.errorMessage else errorMessage
         }
 
     /** 当前板块内容快照（传给共享面板 `ZoneBoardPane`，保证两屏同一渲染口径）。 */
@@ -215,19 +230,33 @@ data class HomeFeedUiState(
                 )
             )
             ZoneBoard.Posts -> postsBoardContent
-            else -> ZoneBoardContent.Action(
-                items = items,
-                page = ZoneBoardPageView(
-                    isLoading = isInitialLoading,
-                    isLoadingMore = isLoadingMore,
-                    errorMessage = errorMessage,
-                    loadMoreError = loadMoreError,
-                    isEndReached = !hasMore
+            else -> if (selectedBoard.isEntity) {
+                val entityState = currentEntityBoardState
+                ZoneBoardContent.Entity(
+                    items = entityState.items,
+                    page = ZoneBoardPageView(
+                        isLoading = entityState.isLoading,
+                        isLoadingMore = entityState.isLoadingMore,
+                        errorMessage = entityState.errorMessage,
+                        loadMoreError = entityState.loadMoreError,
+                        isEndReached = entityState.isEndReached
+                    )
                 )
-            )
+            } else {
+                ZoneBoardContent.Action(
+                    items = items,
+                    page = ZoneBoardPageView(
+                        isLoading = isInitialLoading,
+                        isLoadingMore = isLoadingMore,
+                        errorMessage = errorMessage,
+                        loadMoreError = loadMoreError,
+                        isEndReached = !hasMore
+                    )
+                )
+            }
         }
 
-    /** 当前板块筛选值快照（传给共享面板/筛选条）。 */
+    /** 当前板块筛选值快照（传给共享面板/筛选条）。实体 5 类暂无筛选项，保持默认值。 */
     val currentBoardFilters: ZoneBoardFilters
         get() = when (selectedBoard) {
             ZoneBoard.Album -> ZoneBoardFilters(
@@ -235,7 +264,7 @@ data class HomeFeedUiState(
                 albumCategory = albumSelectedCategory
             )
             ZoneBoard.Posts -> ZoneBoardFilters(subType = selectedSubType, postsOrder = posts.order)
-            else -> ZoneBoardFilters(subType = selectedSubType)
+            else -> if (selectedBoard.isEntity) ZoneBoardFilters() else ZoneBoardFilters(subType = selectedSubType)
         }
 }
 
@@ -294,6 +323,20 @@ class HomeFeedViewModel(
         )
     )
     val uiState: StateFlow<HomeFeedUiState> = _uiState.asStateFlow()
+
+    /**
+     * 实体 5 类板块的懒加载 / 分页控制器（#161）。
+     *
+     * 状态经回调写回 [HomeFeedUiState.entityBoards]；请求作用域在懒加载/分页调用点传入，
+     * 作用域切换时由 [resetEntityBoards] 整体重建（不同 `zones` 不可复用同一 loader）。
+     */
+    private val entityBoardLoader: EntityBoardLoader = EntityBoardLoader(
+        coroutineScope = viewModelScope,
+        repository = zoneRepository,
+        onStateChanged = { board, state ->
+            _uiState.update { it.copy(entityBoards = it.entityBoards + (board to state)) }
+        }
+    )
 
     private var initialLoadJob: Job? = null
 
@@ -411,10 +454,15 @@ class HomeFeedViewModel(
                 if (categoryChanged) {
                     // 切专区：弃掉分享板块的旧列表/分类候选，等下次切到分享再懒加载
                     cancelAlbumWork()
+                    // 实体 5 类同样按作用域失效：旧 zones 的 loader 与条目不可跨专区复用
+                    resetEntityBoards()
                 }
-                // 冷启动恢复可能直接把落点定在讨论/分享板块（`feed_zone_board` 命中）：补一次懒加载
+                // 冷启动恢复可能直接把落点定在讨论/分享/实体板块（`feed_zone_board` 命中）：补一次懒加载
                 ensurePostsLoaded()
-                if (nextBoard == ZoneBoard.Album) ensureAlbumLoaded()
+                when {
+                    nextBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                    nextBoard.isEntity -> ensureEntityLoaded(nextBoard)
+                }
                 if (coldStartResolvedTabKey != null) {
                     // 冷启动落点确定（含回落「全部」）：补上被推迟的首屏加载，专区变化时装配板块
                     loadInitialFeed()
@@ -496,6 +544,8 @@ class HomeFeedViewModel(
             persistBoardSelection()
         }
         cancelAlbumWork()
+        resetEntityBoards()
+        if (firstBoard.isEntity) ensureEntityLoaded(firstBoard)
         syncBoards(scope)
         loadInitialFeed()
     }
@@ -515,7 +565,27 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(selectedBoard = board) }
         if (board == ZoneBoard.Posts) ensurePostsLoaded()
         viewModelScope.launch { persistBoardSelection() }
-        if (board == ZoneBoard.Album) ensureAlbumLoaded()
+        when {
+            board == ZoneBoard.Album -> ensureAlbumLoaded()
+            board.isEntity -> ensureEntityLoaded(board)
+        }
+    }
+
+    /** 实体板块懒加载入口：首次切到才请求首屏；已加载/已请求过不重复（失败后也不自动重试）。 */
+    private fun ensureEntityLoaded(board: ZoneBoard) {
+        if (!board.isEntity) return
+        entityBoardLoader.ensureLoaded(board, _uiState.value.zoneScope)
+    }
+
+    /**
+     * 切专区 / 重置筛选时丢弃实体板块的 loader 与状态。
+     *
+     * 实体请求参数由 `scope.zonesParam()` 决定，旧 loader 的闭包仍持有旧作用域，必须整体重建；
+     * 不清滚动记忆（切回同一作用域时仍按「作用域+板块」键恢复）。
+     */
+    private fun resetEntityBoards() {
+        entityBoardLoader.reset()
+        _uiState.update { if (it.entityBoards.isEmpty()) it else it.copy(entityBoards = emptyMap()) }
     }
 
     /** 分享板块懒加载入口：首次切到分享时拉首屏 + 单专区分类候选；已加载/加载中不重复请求。 */
@@ -606,20 +676,30 @@ class HomeFeedViewModel(
         loadInitialPosts()
     }
 
-    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享板块重试时误刷动态流。 */
+    /** 当前板块首屏错误态「重试」：按板块分派，避免讨论/分享/实体板块重试时误刷动态流。 */
     fun retrySelectedBoard() {
-        when (_uiState.value.selectedBoard) {
+        when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadInitialAlbum()
             ZoneBoard.Posts -> loadInitialPosts()
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> entityBoardLoader.retry(board)
             else -> loadInitialFeed()
         }
     }
 
-    /** 当前板块触底翻页：按板块分派，避免讨论/分享板块触底时把动态游标推错。 */
+    /** 当前板块触底翻页：按板块分派，避免讨论/分享/实体板块触底时把动态游标推错。 */
     fun loadMoreSelectedBoard() {
-        when (_uiState.value.selectedBoard) {
+        when (val board = _uiState.value.selectedBoard) {
             ZoneBoard.Album -> loadNextAlbumPage()
             ZoneBoard.Posts -> loadNextPostsPage()
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> entityBoardLoader.loadMore(board)
             else -> loadNextPage()
         }
     }
@@ -811,6 +891,7 @@ class HomeFeedViewModel(
             viewPreferencesManager.setFeedSubType(defaultSubType)
             persistBoardSelection()
         }
+        resetEntityBoards()
         syncBoards(scope)
         loadInitialFeed()
     }
@@ -818,8 +899,8 @@ class HomeFeedViewModel(
     fun refreshFeed() = refresh()
 
     /**
-     * 刷新当前板块：动态走游标首屏，分享走页码第一页，讨论走独立首屏重载，三者共用
-     * [HomeFeedUiState.isRefreshing]，下拉指示器 / FAB 无需按板块区分。
+     * 刷新当前板块：动态走游标首屏，分享/讨论走各自独立首屏，实体走页码第一页，
+     * 共用 [HomeFeedUiState.isRefreshing]，下拉指示器 / FAB 无需按板块区分。
      */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
@@ -835,12 +916,31 @@ class HomeFeedViewModel(
             )
         }
         fetchUnreadMessages()
-        // 按当前板块分派刷新：讨论/分享板块是独立请求链路，不能借用动态流的游标
+        // 按当前板块分派刷新：讨论/分享/实体是独立请求链路，不能借用动态流的游标
         when (_uiState.value.selectedBoard) {
             ZoneBoard.Album -> refreshAlbum()
             ZoneBoard.Posts -> refreshPosts()
+            ZoneBoard.Company,
+            ZoneBoard.Series,
+            ZoneBoard.Works,
+            ZoneBoard.Character,
+            ZoneBoard.Person -> refreshEntityBoard()
             else -> refreshActionBoard()
         }
+    }
+
+    /**
+     * 实体板块刷新：页码回第一页，参数与首屏一致（`scope` + `itemType`）。
+     *
+     * 刷新态交给板块 loader（与专区详情既有语义一致），全局 [HomeFeedUiState.isRefreshing]
+     * 立即复位，避免下拉指示器长期悬挂。
+     */
+    private fun refreshEntityBoard() {
+        val board = _uiState.value.selectedBoard
+        if (!board.isEntity) return
+        ensureEntityLoaded(board)
+        entityBoardLoader.refresh(board)
+        _uiState.update { it.copy(isRefreshing = false) }
     }
 
     private fun refreshActionBoard() {
@@ -1005,6 +1105,11 @@ class HomeFeedViewModel(
         val currentState = _uiState.value
         if (currentState.selectedBoard == ZoneBoard.Album) {
             loadNextAlbumPage()
+            return
+        }
+        if (currentState.selectedBoard.isEntity) {
+            // 实体板块：分页守卫（hasMore / 阶段）与去重由 loader 统一负责
+            entityBoardLoader.loadMore(currentState.selectedBoard)
             return
         }
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.isInitialLoading || currentState.isRefreshing) return
@@ -1304,8 +1409,11 @@ class HomeFeedViewModel(
             }
             // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
             ensurePostsLoaded()
-            // 冷启动恢复到分享板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
-            if (_uiState.value.selectedBoard == ZoneBoard.Album) ensureAlbumLoaded()
+            // 冷启动恢复到分享/实体板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
+            when {
+                _uiState.value.selectedBoard == ZoneBoard.Album -> ensureAlbumLoaded()
+                _uiState.value.selectedBoard.isEntity -> ensureEntityLoaded(_uiState.value.selectedBoard)
+            }
         }
     }
 

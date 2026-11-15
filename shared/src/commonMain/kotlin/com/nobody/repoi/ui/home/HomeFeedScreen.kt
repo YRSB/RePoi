@@ -66,6 +66,7 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOW
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
@@ -95,6 +96,13 @@ fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    /**
+     * 实体卡片点击（厂商/系列/作品/角色/人物）。
+     *
+     * 首页不感知详情路由类型：由 `TopLevelEntries` 按板块类型分发到对应详情页导航，
+     * 与共享面板「导航经 itemActions 注入」的约束一致。
+     */
+    onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -192,7 +200,8 @@ fun HomeFeedScreen(
         onCardImageClick,
         handlePostClick,
         handleAlbumClick,
-        onNavigateToUser
+        onNavigateToUser,
+        onEntityClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -200,7 +209,8 @@ fun HomeFeedScreen(
             onPostClick = handlePostClick,
             onPostImageClick = onCardImageClick,
             onPostUserClick = onNavigateToUser,
-            onAlbumClick = handleAlbumClick
+            onAlbumClick = handleAlbumClick,
+            onEntityClick = onEntityClick
         )
     }
 
@@ -475,9 +485,10 @@ fun HomeFeedScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = when (uiState.selectedBoard) {
-                                            ZoneBoard.Posts -> "暂无相关讨论"
-                                            ZoneBoard.Album -> "暂无相关分享"
+                                        text = when {
+                                            uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
+                                            uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
+                                            uiState.selectedBoard.isEntity -> "暂无相关条目"
                                             else -> "暂无该分类下的动态情报"
                                         },
                                         style = MaterialTheme.typography.bodyLarge,

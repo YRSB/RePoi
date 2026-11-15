@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.board
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 
 /**
  * 板块级筛选与分页动作集合（由宿主机适配现有 ViewModel / loader 实现）。
@@ -10,8 +11,8 @@ import com.nobody.repoi.data.remote.model.PostItem
  * 设计约束：pane 不注入仓储、不注入偏好、不直接改 ViewModel；所有交互都经过本接口，
  * 便于首页与专区详情各自适配，也便于纯逻辑测试。
  *
- * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）。迁移其余板块时在此接口上**按板块追加方法**，
- * `ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（后续板块 ticket）。
+ * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、实体 5 类（#161）。迁移其余板块时在此接口上
+ * **按板块追加方法**，`ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（后续板块 ticket）。
  * 讨论板块**没有分类过滤**（原版无入口、接口无参数，见 [PostsBoardOptions] KDoc），
  * 分类回调只为分享板块提供。
  */
@@ -57,5 +58,12 @@ data class ZoneBoardItemActions(
     /** 讨论帖作者点击（跳转用户主页）。 */
     val onPostUserClick: ((userId: Long) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
-    val onAlbumClick: ((AlbumListItem) -> Unit)? = null
+    val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
+    /**
+     * 实体卡片点击（厂商/系列/作品/角色/人物）。
+     *
+     * 第一个参数是当前板块（决定跳转哪类详情页），宿主据此构造对应 NavParam；
+     * pane 不感知导航类型，保持与专区详情/首页导航解耦。
+     */
+    val onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null
 )

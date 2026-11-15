@@ -805,9 +805,17 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；已接入动态（#155）、分享（#157）与讨论（#158）
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；已接入动态（#155）、分享（#157）、
+        // 讨论（#158）与实体 5 类（#161）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts), state.boards)
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
@@ -827,8 +835,15 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
         // 关注聚合无多专区通道（`posts/search` 只认单值 zoneNodeId，逗号串退化为全站）：
-        // 讨论板块必须隐藏，绝不能把全站帖子当成「关注专区讨论」展示；分享板块有 zones 通道可用
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 讨论板块必须隐藏，绝不能把全站帖子当成「关注专区讨论」展示；分享板块与实体 5 类有 zones 通道可用
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertFalse(ZoneBoard.Posts in state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
     }
@@ -847,8 +862,15 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
-        // 空关注同样按作用域感知列表隐藏讨论板块（并短路不发请求），分享板块保留
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 空关注同样按作用域感知列表隐藏讨论板块（并短路不发请求），分享板块与实体 5 类保留
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertFalse(ZoneBoard.Posts in state.boards)
     }
 
@@ -868,8 +890,8 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community/works，客户端只保留已接入的 10 类白名单
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 服务端下发 action/album/shop_item/community/works，客户端只保留已接入集合（含 #161 的 works）
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Works), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         // zone/info 请求带上专区 nodeId
         val infoRequest = env.zoneMock.lastRequest()
@@ -1187,7 +1209,7 @@ class HomeFeedViewModelTest {
         // 懒加载：停在动态板块时绝不请求讨论接口
         assertEquals(0, env.postsRequests)
         assertEquals(
-            listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts),
+            ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED },
             viewModel.uiState.value.boards
         )
 
@@ -1322,7 +1344,14 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertFalse(ZoneBoard.Posts in state.boards)
 
         // 直接尝试选中讨论板块：不在当前列表，必须被忽略且不发请求

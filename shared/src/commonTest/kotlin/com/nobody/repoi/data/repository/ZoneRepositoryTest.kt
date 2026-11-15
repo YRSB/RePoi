@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -314,7 +315,11 @@ class ZoneRepositoryTest {
         """.trimIndent()
         mock.enqueue(mockJson)
 
-        val result = repository.getZoneItems(nodeId = 100L, itemType = "company", page = 1)
+        val result = repository.getZoneItems(
+            scope = ZoneQueryScope.Single(100L),
+            itemType = "company",
+            page = 1
+        )
         assertTrue(result.isSuccess)
         val payload = result.getOrThrow()
         assertEquals(427, payload.total)
@@ -325,7 +330,60 @@ class ZoneRepositoryTest {
 
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)
-        assertTrue(recorded.path!!.contains("nodeId=100"))
-        assertTrue(recorded.path!!.contains("itemType=company"))
+        assertEquals("/api/zone/items", recorded.encodedPath)
+        // 单专区：作用域只通过 zones 表达，不再发旧 nodeId 参数
+        assertEquals("100", recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("nodeId"))
+        assertEquals("company", recorded.queryParameter("itemType"))
+        assertNull(recorded.queryParameter("homeScope"))
+    }
+
+    @Test
+    fun getZoneItems_allScope_omitsZonesAndNeverSendsHomeScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+
+        val result = repository.getZoneItems(scope = ZoneQueryScope.All, itemType = "works")
+
+        assertTrue(result.isSuccess)
+        val recorded = mock.takeRequest()
+        assertEquals("/api/zone/items", recorded.encodedPath)
+        // 全部聚合：省略 zones 即等价全站；纪律要求绝不携 homeScope（非空会覆盖 zones）
+        assertNull(recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("homeScope"))
+        assertEquals("works", recorded.queryParameter("itemType"))
+    }
+
+    @Test
+    fun getZoneItems_followScope_sendsCommaSeparatedZonesWithoutHomeScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+
+        val result = repository.getZoneItems(
+            scope = ZoneQueryScope.Follow(listOf(11L, 22L)),
+            itemType = "series"
+        )
+
+        assertTrue(result.isSuccess)
+        val recorded = mock.takeRequest()
+        // 关注聚合实测为并集：zones=逗号串可用
+        assertEquals("11,22", recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("homeScope"))
+        assertEquals("series", recorded.queryParameter("itemType"))
+    }
+
+    @Test
+    fun getZoneItems_passesThroughAllFiveEntityTypes() = runTest {
+        val (mock, repository) = setup()
+        val types = listOf("company", "series", "works", "charactar", "person")
+        types.forEach { type ->
+            mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+            val result = repository.getZoneItems(
+                scope = ZoneQueryScope.Single(100L),
+                itemType = type
+            )
+            assertTrue(result.isSuccess, "itemType=$type 应请求成功")
+            assertEquals(type, mock.takeRequest().queryParameter("itemType"))
+        }
     }
 }

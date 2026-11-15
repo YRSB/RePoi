@@ -144,7 +144,6 @@ import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
-import com.nobody.repoi.ui.zone.components.ZoneEntityCard
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 import kotlin.time.Clock
@@ -260,11 +259,11 @@ fun ZoneDetailScreen(
         }
     }
 
+    // 列数自适应（实体 5 类走 pane，列数由 entityColumns 直接注入；相册列数由 pane 内部按相册规则计算）
     val gridColumns = when {
         uiState.isPostsTab -> feedColumns
         uiState.isHobbyTab -> hobbyColumns
         uiState.isResaleTab -> resaleColumns
-        uiState.isEntityTab -> entityColumns
         else -> feedColumns
     }
 
@@ -583,14 +582,22 @@ fun ZoneDetailScreen(
             }
 
             override fun onRetryInitial() {
-                viewModel.refresh()
+                // 实体 5 类走 pane 后仍复用原错误重试入口（loadInitialEntity），保持行为不变
+                val tab = viewModel.uiState.value.selectedTab
+                if (tab in ZoneDetailUiState.ENTITY_TAB_TYPES) {
+                    viewModel.loadInitialEntity(tab)
+                } else {
+                    viewModel.refresh()
+                }
             }
 
             override fun onLoadMore() {
-                if (viewModel.uiState.value.isPostsTab) {
-                    viewModel.loadNextPostsPage()
-                } else {
-                    viewModel.loadNextPage()
+                val tab = viewModel.uiState.value.selectedTab
+                when {
+                    // 页脚「加载更多失败，点击重试」：实体 5 类仍在原实体 loader 上翻页
+                    tab in ZoneDetailUiState.ENTITY_TAB_TYPES -> viewModel.loadNextEntityPage(tab)
+                    viewModel.uiState.value.isPostsTab -> viewModel.loadNextPostsPage()
+                    else -> viewModel.loadNextPage()
                 }
             }
         }
@@ -600,7 +607,8 @@ fun ZoneDetailScreen(
         onCardImageClick,
         handlePostClick,
         handleAlbumClick,
-        onNavigateToUser
+        onNavigateToUser,
+        handleEntityClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -608,7 +616,9 @@ fun ZoneDetailScreen(
             onPostClick = handlePostClick,
             onPostImageClick = onCardImageClick,
             onPostUserClick = onNavigateToUser,
-            onAlbumClick = handleAlbumClick
+            onAlbumClick = handleAlbumClick,
+            // pane 以 (board, item) 回调；本页跳转逻辑仍按 selectedTab 区分（行为不变）
+            onEntityClick = { _, item -> handleEntityClick(item) }
         )
     }
 
@@ -848,6 +858,37 @@ fun ZoneDetailScreen(
                             showPinnedPosts = true,
                             modifier = Modifier.fillMaxSize()
                         )
+                    } else if (uiState.isEntityTab) {
+                        // 实体 5 类（#161）：走共享面板，与首页同一内容渲染入口；
+                        // 点击回调仍由本页 handleEntityClick 按 selectedTab 分发（行为不变）。
+                        val entityState = uiState.currentEntityState
+                        val entityBoard = ZoneBoard.fromType(uiState.selectedTab) ?: ZoneBoard.Company
+                        ZoneBoardPane(
+                            board = entityBoard,
+                            scope = viewModel.zoneScope,
+                            content = ZoneBoardContent.Entity(
+                                items = entityState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = entityState.isLoading,
+                                    isLoadingMore = entityState.isLoadingMore,
+                                    errorMessage = entityState.errorMessage,
+                                    loadMoreError = entityState.loadMoreError,
+                                    isEndReached = entityState.isEndReached
+                                )
+                            ),
+                            filters = ZoneBoardFilters(),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = entityColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else {
                         LazyVerticalStaggeredGrid(
                             columns = gridColumns,
@@ -946,41 +987,6 @@ fun ZoneDetailScreen(
                                         loadMoreError = resaleState.loadMoreError,
                                         isEndReached = resaleState.isEndReached,
                                         onRetry = { viewModel.loadNextResalePage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isEntityTab -> {
-                            val entityState = uiState.currentEntityState
-                            if (entityState.errorMessage != null && entityState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = entityState.errorMessage,
-                                        onRetry = { viewModel.loadInitialEntity(uiState.selectedTab) }
-                                    )
-                                }
-                            } else if (entityState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关条目")
-                                }
-                            } else {
-                                items(
-                                    items = entityState.items,
-                                    key = { item -> "zone_entity_${uiState.selectedTab}_${item.targetId}" },
-                                    contentType = { "zone_entity" }
-                                ) { item ->
-                                    ZoneEntityCard(
-                                        item = item,
-                                        onClick = { handleEntityClick(item) }
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = entityState.isLoadingMore,
-                                        loadMoreError = entityState.loadMoreError,
-                                        isEndReached = entityState.isEndReached,
-                                        onRetry = { viewModel.loadNextEntityPage(uiState.selectedTab) }
                                     )
                                 }
                             }

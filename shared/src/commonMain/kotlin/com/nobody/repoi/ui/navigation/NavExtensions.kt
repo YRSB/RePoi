@@ -4,9 +4,11 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.compose.ui.platform.UriHandler
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.util.AppLogger
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.AlbumRankListNavParam
+import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.HobbyCommentsNavParam
 import com.nobody.repoi.ui.collect.WorksCollectEditNavParam
@@ -44,6 +46,55 @@ fun NavBackStack<NavKey>.navigateToHobbyAlbumList(param: HobbyAlbumListNavParam)
 fun NavBackStack<NavKey>.navigateToCharacterWorksList(param: CharacterWorksListNavParam) = add(CharacterWorksListNavKey(param))
 fun NavBackStack<NavKey>.navigateToWorksCollectEdit(param: WorksCollectEditNavParam) = add(WorksCollectEditNavKey(param))
 fun NavBackStack<NavKey>.navigateToSeries(param: SeriesNavParam) = add(SeriesDetailNavKey(param))
+
+/**
+ * 实体卡片点击分发到对应详情页（厂商/系列/作品/角色/人物）。
+ *
+ * 参数构造与专区详情 `ZoneDetailScreen.handleEntityClick` 保持逐字一致（两屏同一跳转语义）；
+ * 首页经 `ZoneBoardPane` 的 `onEntityClick(board, item)` 回调进入本函数。
+ */
+fun NavBackStack<NavKey>.navigateToEntityDetail(board: ZoneBoard, item: ZoneEntityItem) {
+    val targetId = item.targetId
+    when (board) {
+        ZoneBoard.Company -> navigateToVendor(
+            VendorNavParam(
+                companyId = targetId,
+                companyNodeId = if (item.id > 0L) item.id else 0L,
+                initialName = item.displayName,
+                initialCover = item.cover
+            )
+        )
+        ZoneBoard.Series -> navigateToSeries(
+            SeriesNavParam(
+                seriesId = targetId,
+                initialName = item.displayName,
+                initialCover = item.cover
+            )
+        )
+        ZoneBoard.Works -> navigateToWorks(
+            WorksNavParam(
+                worksId = targetId,
+                initialName = item.displayName,
+                initialCover = item.cover
+            )
+        )
+        ZoneBoard.Character -> navigateToCharacter(
+            CharacterNavParam(
+                characterId = targetId,
+                initialName = item.displayName,
+                initialCover = item.cover
+            )
+        )
+        ZoneBoard.Person -> navigateToPerson(
+            PersonNavParam(
+                personId = targetId,
+                initialName = item.displayName,
+                initialCover = item.cover
+            )
+        )
+        else -> Unit
+    }
+}
 fun NavBackStack<NavKey>.navigateToUser(userId: Long) = add(UserInfoNavKey(UserInfoNavParam(userId = userId)))
 fun NavBackStack<NavKey>.navigateToUser(param: UserInfoNavParam) = add(UserInfoNavKey(param))
 fun NavBackStack<NavKey>.navigateToSearch(param: SearchNavParam = SearchNavParam()) = add(SearchNavKey(param = param))
@@ -181,6 +232,8 @@ fun RePoiNavigator.navigateToHobbyAlbumList(param: HobbyAlbumListNavParam) = cur
 fun RePoiNavigator.navigateToCharacterWorksList(param: CharacterWorksListNavParam) = currentBackStack.navigateToCharacterWorksList(param)
 fun RePoiNavigator.navigateToWorksCollectEdit(param: WorksCollectEditNavParam) = currentBackStack.navigateToWorksCollectEdit(param)
 fun RePoiNavigator.navigateToSeries(param: SeriesNavParam) = currentBackStack.navigateToSeries(param)
+fun RePoiNavigator.navigateToEntityDetail(board: ZoneBoard, item: ZoneEntityItem) =
+    currentBackStack.navigateToEntityDetail(board, item)
 fun RePoiNavigator.navigateToUser(userId: Long) = currentBackStack.navigateToUser(userId)
 fun RePoiNavigator.navigateToUser(param: UserInfoNavParam) = currentBackStack.navigateToUser(param)
 fun RePoiNavigator.navigateToSearch(param: SearchNavParam = SearchNavParam()) = currentBackStack.navigateToSearch(param)

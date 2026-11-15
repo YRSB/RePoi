@@ -285,14 +285,25 @@ class HpoiApi(
             parameter("itemType", itemType)
         }.decodeRefAware(json)
 
+    /**
+     * 专区关联实体条目（厂商/系列/作品/角色/人物）。
+     *
+     * 作用域只通过 `zones` 表达：单专区传 `zones=<nodeId>`；全部聚合省略（服务端等价全站）；
+     * 关注聚合传 `zones=<逗号串>`（实测为并集）。**不得下发 `homeScope`**——实测只要 `homeScope`
+     * 非空，服务端就会忽略 `zones` 退化为全站（`docs/research/aggregate-api-verification.md` §4.3/§5）。
+     *
+     * @param itemType 实体类型：`company`/`series`/`works`/`charactar`/`person`
+     *   （`charactar` 是服务端历史拼写，勿写 `character`）
+     * @param zones 专区集合参数；`null` 时省略（全部聚合）
+     */
     suspend fun getZoneItems(
-        nodeId: Long,
         itemType: String,
+        zones: String? = null,
         category: Int = 0,
         page: Int = 1,
         pageSize: Int = 20,
     ): CommonResponse<ZoneItemsPayload> = client.get("api/zone/items") {
-        parameter("nodeId", nodeId)
+        if (zones != null) parameter("zones", zones)
         parameter("itemType", itemType)
         parameter("category", category)
         parameter("page", page)
