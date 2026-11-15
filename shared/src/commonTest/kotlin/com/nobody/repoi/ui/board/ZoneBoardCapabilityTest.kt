@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.board
 
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.remote.model.ZoneTabItem
 import kotlin.test.Test
 import kotlin.test.assertEquals

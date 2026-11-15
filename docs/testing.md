@@ -95,6 +95,22 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
   并在 `@AfterTest` 取消它。
 - 封面新鲜度仓储统一用 `testCoverFreshnessRepository(...)` 构造；构造签名变化只改该工厂。
 
+### `ViewPreferencesManager` 预热竞态：已修复的 flake 根因
+
+`ViewPreferencesManager` 用「DataStore 单一真相源 + atomics 内存镜像」：构造时启动一次性
+`preheatJob` 把 DataStore 快照写进内存镜像，其余读写入口都是同步镜像。历史上预热协程可能与
+用户写入并发——预热后落定会用**旧快照覆盖刚写入的内存镜像**，表现为 `feed_sub_type` 偶发
+从 `recommend` 变回 `allInfo`、`ViewPreferencesManagerTest` 在慢机上偶发失败。
+
+修复动机与做法（#150 审查 D3 记录，属有意修复而非 scope creep）：
+
+1. 预热改为**一次性** job（不做持续 collect），所有会改写镜像的读写入口先 `awaitPreheat()`
+   （`preheatJob.join()`）再动镜像，从根上消除「写入被旧快照覆盖」的竞态；
+2. `awaitPreheat()` 公开为**有界等待点**，测试用它替代 `delay(10)` + 2s 真实时间轮询
+   （`feedZoneBoard_preheatsFromDataStoreOnColdStart`），不引入重试/睡眠式 flake 掩盖。
+
+判定口径：这类失败是真实时序竞态，不能用「CI 重跑通过」掩盖；修根因后同用例不再依赖真实时钟。
+
 ---
 
 ## 反馈回路

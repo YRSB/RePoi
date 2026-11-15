@@ -53,11 +53,11 @@
 | subType | 2.43 文案 | RePoi 现状键/文案 |
 |---|---|---|
 | `recommend` | 推荐 | `recommend` 推荐 |
-| `comment` | 评论 | `comment` 讨论 |
-| `allInfo` | 全部情报 | `all` 全部 |
+| `comment` | 评论 | `comment` 评论 |
+| `allInfo` | 全部情报 | `allInfo` 全部情报（旧持久化键 `all` 读入时映射） |
 | `confirm` | 制作 | `confirm` 制作 |
-| `official_pic` | 更图 | `official_pic` 官图 |
-| `preorder` | 开订 | `preorder` 预定 |
+| `official_pic` | 更图 | `official_pic` 更图 |
+| `preorder` | 开订 | `preorder` 开订 |
 | `delay` | 延期 | `delay` 延期 |
 | `release` | 出荷 | `release` 出荷 |
 | `reorder` | 再版 | `reorder` 再版 |
@@ -170,8 +170,8 @@ HomeScreen
 |---|---|---|
 | 动态 `action` | 9 项单选 Chip（文案/顺序对齐 2.43） | `subType` |
 | 分享 `album` | 排序 Chip（推荐/最新创建/最近更新/图片数量/总热度/一天热度）+ 分类入口 | `order`、`category` |
-| 讨论 `posts` | 排序 Chip（回复/新贴/推荐）+ 分类入口 | `order`、`category` |
-| 产品 `hobby` | 排序菜单（7 天热度/1 天热度/总热度/最新入库/发售时间/综合评分）+ 年份 + 月份 + 分类级联 + 高级筛选抽屉 | `order`、`releaseYear/Month`、`category`、`r18/sex/scale` |
+| 讨论 `posts` | 排序 Chip（回复/新贴/推荐） | `order`（无分类过滤：原版无分类入口、接口忽略分类参数，见 [抓包报告附录 C](research/aggregate-api-verification.md#附录-c讨论板块分类参数探测)） |
+| 产品 `hobby` | 排序菜单（7 天热度/1 天热度/总热度/最新入库/发售时间/综合评分）+ 年份 + 月份 + 分类级联 + 高级筛选抽屉 | `order`、`releaseYear/Month`、`category`、`r18/sex/scale`；关注聚合当前隐藏（`homeScope=follow` 需登录态复验） |
 | 二手 `resale_item` | 出售/求购 `SegmentedButton`（2 项单选视图切换）+ 成色 Chip | `type`、`purity` |
 | 实体 5 类 | 暂无筛选（保留后续扩展位） | — |
 
@@ -207,7 +207,7 @@ HomeScreen
 |---|---|---|---|---|---|---|
 | 动态 | `action` | 瀑布流卡片 | `GET api/user-action/list-v3`（`lastTime` 游标、`subType`、`zoneNodeId`、`zoneIds`） | 9 Chip | 全部：省略 zone 参数；关注：`zoneIds=<逗号串>`（并集） | 已实现（三作用域可用） |
 | 分享 | `album` | 相册网格 | `POST api/album/list`（`order`、`zones`、`category`、`page`） | 排序 + 分类（分类入口仅单专区） | 全部：省略 `zones`；关注：`zones=<逗号串>`（并集） | 已实现（三作用域可用） |
-| 讨论 | `posts` | 帖子列表 | `GET api/posts/search`（`order`、**`zoneNodeId`（String、仅单值）**、`itemType`、`keyword`、`page`） | 排序（无分类过滤） | 全部：省略 `zoneNodeId`；**关注：无多专区通道，隐藏该板块** | 已实现（全部/单区可用，关注态隐藏） |
+| 讨论 | `posts` | 帖子列表 | `GET api/posts/search`（`order`、**`zoneNodeId`（String、仅单值）**、`keyword`、`page`；`itemType`/`category`/`categoryId`/`zoneCategoryId`/`plateId` 实测被忽略，见 [附录 C](research/aggregate-api-verification.md#附录-c讨论板块分类参数探测)） | 排序（无分类过滤） | 全部：省略 `zoneNodeId`；**关注：无多专区通道，隐藏该板块** | 已实现（全部/单区可用，关注态隐藏） |
 | 产品 | `hobby` | 网格/列表 | `POST api/hobby/query-v2`（`order`、`zones`、`category`、`releaseYear/Month`、`r18/sex/scale`、`page`） | 排序 + 年份/月份 + 分类 + 高级筛选 | 全部：省略 `zones`；单区：`zones=<nodeId>` 且**不传 `homeScope`**；`zones` 与 `homeScope` **互斥**；关注态需登录态复验 `homeScope=follow`，当前隐藏 | 已实现（全部/单区可用，关注态隐藏） |
 | 二手 | `resale_item` | 列表 | `POST api/resale/search`（`zones`、`type`、`purity`、`page`） | 出售/求购 + 成色 | 全部：省略 `zones`；**关注：`zones` 逗号串为交集语义（不可用），隐藏该板块** | 已实现（全部/单区可用，关注态隐藏） |
 | 厂商 | `company` | 实体网格 | `GET api/zone/items`（`zones`/`nodeId`、`itemType`、`category`、`page`） | — | 全部：省略 `zones`；关注：`zones=<逗号串>`（并集）；**不下发 `homeScope`** | 已实现（三作用域可用） |
