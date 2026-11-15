@@ -167,10 +167,11 @@ class HomeFeedViewModelTest {
 
     @Test
     fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest(testDispatcher) {
+        // 老用户落盘的是旧键 all：启动时应归一为 allInfo 再渲染与请求
         val env = env(savedTabKey = "all", savedSubType = "all")
         env.stubFeed(
             categoryId = 0,
-            subType = "all",
+            subType = "allInfo",
             zoneNodeId = null,
             zoneIds = null,
             items = listOf(item(1, "1700000000000"), item(2, "1600000000000"))
@@ -181,7 +182,7 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("all", state.selectedCategory.tabKey)
-        assertEquals("all", state.selectedSubType)
+        assertEquals("allInfo", state.selectedSubType)
         assertEquals(listOf(1L, 2L), state.items.map { it.id })
         assertEquals(1600000000000L, state.lastTime)
         assertTrue(state.hasMore)
@@ -189,7 +190,7 @@ class HomeFeedViewModelTest {
         assertNull(state.errorMessage)
         val form = env.lastFeedForm()
         assertEquals("0", form["categoryId"])
-        assertEquals("all", form["subType"])
+        assertEquals("allInfo", form["subType"])
         assertEquals("0", form["lastTime"])
     }
 
@@ -275,6 +276,24 @@ class HomeFeedViewModelTest {
     }
 
     @Test
+    fun selectSubType_legacyAllValueIsNormalizedToAllInfo() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100")))
+        env.stubFeed(subType = "allInfo", items = listOf(item(2, "200")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        // 旧键 all 无论从何处传入，都不得原样发给接口（服务端会静默回落「推荐」）
+        viewModel.selectSubType("all")
+        advanceUntilIdle()
+
+        assertEquals("allInfo", viewModel.uiState.value.selectedSubType)
+        assertEquals(listOf(2L), viewModel.uiState.value.items.map { it.id })
+        assertEquals("allInfo", env.lastFeedForm()["subType"])
+        assertEquals("allInfo", env.preferences.getInitialFeedSubType())
+    }
+
+    @Test
     fun resetFilters_restoresDefaultsAndPersists() = runTest(testDispatcher) {
         val env = env(savedTabKey = "z100", savedSubType = "all")
         // 首屏 tabs 即带 z100 聚焦（init 静默同步消费）。route() 是追加式、首条命中优先，
@@ -283,8 +302,8 @@ class HomeFeedViewModelTest {
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":100,"nameCN":"手办"}]}}"""
         )
-        env.stubFeed(subType = "all", items = listOf(item(9, "900")))
-        env.stubFeed(subType = "all", zoneNodeId = 100L, zoneIds = "100", items = listOf(item(1, "100")))
+        env.stubFeed(subType = "allInfo", items = listOf(item(9, "900")))
+        env.stubFeed(subType = "allInfo", zoneNodeId = 100L, zoneIds = "100", items = listOf(item(1, "100")))
         env.stubFeed(items = listOf(item(2, "200")))
 
         val viewModel = env.viewModel()
