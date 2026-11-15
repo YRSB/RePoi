@@ -126,6 +126,7 @@ import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
+import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
@@ -148,7 +149,6 @@ import com.nobody.repoi.ui.zone.components.ZoneEntityCard
 import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
-import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
@@ -246,13 +246,8 @@ fun ZoneDetailScreen(
         }
     }
 
-    val resaleColumns = remember(windowSizeClass, isLandscape) {
-        when {
-            !isLandscape -> StaggeredGridCells.Fixed(1)
-            windowSizeClass.isWidthAtLeastBreakpoint(1200) -> StaggeredGridCells.Fixed(3)
-            else -> StaggeredGridCells.Fixed(2)
-        }
-    }
+    // 二手沿用共享列数策略（与首页同一实现，避免两屏视觉漂移）
+    val resaleColumns = rememberResaleStaggeredGridColumns()
 
     val hobbyColumns = remember(uiState.hobbyState.isGridMode) {
         if (uiState.hobbyState.isGridMode) {
@@ -265,7 +260,6 @@ fun ZoneDetailScreen(
     val gridColumns = when {
         uiState.isPostsTab -> feedColumns
         uiState.isHobbyTab -> hobbyColumns
-        uiState.isResaleTab -> resaleColumns
         uiState.isEntityTab -> entityColumns
         else -> feedColumns
     }
@@ -579,20 +573,45 @@ fun ZoneDetailScreen(
                 viewModel.selectAlbumCategory(categoryId)
             }
 
+            override fun onSelectResaleType(type: Int) {
+                viewModel.setResaleType(type)
+            }
+
+            override fun onSelectResalePurity(purity: String?) {
+                viewModel.setResalePurity(purity)
+            }
+
+            override fun onResaleKeywordChange(keyword: String) {
+                viewModel.updateResaleKeyword(keyword)
+            }
+
+            override fun onResaleSearch() {
+                viewModel.submitResaleSearch()
+            }
+
             override fun onRetryInitial() {
                 viewModel.refresh()
             }
 
             override fun onLoadMore() {
-                viewModel.loadNextPage()
+                // 页脚「加载更多失败，点击重试」按当前板块分派（面板不感知板块专属 loader）
+                when {
+                    viewModel.uiState.value.isResaleTab -> viewModel.loadNextResalePage()
+                    viewModel.uiState.value.isAlbumTab -> viewModel.loadNextAlbumPage()
+                    else -> viewModel.loadNextPage()
+                }
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick) {
+    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick, handleResaleClick) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
-            onAlbumClick = handleAlbumClick
+            onAlbumClick = handleAlbumClick,
+            onResaleClick = handleResaleClick,
+            onResaleUserClick = onNavigateToUser,
+            onResaleContactClick = handleResaleContactClick,
+            onResaleMoreClick = { item -> activeMoreResaleItem = item }
         )
     }
 
@@ -812,6 +831,39 @@ fun ZoneDetailScreen(
                             columns = gridColumns,
                             modifier = Modifier.fillMaxSize()
                         )
+                    } else if (uiState.isResaleTab) {
+                        // 二手板块：走共享面板（#160），与首页同一内容渲染入口；
+                        // 搜索栏 / 更多操作 / 举报弹窗仍属专区详情 chrome，留在下方宿主渲染。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Resale,
+                            scope = viewModel.zoneScope,
+                            content = ZoneBoardContent.Resale(
+                                items = uiState.resaleState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.resaleState.isLoading,
+                                    isLoadingMore = uiState.resaleState.isLoadingMore,
+                                    errorMessage = uiState.resaleState.errorMessage,
+                                    loadMoreError = uiState.resaleState.loadMoreError,
+                                    isEndReached = uiState.resaleState.isEndReached
+                                )
+                            ),
+                            filters = ZoneBoardFilters(
+                                resaleType = uiState.resaleState.type,
+                                resalePurity = uiState.resaleState.purity,
+                                resaleKeyword = uiState.resaleState.keyword
+                            ),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = resaleColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else {
                         LazyVerticalStaggeredGrid(
                             columns = gridColumns,
@@ -917,44 +969,6 @@ fun ZoneDetailScreen(
                                         loadMoreError = hobbyState.loadMoreError,
                                         isEndReached = hobbyState.isEndReached,
                                         onRetry = { viewModel.loadNextHobbyPage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isResaleTab -> {
-                            val resaleState = uiState.resaleState
-                            if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = resaleState.errorMessage,
-                                        onRetry = { viewModel.loadInitialResale() }
-                                    )
-                                }
-                            } else if (resaleState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关二手条目")
-                                }
-                            } else {
-                                items(
-                                    items = resaleState.items,
-                                    key = { item -> "zone_resale_${item.id}" },
-                                    contentType = { "zone_resale" }
-                                ) { item ->
-                                    ZoneResaleCard(
-                                        item = item,
-                                        onClick = { handleResaleClick(item) },
-                                        onUserClick = onNavigateToUser,
-                                        onContactClick = { handleResaleContactClick(item) },
-                                        onMoreClick = { activeMoreResaleItem = item }
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = resaleState.isLoadingMore,
-                                        loadMoreError = resaleState.loadMoreError,
-                                        isEndReached = resaleState.isEndReached,
-                                        onRetry = { viewModel.loadNextResalePage() }
                                     )
                                 }
                             }
@@ -1181,38 +1195,17 @@ fun ZoneDetailScreen(
                         }
                     }
                     uiState.isResaleTab -> {
-                        val resaleState = uiState.resaleState
-                        // 出售/求购 & 成色选择胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.resaleTypes.forEach { (typeKey, label) ->
-                                val isSelected = resaleState.type == typeKey
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.setResaleType(typeKey) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            viewModel.resalePurities.forEach { (purityKey, label) ->
-                                val isSelected = resaleState.purity == purityKey
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.setResalePurity(purityKey) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 二手：出售/求购分段 + 成色 Chip，统一走共享筛选条（与首页同一实现）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Resale,
+                            filters = ZoneBoardFilters(
+                                resaleType = uiState.resaleState.type,
+                                resalePurity = uiState.resaleState.purity,
+                                resaleKeyword = uiState.resaleState.keyword
+                            ),
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                     uiState.selectedTab == "action" -> {
                         // 动态二级子分类胶囊：共享筛选条（选项仍由本页 ViewModel 提供，#153 合入后切共享定义）
