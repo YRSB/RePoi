@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.album.components.AlbumFeedCard
+import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
@@ -19,8 +21,8 @@ import com.nobody.repoi.ui.home.components.ActionCard
 /**
  * 板块共享面板：首页与专区详情共用的「唯一内容渲染入口」。
  *
- * A 阶段只实现 [ZoneBoard.Action]（动态）分支；其余板块先走防御占位——专区详情其余 5+1 个板块
- * 本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
+ * 已实现 [ZoneBoard.Action]（动态）与 [ZoneBoard.Album]（分享/相册，#157）；其余板块先走防御占位——
+ * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
@@ -101,6 +103,64 @@ fun ZoneBoardPane(
                                     actionItem = item,
                                     onActionClick = itemActions.onActionClick,
                                     onImageClick = itemActions.onActionImageClick
+                                )
+                            }
+
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZonePaginationFooter(
+                                    isLoadingMore = page.isLoadingMore,
+                                    loadMoreError = page.loadMoreError,
+                                    isEndReached = page.isEndReached,
+                                    onRetry = { actions.onLoadMore() }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ZoneBoard.Album -> {
+            val albumContent = content as? ZoneBoardContent.Album
+            if (albumContent == null) {
+                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+                ZoneEmptyPlaceholder("暂无相关分享")
+            } else {
+                // 相册沿用既有列数策略（手机 2 列 / 平板 3-4 列 / 桌面 5 列），不按动态瀑布流的列数渲染
+                val albumColumns = rememberAlbumStaggeredGridColumns()
+                LazyVerticalStaggeredGrid(
+                    columns = albumColumns,
+                    state = gridState,
+                    modifier = modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp
+                ) {
+                    val page = albumContent.page
+                    val errorMessage = page.errorMessage
+                    when {
+                        errorMessage != null && albumContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneErrorPlaceholder(
+                                    message = errorMessage,
+                                    onRetry = { actions.onRetryInitial() }
+                                )
+                            }
+                        }
+                        albumContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneEmptyPlaceholder("暂无相关分享")
+                            }
+                        }
+                        else -> {
+                            items(
+                                items = albumContent.items,
+                                key = { item -> "zone_album_${item.targetAlbumId}" },
+                                contentType = { "album_feed" }
+                            ) { item ->
+                                AlbumFeedCard(
+                                    item = item,
+                                    showTime = true,
+                                    onClick = { album -> itemActions.onAlbumClick?.invoke(album) }
                                 )
                             }
 

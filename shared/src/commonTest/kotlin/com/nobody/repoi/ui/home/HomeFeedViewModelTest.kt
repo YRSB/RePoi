@@ -4,6 +4,7 @@ import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
@@ -64,6 +65,7 @@ class HomeFeedViewModelTest {
     private class Env(
         val feedMock: MockApi,
         val zoneMock: MockApi,
+        val albumMock: MockApi,
         val accountMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
@@ -93,12 +95,23 @@ class HomeFeedViewModelTest {
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
-        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository, testDispatcher)
+        // 分享板块（#157）默认空响应路由：未切到分享板块时不会发出请求
+        val albumMock = MockApi()
+        albumMock.route(
+            "api/album/list",
+            """{"success":true,"code":200,"msg":"ok","data":{"page":1,"list":[]}}"""
+        )
+        albumMock.route(
+            "api/zone/categories",
+            """{"success":true,"code":200,"msg":"ok","data":{"visible":true,"categories":[]}}"""
+        )
+        return Env(feedMock, zoneMock, albumMock, MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
         HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
+            AlbumRepository(albumMock.api(dispatcher)),
             zoneRepository,
             preferences,
             if (accounts) userSession else FakeUserSession(),
@@ -641,6 +654,7 @@ class HomeFeedViewModelTest {
         val session = FakeUserSession()
         val viewModel = HomeFeedViewModel(
             HomeRepository(env.feedMock.api(env.dispatcher)),
+            AlbumRepository(env.albumMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
             session,
@@ -662,6 +676,7 @@ class HomeFeedViewModelTest {
         val session = FakeUserSession(SessionState.Prewarming)
         val viewModel = HomeFeedViewModel(
             HomeRepository(env.feedMock.api(env.dispatcher)),
+            AlbumRepository(env.albumMock.api(env.dispatcher)),
             env.zoneRepository,
             env.preferences,
             session,
@@ -754,9 +769,9 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；本阶段只接入动态板块
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）与分享（#157）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
-        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
@@ -808,8 +823,8 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community/works，本阶段只接入动态：其余一律不出现在 Tab
-        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        // 服务端下发 action/album/shop_item/community/works，客户端只保留已接入的 10 类白名单
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         // zone/info 请求带上专区 nodeId
         val infoRequest = env.zoneMock.lastRequest()
@@ -877,22 +892,29 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(state.boards.first(), state.selectedBoard)
-        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
     }
 
     @Test
     fun selectBoard_onlySelectsBoardsInCurrentList() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
+        env.albumMock.route(
+            "api/album/list",
+            """{"success":true,"code":200,"msg":"ok","data":{"page":1,"list":[]}}"""
+        )
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 本阶段未接入的板块不在 boards 中，选择被忽略
+        // 未接入的板块不在 boards 中，选择被忽略
+        viewModel.selectBoard(ZoneBoard.Posts)
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        // 分享板块（#157）已接入，可切换
         viewModel.selectBoard(ZoneBoard.Album)
-        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        assertEquals(ZoneBoard.Album, viewModel.uiState.value.selectedBoard)
         // 重复选择当前板块为 no-op
-        viewModel.selectBoard(ZoneBoard.Action)
-        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        viewModel.selectBoard(ZoneBoard.Album)
+        assertEquals(ZoneBoard.Album, viewModel.uiState.value.selectedBoard)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.board
 
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.AlbumListItem
 
 /**
  * 板块级筛选与分页动作集合（由宿主机适配现有 ViewModel / loader 实现）。
@@ -20,6 +21,12 @@ interface ZoneBoardActions {
      */
     fun onSelectSubType(subType: String)
 
+    /** 分享板块 6 档排序切换（键值见 [AlbumBoardOptions.ORDERS]）；宿主负责清列表并回第一页重载。 */
+    fun onSelectAlbumOrder(order: String)
+
+    /** 分享板块分类切换；`null` = 全部分类。仅单专区作用域会传入非空选项。 */
+    fun onSelectAlbumCategory(categoryId: Int?)
+
     /** 首屏错误态「重试」（宿主按当前板块分派刷新）。 */
     fun onRetryInitial()
 
@@ -36,5 +43,7 @@ data class ZoneBoardItemActions(
     /** 动态卡片点击（跳转条目详情等）。 */
     val onActionClick: ((ActionItem) -> Unit)? = null,
     /** 动态卡片图片点击（打开全屏看图）。 */
-    val onActionImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null
+    val onActionImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
+    /** 分享（相册）卡片点击（跳转相册详情）。 */
+    val onAlbumClick: ((AlbumListItem) -> Unit)? = null
 )

@@ -64,12 +64,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.platform.isLandscapeOrientation
+import com.nobody.repoi.ui.album.AlbumNavParam
+import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
-import com.nobody.repoi.ui.board.ZoneBoardContent
-import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
-import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.common.EmptyState
@@ -91,6 +91,7 @@ import kotlin.math.roundToInt
 fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
+    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -127,8 +128,16 @@ fun HomeFeedScreen(
                 viewModel.selectSubType(subType)
             }
 
+            override fun onSelectAlbumOrder(order: String) {
+                viewModel.selectAlbumOrder(order)
+            }
+
+            override fun onSelectAlbumCategory(categoryId: Int?) {
+                viewModel.selectAlbumCategory(categoryId)
+            }
+
             override fun onRetryInitial() {
-                viewModel.loadInitialFeed()
+                viewModel.retryCurrentBoard()
             }
 
             override fun onLoadMore() {
@@ -141,10 +150,24 @@ fun HomeFeedScreen(
             imageViewer.show(rawUrls, initialIndex)
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick) {
+    val handleAlbumClick = remember(onNavigateToAlbum) {
+        { item: AlbumListItem ->
+            if (item.targetAlbumId > 0L) {
+                onNavigateToAlbum?.invoke(
+                    AlbumNavParam(
+                        albumId = item.targetAlbumId,
+                        initialTitle = item.displayName.ifBlank { null },
+                        initialCover = item.cover
+                    )
+                )
+            }
+        }
+    }
+    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
-            onActionImageClick = onCardImageClick
+            onActionImageClick = onCardImageClick,
+            onAlbumClick = handleAlbumClick
         )
     }
 
@@ -157,8 +180,12 @@ fun HomeFeedScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, uiState.items.size) {
-        if (shouldLoadMore && uiState.hasMore && !uiState.isLoadingMore && uiState.loadMoreError == null) {
+    LaunchedEffect(shouldLoadMore, uiState.selectedBoard, uiState.currentBoardItemCount) {
+        if (shouldLoadMore &&
+            uiState.currentBoardHasMore &&
+            !uiState.currentBoardIsLoadingMore &&
+            uiState.currentBoardLoadMoreError == null
+        ) {
             viewModel.loadNextPage()
         }
     }
@@ -182,7 +209,7 @@ fun HomeFeedScreen(
             initialHeightOffset = -viewModel.scrollMemoryFor(currentBoardKey)
                 .filterCollapseFraction * headerStack.collapsibleHeightPx
         ),
-        canScroll = { uiState.items.isNotEmpty() }
+        canScroll = { uiState.currentBoardItemCount > 0 }
     )
     LaunchedEffect(headerStack.collapsibleHeightPx) {
         scrollBehavior.state.heightOffsetLimit = -headerStack.collapsibleHeightPx
@@ -223,17 +250,22 @@ fun HomeFeedScreen(
     }
 
     // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
+    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类）。
     // 首次组合不触发（保留首屏恢复的滚动位置）。
+    val boardFilterToken = when (uiState.selectedBoard) {
+        ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
+        else -> uiState.selectedSubType
+    }
     var lastSelection by remember {
         mutableStateOf(
-            Triple(uiState.selectedCategory.tabKey, uiState.selectedBoard, uiState.selectedSubType)
+            Triple(uiState.selectedCategory.tabKey, uiState.selectedBoard, boardFilterToken)
         )
     }
-    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, uiState.selectedSubType) {
+    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, boardFilterToken) {
         val selection = Triple(
             uiState.selectedCategory.tabKey,
             uiState.selectedBoard,
-            uiState.selectedSubType
+            boardFilterToken
         )
         if (selection == lastSelection) return@LaunchedEffect
         lastSelection = selection
@@ -246,8 +278,8 @@ fun HomeFeedScreen(
     }
 
     // 首屏（含从二级页返回）按当前键恢复滚动位置与折叠比例
-    LaunchedEffect(uiState.items.isNotEmpty(), currentBoardKey) {
-        if (restored || uiState.items.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(uiState.currentBoardItemCount > 0, currentBoardKey) {
+        if (restored || uiState.currentBoardItemCount == 0) return@LaunchedEffect
         restored = true
         val memory = viewModel.scrollMemoryFor(currentBoardKey)
         if (memory.index != 0 || memory.offset != 0) {
@@ -261,7 +293,7 @@ fun HomeFeedScreen(
 
     var wasRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.isRefreshing) {
-        if (wasRefreshing && !uiState.isRefreshing && uiState.errorMessage == null) {
+        if (wasRefreshing && !uiState.isRefreshing && uiState.currentBoardErrorMessage == null) {
             staggeredGridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
@@ -332,7 +364,7 @@ fun HomeFeedScreen(
                         }
                     }
 
-                    uiState.isInitialLoading -> {
+                    uiState.isCurrentBoardLoading -> {
                         PoiLoadingView(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -343,7 +375,7 @@ fun HomeFeedScreen(
                         )
                     }
 
-                    uiState.errorMessage != null && uiState.items.isEmpty() -> {
+                    uiState.currentBoardErrorMessage != null && uiState.currentBoardItemCount == 0 -> {
                         ElevatedCard(
                             shape = MaterialTheme.shapes.large,
                             colors = CardDefaults.elevatedCardColors(
@@ -360,19 +392,19 @@ fun HomeFeedScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = uiState.errorMessage ?: "数据加载失败",
+                                    text = uiState.currentBoardErrorMessage ?: "数据加载失败",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Button(onClick = { viewModel.loadInitialFeed() }) {
+                                Button(onClick = { viewModel.retryCurrentBoard() }) {
                                     Text("重新加载")
                                 }
                             }
                         }
                     }
 
-                    uiState.items.isEmpty() -> {
+                    uiState.currentBoardItemCount == 0 -> {
                         val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
                             uiState.selectedCategory.zoneIds == "-1"
                         ElevatedCard(
@@ -401,7 +433,11 @@ fun HomeFeedScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "暂无该分类下的动态情报",
+                                        text = if (uiState.selectedBoard == ZoneBoard.Album) {
+                                            "暂无相关分享"
+                                        } else {
+                                            "暂无该分类下的动态情报"
+                                        },
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -417,21 +453,12 @@ fun HomeFeedScreen(
                     else -> {
                         // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
                         // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
-                        // 因此不会重复展示首屏错误。
+                        // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
                         ZoneBoardPane(
                             board = uiState.selectedBoard,
                             scope = uiState.zoneScope,
-                            content = ZoneBoardContent.Action(
-                                items = uiState.items,
-                                page = ZoneBoardPageView(
-                                    isLoading = uiState.isInitialLoading,
-                                    isLoadingMore = uiState.isLoadingMore,
-                                    errorMessage = uiState.errorMessage,
-                                    loadMoreError = uiState.loadMoreError,
-                                    isEndReached = !uiState.hasMore
-                                )
-                            ),
-                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            content = uiState.currentBoardContent,
+                            filters = uiState.currentBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -463,9 +490,10 @@ fun HomeFeedScreen(
             ) {
                 ZoneBoardFilterBar(
                     board = uiState.selectedBoard,
-                    filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                    filters = uiState.currentBoardFilters,
                     subTypeOptions = viewModel.subTypes,
-                    actions = boardActions
+                    actions = boardActions,
+                    albumCategoryOptions = uiState.albumCategoryOptions
                 )
             }
         }

@@ -33,6 +33,7 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
         val messages = LocalAppMessages.current
         HomeFeedScreen(
             onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
+            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
             onNavigateToSearch = { param -> navigator.navigateToSearch(param) },
             onNavigateToZoneBrowse = { navigator.navigateToZoneBrowse() },
             onNavigateToZoneSettings = { navigator.navigateToZoneSettings() },
