@@ -3,8 +3,6 @@ package com.nobody.repoi.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ActionItem
-import com.nobody.repoi.data.remote.model.ZoneItem
-import com.nobody.repoi.data.remote.model.ZoneTabsSettings
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.repository.MessageRepository
@@ -31,6 +29,8 @@ data class FeedCategory(
 data class HomeFeedUiState(
     val categories: List<FeedCategory> = listOf(FeedCategory("all", "全部")),
     val selectedCategory: FeedCategory = FeedCategory("all", "全部"),
+    /** 顶栏专区切换器分组（「快捷」恒含全部/关注，「我的专区」遵循首页设置排序与隐藏）。 */
+    val switcherGroups: List<ZoneSwitcherGroup> = defaultZoneSwitcherGroups(),
     val selectedSubType: String = "recommend",
     val items: List<ActionItem> = emptyList(),
     val lastTime: Long = 0L,
@@ -107,14 +107,16 @@ class HomeFeedViewModel(
     }
 
     init {
-        // 监听专区与设置变化，构建动态分类列表
+        // 监听专区与设置变化，构建动态分类列表与顶栏切换器分组
         viewModelScope.launch {
             combine(
                 zoneRepository.focusZonesFlow,
                 zoneRepository.settingsFlow
             ) { focusZones, settings ->
-                buildCategories(focusZones, settings)
-            }.collect { dynamicCategories ->
+                focusZones to settings
+            }.collect { (focusZones, settings) ->
+                val dynamicCategories = buildFeedCategories(focusZones, settings)
+                val switcherGroups = buildZoneSwitcherGroups(dynamicCategories, settings)
                 _uiState.update { current ->
                     val matchedCategory = dynamicCategories.find { it.tabKey == current.selectedCategory.tabKey }
                         ?: dynamicCategories.find { it.tabKey == initialTabKey }
@@ -126,7 +128,8 @@ class HomeFeedViewModel(
 
                     current.copy(
                         categories = dynamicCategories,
-                        selectedCategory = matchedCategory
+                        selectedCategory = matchedCategory,
+                        switcherGroups = switcherGroups
                     ).also {
                         if (categoryChanged && !current.isInitialLoading) {
                             loadInitialFeed()
@@ -146,54 +149,15 @@ class HomeFeedViewModel(
         loadInitialFeed()
     }
 
-    private fun buildCategories(
-        focusZones: List<ZoneItem>,
-        settings: ZoneTabsSettings
-    ): List<FeedCategory> {
-        val list = mutableListOf<FeedCategory>()
-        if (settings.showAll) {
-            list.add(FeedCategory(tabKey = "all", name = "全部", nodeId = 0L, zoneIds = ""))
-        }
-
-        // 过滤掉用户设置隐藏的专区
-        val hiddenSet = settings.hiddenZoneIds.toSet()
-        val visibleFocusZones = focusZones.filter { it.nodeId > 0L && it.nodeId !in hiddenSet }
-
-        // 依据设置的排序方式进行重排
-        val sortedFocusZones = when (settings.sort) {
-            "custom" -> {
-                val orderMap = settings.customOrder.mapIndexed { index, id -> id to index }.toMap()
-                visibleFocusZones.sortedBy { orderMap[it.nodeId] ?: Int.MAX_VALUE }
-            }
-            "recent" -> {
-                val recentMap = settings.recentZoneIds.mapIndexed { index, id -> id to index }.toMap()
-                visibleFocusZones.sortedBy { recentMap[it.nodeId] ?: Int.MAX_VALUE }
-            }
-            else -> visibleFocusZones
-        }
-
-        val allFocusZoneIds = sortedFocusZones.map { it.nodeId }.joinToString(",")
-        // 关注分类：若关注列表为空，传 "-1" 作为未关注标记
-        list.add(
-            FeedCategory(
-                tabKey = "follow",
-                name = "关注",
-                nodeId = 0L,
-                zoneIds = allFocusZoneIds.ifEmpty { "-1" }
-            )
-        )
-
-        sortedFocusZones.forEach { zone ->
-            list.add(
-                FeedCategory(
-                    tabKey = "z${zone.nodeId}",
-                    name = zone.displayName,
-                    nodeId = zone.nodeId,
-                    zoneIds = zone.nodeId.toString()
-                )
-            )
-        }
-        return list
+    /**
+     * 顶栏切换器选择入口：把纯文本 tabKey 解析为分类后复用 [selectCategory]。
+     *
+     * 不新增第二套持久化——仍写 `feed_zone_tab_key` 与 `feed_category_id`；
+     * 即使设置隐藏了「全部」，也能通过兜底分类切回「全部」（只切 tab，不改设置）。
+     */
+    fun selectZoneTab(tabKey: String) {
+        val category = resolveZoneSwitcherCategory(_uiState.value.categories, tabKey) ?: return
+        selectCategory(category)
     }
 
     fun selectCategory(category: FeedCategory) {
