@@ -10,7 +10,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
@@ -52,11 +50,8 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -93,7 +88,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -132,11 +126,7 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
-import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
-import com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet
-import com.nobody.repoi.ui.item.list.components.HobbyGridCard
-import com.nobody.repoi.ui.item.list.components.HobbyListCard
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
@@ -146,10 +136,6 @@ import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class, kotlin.time.ExperimentalTime::class)
 @Composable
@@ -179,6 +165,8 @@ fun ZoneDetailScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 产品分类树：筛选条子分类回显 + 共享面板分类级联弹层（与首页同一数据源 CategoryManager）
+    val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
     val staggeredGridState = rememberLazyStaggeredGridState()
     val pullRefreshState = rememberPullToRefreshState()
     val messages = LocalAppMessages.current
@@ -251,18 +239,9 @@ fun ZoneDetailScreen(
         }
     }
 
-    val hobbyColumns = remember(uiState.hobbyState.isGridMode) {
-        if (uiState.hobbyState.isGridMode) {
-            StaggeredGridCells.Adaptive(minSize = 120.dp)
-        } else {
-            StaggeredGridCells.Adaptive(minSize = 420.dp)
-        }
-    }
-
-    // 列数自适应（实体 5 类走 pane，列数由 entityColumns 直接注入；相册列数由 pane 内部按相册规则计算）
+    // 列数自适应（实体 5 类走 pane，列数由 entityColumns 直接注入；相册与产品列数由 pane 内部按各自规则计算）
     val gridColumns = when {
         uiState.isPostsTab -> feedColumns
-        uiState.isHobbyTab -> hobbyColumns
         uiState.isResaleTab -> resaleColumns
         else -> feedColumns
     }
@@ -597,8 +576,58 @@ fun ZoneDetailScreen(
                     // 页脚「加载更多失败，点击重试」：实体 5 类仍在原实体 loader 上翻页
                     tab in ZoneDetailUiState.ENTITY_TAB_TYPES -> viewModel.loadNextEntityPage(tab)
                     viewModel.uiState.value.isPostsTab -> viewModel.loadNextPostsPage()
+                    viewModel.uiState.value.isHobbyTab -> viewModel.loadNextHobbyPage()
                     else -> viewModel.loadNextPage()
                 }
+            }
+
+            override fun onHobbyOrder(order: String) {
+                viewModel.setHobbyOrder(order)
+            }
+
+            override fun onHobbyYear(year: Int?) {
+                viewModel.setHobbyYear(year)
+            }
+
+            override fun onHobbyMonth(month: Int?) {
+                viewModel.setHobbyMonth(month)
+            }
+
+            override fun onHobbyCategory(categoryId: Int, subCategoryId: Int?) {
+                viewModel.selectHobbyCategory(categoryId, subCategoryId)
+            }
+
+            override fun onHobbyKeywordChange(keyword: String) {
+                viewModel.updateHobbyKeyword(keyword)
+            }
+
+            override fun onHobbySearch() {
+                viewModel.submitHobbySearch()
+            }
+
+            override fun onHobbyAdvancedApply(filterParam: HobbyAdvancedFilterParam) {
+                viewModel.applyHobbyAdvancedFilters(
+                    sex = filterParam.sex,
+                    specs = filterParam.specs,
+                    scale = filterParam.scale,
+                    r18 = filterParam.r18
+                )
+            }
+
+            override fun onHobbyAdvancedReset() {
+                viewModel.resetHobbyAdvancedFilters()
+            }
+
+            override fun onHobbyViewMode() {
+                viewModel.toggleHobbyViewMode()
+            }
+
+            override fun onHobbyFilterSheetVisible(show: Boolean) {
+                viewModel.openHobbyFilterSheet(show)
+            }
+
+            override fun onHobbyCategoryPickerVisible(show: Boolean) {
+                viewModel.openHobbyCategoryPicker(show)
             }
         }
     }
@@ -608,7 +637,8 @@ fun ZoneDetailScreen(
         handlePostClick,
         handleAlbumClick,
         onNavigateToUser,
-        handleEntityClick
+        handleEntityClick,
+        handleHobbyClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -617,6 +647,7 @@ fun ZoneDetailScreen(
             onPostImageClick = onCardImageClick,
             onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
+            onHobbyClick = handleHobbyClick,
             // pane 以 (board, item) 回调；本页跳转逻辑仍按 selectedTab 区分（行为不变）
             onEntityClick = { _, item -> handleEntityClick(item) }
         )
@@ -858,6 +889,27 @@ fun ZoneDetailScreen(
                             showPinnedPosts = true,
                             modifier = Modifier.fillMaxSize()
                         )
+                    } else if (uiState.isHobbyTab) {
+                        // 产品板块：走共享面板（#159），与首页同一内容渲染入口；
+                        // 列数由面板按网格 / 列表模式计算，筛选值与两个弹层显隐来自 ViewModel 投影。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Hobby,
+                            scope = viewModel.zoneScope,
+                            content = uiState.hobbyBoardContent,
+                            filters = uiState.hobbyBoardFilters,
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = gridColumns,
+                            hobbyCategoryTree = categoryTree,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else if (uiState.isEntityTab) {
                         // 实体 5 类（#161）：走共享面板，与首页同一内容渲染入口；
                         // 点击回调仍由本页 handleEntityClick 按 selectedTab 分发（行为不变）。
@@ -905,54 +957,6 @@ fun ZoneDetailScreen(
                         ) {
                     // 3. 内容流渲染列表
                     when {
-                        uiState.isHobbyTab -> {
-                            val hobbyState = uiState.hobbyState
-                            if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = hobbyState.errorMessage,
-                                        onRetry = { viewModel.loadInitialHobby() }
-                                    )
-                                }
-                            } else if (hobbyState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关产品")
-                                }
-                            } else {
-                                if (hobbyState.isGridMode) {
-                                    items(
-                                        items = hobbyState.items,
-                                        key = { item -> "zone_hobby_grid_${item.actualItemId}" },
-                                        contentType = { "hobby_grid" }
-                                    ) { item ->
-                                        HobbyGridCard(
-                                            item = item,
-                                            onClick = { handleHobbyClick(item) }
-                                        )
-                                    }
-                                } else {
-                                    items(
-                                        items = hobbyState.items,
-                                        key = { item -> "zone_hobby_list_${item.actualItemId}" },
-                                        contentType = { "hobby_list" }
-                                    ) { item ->
-                                        HobbyListCard(
-                                            item = item,
-                                            onClick = { handleHobbyClick(item) }
-                                        )
-                                    }
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = hobbyState.isLoadingMore,
-                                        loadMoreError = hobbyState.loadMoreError,
-                                        isEndReached = hobbyState.isEndReached,
-                                        onRetry = { viewModel.loadNextHobbyPage() }
-                                    )
-                                }
-                            }
-                        }
                         uiState.isResaleTab -> {
                             val resaleState = uiState.resaleState
                             if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
@@ -1040,131 +1044,17 @@ fun ZoneDetailScreen(
                         )
                     }
                     uiState.isHobbyTab -> {
-                        val hobbyState = uiState.hobbyState
-                        val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
-                        val subCategories = remember(hobbyState.categoryId, categoryTree) {
-                            viewModel.getSubCategories(hobbyState.categoryId)
-                        }
-
-                        // 下拉过滤胶囊行 (排序, 分类, 年份, 月份)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val orderOptions = listOf(
-                                "hits7Day" to "7天热度",
-                                "hitsDay" to "1天热度",
-                                "hits" to "总热度",
-                                "add" to "最新入库",
-                                "release" to "发售时间",
-                                "rating" to "综合评分"
-                            )
-                            var showOrderMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val currentOrderLabel = orderOptions.find { it.first == hobbyState.order }?.second ?: "7天热度"
-                                FilterDropdownChip(
-                                    label = currentOrderLabel,
-                                    isSelected = hobbyState.order != "hits7Day",
-                                    isExpanded = showOrderMenu,
-                                    onClick = { showOrderMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showOrderMenu,
-                                    onDismissRequest = { showOrderMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    orderOptions.forEach { (orderKey, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyOrder(orderKey)
-                                                showOrderMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            val categoryChipLabel = when {
-                                hobbyState.subCategoryId != null -> {
-                                    subCategories.find { it.id == hobbyState.subCategoryId }?.name ?: "子分类"
-                                }
-                                hobbyState.categoryId != 10000 -> {
-                                    val catMap = mapOf(100 to "手办", 200 to "动漫模型", 500 to "真实模型", 300 to "娃娃人偶", 400 to "毛绒布偶", 900 to "动漫周边")
-                                    catMap[hobbyState.categoryId] ?: "分类"
-                                }
-                                else -> "分类"
-                            }
-                            val isCategoryActive = hobbyState.categoryId != 10000 || hobbyState.subCategoryId != null
-                            FilterDropdownChip(
-                                label = categoryChipLabel,
-                                isSelected = isCategoryActive,
-                                isExpanded = hobbyState.showCategoryPickerSheet,
-                                onClick = { viewModel.openHobbyCategoryPicker(true) }
-                            )
-
-                            val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
-                            val yearOptions = listOf(null to "不限年") + ((currentYear + 2 downTo currentYear - 8).map { it to "${it}年" })
-                            var showYearMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val hasYear = (hobbyState.releaseYear ?: 0) > 0
-                                FilterDropdownChip(
-                                    label = if (hasYear) "${hobbyState.releaseYear}年" else "不限年",
-                                    isSelected = hasYear,
-                                    isExpanded = showYearMenu,
-                                    onClick = { showYearMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showYearMenu,
-                                    onDismissRequest = { showYearMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    yearOptions.forEach { (year, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyYear(year)
-                                                showYearMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            val monthOptions = listOf(null to "不限月") + ((1..12).map { it to "${it}月" })
-                            var showMonthMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val hasMonth = (hobbyState.releaseMonth ?: 0) > 0
-                                FilterDropdownChip(
-                                    label = if (hasMonth) "${hobbyState.releaseMonth}月" else "不限月",
-                                    isSelected = hasMonth,
-                                    isExpanded = showMonthMenu,
-                                    onClick = { showMonthMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showMonthMenu,
-                                    onDismissRequest = { showMonthMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    monthOptions.forEach { (month, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyMonth(month)
-                                                showMonthMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        // 产品：排序 / 分类级联 / 年份 / 月份，统一走共享筛选条（与首页同一实现）；
+                        // 高级筛选与网格切换入口保留在顶栏常驻控制栏（见下方「常驻搜索与控制栏」）。
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Hobby,
+                            filters = uiState.hobbyBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions,
+                            hobbyCategoryTree = categoryTree,
+                            hobbyIsGridMode = uiState.hobbyState.isGridMode,
+                            showHobbyControlActions = false
+                        )
                     }
                     uiState.isResaleTab -> {
                         val resaleState = uiState.resaleState
@@ -1429,43 +1319,8 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 4. 高级筛选底板 (Hobby)
-    if (uiState.hobbyState.showFilterSheet) {
-        val hobbyState = uiState.hobbyState
-        HobbyFilterAdaptiveSheet(
-            filterParam = HobbyAdvancedFilterParam(
-                sex = hobbyState.sex,
-                specs = hobbyState.specs,
-                scale = hobbyState.scale,
-                r18 = hobbyState.r18
-            ),
-            onDismiss = { viewModel.openHobbyFilterSheet(false) },
-            onApply = { filterParam ->
-                viewModel.applyHobbyAdvancedFilters(
-                    sex = filterParam.sex,
-                    specs = filterParam.specs,
-                    scale = filterParam.scale,
-                    r18 = filterParam.r18
-                )
-            },
-            onReset = {
-                viewModel.resetHobbyAdvancedFilters()
-            }
-        )
-    }
-
-    // 5. 分类级联选择底板 (Hobby)
-    if (uiState.hobbyState.showCategoryPickerSheet) {
-        CategoryPickerSheet(
-            selectedCategoryId = uiState.hobbyState.categoryId,
-            selectedSubCategoryId = uiState.hobbyState.subCategoryId,
-            getSubCategories = { viewModel.getSubCategories(it) },
-            onCategorySelected = { catId, subId ->
-                viewModel.selectHobbyCategory(catId, subId)
-            },
-            onDismiss = { viewModel.openHobbyCategoryPicker(false) }
-        )
-    }
+    // 4. 产品高级筛选 / 分类级联两个底板由共享面板 `ZoneBoardPane` 按筛选快照自渲染（与首页同一实现），
+    //    本页不再重复内联（#159）。
 
     // 6. 发布弹窗
     if (uiState.showPublishSheet) {
@@ -1521,47 +1376,4 @@ fun ZoneDetailScreen(
             }
         )
     }
-}
-
-@Composable
-private fun FilterDropdownChip(
-    label: String,
-    isSelected: Boolean,
-    isExpanded: Boolean,
-    onClick: () -> Unit
-) {
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (isExpanded) 180f else 0f,
-        label = "DropdownArrowRotation"
-    )
-
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
-        },
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = arrowRotation },
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        shape = MaterialTheme.shapes.small,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ),
-        border = null
-    )
 }

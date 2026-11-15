@@ -93,6 +93,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
+import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
@@ -747,25 +748,10 @@ private fun QuickFilterBar(
     var showMonthMenu by remember { mutableStateOf(false) }
     var showOrderMenu by remember { mutableStateOf(false) }
 
-    val yearOptions = listOf(null to "不限年") + ((currentYear + 2 downTo currentYear - 8).map { it to "${it}年" })
-    val monthOptions = listOf(null to "不限月") + ((1..12).map { it to "${it}月" })
-    val orderOptions = listOf(
-        "hits7Day" to "7天热度",
-        "hitsDay" to "1天热度",
-        "hits" to "总热度",
-        "add" to "最新入库",
-        "release" to "发售时间",
-        "rating" to "综合评分"
-    )
-    val categoryOptions = listOf(
-        10000 to "全部周边",
-        100 to "手办",
-        200 to "动漫模型",
-        500 to "真实模型",
-        300 to "娃娃人偶",
-        400 to "毛绒布偶",
-        900 to "动漫周边"
-    )
+    val yearOptions = HobbyBoardOptions.yearOptions(currentYear)
+    val monthOptions = HobbyBoardOptions.MONTH_OPTIONS
+    val orderOptions = HobbyBoardOptions.ORDERS
+    val categoryOptions = HobbyBoardOptions.PRIMARY_CATEGORIES
 
     // 横向惯性滚动，内容超出屏幕时可滑动
     Row(
@@ -781,7 +767,7 @@ private fun QuickFilterBar(
             val currentOrderLabel = orderOptions.find { it.first == uiState.order }?.second ?: "7天热度"
             FilterDropdownChip(
                 label = currentOrderLabel,
-                isSelected = uiState.order != "hits7Day",
+                isSelected = uiState.order != HobbyBoardOptions.DEFAULT_ORDER,
                 isExpanded = showOrderMenu,
                 onClick = { showOrderMenu = true }
             )

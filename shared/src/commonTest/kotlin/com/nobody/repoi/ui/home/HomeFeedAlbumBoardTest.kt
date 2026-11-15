@@ -5,6 +5,7 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
+import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
@@ -56,6 +57,7 @@ class HomeFeedAlbumBoardTest {
         val feedMock: MockApi,
         val zoneMock: MockApi,
         val albumMock: MockApi,
+        val hobbyMock: MockApi,
         val preferences: ViewPreferencesManager,
         val zoneRepository: ZoneRepository,
         val dispatcher: CoroutineDispatcher,
@@ -65,6 +67,7 @@ class HomeFeedAlbumBoardTest {
         fun viewModel(): HomeFeedViewModel = HomeFeedViewModel(
             HomeRepository(feedMock.api(dispatcher)),
             AlbumRepository(albumMock.api(dispatcher)),
+            ItemRepository(hobbyMock.api(dispatcher)),
             zoneRepository,
             preferences,
             userSession
@@ -86,7 +89,7 @@ class HomeFeedAlbumBoardTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedSubType("recommend")
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
-        return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository, testDispatcher)
+        return Env(feedMock, zoneMock, MockApi(), MockApi(), preferences, zoneRepository, testDispatcher)
     }
 
     private fun albumItem(id: Long): String =

@@ -34,6 +34,7 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
         HomeFeedScreen(
             onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
             onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
+            onNavigateToHobby = { param -> navigator.navigateToDetail(param) },
             onEntityClick = { board, item -> navigator.navigateToEntityDetail(board, item) },
             onNavigateToSearch = { param -> navigator.navigateToSearch(param) },
             onNavigateToZoneBrowse = { navigator.navigateToZoneBrowse() },
