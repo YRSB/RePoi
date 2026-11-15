@@ -11,6 +11,8 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,16 @@ data class HomeFeedUiState(
     val selectedCategory: FeedCategory = FeedCategory("all", "全部"),
     /** 顶栏专区切换器分组（「快捷」恒含全部/关注，「我的专区」遵循首页设置排序与隐藏）。 */
     val switcherGroups: List<ZoneSwitcherGroup> = defaultZoneSwitcherGroups(),
+    /**
+     * 二级板块列表（顺序即 Tab 顺序）：
+     * - 聚合态（全部/关注）= `HOME_ORDER ∩ HOME_IMPLEMENTED`；
+     * - 单专区 = 服务端 `zone/info.tabs` ∩ `HOME_IMPLEMENTED`（请求中/失败先回退 `[ZoneBoard.Action]`）。
+     *
+     * 为空表示该专区没有可用板块，宿主据此隐藏二级 TabRow 并展示板块空态（不渲染空 Tab 条）。
+     */
+    val boards: List<ZoneBoard> = HOME_AGGREGATE_BOARDS,
+    /** 当前选中的二级板块；切换专区时重置为该专区首板块。 */
+    val selectedBoard: ZoneBoard = HOME_AGGREGATE_BOARDS.firstOrNull() ?: ZoneBoard.Action,
     val selectedSubType: String = ActionSubType.DEFAULT.apiValue,
     val items: List<ActionItem> = emptyList(),
     val lastTime: Long = 0L,
@@ -43,7 +55,11 @@ data class HomeFeedUiState(
     val loadMoreError: String? = null,
     val userAvatar: String? = null,
     val unreadMessageCount: Int = 0
-)
+) {
+    /** 查询作用域（由 [selectedCategory] 派生，避免两处状态漂移）。 */
+    val zoneScope: ZoneQueryScope
+        get() = selectedCategory.toZoneQueryScope()
+}
 
 class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
@@ -80,28 +96,55 @@ class HomeFeedViewModel(
 
     private var initialLoadJob: Job? = null
 
-    // 记忆滚动位置（用于 Tab 切换保活）
-    var savedScrollIndex: Int = 0
-        private set
-    var savedScrollOffset: Int = 0
-        private set
+    /** 二级板块列表的异步请求（单专区 `zone/info`）；切专区时先取消，避免过期响应覆盖。 */
+    private var boardsJob: Job? = null
 
-    var savedFilterCollapseFraction: Float = 0f
-        private set
+    // 各「作用域 + 板块」的滚动记忆（仅内存；persist 到 DataStore 属 #156）
+    private val boardScrollMemories = mutableMapOf<String, HomeBoardScrollMemory>()
+
+    /** 当前生效的滚动记忆键：`{scope.stateKey()}|{board.type}`。 */
+    val currentBoardMemoryKey: String
+        get() = homeBoardMemoryKey(_uiState.value.zoneScope, _uiState.value.selectedBoard)
+
+    /** 读取指定键的滚动记忆（未记录时返回全 0 默认值，不写回）。 */
+    fun scrollMemoryFor(boardKey: String): HomeBoardScrollMemory =
+        boardScrollMemories[boardKey] ?: HomeBoardScrollMemory()
+
+    /** 保存指定「作用域 + 板块」的滚动位置。 */
+    fun saveBoardScrollPosition(boardKey: String, index: Int, offset: Int) {
+        if (index < 0) return
+        boardScrollMemories[boardKey] = scrollMemoryFor(boardKey).copy(index = index, offset = offset)
+    }
+
+    /** 保存指定「作用域 + 板块」的筛选层折叠比例。 */
+    fun saveBoardFilterCollapseFraction(boardKey: String, fraction: Float) {
+        boardScrollMemories[boardKey] =
+            scrollMemoryFor(boardKey).copy(filterCollapseFraction = fraction.coerceIn(0f, 1f))
+    }
+
+    /** 清空指定「作用域 + 板块」的滚动记忆（切筛选 / 回顶刷新 / 切换选择时复位）。 */
+    fun resetBoardScrollMemory(boardKey: String) {
+        boardScrollMemories[boardKey] = HomeBoardScrollMemory()
+    }
+
+    /** 当前键的滚动记忆（宿主首屏恢复与现有单键测试使用的薄封装）。 */
+    val savedScrollIndex: Int
+        get() = scrollMemoryFor(currentBoardMemoryKey).index
+    val savedScrollOffset: Int
+        get() = scrollMemoryFor(currentBoardMemoryKey).offset
+    val savedFilterCollapseFraction: Float
+        get() = scrollMemoryFor(currentBoardMemoryKey).filterCollapseFraction
 
     fun saveScrollPosition(index: Int, offset: Int) {
-        savedScrollIndex = index
-        savedScrollOffset = offset
+        saveBoardScrollPosition(currentBoardMemoryKey, index, offset)
     }
 
     fun saveFilterCollapseFraction(fraction: Float) {
-        savedFilterCollapseFraction = fraction.coerceIn(0f, 1f)
+        saveBoardFilterCollapseFraction(currentBoardMemoryKey, fraction)
     }
 
     fun resetScrollPosition() {
-        savedScrollIndex = 0
-        savedScrollOffset = 0
-        savedFilterCollapseFraction = 0f
+        resetBoardScrollMemory(currentBoardMemoryKey)
     }
 
     init {
@@ -115,24 +158,35 @@ class HomeFeedViewModel(
             }.collect { (focusZones, settings) ->
                 val dynamicCategories = buildFeedCategories(focusZones, settings)
                 val switcherGroups = buildZoneSwitcherGroups(dynamicCategories, settings)
-                _uiState.update { current ->
-                    val matchedCategory = dynamicCategories.find { it.tabKey == current.selectedCategory.tabKey }
-                        ?: dynamicCategories.find { it.tabKey == initialTabKey }
-                        ?: dynamicCategories.firstOrNull()
-                        ?: FeedCategory("all", "全部")
+                val current = _uiState.value
+                val matchedCategory = dynamicCategories.find { it.tabKey == current.selectedCategory.tabKey }
+                    ?: dynamicCategories.find { it.tabKey == initialTabKey }
+                    ?: dynamicCategories.firstOrNull()
+                    ?: FeedCategory("all", "全部")
 
-                    val categoryChanged = matchedCategory.tabKey != current.selectedCategory.tabKey ||
-                        matchedCategory.zoneIds != current.selectedCategory.zoneIds
+                val categoryChanged = matchedCategory.tabKey != current.selectedCategory.tabKey ||
+                    matchedCategory.zoneIds != current.selectedCategory.zoneIds
 
-                    current.copy(
+                // 切专区时二级板块先同步回退到该作用域的兜底列表（首板块），再按需异步取服务端 tabs。
+                val scope = matchedCategory.toZoneQueryScope()
+                val nextBoards = if (categoryChanged) immediateHomeBoards(scope) else current.boards
+                val nextBoard = if (categoryChanged) immediateHomeSelectedBoard(scope) else current.selectedBoard
+
+                _uiState.update {
+                    it.copy(
                         categories = dynamicCategories,
                         selectedCategory = matchedCategory,
-                        switcherGroups = switcherGroups
-                    ).also {
-                        if (categoryChanged && !current.isInitialLoading) {
-                            loadInitialFeed()
-                        }
+                        switcherGroups = switcherGroups,
+                        boards = nextBoards,
+                        selectedBoard = nextBoard
+                    )
+                }
+
+                if (categoryChanged) {
+                    if (!current.isInitialLoading) {
+                        loadInitialFeed()
                     }
+                    syncBoards(scope)
                 }
             }
         }
@@ -160,10 +214,14 @@ class HomeFeedViewModel(
 
     fun selectCategory(category: FeedCategory) {
         if (_uiState.value.selectedCategory.tabKey == category.tabKey) return
-        resetScrollPosition()
+        // 不清理旧作用域的滚动记忆：切回时按「作用域 + 板块」键各自恢复
+        val scope = category.toZoneQueryScope()
+        val fallbackBoards = immediateHomeBoards(scope)
         _uiState.update {
             it.copy(
                 selectedCategory = category,
+                boards = fallbackBoards,
+                selectedBoard = immediateHomeSelectedBoard(scope),
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
@@ -176,6 +234,25 @@ class HomeFeedViewModel(
             viewPreferencesManager.setFeedZoneTabKey(category.tabKey)
             viewPreferencesManager.setFeedCategory(category.id)
         }
+        syncBoards(scope)
+        loadInitialFeed()
+    }
+
+    /**
+     * 切换二级板块：就地切换、不整页重建，不清空其它板块状态（本阶段仅动态板块，故无需额外加载）。
+     *
+     * 滚动位置 / 折叠比例按「作用域 + 板块」记忆，复位与恢复由宿主 UI 的 `LaunchedEffect` 负责；
+     * 后续 #157–#161 接入新板块时在此按板块懒加载首屏。
+     */
+    fun selectBoard(board: ZoneBoard) {
+        val current = _uiState.value
+        if (current.selectedBoard == board || board !in current.boards) return
+        _uiState.update { it.copy(selectedBoard = board) }
+    }
+
+    /** 板块列表空态的重试入口：重新解析当前作用域板块，并补一次内容刷新。 */
+    fun refreshBoards() {
+        syncBoards(_uiState.value.zoneScope)
         loadInitialFeed()
     }
 
@@ -205,11 +282,14 @@ class HomeFeedViewModel(
         val defaultCategory = _uiState.value.categories.firstOrNull() ?: FeedCategory("all", "全部")
         val defaultSubType = ActionSubType.DEFAULT.apiValue
         if (_uiState.value.selectedCategory.tabKey == defaultCategory.tabKey && _uiState.value.selectedSubType == defaultSubType) return
-        resetScrollPosition()
+        val scope = defaultCategory.toZoneQueryScope()
+        val fallbackBoards = immediateHomeBoards(scope)
         _uiState.update {
             it.copy(
                 selectedCategory = defaultCategory,
                 selectedSubType = defaultSubType,
+                boards = fallbackBoards,
+                selectedBoard = immediateHomeSelectedBoard(scope),
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
@@ -218,11 +298,13 @@ class HomeFeedViewModel(
                 loadMoreError = null
             )
         }
+        resetBoardScrollMemory(homeBoardMemoryKey(scope, immediateHomeSelectedBoard(scope)))
         viewModelScope.launch {
             viewPreferencesManager.setFeedZoneTabKey(defaultCategory.tabKey)
             viewPreferencesManager.setFeedCategory(defaultCategory.id)
             viewPreferencesManager.setFeedSubType(defaultSubType)
         }
+        syncBoards(scope)
         loadInitialFeed()
     }
 
@@ -431,6 +513,37 @@ class HomeFeedViewModel(
             // 请求期间令牌可能已切换/失效，二次校验避免污染新会话的未读数
             if (userSession.currentToken != token) return@launch
             _uiState.update { it.copy(unreadMessageCount = count.totalCount) }
+        }
+    }
+
+    /**
+     * 同步当前作用域的二级板块列表（顺序即 Tab 顺序）。
+     *
+     * - 聚合态（全部 / 关注）：客户端固定列表，无网络请求；
+     * - 单专区：异步取 `zone/info.tabs`，用 `ZoneBoard.tabsFor` 与服务端顺序求交；请求中 / 失败保持
+     *   兜底 `[ZoneBoard.Action]`；请求期间用户切走则丢弃过期响应。
+     *
+     * 首页只借用 `zone/info` 的 tabs，不是「进入专区」，因此 `reportVisit = false`，
+     * 避免每次切专区都上报访问记录、污染「最近访问」排序（专区详情保持默认 true）。
+     */
+    private fun syncBoards(scope: ZoneQueryScope) {
+        boardsJob?.cancel()
+        if (scope !is ZoneQueryScope.Single) return
+        boardsJob = viewModelScope.launch {
+            val result = zoneRepository.getZoneInfo(scope.nodeId, reportVisit = false)
+            if (_uiState.value.zoneScope != scope) return@launch
+            val boards = result.getOrNull()
+                ?.let { info -> ZoneBoard.tabsFor(info.tabs, ZoneBoard.HOME_IMPLEMENTED) }
+                ?: HOME_BOARD_FALLBACK
+            _uiState.update { state ->
+                if (state.zoneScope != scope) return@update state
+                state.copy(
+                    boards = boards,
+                    selectedBoard = state.selectedBoard.takeIf { it in boards }
+                        ?: boards.firstOrNull()
+                        ?: ZoneBoard.Action
+                )
+            }
         }
     }
 

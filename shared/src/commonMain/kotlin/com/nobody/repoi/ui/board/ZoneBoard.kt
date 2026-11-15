@@ -51,6 +51,17 @@ enum class ZoneBoard(val type: String, val label: String) {
         val CLIENT_WHITELIST: Set<ZoneBoard> = HOME_ORDER.toSet()
 
         /**
+         * 首页已接入的板块集合（B 阶段 = 仅 [Action]）。
+         *
+         * 与 [CLIENT_WHITELIST]（专区详情已实现白名单）区分：专区详情 10 类均已实现，首页按票逐步接入，
+         * 首页二级 Tab 只展示本集合内的板块（聚合态 = [HOME_ORDER] ∩ 本集合；单专区 = 服务端 tabs ∩ 本集合），
+         * 未接入的板块不出现在 Tab 中（issue #155 验收标准）。
+         *
+         * 扩展方式：#157–#161 各自把自己的板块加进来（一行改动），#162 再做聚合态能力矩阵过滤。
+         */
+        val HOME_IMPLEMENTED: Set<ZoneBoard> = setOf(Action)
+
+        /**
          * 服务端 `type` → 板块。
          *
          * `share` 是 `album` 的历史别名（专区详情现状 `album|share` 同属分享分支），统一映射到
