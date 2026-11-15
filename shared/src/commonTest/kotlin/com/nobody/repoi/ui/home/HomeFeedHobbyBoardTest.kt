@@ -93,7 +93,7 @@ class HomeFeedHobbyBoardTest {
     }
 
     private fun hobbyItemJson(id: Long): String =
-        """{"id":$id,"itemId":${1000 + id},"nameCN":"产品$id","cover":"c.jpg"}"""
+        """{"id":$id,"nameCN":"产品$id","cover":"c.jpg"}"""
 
     private fun hobbyPageJson(ids: List<Long>): String =
         """{"success":true,"code":200,"msg":"ok","data":{"list":[${ids.joinToString(",") { hobbyItemJson(it) }}]}}"""
