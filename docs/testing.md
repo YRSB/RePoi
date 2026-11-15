@@ -146,7 +146,8 @@ CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-ru
 规则会机械校验「构建脚本里出现的每个 pattern 都能在本表找到」。
 
 > 新增排除前先问：能不能用调度器三件套把它修好？本项目历史上正是靠「先修再摘除」把
-> `UserCollectViewModelTest` 与 `HobbyDetailViewModelCollectTest` 从空绿拉回了真实执行。
+> `UserCollectViewModelTest`、`HobbyDetailViewModelCollectTest` 与 `HomeFeedViewModelTest`
+> 从空绿拉回了真实执行（`HomeFeedViewModelTest` 注入内存 DataStore 后已回归）。
 
 | pattern | 原因 | 恢复条件 |
 |---|---|---|
@@ -156,7 +157,6 @@ CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-ru
 | `*HobbyDetailViewModelRelatedTest*` | 关联条目并发加载时序不稳 | 用虚拟调度器固定并发顺序后 |
 | `*HobbyDetailViewModelTimelineTest*` | 时间轴多阶段加载时序不稳 | 同上 |
 | `*HobbyDetailViewModelExHobbyTest*` | ExHobby 图库按需补录时序不稳 | 同上 |
-| `*HomeFeedViewModelTest*` | 首页多源聚合 + 真实 DataStore IO | 注入内存 DataStore 后 |
 | `*LoginViewModelTest*` | 登录链路含真实会话预热 | 会话层改为 Fake 后 |
 | `*MessageBlockViewModelTest*` | 消息拉黑列表时序不稳 | 调度器三件套改造后 |
 | `*MessageCenterViewModelTest*` | 消息中心多 Tab 并发时序不稳 | 同上 |

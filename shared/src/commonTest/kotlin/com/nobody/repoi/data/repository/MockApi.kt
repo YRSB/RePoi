@@ -172,6 +172,14 @@ class MockApi {
     fun takeRequest(): RecordedHttpRequest =
         RecordedHttpRequest(requests.getAndUpdate { it.drop(1) }.first())
 
+    /**
+     * 最近一次记录的请求（不消费 FIFO 队列）。
+     *
+     * 断言「最近一次请求的参数」用；[takeRequest] 按先进先出取，多次请求后只能拿到最早那条。
+     */
+    fun lastRequest(): RecordedHttpRequest =
+        RecordedHttpRequest(requests.value.last())
+
     val requestCount: Int get() = requests.value.size
 }
 
