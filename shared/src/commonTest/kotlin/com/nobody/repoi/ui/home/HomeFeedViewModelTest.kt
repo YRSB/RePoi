@@ -643,4 +643,53 @@ class HomeFeedViewModelTest {
         // 预热完成后补拉一次带凭据的响应，保证关注专区最终一致
         assertEquals(2, env.zoneMock.requestCount)
     }
+
+    @Test
+    fun selectZoneTab_allStillSelectableWhenShowAllDisabled() = runTest(testDispatcher) {
+        val env = env()
+        // 设置隐藏「全部」：分类列表不再产出 all，但切换器「快捷·全部」仍需可选中。
+        env.zoneMock.replaceRoute(
+            "api/zone/home-tabs",
+            """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":false},"focusZones":[]}}"""
+        )
+        env.stubFeed(items = listOf(item(1, "100")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.categories.none { it.tabKey == "all" })
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_ALL)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("all", state.selectedCategory.tabKey)
+        assertEquals(0, state.selectedCategory.id)
+        assertEquals(listOf(1L), state.items.map { it.id })
+        assertEquals("all", env.preferences.getInitialFeedZoneTabKey())
+        assertEquals(0, env.preferences.getInitialFeedCategoryId())
+        // 只切 tab，不修改「隐藏全部」设置
+        assertFalse(env.zoneRepository.settingsFlow.value.showAll)
+    }
+
+    @Test
+    fun selectZoneTab_followWithNoFocusZones_showsEmptyWithoutRequest() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100")))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val before = env.feedRequests
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("follow", state.selectedCategory.tabKey)
+        assertEquals("-1", state.selectedCategory.zoneIds)
+        assertTrue(state.items.isEmpty())
+        assertFalse(state.hasMore)
+        assertFalse(state.isInitialLoading)
+        // 未关注任何专区时切「关注」不发请求
+        assertEquals(before, env.feedRequests)
+        assertEquals("follow", env.preferences.getInitialFeedZoneTabKey())
+    }
 }
