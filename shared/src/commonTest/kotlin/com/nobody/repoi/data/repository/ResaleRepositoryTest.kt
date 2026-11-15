@@ -45,7 +45,7 @@ class ResaleRepositoryTest {
         mock.enqueue(mockJson)
 
         val result = repository.searchResale(
-            zones = 33476094L,
+            zones = "33476094",
             type = 1,
             keyword = "测试"
         )
@@ -62,6 +62,40 @@ class ResaleRepositoryTest {
         val body = recorded.formBodyText()
         assertTrue(body.contains("zones=33476094"))
         assertTrue(body.contains("type=1"))
+    }
+
+    @Test
+    fun searchResaleWithoutZones_omitsZoneParamForAggregateScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
+        )
+
+        // 「全部」聚合：zones 省略即等价全站（issue #160 验收标准「聚合态以专区集合取数成功」）
+        val result = repository.searchResale(type = 1, lastTime = null)
+
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertFalse(form.containsKey("zones"), "聚合作用域不得下发 zones 参数：$form")
+        assertEquals("1", form["type"])
+        assertEquals("1", form["state"])
+    }
+
+    @Test
+    fun searchResaleKeepsCommaSeparatedZonesVerbatim() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
+        )
+
+        // 放宽为 String 后不再按 Long 过滤：逗号串原样透传（关注聚合的「交集」语义由上层隐藏板块规避）
+        val result = repository.searchResale(zones = "100,200", type = 2, puritys = "11")
+
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertEquals("100,200", form["zones"], "zones 必须原样透传（含逗号）")
+        assertEquals("2", form["type"])
+        assertEquals("11", form["puritys"])
     }
 
     @Test

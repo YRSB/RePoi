@@ -25,6 +25,7 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
+import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
@@ -220,18 +221,11 @@ class ZoneDetailViewModel(
         Pair("top", "推荐")
     )
 
-    val resaleTypes = listOf(
-        Pair(1, "出售"),
-        Pair(2, "求购")
-    )
+    /** 二手交易类型（共享定义 [ResaleBoardOptions.TYPES]，首页/详情/市场唯一来源）。 */
+    val resaleTypes: List<Pair<Int, String>> = ResaleBoardOptions.TYPES
 
-    val resalePurities = listOf(
-        Pair(null, "全部成色"),
-        Pair("11", "全新未拆"),
-        Pair("9", "仅拆封"),
-        Pair("8", "二手好相"),
-        Pair("7", "瑕疵品")
-    )
+    /** 二手成色（共享定义 [ResaleBoardOptions.PURITIES]，含 `null` 全部成色）。 */
+    val resalePurities: List<Pair<String?, String>> = ResaleBoardOptions.PURITIES
 
     val categoryTree: StateFlow<Map<Int, List<CategoryItem>>> = categoryManager.categoryMap
 
@@ -289,7 +283,8 @@ class ZoneDetailViewModel(
         fetcher = { cursor ->
             val curResale = _uiState.value.resaleState
             resaleRepository.searchResale(
-                zones = nodeId,
+                // #160：专区参数放宽为 String，单专区传 nodeId 字符串（聚合由首页按作用域派生）
+                zones = nodeId.toString(),
                 type = curResale.type,
                 keyword = curResale.keyword.takeIf { it.isNotBlank() },
                 puritys = curResale.purity,
