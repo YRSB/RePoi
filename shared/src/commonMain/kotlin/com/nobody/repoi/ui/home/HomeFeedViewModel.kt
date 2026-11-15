@@ -612,8 +612,8 @@ class HomeFeedViewModel(
         val firstBoard = immediateHomeSelectedBoard(scope)
         // 重置同时回到默认专区首板块，并保持二级偏好键与一级/板块选中态一致
         currentBoardSelectionKey = encodeBoardKey(defaultCategory.tabKey, firstBoard.type)
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            state.copy(
                 selectedCategory = defaultCategory,
                 selectedSubType = defaultSubType,
                 boards = fallbackBoards,
@@ -624,15 +624,17 @@ class HomeFeedViewModel(
                 isInitialLoading = true,
                 errorMessage = null,
                 loadMoreError = null
-            ).resetAlbumForScopeChange().resetResaleForScopeChange().copy(
-                albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
-                albumSelectedCategory = null,
-                resale = resale.copy(
-                    type = ResaleBoardOptions.DEFAULT_TYPE,
-                    purity = null,
-                    keyword = ""
+            ).resetAlbumForScopeChange().resetResaleForScopeChange().let { next ->
+                next.copy(
+                    albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
+                    albumSelectedCategory = null,
+                    resale = next.resale.copy(
+                        type = ResaleBoardOptions.DEFAULT_TYPE,
+                        purity = null,
+                        keyword = ""
+                    )
                 )
-            )
+            }
         }
         resetBoardScrollMemory(homeBoardMemoryKey(scope, firstBoard))
         resaleBoardLoader.reset()
