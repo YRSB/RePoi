@@ -103,8 +103,7 @@ fun ZoneBoardFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = { actions.onSelectSubType(key) },
-                        label = { Text(label) },
-                        shape = MaterialTheme.shapes.small
+                        label = { Text(label) }
                     )
                 }
             }
@@ -123,8 +122,7 @@ fun ZoneBoardFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = { actions.onSelectAlbumOrder(key) },
-                        label = { Text(label) },
-                        shape = MaterialTheme.shapes.small
+                        label = { Text(label) }
                     )
                 }
                 if (albumCategoryOptions.isNotEmpty()) {
@@ -141,8 +139,7 @@ fun ZoneBoardFilterBar(
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
-                            },
-                            shape = MaterialTheme.shapes.small
+                            }
                         )
                         DropdownMenu(
                             expanded = expanded,
@@ -183,8 +180,7 @@ fun ZoneBoardFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = { actions.onSelectPostsOrder(key) },
-                        label = { Text(label) },
-                        shape = MaterialTheme.shapes.small
+                        label = { Text(label) }
                     )
                 }
             }
@@ -221,8 +217,7 @@ fun ZoneBoardFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = { actions.onSelectResalePurity(purityKey) },
-                        label = { Text(label) },
-                        shape = MaterialTheme.shapes.small
+                        label = { Text(label) }
                     )
                 }
             }
@@ -354,14 +349,12 @@ fun ZoneBoardFilterBar(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                        },
-                        shape = MaterialTheme.shapes.small
+                        }
                     )
 
                     // 6. 网格 / 列表切换
                     IconButton(
-                        onClick = { actions.onHobbyViewMode() },
-                        modifier = Modifier.size(36.dp)
+                        onClick = { actions.onHobbyViewMode() }
                     ) {
                         Icon(
                             imageVector = if (hobbyIsGridMode) {
