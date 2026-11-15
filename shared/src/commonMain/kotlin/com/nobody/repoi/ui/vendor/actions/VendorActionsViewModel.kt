@@ -53,6 +53,14 @@ class VendorActionsViewModel(
 ) : ViewModel() {
 
     companion object {
+        /**
+         * 厂商动态分类 Tab。
+         *
+         * 与首页/专区详情的动态筛选（唯一共享定义 `ActionSubType`）**暂不合并**，原因：
+         * 1. 文案属厂商动态语义（如「制作决定」「官图更新」「再贩」），与 2.43 首页动态 9 项文案不同域；
+         * 2. 首项是 `all`（厂商动态的全部），且没有「推荐」「评论」档，键集是共享定义的 7 项子集；
+         * 3. 接口为厂商动态专用接口，键值支持范围未抓包验证。
+         */
         val TABS = listOf(
             VendorActionTab(name = "全部", subType = "all"),
             VendorActionTab(name = "制作决定", subType = "confirm"),

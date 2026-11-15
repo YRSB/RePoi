@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
 import com.nobody.repoi.data.repository.HomeRepository
@@ -31,7 +32,7 @@ data class FeedCategory(
 data class HomeFeedUiState(
     val categories: List<FeedCategory> = listOf(FeedCategory("all", "全部")),
     val selectedCategory: FeedCategory = FeedCategory("all", "全部"),
-    val selectedSubType: String = "recommend",
+    val selectedSubType: String = ActionSubType.DEFAULT.apiValue,
     val items: List<ActionItem> = emptyList(),
     val lastTime: Long = 0L,
     val isInitialLoading: Boolean = true,
@@ -52,20 +53,17 @@ class HomeFeedViewModel(
     private val messageRepository: MessageRepository? = null
 ) : ViewModel() {
 
-    val subTypes = listOf(
-        Pair("recommend", "推荐"),
-        Pair("all", "全部"),
-        Pair("comment", "讨论"),
-        Pair("confirm", "制作"),
-        Pair("official_pic", "官图"),
-        Pair("preorder", "预定"),
-        Pair("delay", "延期"),
-        Pair("release", "出荷"),
-        Pair("reorder", "再版")
-    )
+    /**
+     * 动态筛选项（key = 协议键值 `subType`，value = 2.43 中文文案）。
+     *
+     * 唯一来源为共享定义 [ActionSubType]，界面仍按有序 `(key, label)` 列表渲染，顺序即 2.43 顺序。
+     */
+    val subTypes: List<Pair<String, String>> =
+        ActionSubType.ordered.map { it.apiValue to it.label }
 
-    private val initialSubTypeKey = viewPreferencesManager.getInitialFeedSubType()
-    private val initialSubType = subTypes.find { it.first == initialSubTypeKey }?.first ?: "recommend"
+    // 旧持久化值 `all` 在此归一为 `allInfo`（服务端对 `all` 静默回落「推荐」，不能原样发出）
+    private val initialSubType: String =
+        ActionSubType.fromPersisted(viewPreferencesManager.getInitialFeedSubType()).apiValue
     private val initialTabKey = viewPreferencesManager.getInitialFeedZoneTabKey()
 
     private val _uiState = MutableStateFlow(
@@ -218,11 +216,13 @@ class HomeFeedViewModel(
     }
 
     fun selectSubType(subType: String) {
-        if (_uiState.value.selectedSubType == subType) return
+        // 边界归一：任何来源的筛选值都先转成协议键值，避免旧键 all 被发到接口
+        val normalized = ActionSubType.fromPersisted(subType).apiValue
+        if (_uiState.value.selectedSubType == normalized) return
         resetScrollPosition()
         _uiState.update {
             it.copy(
-                selectedSubType = subType,
+                selectedSubType = normalized,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
@@ -232,19 +232,20 @@ class HomeFeedViewModel(
             )
         }
         viewModelScope.launch {
-            viewPreferencesManager.setFeedSubType(subType)
+            viewPreferencesManager.setFeedSubType(normalized)
         }
         loadInitialFeed()
     }
 
     fun resetFilters() {
         val defaultCategory = _uiState.value.categories.firstOrNull() ?: FeedCategory("all", "全部")
-        if (_uiState.value.selectedCategory.tabKey == defaultCategory.tabKey && _uiState.value.selectedSubType == "recommend") return
+        val defaultSubType = ActionSubType.DEFAULT.apiValue
+        if (_uiState.value.selectedCategory.tabKey == defaultCategory.tabKey && _uiState.value.selectedSubType == defaultSubType) return
         resetScrollPosition()
         _uiState.update {
             it.copy(
                 selectedCategory = defaultCategory,
-                selectedSubType = "recommend",
+                selectedSubType = defaultSubType,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
@@ -256,7 +257,7 @@ class HomeFeedViewModel(
         viewModelScope.launch {
             viewPreferencesManager.setFeedZoneTabKey(defaultCategory.tabKey)
             viewPreferencesManager.setFeedCategory(defaultCategory.id)
-            viewPreferencesManager.setFeedSubType("recommend")
+            viewPreferencesManager.setFeedSubType(defaultSubType)
         }
         loadInitialFeed()
     }
