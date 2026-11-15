@@ -113,11 +113,11 @@ fun HomeFeedScreen(
         zoneSwitcherExpanded = false
         viewModel.selectZoneTab(tabKey)
     }
-    val onBrowseAllZonesFromSwitcher = {
+    val onBrowseAllZonesFromSwitcher: () -> Unit = {
         zoneSwitcherExpanded = false
         onNavigateToZoneBrowse?.invoke()
     }
-    val onOpenHomeSettingsFromSwitcher = {
+    val onOpenHomeSettingsFromSwitcher: () -> Unit = {
         zoneSwitcherExpanded = false
         onNavigateToZoneSettings?.invoke()
     }
