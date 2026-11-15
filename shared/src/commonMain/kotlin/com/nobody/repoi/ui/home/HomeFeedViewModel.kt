@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
+import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.repository.MessageRepository
@@ -11,7 +13,12 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.AlbumBoardOptions
+import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,16 +60,112 @@ data class HomeFeedUiState(
     val hasMore: Boolean = true,
     val errorMessage: String? = null,
     val loadMoreError: String? = null,
+
+    // 分享（相册）板块状态：与动态板块完全独立、按板块懒加载（首次切到分享才请求）
+    val albumItems: List<AlbumListItem> = emptyList(),
+    val albumPage: Int = 1,
+    val albumHasMore: Boolean = true,
+    val isAlbumLoading: Boolean = false,
+    val isLoadingMoreAlbum: Boolean = false,
+    val albumErrorMessage: String? = null,
+    val albumLoadMoreError: String? = null,
+    /** 当前排序（键值见 [AlbumBoardOptions.ORDERS]）；按板块记忆，切走再切回保留。 */
+    val albumSelectedOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
+    /** 当前分类；`null` = 全部分类。仅单专区作用域会产生候选值。 */
+    val albumSelectedCategory: Int? = null,
+    /** 分类候选（单专区且服务端下发 ≥2 个有效分类时非空；聚合态恒为空）。 */
+    val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
+    /** 是否已发起过首屏请求（懒加载去重 + 失败/空态后不自动重试）。 */
+    val isAlbumLoaded: Boolean = false,
+
     val userAvatar: String? = null,
     val unreadMessageCount: Int = 0
 ) {
     /** 查询作用域（由 [selectedCategory] 派生，避免两处状态漂移）。 */
     val zoneScope: ZoneQueryScope
         get() = selectedCategory.toZoneQueryScope()
+
+    /** 当前板块条目数（内容区四态 / 触底翻页 / 折叠可滚动性共用，避免宿主散写 `when`）。 */
+    val currentBoardItemCount: Int
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> albumItems.size
+            else -> items.size
+        }
+
+    /** 当前板块是否还有下一页。 */
+    val currentBoardHasMore: Boolean
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> albumHasMore
+            else -> hasMore
+        }
+
+    /** 当前板块是否正在追加下一页。 */
+    val currentBoardIsLoadingMore: Boolean
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> isLoadingMoreAlbum
+            else -> isLoadingMore
+        }
+
+    /** 当前板块追加失败信息（页脚重试用）。 */
+    val currentBoardLoadMoreError: String?
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> albumLoadMoreError
+            else -> loadMoreError
+        }
+
+    /** 当前板块首屏加载中（宿主统一用 `PoiLoadingView` 展示）。 */
+    val isCurrentBoardLoading: Boolean
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> isAlbumLoading && albumItems.isEmpty()
+            else -> isInitialLoading
+        }
+
+    /** 当前板块首屏错误（仅在列表为空时展示错误态）。 */
+    val currentBoardErrorMessage: String?
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> albumErrorMessage
+            else -> errorMessage
+        }
+
+    /** 当前板块内容快照（传给共享面板 `ZoneBoardPane`，保证两屏同一渲染口径）。 */
+    val currentBoardContent: ZoneBoardContent
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> ZoneBoardContent.Album(
+                items = albumItems,
+                page = ZoneBoardPageView(
+                    isLoading = isAlbumLoading,
+                    isLoadingMore = isLoadingMoreAlbum,
+                    errorMessage = albumErrorMessage,
+                    loadMoreError = albumLoadMoreError,
+                    isEndReached = !albumHasMore
+                )
+            )
+            else -> ZoneBoardContent.Action(
+                items = items,
+                page = ZoneBoardPageView(
+                    isLoading = isInitialLoading,
+                    isLoadingMore = isLoadingMore,
+                    errorMessage = errorMessage,
+                    loadMoreError = loadMoreError,
+                    isEndReached = !hasMore
+                )
+            )
+        }
+
+    /** 当前板块筛选值快照（传给共享面板/筛选条）。 */
+    val currentBoardFilters: ZoneBoardFilters
+        get() = when (selectedBoard) {
+            ZoneBoard.Album -> ZoneBoardFilters(
+                albumOrder = albumSelectedOrder,
+                albumCategory = albumSelectedCategory
+            )
+            else -> ZoneBoardFilters(subType = selectedSubType)
+        }
 }
 
 class HomeFeedViewModel(
     private val homeRepository: HomeRepository,
+    private val albumRepository: AlbumRepository,
     private val zoneRepository: ZoneRepository,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val userSession: UserSession,
@@ -76,6 +179,13 @@ class HomeFeedViewModel(
      */
     val subTypes: List<Pair<String, String>> =
         ActionSubType.ordered.map { it.apiValue to it.label }
+
+    /**
+     * 分享板块 6 档排序（key = 协议 `order`，value = 文案）。
+     *
+     * 唯一来源为共享定义 [AlbumBoardOptions]，与专区详情共用，禁止在首页另写一份。
+     */
+    val albumOrders: List<Pair<String, String>> = AlbumBoardOptions.ORDERS
 
     // 旧持久化值 `all` 在此归一为 `allInfo`（服务端对 `all` 静默回落「推荐」，不能原样发出）
     private val initialSubType: String =
@@ -113,6 +223,12 @@ class HomeFeedViewModel(
 
     /** 二级板块列表的异步请求（单专区 `zone/info`）；切专区时先取消，避免过期响应覆盖。 */
     private var boardsJob: Job? = null
+
+    /** 分享板块首屏 / 下一页请求（切排序、切分类、切专区时取消，避免过期响应覆盖新列表）。 */
+    private var albumJob: Job? = null
+
+    /** 分享板块分类候选请求（单专区；切专区时取消）。 */
+    private var albumCategoriesJob: Job? = null
 
     // 各「作用域 + 板块」的滚动记忆（仅内存；persist 到 DataStore 属 #156）
     private val boardScrollMemories = mutableMapOf<String, HomeBoardScrollMemory>()
@@ -208,9 +324,15 @@ class HomeFeedViewModel(
                         switcherGroups = switcherGroups,
                         boards = nextBoards,
                         selectedBoard = nextBoard
-                    )
+                    ).let { next -> if (categoryChanged) next.resetAlbumForScopeChange() else next }
                 }
 
+                if (categoryChanged) {
+                    // 切专区：弃掉分享板块的旧列表/分类候选，等下次切到分享再懒加载
+                    cancelAlbumWork()
+                }
+                // 冷启动恢复到分享板块：恢复路径绕过 selectBoard，需在此补触发懒加载
+                if (nextBoard == ZoneBoard.Album) ensureAlbumLoaded()
                 if (coldStartResolvedTabKey != null) {
                     // 冷启动落点确定（含回落「全部」）：补上被推迟的首屏加载，专区变化时装配板块
                     loadInitialFeed()
@@ -283,22 +405,24 @@ class HomeFeedViewModel(
                 isInitialLoading = true,
                 errorMessage = null,
                 loadMoreError = null
-            )
+            ).resetAlbumForScopeChange()
         }
         viewModelScope.launch {
             viewPreferencesManager.setFeedZoneTabKey(category.tabKey)
             viewPreferencesManager.setFeedCategory(category.id)
             persistBoardSelection()
         }
+        cancelAlbumWork()
         syncBoards(scope)
         loadInitialFeed()
     }
 
     /**
-     * 切换二级板块：就地切换、不整页重建，不清空其它板块状态（本阶段仅动态板块，故无需额外加载）。
+     * 切换二级板块：就地切换、不整页重建，不清空其它板块状态。
      *
-     * 滚动位置 / 折叠比例按「作用域 + 板块」记忆，复位与恢复由宿主 UI 的 `LaunchedEffect` 负责；
-     * 选择同时写回 `feed_zone_board = {tabKey}|{type}`；后续 #157–#161 接入新板块时在此按板块懒加载首屏。
+     * 分享板块按「懒加载」语义：只有首次切到分享时才请求首屏；切走再切回直接复用已加载的
+     * items / 排序 / 分类状态（滚动位置记忆键见 [homeBoardMemoryKey]）。
+     * 选择同时写回 `feed_zone_board = {tabKey}|{type}`（#156 恢复规则 4）。
      */
     fun selectBoard(board: ZoneBoard) {
         val current = _uiState.value
@@ -306,6 +430,69 @@ class HomeFeedViewModel(
         currentBoardSelectionKey = encodeBoardKey(current.selectedCategory.tabKey, board.type)
         _uiState.update { it.copy(selectedBoard = board) }
         viewModelScope.launch { persistBoardSelection() }
+        if (board == ZoneBoard.Album) ensureAlbumLoaded()
+    }
+
+    /** 分享板块懒加载入口：首次切到分享时拉首屏 + 单专区分类候选；已加载/加载中不重复请求。 */
+    private fun ensureAlbumLoaded() {
+        val state = _uiState.value
+        if (state.isAlbumLoaded || state.isAlbumLoading) return
+        // 同步置加载态，避免「切到分享」与协程启动之间渲染一帧空态卡片
+        _uiState.update { it.copy(isAlbumLoading = true) }
+        loadInitialAlbum()
+        syncAlbumCategories()
+    }
+
+    /**
+     * 切换分享排序：清空列表 + 回第一页 + 重新请求（与专区详情既有语义一致）。
+     *
+     * 不清理滚动记忆——宿主 UI 在筛选变化时统一复位到顶并展开筛选条。
+     */
+    fun selectAlbumOrder(order: String) {
+        if (order !in AlbumBoardOptions.ORDER_KEYS) return
+        if (_uiState.value.albumSelectedOrder == order) return
+        resetScrollPosition()
+        _uiState.update {
+            it.copy(
+                albumSelectedOrder = order,
+                albumItems = emptyList(),
+                albumPage = 1,
+                albumHasMore = true,
+                isAlbumLoading = true,
+                isLoadingMoreAlbum = false,
+                albumErrorMessage = null,
+                albumLoadMoreError = null
+            )
+        }
+        loadInitialAlbum()
+    }
+
+    /** 切换分享分类（`null` = 全部分类）：清空列表 + 回第一页 + 重新请求。 */
+    fun selectAlbumCategory(categoryId: Int?) {
+        if (_uiState.value.albumSelectedCategory == categoryId) return
+        resetScrollPosition()
+        _uiState.update {
+            it.copy(
+                albumSelectedCategory = categoryId,
+                albumItems = emptyList(),
+                albumPage = 1,
+                albumHasMore = true,
+                isAlbumLoading = true,
+                isLoadingMoreAlbum = false,
+                albumErrorMessage = null,
+                albumLoadMoreError = null
+            )
+        }
+        loadInitialAlbum()
+    }
+
+    /** 当前板块错误态的重试入口（动态 / 分享各自重载首屏）。 */
+    fun retryCurrentBoard() {
+        if (_uiState.value.selectedBoard == ZoneBoard.Album) {
+            loadInitialAlbum()
+        } else {
+            loadInitialFeed()
+        }
     }
 
     /** 把 [currentBoardSelectionKey] 写入偏好（空键表示尚未选择，不落盘）。 */
@@ -366,6 +553,9 @@ class HomeFeedViewModel(
                 isInitialLoading = true,
                 errorMessage = null,
                 loadMoreError = null
+            ).resetAlbumForScopeChange().copy(
+                albumSelectedOrder = AlbumBoardOptions.DEFAULT_ORDER,
+                albumSelectedCategory = null
             )
         }
         resetBoardScrollMemory(homeBoardMemoryKey(scope, firstBoard))
@@ -381,12 +571,31 @@ class HomeFeedViewModel(
 
     fun refreshFeed() = refresh()
 
+    /**
+     * 刷新当前板块：动态走游标首屏，分享走页码第一页，两者共用 [HomeFeedUiState.isRefreshing]，
+     * 下拉指示器 / FAB 无需按板块区分。
+     */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         resetScrollPosition()
-        _uiState.update { it.copy(isRefreshing = true, errorMessage = null, loadMoreError = null) }
+        _uiState.update {
+            it.copy(
+                isRefreshing = true,
+                errorMessage = null,
+                loadMoreError = null,
+                albumErrorMessage = null,
+                albumLoadMoreError = null
+            )
+        }
         fetchUnreadMessages()
+        if (_uiState.value.selectedBoard == ZoneBoard.Album) {
+            refreshAlbum()
+        } else {
+            refreshActionBoard()
+        }
+    }
 
+    private fun refreshActionBoard() {
         viewModelScope.launch {
             val currentState = _uiState.value
 
@@ -432,6 +641,60 @@ class HomeFeedViewModel(
                         isRefreshing = false,
                         isInitialLoading = false,
                         errorMessage = error.message ?: "刷新失败"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 分享板块刷新：页码回第一页，参数与首屏一致（`zones` 作用域 + `order` + `category`）。 */
+    private fun refreshAlbum() {
+        if (_uiState.value.albumCategoryOptions.isEmpty()) syncAlbumCategories()
+        albumJob?.cancel()
+        albumJob = viewModelScope.launch {
+            val state = _uiState.value
+            val scope = state.zoneScope
+            if (scope.isFollowEmpty) {
+                _uiState.update {
+                    it.copy(
+                        albumItems = emptyList(),
+                        albumPage = 1,
+                        albumHasMore = false,
+                        isAlbumLoading = false,
+                        isLoadingMoreAlbum = false,
+                        isRefreshing = false,
+                        isAlbumLoaded = true,
+                        albumLoadMoreError = null
+                    )
+                }
+                return@launch
+            }
+            val result = albumRepository.getAlbums(
+                page = 1,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = state.albumSelectedOrder,
+                zones = scope.zonesParam(),
+                category = state.albumSelectedCategory
+            )
+            result.onSuccess { page ->
+                val distinctList = page.items.distinctBy { it.targetAlbumId }
+                _uiState.update {
+                    it.copy(
+                        albumItems = distinctList,
+                        albumPage = 1,
+                        isRefreshing = false,
+                        isAlbumLoading = false,
+                        albumHasMore = page.hasMore,
+                        isAlbumLoaded = true,
+                        albumLoadMoreError = null
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        isAlbumLoading = false,
+                        albumErrorMessage = error.message ?: "刷新失败"
                     )
                 }
             }
@@ -492,6 +755,10 @@ class HomeFeedViewModel(
 
     fun loadNextPage() {
         val currentState = _uiState.value
+        if (currentState.selectedBoard == ZoneBoard.Album) {
+            loadNextAlbumPage()
+            return
+        }
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.isInitialLoading || currentState.isRefreshing) return
 
         if (currentState.selectedCategory.tabKey == "follow" && currentState.selectedCategory.zoneIds == "-1") {
@@ -536,6 +803,146 @@ class HomeFeedViewModel(
                 }
             }
         }
+    }
+
+    /** 分享板块首屏（懒加载 / 切排序 / 切分类 / 错误重试共用）：页码回第一页。 */
+    fun loadInitialAlbum() {
+        albumJob?.cancel()
+        albumJob = viewModelScope.launch {
+            val state = _uiState.value
+            val scope = state.zoneScope
+            // 关注为空：短路不发请求（空 zones 会被服务端当作全站，属假「关注」内容）
+            if (scope.isFollowEmpty) {
+                _uiState.update {
+                    it.copy(
+                        albumItems = emptyList(),
+                        albumPage = 1,
+                        albumHasMore = false,
+                        isAlbumLoading = false,
+                        isLoadingMoreAlbum = false,
+                        isAlbumLoaded = true,
+                        albumErrorMessage = null,
+                        albumLoadMoreError = null
+                    )
+                }
+                return@launch
+            }
+            _uiState.update { it.copy(isAlbumLoading = true, albumErrorMessage = null) }
+            val result = albumRepository.getAlbums(
+                page = 1,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = state.albumSelectedOrder,
+                zones = scope.zonesParam(),
+                category = state.albumSelectedCategory
+            )
+            result.onSuccess { page ->
+                val distinctList = page.items.distinctBy { it.targetAlbumId }
+                _uiState.update {
+                    it.copy(
+                        albumItems = distinctList,
+                        albumPage = 1,
+                        isAlbumLoading = false,
+                        albumHasMore = page.hasMore,
+                        isAlbumLoaded = true,
+                        albumErrorMessage = null,
+                        albumLoadMoreError = null
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isAlbumLoading = false,
+                        isAlbumLoaded = true,
+                        albumErrorMessage = error.message ?: "加载分享失败"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 分享板块下一页：页码 +1，按 `targetAlbumId` 去重合并；切排序/分类后过期响应丢弃。 */
+    fun loadNextAlbumPage() {
+        val state = _uiState.value
+        if (state.isLoadingMoreAlbum || !state.albumHasMore || state.isAlbumLoading || state.isRefreshing) return
+        val scope = state.zoneScope
+        if (!state.isAlbumLoaded || scope.isFollowEmpty) return
+        val requestedPage = state.albumPage + 1
+        val requestedOrder = state.albumSelectedOrder
+        val requestedCategory = state.albumSelectedCategory
+        _uiState.update { it.copy(isLoadingMoreAlbum = true, albumLoadMoreError = null) }
+        viewModelScope.launch {
+            val result = albumRepository.getAlbums(
+                page = requestedPage,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = requestedOrder,
+                zones = scope.zonesParam(),
+                category = requestedCategory
+            )
+            result.onSuccess { page ->
+                _uiState.update { current ->
+                    // 期间切换了排序 / 分类 / 作用域：本批已过期，直接丢弃
+                    if (current.albumSelectedOrder != requestedOrder ||
+                        current.albumSelectedCategory != requestedCategory ||
+                        current.albumPage != requestedPage - 1
+                    ) {
+                        return@update current
+                    }
+                    val existingIds = current.albumItems.map { it.targetAlbumId }.toSet()
+                    val uniqueNewItems = page.items.filterNot { it.targetAlbumId in existingIds }
+                    current.copy(
+                        albumItems = current.albumItems + uniqueNewItems,
+                        albumPage = requestedPage,
+                        isLoadingMoreAlbum = false,
+                        albumHasMore = page.hasMore && uniqueNewItems.isNotEmpty(),
+                        albumLoadMoreError = null
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoadingMoreAlbum = false,
+                        albumLoadMoreError = error.message ?: "加载更多失败"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 同步分享分类候选：仅单专区可用（原版仅在 `zoneIds` 可解析为单个专区时展示分类入口）。
+     *
+     * 服务端候选少于 2 个时原版不展示分类入口，这里同样返回空列表；切换专区后分类 id 失效，
+     * 由 [resetAlbumForScopeChange] 清空。
+     */
+    private fun syncAlbumCategories() {
+        albumCategoriesJob?.cancel()
+        val scope = _uiState.value.zoneScope
+        if (scope !is ZoneQueryScope.Single) {
+            _uiState.update { it.copy(albumCategoryOptions = emptyList(), albumSelectedCategory = null) }
+            return
+        }
+        albumCategoriesJob = viewModelScope.launch {
+            val result = albumRepository.getAlbumCategories(scope.nodeId)
+            if (_uiState.value.zoneScope != scope) return@launch
+            val options = result.getOrNull().orEmpty()
+                .map { AlbumCategoryOption(it.categoryId, it.name.orEmpty()) }
+                .filter { it.id > 0 && it.name.isNotBlank() }
+                .takeIf { it.size > 1 }
+                .orEmpty()
+            _uiState.update {
+                it.copy(
+                    albumCategoryOptions = options,
+                    albumSelectedCategory = it.albumSelectedCategory
+                        .takeIf { selected -> options.any { option -> option.id == selected } }
+                )
+            }
+        }
+    }
+
+    /** 作用域变化时丢弃分享板块的列表与分类候选（排序作为板块偏好保留）。 */
+    private fun cancelAlbumWork() {
+        albumJob?.cancel()
+        albumCategoriesJob?.cancel()
     }
 
     private fun setupAccountState() {
@@ -615,6 +1022,8 @@ class HomeFeedViewModel(
                     selectedBoard = restoredBoard ?: state.selectedBoard
                 )
             }
+            // 冷启动恢复到分享板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
+            if (_uiState.value.selectedBoard == ZoneBoard.Album) ensureAlbumLoaded()
         }
     }
 
@@ -623,3 +1032,22 @@ class HomeFeedViewModel(
         return DateTimeFormats.parseServerDateTime(dateStr) ?: 0L
     }
 }
+
+/**
+ * 作用域切换时重置分享板块状态：列表/分页/错误/分类候选全部失效（分区 id 与专区相关）。
+ *
+ * 排序是板块级偏好（不随专区变化），故保留 [HomeFeedUiState.albumSelectedOrder]；
+ * 懒加载标记 [HomeFeedUiState.isAlbumLoaded] 归零，等下次切到分享板块再请求。
+ */
+private fun HomeFeedUiState.resetAlbumForScopeChange(): HomeFeedUiState = copy(
+    albumItems = emptyList(),
+    albumPage = 1,
+    albumHasMore = true,
+    isAlbumLoading = false,
+    isLoadingMoreAlbum = false,
+    albumErrorMessage = null,
+    albumLoadMoreError = null,
+    albumSelectedCategory = null,
+    albumCategoryOptions = emptyList(),
+    isAlbumLoaded = false
+)

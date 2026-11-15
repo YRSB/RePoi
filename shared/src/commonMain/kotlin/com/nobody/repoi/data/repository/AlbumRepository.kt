@@ -5,6 +5,7 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.ZoneCategoryItem
 
 data class AlbumPage(
     val items: List<AlbumListItem> = emptyList(),
@@ -65,6 +66,19 @@ class AlbumRepository(
         } else {
             throw ApiException(response.code, response.msg ?: "获取相册列表失败")
         }
+    }
+
+    /**
+     * 相册/分享板块的分类选项（单专区专用）。
+     *
+     * 请求 `GET api/zone/categories?nodeId=&itemType=album`（反编译证据见
+     * `data/remote/model/ZoneCategoryModels.kt` KDoc）；返回已过滤脏数据（`categoryId > 0` 且 `name` 非空），
+     * 「全部」由 UI 自行追加，不在此返回。
+     */
+    suspend fun getAlbumCategories(nodeId: Long): Result<List<ZoneCategoryItem>> = runCatching {
+        val response = api.getZoneCategories(nodeId = nodeId, itemType = "album")
+        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分类失败")
+        response.data?.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
     }
 
     suspend fun getRankingWindow(

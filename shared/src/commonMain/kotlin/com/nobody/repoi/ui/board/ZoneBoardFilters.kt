@@ -22,12 +22,13 @@ data class ZoneHobbyFilter(
 /**
  * 各板块筛选值快照（不可变，pane 只读）。
  *
- * A 阶段只消费 [subType]（动态 9 项筛选）；其余字段为 B 阶段与各板块 ticket 预留，键值定义保持
- * 与专区详情现状一致。动态 9 项的文案与键值属 #153 共享定义，本类型只保存「当前选中值」。
+ * 动态只消费 [subType]（9 项筛选）；相册消费 [albumOrder] / [albumCategory]（#157）；
+ * 其余字段为后续板块 ticket 预留，键值定义保持与专区详情现状一致。排序档位/分类候选等
+ * **选项列表**不放在这里（见 [AlbumBoardOptions] 与宿主注入），本类型只保存「当前选中值」。
  */
 data class ZoneBoardFilters(
     val subType: String = "recommend",
-    val albumOrder: String = "top",
+    val albumOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
     val albumCategory: Int? = null,
     val postsOrder: String = "upd",
     val postsCategory: Int? = null,
