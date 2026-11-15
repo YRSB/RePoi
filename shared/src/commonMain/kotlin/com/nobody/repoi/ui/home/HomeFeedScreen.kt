@@ -64,14 +64,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
+import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
-import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
-import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
@@ -94,6 +94,7 @@ import kotlin.math.roundToInt
 fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
+    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
@@ -140,6 +141,14 @@ fun HomeFeedScreen(
                 viewModel.selectPostsOrder(order)
             }
 
+            override fun onSelectAlbumOrder(order: String) {
+                viewModel.selectAlbumOrder(order)
+            }
+
+            override fun onSelectAlbumCategory(categoryId: Int?) {
+                viewModel.selectAlbumCategory(categoryId)
+            }
+
             override fun onRetryInitial() {
                 viewModel.retrySelectedBoard()
             }
@@ -165,44 +174,46 @@ fun HomeFeedScreen(
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handlePostClick, onNavigateToUser) {
+    val handleAlbumClick = remember(onNavigateToAlbum) {
+        { item: AlbumListItem ->
+            if (item.targetAlbumId > 0L) {
+                onNavigateToAlbum?.invoke(
+                    AlbumNavParam(
+                        albumId = item.targetAlbumId,
+                        initialTitle = item.displayName.ifBlank { null },
+                        initialCover = item.cover
+                    )
+                )
+            }
+        }
+    }
+    val boardItemActions = remember(
+        onActionClick,
+        onCardImageClick,
+        handlePostClick,
+        handleAlbumClick,
+        onNavigateToUser
+    ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
             onPostClick = handlePostClick,
             onPostImageClick = onCardImageClick,
-            onPostUserClick = onNavigateToUser
+            onPostUserClick = onNavigateToUser,
+            onAlbumClick = handleAlbumClick
         )
     }
 
-    // 当前板块内容/分页派生值：动态板块用动态流字段，讨论板块用独立的 posts 状态
-    val isPostsBoard = uiState.isPostsBoard
-    val boardItemCount = if (isPostsBoard) {
-        uiState.posts.items.size + uiState.posts.pinnedPosts.size
-    } else {
-        uiState.items.size
-    }
-    val boardHasMore = if (isPostsBoard) uiState.posts.hasMore else uiState.hasMore
-    val boardIsLoadingMore = if (isPostsBoard) uiState.posts.isLoadingMore else uiState.isLoadingMore
-    val boardLoadMoreError = if (isPostsBoard) uiState.posts.loadMoreError else uiState.loadMoreError
-    val boardErrorMessage = if (isPostsBoard) uiState.posts.errorMessage else uiState.errorMessage
-    // 讨论板块懒加载哨兵：尚未请求过首屏（且无错误）时也按加载态处理，避免闪一帧空态卡片
-    val boardContentEmpty = if (isPostsBoard) {
-        uiState.posts.isEmpty && uiState.posts.errorMessage == null
-    } else {
-        uiState.items.isEmpty()
-    }
-    val boardLoading = if (isPostsBoard) {
-        (uiState.posts.isInitialLoading || !uiState.posts.isLoaded) &&
-            uiState.posts.errorMessage == null
-    } else {
-        uiState.isInitialLoading
-    }
-    val boardErrorEmpty = if (isPostsBoard) {
-        uiState.posts.errorMessage != null && uiState.posts.isEmpty
-    } else {
-        uiState.errorMessage != null && uiState.items.isEmpty()
-    }
+    // 当前板块内容/分页派生值：三类板块统一经 UiState 的 currentBoard* 投影，宿主不再按板块散写 when
+    val boardItemCount = uiState.currentBoardItemCount
+    val boardHasMore = uiState.currentBoardHasMore
+    val boardIsLoadingMore = uiState.currentBoardIsLoadingMore
+    val boardLoadMoreError = uiState.currentBoardLoadMoreError
+    val boardErrorMessage = uiState.currentBoardErrorMessage
+    val boardLoading = uiState.isCurrentBoardLoading
+    val boardErrorEmpty = boardErrorMessage != null && boardItemCount == 0
+    // 懒加载哨兵：尚未请求过首屏（且无错误）时已计入加载态，此处只兜「既不是加载也不是错误」的真空
+    val boardContentEmpty = boardItemCount == 0 && boardErrorMessage == null && !boardLoading
     val boardHasFilterBar = uiState.boards.isNotEmpty()
 
     // 上拉触底翻页判断 (瀑布流模式)
@@ -214,7 +225,7 @@ fun HomeFeedScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, boardItemCount) {
+    LaunchedEffect(shouldLoadMore, uiState.selectedBoard, boardItemCount) {
         if (shouldLoadMore && boardHasMore && !boardIsLoadingMore && boardLoadMoreError == null) {
             viewModel.loadMoreSelectedBoard()
         }
@@ -280,19 +291,23 @@ fun HomeFeedScreen(
     }
 
     // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
-    // 首次组合不触发（保留首屏恢复的滚动位置）。筛选维度按板块取当前值（动态 subType / 讨论 order），
-    // 因此切换排序与切换板块走同一套复位逻辑。
-    val currentFilterKey = if (isPostsBoard) uiState.posts.order else uiState.selectedSubType
+    // 首次组合不触发（保留首屏恢复的滚动位置）。筛选 token 按板块取当前生效值
+    // （动态 = subType；分享 = 排序 + 分类；讨论 = order），因此切换排序与切换板块走同一套复位逻辑。
+    val boardFilterToken = when (uiState.selectedBoard) {
+        ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
+        ZoneBoard.Posts -> uiState.posts.order
+        else -> uiState.selectedSubType
+    }
     var lastSelection by remember {
         mutableStateOf(
-            BoardSelectionKey(uiState.selectedCategory.tabKey, uiState.selectedBoard, currentFilterKey)
+            BoardSelectionKey(uiState.selectedCategory.tabKey, uiState.selectedBoard, boardFilterToken)
         )
     }
-    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, currentFilterKey) {
+    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, boardFilterToken) {
         val selection = BoardSelectionKey(
             uiState.selectedCategory.tabKey,
             uiState.selectedBoard,
-            currentFilterKey
+            boardFilterToken
         )
         if (selection == lastSelection) return@LaunchedEffect
         lastSelection = selection
@@ -445,7 +460,7 @@ fun HomeFeedScreen(
                                 .padding(top = headerStack.totalHeaderHeight)
                                 .padding(24.dp)
                         ) {
-                            if (isEmptyFollow && !isPostsBoard) {
+                            if (isEmptyFollow && uiState.selectedBoard != ZoneBoard.Posts) {
                                 // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
                                 EmptyState(
                                     icon = Icons.Outlined.Category,
@@ -460,7 +475,11 @@ fun HomeFeedScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = if (isPostsBoard) "暂无相关讨论" else "暂无该分类下的动态情报",
+                                        text = when (uiState.selectedBoard) {
+                                            ZoneBoard.Posts -> "暂无相关讨论"
+                                            ZoneBoard.Album -> "暂无相关分享"
+                                            else -> "暂无该分类下的动态情报"
+                                        },
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -476,25 +495,12 @@ fun HomeFeedScreen(
                     else -> {
                         // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
                         // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
-                        // 因此不会重复展示首屏错误。
+                        // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
                         ZoneBoardPane(
                             board = uiState.selectedBoard,
                             scope = uiState.zoneScope,
-                            content = if (isPostsBoard) {
-                                uiState.postsBoardContent
-                            } else {
-                                ZoneBoardContent.Action(
-                                    items = uiState.items,
-                                    page = ZoneBoardPageView(
-                                        isLoading = uiState.isInitialLoading,
-                                        isLoadingMore = uiState.isLoadingMore,
-                                        errorMessage = uiState.errorMessage,
-                                        loadMoreError = uiState.loadMoreError,
-                                        isEndReached = !uiState.hasMore
-                                    )
-                                )
-                            },
-                            filters = uiState.boardFilters,
+                            content = uiState.currentBoardContent,
+                            filters = uiState.currentBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -528,9 +534,10 @@ fun HomeFeedScreen(
             ) {
                 ZoneBoardFilterBar(
                     board = uiState.selectedBoard,
-                    filters = uiState.boardFilters,
+                    filters = uiState.currentBoardFilters,
                     subTypeOptions = viewModel.subTypes,
-                    actions = boardActions
+                    actions = boardActions,
+                    albumCategoryOptions = uiState.albumCategoryOptions
                 )
             }
         }

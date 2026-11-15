@@ -115,8 +115,6 @@ import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.album.AlbumNavParam
-import com.nobody.repoi.ui.album.components.AlbumFeedCard
-import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardContent
@@ -235,9 +233,8 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 列数自适应
+    // 列数自适应（相册列数由共享面板内部按相册规则计算，此处只处理其余板块）
     val feedColumns = rememberFeedStaggeredGridColumns()
-    val albumColumns = rememberAlbumStaggeredGridColumns()
 
     val entityColumns = remember(windowSizeClass, isLandscape) {
         when {
@@ -264,7 +261,6 @@ fun ZoneDetailScreen(
     }
 
     val gridColumns = when {
-        uiState.isAlbumTab -> albumColumns
         uiState.isPostsTab -> feedColumns
         uiState.isHobbyTab -> hobbyColumns
         uiState.isResaleTab -> resaleColumns
@@ -345,6 +341,7 @@ fun ZoneDetailScreen(
     var lastSelectedTab by rememberSaveable { mutableStateOf<String?>(null) }
     var lastSelectedSubType by rememberSaveable { mutableStateOf<String?>(null) }
     var lastAlbumOrder by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastAlbumCategory by rememberSaveable { mutableStateOf<Int?>(null) }
     var lastPostsOrder by rememberSaveable { mutableStateOf<String?>(null) }
     var lastHobbyOrder by rememberSaveable { mutableStateOf<String?>(null) }
     var lastHobbyCategoryId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -357,6 +354,7 @@ fun ZoneDetailScreen(
         uiState.selectedTab,
         uiState.selectedSubType,
         uiState.albumSelectedOrder,
+        uiState.albumSelectedCategory,
         uiState.postsSelectedOrder,
         uiState.hobbyState.order,
         uiState.hobbyState.categoryId,
@@ -369,6 +367,7 @@ fun ZoneDetailScreen(
         val isFilterChanged = !isInitial && !isTabChanged && (
             lastSelectedSubType != uiState.selectedSubType ||
             lastAlbumOrder != uiState.albumSelectedOrder ||
+            lastAlbumCategory != uiState.albumSelectedCategory ||
             lastPostsOrder != uiState.postsSelectedOrder ||
             lastHobbyOrder != uiState.hobbyState.order ||
             lastHobbyCategoryId != uiState.hobbyState.categoryId ||
@@ -392,6 +391,7 @@ fun ZoneDetailScreen(
         lastSelectedTab = uiState.selectedTab
         lastSelectedSubType = uiState.selectedSubType
         lastAlbumOrder = uiState.albumSelectedOrder
+        lastAlbumCategory = uiState.albumSelectedCategory
         lastPostsOrder = uiState.postsSelectedOrder
         lastHobbyOrder = uiState.hobbyState.order
         lastHobbyCategoryId = uiState.hobbyState.categoryId
@@ -574,6 +574,14 @@ fun ZoneDetailScreen(
                 viewModel.selectPostsOrder(order)
             }
 
+            override fun onSelectAlbumOrder(order: String) {
+                viewModel.selectAlbumOrder(order)
+            }
+
+            override fun onSelectAlbumCategory(categoryId: Int?) {
+                viewModel.selectAlbumCategory(categoryId)
+            }
+
             override fun onRetryInitial() {
                 viewModel.refresh()
             }
@@ -587,13 +595,20 @@ fun ZoneDetailScreen(
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handlePostClick, onNavigateToUser) {
+    val boardItemActions = remember(
+        onActionClick,
+        onCardImageClick,
+        handlePostClick,
+        handleAlbumClick,
+        onNavigateToUser
+    ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
             onPostClick = handlePostClick,
             onPostImageClick = onCardImageClick,
-            onPostUserClick = onNavigateToUser
+            onPostUserClick = onNavigateToUser,
+            onAlbumClick = handleAlbumClick
         )
     }
 
@@ -781,6 +796,38 @@ fun ZoneDetailScreen(
                             columns = feedColumns,
                             modifier = Modifier.fillMaxSize()
                         )
+                    } else if (uiState.isAlbumTab) {
+                        // 分享板块：走共享面板（#157），与首页同一内容渲染入口；
+                        // 列数由面板内部按相册策略计算，筛选值来自 ViewModel 投影。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Album,
+                            scope = viewModel.zoneScope,
+                            content = ZoneBoardContent.Album(
+                                items = uiState.albumItems,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.isAlbumLoading,
+                                    isLoadingMore = uiState.isAlbumLoadingMore,
+                                    errorMessage = uiState.albumErrorMessage,
+                                    loadMoreError = uiState.albumLoadMoreError,
+                                    isEndReached = !uiState.hasMoreAlbum
+                                )
+                            ),
+                            filters = ZoneBoardFilters(
+                                albumOrder = uiState.albumSelectedOrder,
+                                albumCategory = uiState.albumSelectedCategory
+                            ),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = gridColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else if (uiState.isPostsTab) {
                         // 讨论板块：走共享面板（与首页同一渲染入口），单专区恒展示置顶帖条
                         ZoneBoardPane(
@@ -817,41 +864,6 @@ fun ZoneDetailScreen(
                         ) {
                     // 3. 内容流渲染列表
                     when {
-                        uiState.isAlbumTab -> {
-                            if (uiState.albumErrorMessage != null && uiState.albumItems.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.albumErrorMessage ?: "加载分享失败",
-                                        onRetry = { viewModel.loadInitialAlbum() }
-                                    )
-                                }
-                            } else if (uiState.albumItems.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关分享")
-                                }
-                            } else {
-                                items(
-                                    items = uiState.albumItems,
-                                    key = { item -> "zone_album_${item.targetAlbumId}" },
-                                    contentType = { "album_feed" }
-                                ) { item ->
-                                    AlbumFeedCard(
-                                        item = item,
-                                        showTime = true,
-                                        onClick = handleAlbumClick
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isAlbumLoadingMore,
-                                        loadMoreError = uiState.albumLoadMoreError,
-                                        isEndReached = !uiState.hasMoreAlbum,
-                                        onRetry = { viewModel.loadNextAlbumPage() }
-                                    )
-                                }
-                            }
-                        }
                         uiState.isHobbyTab -> {
                             val hobbyState = uiState.hobbyState
                             if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
@@ -1000,24 +1012,17 @@ fun ZoneDetailScreen(
             ) {
                 when {
                     uiState.isAlbumTab -> {
-                        // 分享/相册排序胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.albumOrders.forEach { (key, label) ->
-                                val isSelected = uiState.albumSelectedOrder == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectAlbumOrder(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 分享/相册：6 档排序 Chip + 分类入口，统一走共享筛选条（与首页同一实现）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Album,
+                            filters = ZoneBoardFilters(
+                                albumOrder = uiState.albumSelectedOrder,
+                                albumCategory = uiState.albumSelectedCategory
+                            ),
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions,
+                            albumCategoryOptions = uiState.albumCategoryOptions
+                        )
                     }
                     uiState.isPostsTab -> {
                         // 讨论排序胶囊：共享筛选条（回复/新贴/推荐；讨论无分类入口，见 PostsBoardOptions KDoc）

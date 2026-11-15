@@ -17,13 +17,14 @@ import kotlin.test.assertTrue
 class HomeBoardSelectionTest {
 
     @Test
-    fun homeBoardsFor_all_includesPostsAndKeepsHomeOrder() {
+    fun homeBoardsFor_all_includesPostsAndAlbumAndKeepsHomeOrder() {
         val boards = homeBoardsFor(ZoneQueryScope.All)
         assertEquals(
             ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED },
             boards
         )
         assertTrue(ZoneBoard.Posts in boards, "全部聚合：讨论板块可上线（省略 zone 过滤即全站）")
+        assertTrue(ZoneBoard.Album in boards, "全部聚合：分享板块可上线（zones 省略即全站）")
         assertEquals(HomeBoardSelectionBoards.expectedAll, boards)
     }
 
@@ -31,7 +32,8 @@ class HomeBoardSelectionTest {
     fun homeBoardsFor_follow_excludesPostsWithoutMultiZoneChannel() {
         val boards = homeBoardsFor(ZoneQueryScope.Follow(listOf(100L, 200L)))
         assertFalse(ZoneBoard.Posts in boards, "关注聚合无多专区通道，讨论板块必须隐藏")
-        assertEquals(listOf(ZoneBoard.Action), boards)
+        // 分享板块的 `zones` 支持逗号串并集，关注聚合可保留
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), boards)
     }
 
     @Test
@@ -39,7 +41,7 @@ class HomeBoardSelectionTest {
         // 未关注任何专区：同样是关注作用域，规则不变（请求由上层短路，不依赖本列表）
         val boards = homeBoardsFor(ZoneQueryScope.Follow(emptyList()))
         assertFalse(ZoneBoard.Posts in boards)
-        assertEquals(listOf(ZoneBoard.Action), boards)
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), boards)
     }
 
     @Test
@@ -74,13 +76,13 @@ class HomeBoardSelectionTest {
         assertEquals(homeBoardsFor(ZoneQueryScope.All), HOME_AGGREGATE_BOARDS)
         assertEquals(HOME_AGGREGATE_BOARDS, immediateHomeBoards(ZoneQueryScope.All))
         assertEquals(
-            listOf(ZoneBoard.Action),
+            listOf(ZoneBoard.Action, ZoneBoard.Album),
             immediateHomeBoards(ZoneQueryScope.Follow(listOf(1L)))
         )
     }
 
     /** 显式写死「全部聚合」的期望顺序，避免测试只做自指断言。 */
     private object HomeBoardSelectionBoards {
-        val expectedAll: List<ZoneBoard> = listOf(ZoneBoard.Action, ZoneBoard.Posts)
+        val expectedAll: List<ZoneBoard> = listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts)
     }
 }

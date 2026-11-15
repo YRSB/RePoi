@@ -3,6 +3,7 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -115,6 +116,81 @@ class AlbumRepositoryTest {
         val result = repository.getZoneTabs()
         assertTrue(result.isSuccess)
         assertEquals(listOf(AlbumZoneTab.ALL), result.getOrThrow())
+    }
+
+    @Test
+    fun getAlbums_allScopeOmitsZonesAndForwardsOrderAndCategory() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"list":[],"page":1}"""))
+        val result = repository.getAlbums(
+            orderString = "hitsDay",
+            zones = ZoneQueryScope.All.zonesParam(),
+            category = 60100
+        )
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertEquals("hitsDay", form["order"])
+        assertEquals("60100", form["category"])
+        // 全部作用域：省略 zones（空串等价全站，但按接口约定不发送）
+        assertFalse(form.containsKey("zones"))
+    }
+
+    @Test
+    fun getAlbums_followScopeForwardsCommaSeparatedZones() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"list":[],"page":1}"""))
+        val result = repository.getAlbums(
+            orderString = "top",
+            zones = ZoneQueryScope.Follow(listOf(100L, 200L)).zonesParam()
+        )
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertEquals("100,200", form["zones"])
+        assertFalse(form.containsKey("category"))
+    }
+
+    @Test
+    fun getAlbums_singleScopeForwardsNodeId() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"list":[],"page":1}"""))
+        val result = repository.getAlbums(
+            orderString = "picCount",
+            zones = ZoneQueryScope.Single(33476094L).zonesParam()
+        )
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertEquals("33476094", form["zones"])
+        assertEquals("picCount", form["order"])
+    }
+
+    @Test
+    fun getAlbumCategories_filtersInvalidAndForwardsParams() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            mock.ok(
+                """{"visible":true,"categories":[{"categoryId":60100,"name":"手办模型周边"},{"categoryId":60200,"name":"GK/DIY"},{"categoryId":0,"name":"无效"},{"categoryId":60300,"name":""}]}"""
+            )
+        )
+        val result = repository.getAlbumCategories(33476094L)
+        assertTrue(result.isSuccess)
+        assertEquals(
+            listOf(60100 to "手办模型周边", 60200 to "GK/DIY"),
+            result.getOrThrow().map { it.categoryId to it.name }
+        )
+        val recorded = mock.takeRequest()
+        assertEquals("/api/zone/categories", recorded.encodedPath)
+        assertEquals("33476094", recorded.queryParameter("nodeId"))
+        assertEquals("album", recorded.queryParameter("itemType"))
+    }
+
+    @Test
+    fun getAlbumCategories_failureThrows() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "分类加载失败"))
+        val result = repository.getAlbumCategories(33476094L)
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
+        assertEquals("分类加载失败", result.exceptionOrNull()?.message)
     }
 
     @Test
