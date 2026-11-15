@@ -1042,6 +1042,7 @@ fun ZoneDetailScreen(
                             subTypeOptions = viewModel.subTypes,
                             actions = boardActions
                         )
+                    }
                     uiState.isHobbyTab -> {
                         // 产品：排序 / 分类级联 / 年份 / 月份，统一走共享筛选条（与首页同一实现）；
                         // 高级筛选与网格切换入口保留在顶栏常驻控制栏（见下方「常驻搜索与控制栏」）。
@@ -1054,7 +1055,6 @@ fun ZoneDetailScreen(
                             hobbyIsGridMode = uiState.hobbyState.isGridMode,
                             showHobbyControlActions = false
                         )
-                    }
                     }
                     uiState.isResaleTab -> {
                         val resaleState = uiState.resaleState
