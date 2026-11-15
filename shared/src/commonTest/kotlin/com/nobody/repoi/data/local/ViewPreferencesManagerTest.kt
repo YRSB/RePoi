@@ -2,11 +2,8 @@ package com.nobody.repoi.data.local
 
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -94,14 +91,9 @@ class ViewPreferencesManagerTest {
         store.edit { prefs -> prefs[key] = "follow|action" }
         val manager = ViewPreferencesManager(store)
 
-        // 预热协程跑在真实 IO 调度器上，这里在 Default 上做有界真实时间等待
-        withContext(Dispatchers.Default) {
-            var waitedMs = 0
-            while (manager.getInitialFeedZoneBoardKey().isEmpty() && waitedMs < 2_000) {
-                delay(10)
-                waitedMs += 10
-            }
-        }
+        // 有界屏障：awaitPreheat 是预热协程的 join 等待点，替代「真实时间轮询」，
+        // 在慢速 CI 上也不会因等待不足而偶发失败（#150 审查 B3）
+        manager.awaitPreheat()
 
         assertEquals("follow|action", manager.getInitialFeedZoneBoardKey())
     }
