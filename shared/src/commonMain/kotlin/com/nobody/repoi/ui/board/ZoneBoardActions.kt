@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.board
 
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.ZoneEntityItem
 
 /**
  * 板块级筛选与分页动作集合（由宿主机适配现有 ViewModel / loader 实现）。
@@ -45,5 +46,12 @@ data class ZoneBoardItemActions(
     /** 动态卡片图片点击（打开全屏看图）。 */
     val onActionImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
-    val onAlbumClick: ((AlbumListItem) -> Unit)? = null
+    val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
+    /**
+     * 实体卡片点击（厂商/系列/作品/角色/人物）。
+     *
+     * 第一个参数是当前板块（决定跳转哪类详情页），宿主据此构造对应 NavParam；
+     * pane 不感知导航类型，保持与专区详情/首页导航解耦。
+     */
+    val onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null
 )

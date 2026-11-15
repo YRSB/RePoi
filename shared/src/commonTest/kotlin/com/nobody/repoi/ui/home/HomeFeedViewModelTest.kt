@@ -771,9 +771,16 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）与分享（#157）
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）、分享（#157）与实体 5 类（#161）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertEquals(
+            listOf(
+                ZoneBoard.Action, ZoneBoard.Album,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
+                ZoneBoard.Character, ZoneBoard.Person
+            ),
+            state.boards
+        )
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
@@ -829,8 +836,8 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community/works，客户端只保留已接入的 10 类白名单
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 服务端下发 action/album/shop_item/community/works，客户端只保留已接入集合（含 #161 的 works）
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Works), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         // zone/info 请求带上专区 nodeId
         val infoRequest = env.zoneMock.lastRequest()

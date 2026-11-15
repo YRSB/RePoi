@@ -17,11 +17,13 @@ import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.home.components.ActionCard
+import com.nobody.repoi.ui.zone.components.ZoneEntityCard
 
 /**
  * 板块共享面板：首页与专区详情共用的「唯一内容渲染入口」。
  *
- * 已实现 [ZoneBoard.Action]（动态）与 [ZoneBoard.Album]（分享/相册，#157）；其余板块先走防御占位——
+ * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）与实体 5 类
+ * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）；其余板块先走防御占位——
  * 专区详情其余板块本阶段仍走 `ZoneDetailScreen` 原内联分支，不经过本面板。
  *
  * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
@@ -161,6 +163,67 @@ fun ZoneBoardPane(
                                     item = item,
                                     showTime = true,
                                     onClick = { album -> itemActions.onAlbumClick?.invoke(album) }
+                                )
+                            }
+
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZonePaginationFooter(
+                                    isLoadingMore = page.isLoadingMore,
+                                    loadMoreError = page.loadMoreError,
+                                    isEndReached = page.isEndReached,
+                                    onRetry = { actions.onLoadMore() }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ZoneBoard.Company,
+        ZoneBoard.Series,
+        ZoneBoard.Works,
+        ZoneBoard.Character,
+        ZoneBoard.Person -> {
+            val entityContent = content as? ZoneBoardContent.Entity
+            if (entityContent == null) {
+                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+                ZoneEmptyPlaceholder("暂无相关条目")
+            } else {
+                LazyVerticalStaggeredGrid(
+                    columns = columns,
+                    state = gridState,
+                    modifier = modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp
+                ) {
+                    val page = entityContent.page
+                    val errorMessage = page.errorMessage
+                    when {
+                        errorMessage != null && entityContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneErrorPlaceholder(
+                                    message = errorMessage,
+                                    onRetry = { actions.onRetryInitial() }
+                                )
+                            }
+                        }
+                        entityContent.items.isEmpty() -> {
+                            item(span = StaggeredGridItemSpan.FullLine) {
+                                ZoneEmptyPlaceholder("暂无相关条目")
+                            }
+                        }
+                        else -> {
+                            // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
+                            // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
+                            items(
+                                items = entityContent.items,
+                                key = { item -> "zone_entity_${board.type}_${item.targetId}" },
+                                contentType = { "zone_entity_${board.type}" }
+                            ) { item ->
+                                ZoneEntityCard(
+                                    item = item,
+                                    onClick = { itemActions.onEntityClick?.invoke(board, item) }
                                 )
                             }
 
