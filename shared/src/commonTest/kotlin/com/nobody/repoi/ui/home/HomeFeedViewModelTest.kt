@@ -13,6 +13,7 @@ import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -52,6 +53,9 @@ class HomeFeedViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        // 先取消仍排在 Main 上的任务，再交还平台 dispatcher；否则 reset 后恢复的续体会抛
+        // "Dispatchers.Main was accessed ... after resetMain()"，并污染下一个测试。
+        testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
 
@@ -80,7 +84,9 @@ class HomeFeedViewModelTest {
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
         )
-        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        // 内存 DataStore：无真实文件 IO 与后台写协程，避免续体在 resetMain() 之后恢复污染
+        // 后续用例（docs/testing.md「DataStore 测试」约定 ViewModel 测试默认用内存实例）。
+        val preferences = ViewPreferencesManager(TestDataStore.inMemory())
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
@@ -152,7 +158,8 @@ class HomeFeedViewModelTest {
 
     private fun Env.lastFeedForm(): Map<String, String> {
         // M7 fix-2：GET 请求无 POST form——按 queryParameter 逐键读取查询串。
-        val recorded = feedMock.takeRequest()
+        // 断言对象是「最近一次」请求；takeRequest 是 FIFO，多次请求后只能取到最早那条。
+        val recorded = feedMock.lastRequest()
         return listOf("categoryId", "subType", "lastTime", "zoneNodeId", "zoneIds", "pageSize")
             .mapNotNull { key -> recorded.queryParameter(key)?.let { key to it } }
             .toMap()
@@ -270,11 +277,13 @@ class HomeFeedViewModelTest {
     @Test
     fun resetFilters_restoresDefaultsAndPersists() = runTest(testDispatcher) {
         val env = env(savedTabKey = "z100", savedSubType = "all")
-        // 首屏 tabs 即带 z100 聚焦（init 静默同步消费）
-        env.zoneMock.route(
+        // 首屏 tabs 即带 z100 聚焦（init 静默同步消费）。route() 是追加式、首条命中优先，
+        // 二次声明同路径不会生效，必须用 replaceRoute()。
+        env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":100,"nameCN":"手办"}]}}"""
         )
+        env.stubFeed(subType = "all", items = listOf(item(9, "900")))
         env.stubFeed(subType = "all", zoneNodeId = 100L, zoneIds = "100", items = listOf(item(1, "100")))
         env.stubFeed(items = listOf(item(2, "200")))
 
@@ -353,6 +362,27 @@ class HomeFeedViewModelTest {
         assertFalse(state.isLoadingMore)
         assertTrue(state.hasMore)
         assertEquals("100", env.lastFeedForm()["lastTime"])
+    }
+
+    @Test
+    fun loadNextPage_deduplicatesOverlappingItems() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100"), item(2, "90")))
+        // 下一页与首页存在重叠条目（2/90），应被去重，仅追加真正的新条目
+        env.stubFeed(lastTime = 90L, items = listOf(item(2, "90"), item(3, "80")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.items.map { it.id })
+
+        viewModel.loadNextPage()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(1L, 2L, 3L), state.items.map { it.id })
+        assertEquals(80L, state.lastTime)
+        assertTrue(state.hasMore)
+        assertFalse(state.isLoadingMore)
     }
 
     @Test
