@@ -163,6 +163,39 @@ class ZoneRepositoryTest {
     }
 
     @Test
+    fun getZoneInfo_withReportVisitDisabled_skipsVisitedRequest() = runTest {
+        val (mock, repository) = setup()
+        mock.route("api/zone/home-tabs/visited", """{"success":true,"code":200,"msg":"ok"}""")
+        mock.route(
+            "api/zone/info",
+            """
+            {
+                "success": true,
+                "code": 200,
+                "msg": "ok",
+                "data": {
+                    "zone": { "nodeId": 100, "name": "figure", "nameCN": "手办" },
+                    "focusState": false,
+                    "followCount": 1728,
+                    "tabs": ["action", "album"]
+                }
+            }
+            """.trimIndent()
+        )
+
+        // 首页只借用 tabs 装配二级板块，不是「进入专区」：不得上报访问记录
+        val result = repository.getZoneInfo(100L, reportVisit = false)
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().tabs.size)
+
+        // 只应发出一次 api/zone/info；若误上报访问会多出一次请求
+        assertEquals(1, mock.requestCount)
+        val recorded = mock.takeRequest()
+        assertTrue(recorded.path!!.contains("api/zone/info"))
+        assertTrue(recorded.path!!.contains("nodeId=100"))
+    }
+
+    @Test
     fun toggleFocus_follow_and_unfollow_updatesFlow() = runTest {
         val (mock, repository) = setup()
         // 1. 模拟关注成功
