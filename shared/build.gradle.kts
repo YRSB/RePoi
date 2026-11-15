@@ -174,7 +174,6 @@ tasks.withType<Test>().configureEach {
         excludeTestsMatching("*HobbyDetailViewModelRelatedTest*")
         excludeTestsMatching("*HobbyDetailViewModelTimelineTest*")
         excludeTestsMatching("*HobbyDetailViewModelExHobbyTest*")
-        excludeTestsMatching("*HomeFeedViewModelTest*")
         excludeTestsMatching("*LoginViewModelTest*")
         excludeTestsMatching("*MessageBlockViewModelTest*")
         excludeTestsMatching("*MessageCenterViewModelTest*")
