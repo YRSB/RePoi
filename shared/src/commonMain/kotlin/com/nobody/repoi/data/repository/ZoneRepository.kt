@@ -13,6 +13,7 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -221,21 +222,29 @@ class ZoneRepository(
 
     /**
      * 查询专区关联实体分类条目列表（厂商/系列/作品/角色/人物）。
-     * @param nodeId 专区节点 ID
+     *
+     * 作用域由 [ZoneQueryScope] 统一派生，只下发 `zones`：
+     * - 单专区 → `zones=<nodeId>`；
+     * - 关注聚合 → `zones=<关注专区逗号串>`（实测并集）；
+     * - 全部聚合 → 省略 `zones`（等价全站）。
+     *
+     * **禁止下发 `homeScope`**：实测非空 `homeScope` 会让服务端忽略 `zones`、退化为全站。
+     *
+     * @param scope 查询作用域（全站 / 关注 / 单专区）
      * @param itemType 条目类型: company(厂商) / series(系列) / works(作品) / charactar(角色) / person(人物)
      * @param page 页码 (1 起始)
      * @param pageSize 每页条数 (默认 20)
      */
     suspend fun getZoneItems(
-        nodeId: Long,
+        scope: ZoneQueryScope,
         itemType: String,
         category: Int = 0,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<ZoneItemsPayload> = runCatching {
         val response = api.getZoneItems(
-            nodeId = nodeId,
             itemType = itemType,
+            zones = scope.zonesParam(),
             category = category,
             page = page,
             pageSize = pageSize
