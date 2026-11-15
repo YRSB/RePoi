@@ -25,7 +25,12 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
+import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.board.ZoneHobbyFilter
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
 import com.nobody.repoi.util.paging.PageChunk
@@ -43,9 +48,9 @@ import com.nobody.repoi.data.remote.model.ZoneItem
  * 专区产品 (hobby) 分类状态
  */
 data class ZoneHobbyTabState(
-    val categoryId: Int = 10000,
+    val categoryId: Int = HobbyBoardOptions.DEFAULT_CATEGORY_ID,
     val subCategoryId: Int? = null,
-    val order: String = "hits7Day",
+    val order: String = HobbyBoardOptions.DEFAULT_ORDER,
     val releaseYear: Int? = null,
     val releaseMonth: Int? = null,
     val keyword: String = "",
@@ -69,6 +74,43 @@ data class ZoneHobbyTabState(
     val hasAdvancedFilters: Boolean
         get() = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
 }
+
+/**
+ * 产品状态 → 共享筛选快照（pane / 筛选条只读）。
+ *
+ * 两处弹层显隐也来自 ViewModel（专区详情顶栏控制栏打开），由共享 pane 渲染。
+ */
+fun ZoneHobbyTabState.toZoneBoardFilters(): ZoneBoardFilters = ZoneBoardFilters(
+    hobby = ZoneHobbyFilter(
+        categoryId = categoryId,
+        subCategoryId = subCategoryId,
+        order = order,
+        releaseYear = releaseYear,
+        releaseMonth = releaseMonth,
+        keyword = keyword,
+        sex = sex,
+        specs = specs,
+        scale = scale,
+        r18 = r18
+    ),
+    showHobbyFilterSheet = showFilterSheet,
+    showHobbyCategoryPickerSheet = showCategoryPickerSheet
+)
+
+/**
+ * 产品状态 → 共享内容快照（专区详情产品分支改由 `ZoneBoardPane` 渲染）。
+ */
+fun ZoneHobbyTabState.toZoneBoardContent(): ZoneBoardContent.Hobby = ZoneBoardContent.Hobby(
+    items = items,
+    isGridMode = isGridMode,
+    page = ZoneBoardPageView(
+        isLoading = isLoading,
+        isLoadingMore = isLoadingMore,
+        errorMessage = errorMessage,
+        loadMoreError = loadMoreError,
+        isEndReached = isEndReached
+    )
+)
 
 /**
  * 专区二手 (resale_item) 分类状态
@@ -176,6 +218,14 @@ data class ZoneDetailUiState(
     val currentEntityState: ZoneEntityTabState
         get() = entityTabs[selectedTab] ?: ZoneEntityTabState()
 
+    /** 产品板块内容快照（喂给共享面板 `ZoneBoardPane`，#159）。 */
+    val hobbyBoardContent: ZoneBoardContent.Hobby
+        get() = hobbyState.toZoneBoardContent()
+
+    /** 产品板块筛选快照（喂给共享筛选条 / 面板，含两个弹层显隐）。 */
+    val hobbyBoardFilters: ZoneBoardFilters
+        get() = hobbyState.toZoneBoardFilters()
+
     companion object {
         val ENTITY_TAB_TYPES = setOf("company", "series", "works", "charactar", "person")
     }
@@ -255,29 +305,32 @@ class ZoneDetailViewModel(
     private val entityLoaders = mutableMapOf<String, PagedListLoader<ZoneEntityItem>>()
 
     // 产品 (hobby) 分页加载控制器
+    // 请求参数统一由 ItemRepository.queryHobbyBoard 拼装（单专区 zones=nodeId、无 homeScope），
+    // 与首页产品板块共用同一构造，保证三作用域参数不会漂移（#159）。
     private val hobbyLoader: PagedListLoader<HobbyItemSummary> = PagedListLoader.fromList(
         scope = viewModelScope,
         initialPage = 1,
-        pageSize = 24,
+        pageSize = HobbyBoardOptions.PAGE_SIZE,
         keySelector = { if (it.id > 0) it.id else it.itemId }
     ) { page, size ->
         val curHobby = _uiState.value.hobbyState
-        val params = mutableMapOf<String, String>()
-        params["page"] = page.toString()
-        params["pageSize"] = size.toString()
-        params["category"] = (curHobby.subCategoryId ?: curHobby.categoryId).toString()
-        params["order"] = curHobby.order
-        params["zones"] = nodeId.toString()
-
-        curHobby.releaseYear?.let { if (it > 0) params["releaseYear"] = it.toString() }
-        curHobby.releaseMonth?.let { if (it > 0) params["releaseMonth"] = it.toString() }
-        if (curHobby.keyword.isNotBlank()) params["keyword"] = curHobby.keyword.trim()
-        curHobby.sex?.let { if (it != -1) params["sex"] = it.toString() }
-        curHobby.specs?.let { if (it.isNotBlank()) params["specs"] = it }
-        curHobby.scale?.let { if (it.isNotBlank() && it != "0") params["scale"] = it }
-        curHobby.r18?.let { if (it != -1) params["r18"] = it.toString() }
-
-        itemRepository.queryHobbyList(params)
+        itemRepository.queryHobbyBoard(
+            scope = zoneScope,
+            page = page,
+            pageSize = size,
+            filters = ZoneHobbyFilter(
+                categoryId = curHobby.categoryId,
+                subCategoryId = curHobby.subCategoryId,
+                order = curHobby.order,
+                releaseYear = curHobby.releaseYear,
+                releaseMonth = curHobby.releaseMonth,
+                keyword = curHobby.keyword,
+                sex = curHobby.sex,
+                specs = curHobby.specs,
+                scale = curHobby.scale,
+                r18 = curHobby.r18
+            )
+        )
     }
 
     // 二手 (resale_item) 游标加载控制器
