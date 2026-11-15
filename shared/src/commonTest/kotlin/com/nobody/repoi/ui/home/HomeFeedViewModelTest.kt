@@ -78,6 +78,7 @@ class HomeFeedViewModelTest {
         savedTabKey: String = "all",
         savedCategoryId: Int = 0,
         savedSubType: String = "recommend",
+        savedBoardKey: String = "",
     ): Env {
         val feedMock = MockApi()
         val zoneMock = MockApi()
@@ -92,6 +93,7 @@ class HomeFeedViewModelTest {
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
+        if (savedBoardKey.isNotEmpty()) preferences.setFeedZoneBoard(savedBoardKey)
         val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
         return Env(feedMock, zoneMock, MockApi(), preferences, zoneRepository, testDispatcher)
     }
@@ -563,7 +565,8 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun emptyFollow_doesNotQueryAllFeed() = runTest(testDispatcher) {
+    fun coldStart_savedFollow_fallsBackToAllAndLoadsAllFeed() = runTest(testDispatcher) {
+        // #156 恢复规则 1：上次为「关注」时冷启动回落「全部」，不恢复关注态
         val env = env(savedTabKey = "follow")
         env.stubFeed(items = listOf(item(1, "100")))
 
@@ -571,12 +574,11 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals("follow", state.selectedCategory.tabKey)
-        assertTrue(state.items.isEmpty())
-        assertFalse(state.hasMore)
+        assertEquals("all", state.selectedCategory.tabKey)
+        assertEquals(listOf(1L), state.items.map { it.id })
         assertFalse(state.isInitialLoading)
-        // 关注为空时不应请求全部动态
-        assertEquals(0, env.feedRequests)
+        assertNull(env.lastFeedForm()["zoneNodeId"])
+        // 运行期「关注」空态短路仍由独立用例覆盖（selectZoneTab_followWithNoFocusZones_*）
     }
 
     @Test
@@ -780,10 +782,14 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun emptyFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {
-        val env = env(savedTabKey = "follow")
+    fun runtimeFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {
+        // 运行期切「关注」（冷启动 saved follow 会回落 all，见 coldStart_savedFollow_*）
+        val env = env()
         env.stubFeed(items = emptyList())
         val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -893,6 +899,134 @@ class HomeFeedViewModelTest {
         // 重复选择当前板块为 no-op
         viewModel.selectBoard(ZoneBoard.Action)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+    }
+
+    // ── 冷启动三级恢复（#156） ─────────────────────────────────────────
+
+    @Test
+    fun coldStart_savedSingleZone_restoresZoneAndBoardsAfterFocusZonesReady() = runTest(testDispatcher) {
+        // 保存单专区：必须等关注专区数据到达后再判定可用性，不能被首帧空列表误判回落
+        val env = env(savedTabKey = "z100", savedBoardKey = "z100|action")
+        env.stubFocusedZone(100L)
+        env.stubZoneInfo(100L, tabs = listOf("action", "album"))
+        env.stubFeed(items = listOf(item(1, "100")))
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = listOf(item(2, "200")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("z100", state.selectedCategory.tabKey)
+        assertEquals(100L, state.selectedCategory.nodeId)
+        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        assertEquals(listOf(2L), state.items.map { it.id })
+        // 只为恢复后的专区请求内容，未先发「全部」请求（回落误判会留下无 zoneNodeId 的请求）
+        assertEquals("100", env.lastFeedForm()["zoneNodeId"])
+    }
+
+    @Test
+    fun coldStart_savedUnfollowedZone_fallsBackToAllWithoutZoneRequest() = runTest(testDispatcher) {
+        // 保存的专区已不在关注集合中 → 回落「全部」，且不为不可用专区发任何请求
+        val env = env(savedTabKey = "z999", savedBoardKey = "z999|hobby")
+        env.stubFeed(items = listOf(item(1, "100")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("all", state.selectedCategory.tabKey)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        assertEquals(listOf(1L), state.items.map { it.id })
+        assertNull(env.lastFeedForm()["zoneNodeId"])
+        // 仅启动时的 zone/home-tabs；没有为 z999 请求 zone/info
+        assertEquals(1, env.zoneMock.requestCount)
+    }
+
+    @Test
+    fun coldStart_savedBoardTypeUnavailable_fallsBackToFirstBoard() = runTest(testDispatcher) {
+        // 前缀匹配但当前板块列表没有 hobby（未接入）→ 回落该专区首板块
+        val env = env(savedTabKey = "all", savedBoardKey = "all|hobby")
+        env.stubFeed(items = emptyList())
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("all", state.selectedCategory.tabKey)
+        assertEquals(state.boards.first(), state.selectedBoard)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+    }
+
+    @Test
+    fun coldStart_savedBoardFromOtherZone_fallsBackToFirstBoard() = runTest(testDispatcher) {
+        // 二级键前缀与恢复后的一级 tabKey 不匹配 → 取当前专区首板块
+        val env = env(savedTabKey = "all", savedBoardKey = "z200|album")
+        env.stubFeed(items = emptyList())
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        assertEquals("all", viewModel.uiState.value.selectedCategory.tabKey)
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+    }
+
+    @Test
+    fun selectCategory_persistsFirstBoardKey() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = listOf("action", "album"))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
+        advanceUntilIdle()
+
+        // 切专区写回 feed_zone_board = {tabKey}|{首板块 type}
+        assertEquals("z100|action", env.preferences.getInitialFeedZoneBoardKey())
+        assertEquals("z100", env.preferences.getInitialFeedZoneTabKey())
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+    }
+
+    @Test
+    fun selectBoard_unavailableBoardDoesNotChangePersistedBoardKey() = runTest(testDispatcher) {
+        val env = env(savedBoardKey = "all|action")
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 未接入的板块不在 boards 中：选择被忽略，也不改写已持久化的二级键
+        viewModel.selectBoard(ZoneBoard.Album)
+        advanceUntilIdle()
+
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        assertEquals("all|action", env.preferences.getInitialFeedZoneBoardKey())
+    }
+
+    @Test
+    fun scrollMemory_survivesZoneSwitchAndReturnsToFirstBoard() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = listOf("action"))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 「全部·动态」记下滚动位置
+        viewModel.saveScrollPosition(7, 90)
+        assertEquals(7, viewModel.scrollMemoryFor("all|action").index)
+
+        // 切到单专区：落点为该专区首板块，且不覆盖旧作用域记忆
+        viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
+        advanceUntilIdle()
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        assertEquals(HomeBoardScrollMemory(), viewModel.scrollMemoryFor("z100|action"))
+
+        // 切回「全部」：滚动位置切走再切回不丢
+        viewModel.selectCategory(FeedCategory("all", "全部"))
+        advanceUntilIdle()
+        assertEquals(HomeBoardScrollMemory(index = 7, offset = 90), viewModel.scrollMemoryFor("all|action"))
     }
 
     @Test
