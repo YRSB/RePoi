@@ -33,8 +33,9 @@ val FOLLOW_UNAVAILABLE_BOARDS: Set<ZoneBoard> = setOf(ZoneBoard.Hobby)
  * - 单专区：服务端 `tabs` ∩ `HOME_IMPLEMENTED`（由 ViewModel 异步装配，不用本函数）。
  */
 fun homeBoardsFor(scope: ZoneQueryScope): List<ZoneBoard> = when (scope) {
+    is ZoneQueryScope.Single -> HOME_BOARD_FALLBACK
     is ZoneQueryScope.Follow -> HOME_AGGREGATE_BOARDS.filter { it !in FOLLOW_UNAVAILABLE_BOARDS }
-    else -> HOME_AGGREGATE_BOARDS
+    ZoneQueryScope.All -> HOME_AGGREGATE_BOARDS
 }
 
 /** 单专区板块请求中 / 失败时的兜底板块列表（本阶段仅动态板块）。 */
@@ -68,10 +69,7 @@ internal fun FeedCategory.toZoneQueryScope(): ZoneQueryScope = when (tabKey) {
  * - 聚合态：客户端固定列表（无需等网络）；
  * - 单专区：先回退 `[ZoneBoard.Action]`，服务端 `zone/info.tabs` 返回后再由 ViewModel 异步替换。
  */
-internal fun immediateHomeBoards(scope: ZoneQueryScope): List<ZoneBoard> = when (scope) {
-    is ZoneQueryScope.Single -> HOME_BOARD_FALLBACK
-    else -> homeBoardsFor(scope)
-}
+internal fun immediateHomeBoards(scope: ZoneQueryScope): List<ZoneBoard> = homeBoardsFor(scope)
 
 /** 同步兜底板块列表的首板块（切换作用域时 `selectedBoard` 的落点），列表为空时退化为动态板块。 */
 internal fun immediateHomeSelectedBoard(scope: ZoneQueryScope): ZoneBoard =
