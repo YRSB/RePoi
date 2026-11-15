@@ -44,17 +44,20 @@ fun HobbyAdvancedFilterParam.applyTo(base: ZoneHobbyFilter): ZoneHobbyFilter = b
 /**
  * 各板块筛选值快照（不可变，pane 只读）。
  *
- * 动态只消费 [subType]（9 项筛选）；相册消费 [albumOrder] / [albumCategory]（#157）；
- * 产品消费 [hobby] 与两个弹层显隐（#159）；其余字段为后续板块 ticket 预留，键值定义保持与专区详情现状一致。
- * 排序档位/分类候选等**选项列表**不放在这里（见 [AlbumBoardOptions] / [HobbyBoardOptions] 与宿主注入），
- * 本类型只保存「当前选中值」。
+ * 已消费字段：[subType]（动态 9 项筛选）、[albumOrder] / [albumCategory]（分享 6 档排序与分类，#157）、
+ * [postsOrder]（讨论 3 档排序，键值见 [PostsBoardOptions.ORDERS]）、[hobby] 与两个产品弹层显隐（#159）；
+ * 其余字段为后续板块 ticket 预留，键值定义保持与专区详情现状一致。排序档位/分类候选等**选项列表**
+ * 不放在这里（见 [AlbumBoardOptions] / [HobbyBoardOptions] 与宿主注入），本类型只保存「当前选中值」。
+ *
+ * 讨论板块**没有分类字段**：原版讨论分支不请求分类、`api/posts/search` 也不接受任何分类参数
+ * （实测 `itemType`/`category`/`categoryId` 均被忽略）。为避免出现「UI 有入口但服务端忽略」的
+ * 假过滤，本类型刻意不提供 `postsCategory` 字段，证据见 [PostsBoardOptions] KDoc。
  */
 data class ZoneBoardFilters(
     val subType: String = "recommend",
     val albumOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
     val albumCategory: Int? = null,
-    val postsOrder: String = "upd",
-    val postsCategory: Int? = null,
+    val postsOrder: String = PostsBoardOptions.DEFAULT_ORDER,
     val hobby: ZoneHobbyFilter = ZoneHobbyFilter(),
     val resaleType: Int = 1,
     val resalePurity: String? = null,

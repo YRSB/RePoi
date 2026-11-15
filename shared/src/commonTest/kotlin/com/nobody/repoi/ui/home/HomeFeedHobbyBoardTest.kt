@@ -330,7 +330,7 @@ class HomeFeedHobbyBoardTest {
         assertTrue(page1.hobbyBoard.hasMore)
         assertTrue(page1.currentBoardHasMore)
 
-        viewModel.loadNextPage()
+        viewModel.loadMoreSelectedBoard()
         advanceUntilIdle()
 
         val page2 = viewModel.uiState.value
