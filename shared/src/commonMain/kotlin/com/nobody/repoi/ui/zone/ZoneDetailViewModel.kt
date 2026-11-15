@@ -6,6 +6,7 @@ import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
@@ -108,8 +109,8 @@ data class ZoneDetailUiState(
     val availableTabs: List<Pair<String, String>> = listOf("action" to "动态"),
     val selectedTab: String = "action",
 
-    // 动态 Tab 状态
-    val selectedSubType: String = "recommend",
+    // 动态 Tab 状态（默认筛选值取共享定义的默认项，旧键 all 不再出现）
+    val selectedSubType: String = ActionSubType.DEFAULT.apiValue,
     val items: List<ActionItem> = emptyList(),
     val lastTime: Long = 0L,
     val isFeedLoading: Boolean = true,
@@ -196,17 +197,13 @@ class ZoneDetailViewModel(
     val zoneScope: ZoneQueryScope
         get() = ZoneQueryScope.Single(nodeId)
 
-    val subTypes = listOf(
-        Pair("recommend", "推荐"),
-        Pair("all", "全部"),
-        Pair("comment", "讨论"),
-        Pair("confirm", "制作"),
-        Pair("official_pic", "官图"),
-        Pair("preorder", "预定"),
-        Pair("delay", "延期"),
-        Pair("release", "出荷"),
-        Pair("reorder", "再版")
-    )
+    /**
+     * 动态筛选项（key = 协议键值 `subType`，value = 2.43 中文文案）。
+     *
+     * 与首页共用唯一共享定义 [ActionSubType]，界面仍按有序 `(key, label)` 列表渲染。
+     */
+    val subTypes: List<Pair<String, String>> =
+        ActionSubType.ordered.map { it.apiValue to it.label }
 
     val albumOrders = listOf(
         Pair("top", "推荐"),
@@ -543,10 +540,12 @@ class ZoneDetailViewModel(
     }
 
     fun selectSubType(subType: String) {
-        if (_uiState.value.selectedSubType == subType) return
+        // 边界归一：与首页同口径，旧键 all 一律转成协议键值 allInfo
+        val normalized = ActionSubType.fromPersisted(subType).apiValue
+        if (_uiState.value.selectedSubType == normalized) return
         _uiState.update {
             it.copy(
-                selectedSubType = subType,
+                selectedSubType = normalized,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,

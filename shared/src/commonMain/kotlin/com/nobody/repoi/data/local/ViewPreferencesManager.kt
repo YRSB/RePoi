@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nobody.repoi.data.remote.model.ActionSubType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -36,7 +37,7 @@ class ViewPreferencesManager(
     private val hobbyListGridRef = AtomicBoolean(true)
     private val collectListGridRef = AtomicBoolean(true)
     private val feedCategoryIdRef = AtomicInt(0)
-    private val feedSubTypeRef = AtomicReference("recommend")
+    private val feedSubTypeRef = AtomicReference(ActionSubType.DEFAULT.apiValue)
     private val feedZoneTabKeyRef = AtomicReference("all")
     private val exHobbyEnabledRef = AtomicBoolean(true)
     private val imageCacheMaxBytesRef = AtomicLong(DEFAULT_IMAGE_CACHE_MAX_BYTES)
@@ -82,7 +83,8 @@ class ViewPreferencesManager(
     }
 
     val feedSubTypeFlow: Flow<String> = dataStore.data.map { prefs ->
-        prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
+        // 读取侧归一：历史落盘值 all 映射为 allInfo，非法值回落默认项
+        ActionSubType.fromPersisted(prefs[KEY_FEED_SUB_TYPE]).apiValue
     }
 
     val feedZoneTabKeyFlow: Flow<String> = dataStore.data.map { prefs ->
@@ -114,7 +116,7 @@ class ViewPreferencesManager(
                 prefs[KEY_HOBBY_LIST_GRID_MODE]?.let { isHobbyListGridMode = it }
                 prefs[KEY_COLLECT_LIST_GRID_MODE]?.let { isCollectListGridMode = it }
                 prefs[KEY_FEED_CATEGORY_ID]?.let { feedCategoryId = it }
-                prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = it }
+                prefs[KEY_FEED_SUB_TYPE]?.let { feedSubType = ActionSubType.normalizeKey(it) }
                 prefs[KEY_FEED_ZONE_TAB_KEY]?.let { feedZoneTabKey = it }
                 prefs[KEY_EXHOBBY_ENABLED]?.let { isExHobbyEnabled = it }
                 prefs[KEY_IMAGE_CACHE_MAX_BYTES]?.let { imageCacheMaxBytes = it }
@@ -167,8 +169,10 @@ class ViewPreferencesManager(
 
     /**
      * 同步获取初始二级子类型（启动时无锁零延迟，杜绝首屏跳变）。
+     *
+     * 读取侧统一归一：旧值 `all` → `allInfo`，非法/空值 → 默认项（`recommend`）。
      */
-    fun getInitialFeedSubType(): String = feedSubType
+    fun getInitialFeedSubType(): String = ActionSubType.fromPersisted(feedSubType).apiValue
 
     /**
      * 同步获取初始首页动态选中的专区 TabKey（"all"、"follow" 或 "z{nodeId}"）。
@@ -178,7 +182,8 @@ class ViewPreferencesManager(
     suspend fun getFeedPreferences(): Pair<Int, String> {
         val prefs = dataStore.data.first()
         val catId = prefs[KEY_FEED_CATEGORY_ID] ?: 0
-        val sub = prefs[KEY_FEED_SUB_TYPE] ?: "recommend"
+        // 读取侧归一：历史落盘值 all 映射为 allInfo，非法值回落默认项
+        val sub = ActionSubType.fromPersisted(prefs[KEY_FEED_SUB_TYPE]).apiValue
         feedCategoryId = catId
         feedSubType = sub
         return Pair(catId, sub)
@@ -191,10 +196,17 @@ class ViewPreferencesManager(
         }
     }
 
+    /**
+     * 写入二级子类型偏好。
+     *
+     * 写入侧归一：先把任意来源的值转成协议键值（旧键 `all` → `allInfo`，非法值 → `recommend`），
+     * 保证落盘不再出现服务端不识别的 `all`。
+     */
     suspend fun setFeedSubType(subType: String) {
-        feedSubType = subType
+        val normalized = ActionSubType.normalizeKey(subType)
+        feedSubType = normalized
         dataStore.edit { prefs ->
-            prefs[KEY_FEED_SUB_TYPE] = subType
+            prefs[KEY_FEED_SUB_TYPE] = normalized
         }
     }
 
