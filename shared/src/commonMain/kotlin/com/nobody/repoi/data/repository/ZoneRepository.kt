@@ -13,7 +13,7 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO

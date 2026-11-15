@@ -7,7 +7,7 @@ import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneHobbyFilter
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.board.applyTo
 import com.nobody.repoi.ui.board.toAdvancedFilterParam
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam

@@ -48,7 +48,7 @@ internal data class ResaleQuery(
  * 游标 = 上一批末条 `addDate`；`hasMore` 判定沿用专区详情既有实现
  * （整页 24 条且末条 `addDate` 可解析），去重键为二手条目 id。
  *
- * 作用域参数由调用方经 [ResaleQuery.zones] 传入（[com.nobody.repoi.ui.board.ZoneQueryScope.zonesParam]）：
+ * 作用域参数由调用方经 [ResaleQuery.zones] 传入（[com.nobody.repoi.data.remote.model.ZoneQueryScope.zonesParam]）：
  * 全部聚合为 `null`（省略）、单专区为 nodeId 字符串；关注聚合不可用，调用方必须在请求前短路。
  */
 internal class ResaleBoardLoader(

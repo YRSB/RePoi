@@ -1,7 +1,7 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.ui.board.ZoneBoard
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 
 /**
  * 单个「作用域 + 板块」的滚动记忆（仅内存，持久化见 #156）。

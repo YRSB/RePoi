@@ -3,7 +3,7 @@ package com.nobody.repoi.ui.home
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.ui.board.ZoneBoard
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.PagedListState

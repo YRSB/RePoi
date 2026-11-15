@@ -1,4 +1,4 @@
-package com.nobody.repoi.ui.board
+package com.nobody.repoi.data.remote.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,7 +22,6 @@ class ZoneQueryScopeTest {
 
         assertNull(scope.zonesParam())
         assertNull(scope.zoneNodeId())
-        assertEquals("all", scope.homeScope())
         assertEquals("all", scope.stateKey())
         assertFalse(scope.isFollowEmpty)
     }
@@ -33,7 +32,6 @@ class ZoneQueryScopeTest {
 
         assertEquals("33476094", scope.zonesParam())
         assertEquals(33476094L, scope.zoneNodeId())
-        assertNull(scope.homeScope())
         assertEquals("z33476094", scope.stateKey())
         assertFalse(scope.isFollowEmpty)
     }
@@ -44,7 +42,6 @@ class ZoneQueryScopeTest {
 
         assertEquals("33476094,39989602,39228575", scope.zonesParam())
         assertNull(scope.zoneNodeId())
-        assertEquals("follow", scope.homeScope())
         assertEquals("follow:33476094,39989602,39228575", scope.stateKey())
         assertFalse(scope.isFollowEmpty)
     }
@@ -86,18 +83,15 @@ class ZoneQueryScopeTest {
     }
 
     @Test
-    fun zoneFilters_areExclusiveOnTheWire() {
-        // 依据 §2.2：非空 homeScope 会被服务端用于覆盖 zones。
-        // All 只带 homeScope、Single 只带 zones；Follow 的 zones 非空时，调用方必须**不下发** homeScope
-        // （homeScope()="follow" 仅作语义标记，供登录态产品关注态复用）。
+    fun zoneParams_areScopeSpecific() {
+        // 数据层只下发 `zones` / `zoneNodeId` 两类 zone 参数；`homeScope` 派生已删除
+        // （当前产品关注态隐藏，生产代码不再下发该参数），避免保留无调用点的假 API。
         assertNull(ZoneQueryScope.All.zonesParam())
-        assertEquals("all", ZoneQueryScope.All.homeScope())
-
-        assertNull(ZoneQueryScope.Single(123L).homeScope())
         assertEquals("123", ZoneQueryScope.Single(123L).zonesParam())
 
         val follow = ZoneQueryScope.Follow(listOf(1L, 2L))
         assertEquals("1,2", follow.zonesParam())
-        assertEquals("follow", follow.homeScope())
+        // 关注聚合没有单值 nodeId：讨论板块因此不接收关注作用域（关注态隐藏该板块）
+        assertNull(follow.zoneNodeId())
     }
 }

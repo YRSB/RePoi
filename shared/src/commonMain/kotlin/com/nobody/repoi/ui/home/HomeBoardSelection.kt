@@ -3,7 +3,7 @@ package com.nobody.repoi.ui.home
 import com.nobody.repoi.data.remote.model.ZoneTabItem
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardCapability
-import com.nobody.repoi.ui.board.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 
 /**
  * 首页二级板块的**薄封装**：所有「作用域 × 板块」事实来自 [ZoneBoardCapability]，
