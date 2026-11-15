@@ -101,9 +101,14 @@ class ZoneRepository(
 
     /**
      * 获取单个专区的详细资料，并在后台异步上报访问记录（用于最近访问排序）。
+     *
+     * @param nodeId 专区节点 ID
+     * @param reportVisit 是否上报访问记录。专区详情页保持默认 `true`（进入详情即算访问）；
+     *   首页只需 `zone/info.tabs` 来装配二级板块，必须传 `false`——否则每次切专区都会污染
+     *   「最近访问」排序（首页不是「进入专区」这一用户意图）。
      */
-    suspend fun getZoneInfo(nodeId: Long): Result<ZoneInfoPayload> = runCatching {
-        if (nodeId > 0L) {
+    suspend fun getZoneInfo(nodeId: Long, reportVisit: Boolean = true): Result<ZoneInfoPayload> = runCatching {
+        if (reportVisit && nodeId > 0L) {
             repositoryScope.launch {
                 runCatching { api.reportZoneVisited(nodeId = nodeId) }
             }

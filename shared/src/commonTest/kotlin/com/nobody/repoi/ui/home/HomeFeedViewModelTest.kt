@@ -10,6 +10,8 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -163,6 +165,35 @@ class HomeFeedViewModelTest {
         return listOf("categoryId", "subType", "lastTime", "zoneNodeId", "zoneIds", "pageSize")
             .mapNotNull { key -> recorded.queryParameter(key)?.let { key to it } }
             .toMap()
+    }
+
+    /** 首屏专区 tabs 路由：把指定专区放进「我的专区」，供 `savedTabKey=z{nodeId}` 解析到真实分类。 */
+    private fun Env.stubFocusedZone(nodeId: Long, name: String = "手办") {
+        zoneMock.replaceRoute(
+            "api/zone/home-tabs",
+            """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":$nodeId,"nameCN":"$name"}]}}"""
+        )
+    }
+
+    /** 单专区 `api/zone/info` 路由（首页据此装配二级板块）。 */
+    private fun Env.stubZoneInfo(
+        nodeId: Long,
+        tabs: List<String>,
+        success: Boolean = true
+    ) {
+        val tabsJson = tabs.joinToString(",") { type -> "\"$type\"" }
+        zoneMock.routeWhen(
+            predicate = { path, _, query ->
+                path.contains("api/zone/info") && query["nodeId"] == nodeId.toString()
+            },
+            body = { _, _, _ ->
+                if (success) {
+                    """{"success":true,"code":200,"msg":"ok","data":{"zone":{"nodeId":$nodeId,"nameCN":"手办"},"focusState":false,"followCount":0,"tabs":[$tabsJson]}}"""
+                } else {
+                    zoneMock.failure(500, "专区信息加载失败")
+                }
+            }
+        )
     }
 
     @Test
@@ -710,5 +741,219 @@ class HomeFeedViewModelTest {
         // 未关注任何专区时切「关注」不发请求
         assertEquals(before, env.feedRequests)
         assertEquals("follow", env.preferences.getInitialFeedZoneTabKey())
+    }
+
+    // ── 二级板块装配（#155 B 阶段） ────────────────────────────────────────
+
+    @Test
+    fun aggregateBoards_areHomeOrderIntersectedWithImplemented() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.All, state.zoneScope)
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；本阶段只接入动态板块
+        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(state.boards.first(), state.selectedBoard)
+        // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
+        assertEquals(1, env.zoneMock.requestCount)
+    }
+
+    @Test
+    fun followBoards_useAggregateListAndParseFocusZoneIds() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFocusedZone(100L)
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
+        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        assertEquals(state.boards.first(), state.selectedBoard)
+    }
+
+    @Test
+    fun emptyFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {
+        val env = env(savedTabKey = "follow")
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
+        assertTrue(state.zoneScope.isFollowEmpty)
+        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+    }
+
+    @Test
+    fun singleZone_boardsFromServerTabs_keepOnlyImplemented() = runTest(testDispatcher) {
+        val env = env()
+        env.stubZoneInfo(100L, tabs = listOf("action", "album", "shop_item", "community", "works"))
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
+        // 服务端下发 action/album/shop_item/community/works，本阶段只接入动态：其余一律不出现在 Tab
+        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        // zone/info 请求带上专区 nodeId
+        val infoRequest = env.zoneMock.lastRequest()
+        assertTrue(infoRequest.encodedPath.orEmpty().contains("api/zone/info"))
+        assertEquals("100", infoRequest.queryParameter("nodeId"))
+    }
+
+    @Test
+    fun singleZone_doesNotReportZoneVisit() = runTest(testDispatcher) {
+        val env = env()
+        env.stubZoneInfo(100L, tabs = listOf("action", "album"))
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+
+        val paths = buildList {
+            repeat(env.zoneMock.requestCount) { add(env.zoneMock.takeRequest().encodedPath.orEmpty()) }
+        }
+        // 首页只借用 zone/info 的 tabs，不是「进入专区」：不得上报访问记录污染「最近访问」排序
+        assertEquals(1, paths.count { it.contains("api/zone/info") })
+        assertTrue(paths.none { it.contains("visited") }, "首页不应上报专区访问记录：$paths")
+    }
+
+    @Test
+    fun singleZone_infoFailure_fallsBackToActionBoard() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = emptyList(), success = false)
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
+        // 请求失败回退兜底列表，不崩溃、不出现空 Tab 条
+        assertEquals(listOf(ZoneBoard.Action), state.boards)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        assertFalse(state.isInitialLoading)
+    }
+
+    @Test
+    fun selectCategory_resetsSelectedBoardToFirstBoard() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = listOf("action", "album"))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(state.boards.first(), state.selectedBoard)
+        assertEquals(listOf(ZoneBoard.Action), state.boards)
+    }
+
+    @Test
+    fun selectBoard_onlySelectsBoardsInCurrentList() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 本阶段未接入的板块不在 boards 中，选择被忽略
+        viewModel.selectBoard(ZoneBoard.Album)
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        // 重复选择当前板块为 no-op
+        viewModel.selectBoard(ZoneBoard.Action)
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+    }
+
+    @Test
+    fun scrollMemory_isIsolatedPerScopeAndBoard() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        assertEquals("all|action", viewModel.currentBoardMemoryKey)
+        viewModel.saveScrollPosition(8, 120)
+        viewModel.saveFilterCollapseFraction(0.75f)
+        assertEquals(8, viewModel.savedScrollIndex)
+        assertEquals(120, viewModel.savedScrollOffset)
+        assertEquals(0.75f, viewModel.savedFilterCollapseFraction)
+
+        // 另一个「作用域 + 板块」键互不覆盖
+        viewModel.saveBoardScrollPosition("z100|action", 3, 40)
+        assertEquals(HomeBoardScrollMemory(index = 3, offset = 40), viewModel.scrollMemoryFor("z100|action"))
+        assertEquals(8, viewModel.scrollMemoryFor("all|action").index)
+
+        viewModel.resetBoardScrollMemory("all|action")
+        assertEquals(HomeBoardScrollMemory(), viewModel.scrollMemoryFor("all|action"))
+        assertEquals(HomeBoardScrollMemory(index = 3, offset = 40), viewModel.scrollMemoryFor("z100|action"))
+        assertEquals(0, viewModel.savedScrollIndex)
+    }
+
+    @Test
+    fun boardMemoryKey_alignsWithScopeStateKey() {
+        assertEquals("all|action", homeBoardMemoryKey(ZoneQueryScope.All, ZoneBoard.Action))
+        assertEquals(
+            "follow:100,200|action",
+            homeBoardMemoryKey(ZoneQueryScope.Follow(listOf(100L, 200L)), ZoneBoard.Action)
+        )
+        assertEquals("z100|action", homeBoardMemoryKey(ZoneQueryScope.Single(100L), ZoneBoard.Action))
+    }
+
+    @Test
+    fun feedCategory_derivesQueryScope() {
+        assertEquals(ZoneQueryScope.All, FeedCategory(tabKey = "all", name = "全部").toZoneQueryScope())
+        assertEquals(
+            ZoneQueryScope.Follow(listOf(100L, 200L)),
+            FeedCategory(tabKey = "follow", name = "关注", zoneIds = "100,200").toZoneQueryScope()
+        )
+        // 空关注标记 -1 与非法值不得退化成「假关注集合」（否则会被当成全站）
+        assertEquals(
+            ZoneQueryScope.Follow(emptyList()),
+            FeedCategory(tabKey = "follow", name = "关注", zoneIds = "-1").toZoneQueryScope()
+        )
+        assertEquals(
+            ZoneQueryScope.Follow(emptyList()),
+            FeedCategory(tabKey = "follow", name = "关注", zoneIds = "").toZoneQueryScope()
+        )
+        assertEquals(
+            ZoneQueryScope.Single(100L),
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100").toZoneQueryScope()
+        )
+        // 首帧分类尚未回填 nodeId 时从 tabKey 兜底解析
+        assertEquals(
+            ZoneQueryScope.Single(100L),
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 0L, zoneIds = "").toZoneQueryScope()
+        )
     }
 }

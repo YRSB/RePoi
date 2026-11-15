@@ -1,15 +1,9 @@
 package com.nobody.repoi.ui.home
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,18 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -39,55 +24,68 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.nobody.repoi.platform.isLandscapeOrientation
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.platform.isLandscapeOrientation
+import com.nobody.repoi.ui.board.ZoneBoardActions
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardItemActions
+import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.board.ZoneBoardPane
+import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.home.components.ZoneSwitcherAnchor
 import com.nobody.repoi.ui.home.components.ZoneSwitcherDropdown
 import com.nobody.repoi.ui.home.components.ZoneSwitcherSheet
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
-import com.nobody.repoi.data.remote.model.ActionItem
-import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.search.SearchNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.roundToInt
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeFeedScreen(
@@ -122,6 +120,34 @@ fun HomeFeedScreen(
         onNavigateToZoneSettings?.invoke()
     }
 
+    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 现有入口，请求与分页语义不变
+    val boardActions = remember(viewModel) {
+        object : ZoneBoardActions {
+            override fun onSelectSubType(subType: String) {
+                viewModel.selectSubType(subType)
+            }
+
+            override fun onRetryInitial() {
+                viewModel.loadInitialFeed()
+            }
+
+            override fun onLoadMore() {
+                viewModel.loadNextPage()
+            }
+        }
+    }
+    val onCardImageClick = remember(imageViewer) {
+        { rawUrls: List<String>, initialIndex: Int ->
+            imageViewer.show(rawUrls, initialIndex)
+        }
+    }
+    val boardItemActions = remember(onActionClick, onCardImageClick) {
+        ZoneBoardItemActions(
+            onActionClick = onActionClick,
+            onActionImageClick = onCardImageClick
+        )
+    }
+
     // 上拉触底翻页判断 (瀑布流模式)
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -137,35 +163,48 @@ fun HomeFeedScreen(
         }
     }
 
+    // 滚动记忆键：作用域 + 板块，跨「专区 ↔ 板块」切换互不覆盖
+    val currentBoardKey = homeBoardMemoryKey(uiState.zoneScope, uiState.selectedBoard)
+    val memoryKey by rememberUpdatedState(currentBoardKey)
     var restored by remember { mutableStateOf(false) }
+    // 切换选择期间暂停快照保存，避免旧板块首帧把新键的滚动位置写坏
+    var savingEnabled by remember { mutableStateOf(true) }
+
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topBarHeight = statusBarTopPadding + 64.dp
-    val density = LocalDensity.current
-    var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
+    // 可配置头部高度栈：顶栏 + 二级板块 Tab（常驻吸顶）+ 可折叠筛选行。
+    // 所有依赖头部高度的地方（内容 padding / 下拉指示器 / 首屏各态卡片 / 折叠分母）只读该状态。
+    val headerStack = rememberHomeHeaderStack(topBarHeight = topBarHeight)
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
-        initialHeightOffsetLimit = -filterRowHeightPx,
+        initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
         state = rememberTopAppBarState(
-            initialHeightOffsetLimit = -filterRowHeightPx,
-            initialHeightOffset = -viewModel.savedFilterCollapseFraction * filterRowHeightPx
+            initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
+            initialHeightOffset = -viewModel.scrollMemoryFor(currentBoardKey)
+                .filterCollapseFraction * headerStack.collapsibleHeightPx
         ),
         canScroll = { uiState.items.isNotEmpty() }
     )
-    LaunchedEffect(filterRowHeightPx) {
-        scrollBehavior.state.heightOffsetLimit = -filterRowHeightPx
-        scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffset.coerceIn(-filterRowHeightPx, 0f)
+    LaunchedEffect(headerStack.collapsibleHeightPx) {
+        scrollBehavior.state.heightOffsetLimit = -headerStack.collapsibleHeightPx
+        scrollBehavior.state.heightOffset =
+            scrollBehavior.state.heightOffset.coerceIn(-headerStack.collapsibleHeightPx, 0f)
     }
-    val filterRowHeightDp = with(density) { filterRowHeightPx.toDp() }
-    // 一级专区行移除后，头部高度栈只剩「顶栏 + 可折叠筛选行」两层。
-    val totalHeaderHeight = topBarHeight + filterRowHeightDp
+
+    // 没有可用板块时二级 Tab 与筛选行都不渲染：把两层实测高度归零，避免内容被空档顶开。
+    LaunchedEffect(uiState.boards.isEmpty()) {
+        if (uiState.boards.isEmpty()) headerStack.clearMeasuredRows()
+    }
+
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
     val feedColumns = rememberFeedStaggeredGridColumns()
 
+    // 滚动 / 折叠比例按「作用域 + 板块」键保存（仅内存；持久化为 #156）
     LaunchedEffect(staggeredGridState, scrollBehavior.state) {
         snapshotFlow {
-            val driverHeight = filterRowHeightPx
+            val driverHeight = headerStack.collapsibleHeightPx
             Triple(
                 staggeredGridState.firstVisibleItemIndex,
                 staggeredGridState.firstVisibleItemScrollOffset,
@@ -176,31 +215,47 @@ fun HomeFeedScreen(
                 }
             )
         }.collect { (currentIndex, currentOffset, filterCollapseFraction) ->
-            if (restored) {
-                viewModel.saveScrollPosition(currentIndex, currentOffset)
-                viewModel.saveFilterCollapseFraction(filterCollapseFraction)
+            if (restored && savingEnabled) {
+                viewModel.saveBoardScrollPosition(memoryKey, currentIndex, currentOffset)
+                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
             }
         }
     }
 
-    var lastFilterSelection by remember {
-        mutableStateOf(uiState.selectedCategory.tabKey to uiState.selectedSubType)
+    // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
+    // 首次组合不触发（保留首屏恢复的滚动位置）。
+    var lastSelection by remember {
+        mutableStateOf(
+            Triple(uiState.selectedCategory.tabKey, uiState.selectedBoard, uiState.selectedSubType)
+        )
     }
-    LaunchedEffect(uiState.selectedCategory, uiState.selectedSubType) {
-        val selection = uiState.selectedCategory.tabKey to uiState.selectedSubType
-        if (selection == lastFilterSelection) return@LaunchedEffect
-        lastFilterSelection = selection
+    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, uiState.selectedSubType) {
+        val selection = Triple(
+            uiState.selectedCategory.tabKey,
+            uiState.selectedBoard,
+            uiState.selectedSubType
+        )
+        if (selection == lastSelection) return@LaunchedEffect
+        lastSelection = selection
+        savingEnabled = false
+        viewModel.resetBoardScrollMemory(currentBoardKey)
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
         staggeredGridState.scrollToItem(0)
+        savingEnabled = true
     }
 
-    LaunchedEffect(uiState.items.isNotEmpty()) {
-        if (!restored && uiState.items.isNotEmpty()) {
-            restored = true
-            if (viewModel.savedScrollIndex != 0 || viewModel.savedScrollOffset != 0) {
-                staggeredGridState.scrollToItem(viewModel.savedScrollIndex, viewModel.savedScrollOffset)
-            }
+    // 首屏（含从二级页返回）按当前键恢复滚动位置与折叠比例
+    LaunchedEffect(uiState.items.isNotEmpty(), currentBoardKey) {
+        if (restored || uiState.items.isEmpty()) return@LaunchedEffect
+        restored = true
+        val memory = viewModel.scrollMemoryFor(currentBoardKey)
+        if (memory.index != 0 || memory.offset != 0) {
+            staggeredGridState.scrollToItem(memory.index, memory.offset)
+        }
+        if (memory.filterCollapseFraction > 0f) {
+            scrollBehavior.state.heightOffset =
+                -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
         }
     }
 
@@ -237,7 +292,7 @@ fun HomeFeedScreen(
                     isRefreshing = uiState.isRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = totalHeaderHeight)
+                        .padding(top = headerStack.totalHeaderHeight)
                 )
             }
         ) {
@@ -247,190 +302,199 @@ fun HomeFeedScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
                 when {
-                uiState.isInitialLoading -> {
-                    PoiLoadingView(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = totalHeaderHeight, bottom = bottomContentPadding)
-                    )
-                }
-
-                uiState.errorMessage != null && uiState.items.isEmpty() -> {
-                    ElevatedCard(
-                        shape = MaterialTheme.shapes.large,
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(top = totalHeaderHeight)
-                            .padding(24.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    // 该专区没有任何已接入板块：不渲染空 Tab 条，只给板块空态与刷新入口
+                    uiState.boards.isEmpty() -> {
+                        ElevatedCard(
+                            shape = MaterialTheme.shapes.large,
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(top = headerStack.totalHeaderHeight)
+                                .padding(24.dp)
                         ) {
-                            Text(
-                                text = uiState.errorMessage ?: "数据加载失败",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = { viewModel.loadInitialFeed() }) {
-                                Text("重新加载")
-                            }
-                        }
-                    }
-                }
-
-                uiState.items.isEmpty() -> {
-                    val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
-                        uiState.selectedCategory.zoneIds == "-1"
-                    ElevatedCard(
-                        shape = MaterialTheme.shapes.large,
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(top = totalHeaderHeight)
-                            .padding(24.dp)
-                    ) {
-                        if (isEmptyFollow) {
-                            // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
-                            EmptyState(
-                                icon = Icons.Outlined.Category,
-                                title = "还没有关注的专区",
-                                description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
-                                actionLabel = "去专区广场",
-                                onAction = { onNavigateToZoneBrowse?.invoke() }
-                            )
-                        } else {
                             Column(
                                 modifier = Modifier.padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = "暂无该分类下的动态情报",
+                                    text = "该专区暂无可用板块",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedButton(onClick = { viewModel.refreshFeed() }) {
+                                OutlinedButton(onClick = { viewModel.refreshBoards() }) {
                                     Text("刷新看看")
                                 }
                             }
                         }
                     }
-                }
 
-                else -> {
-                    val onCardImageClick = remember(imageViewer) {
-                        { rawUrls: List<String>, initialIndex: Int ->
-                            imageViewer.show(rawUrls, initialIndex)
+                    uiState.isInitialLoading -> {
+                        PoiLoadingView(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = headerStack.totalHeaderHeight,
+                                    bottom = bottomContentPadding
+                                )
+                        )
+                    }
+
+                    uiState.errorMessage != null && uiState.items.isEmpty() -> {
+                        ElevatedCard(
+                            shape = MaterialTheme.shapes.large,
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(top = headerStack.totalHeaderHeight)
+                                .padding(24.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage ?: "数据加载失败",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(onClick = { viewModel.loadInitialFeed() }) {
+                                    Text("重新加载")
+                                }
+                            }
                         }
                     }
 
-                    LazyVerticalStaggeredGrid(
-                        columns = feedColumns,
-                        state = staggeredGridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = totalHeaderHeight + 6.dp, bottom = bottomContentPadding),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalItemSpacing = 8.dp
-                    ) {
-                        items(
-                            items = uiState.items,
-                            key = { item -> "${item.id}_${item.actionDate}" },
-                            contentType = { "feed_action" }
-                        ) { actionItem ->
-                            ActionCard(
-                                actionItem = actionItem,
-                                onActionClick = onActionClick,
-                                onImageClick = onCardImageClick
-                            )
-                        }
-
-                        // 底部状态区域独占整行
-                        item(span = StaggeredGridItemSpan.FullLine) {
-                            when {
-                                uiState.isLoadingMore -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(20.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        LoadingIndicator(
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                }
-
-                                uiState.loadMoreError != null -> {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { viewModel.loadNextPage() }
-                                            .padding(14.dp),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${uiState.loadMoreError}，点击重试 ↻",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-
-                                !uiState.hasMore && uiState.items.isNotEmpty() -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(20.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "—— 已经到底啦 (´･ω･`) ——",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
+                    uiState.items.isEmpty() -> {
+                        val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
+                            uiState.selectedCategory.zoneIds == "-1"
+                        ElevatedCard(
+                            shape = MaterialTheme.shapes.large,
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(top = headerStack.totalHeaderHeight)
+                                .padding(24.dp)
+                        ) {
+                            if (isEmptyFollow) {
+                                // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
+                                EmptyState(
+                                    icon = Icons.Outlined.Category,
+                                    title = "还没有关注的专区",
+                                    description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
+                                    actionLabel = "去专区广场",
+                                    onAction = { onNavigateToZoneBrowse?.invoke() }
+                                )
+                            } else {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "暂无该分类下的动态情报",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedButton(onClick = { viewModel.refreshFeed() }) {
+                                        Text("刷新看看")
                                     }
                                 }
                             }
                         }
                     }
+
+                    else -> {
+                        // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
+                        // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
+                        // 因此不会重复展示首屏错误。
+                        ZoneBoardPane(
+                            board = uiState.selectedBoard,
+                            scope = uiState.zoneScope,
+                            content = ZoneBoardContent.Action(
+                                items = uiState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.isInitialLoading,
+                                    isLoadingMore = uiState.isLoadingMore,
+                                    errorMessage = uiState.errorMessage,
+                                    loadMoreError = uiState.loadMoreError,
+                                    isEndReached = !uiState.hasMore
+                                )
+                            ),
+                            filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = headerStack.totalHeaderHeight + 6.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = feedColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
-    }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(top = topBarHeight)
-                .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
-                .onSizeChanged { size -> if (size.height > 0) filterRowHeightPx = size.height.toFloat() }
-                .clipToBounds()
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
-            Row(
+        // 三级筛选行（可折叠）：位移由 scrollBehavior 驱动，高度实测回填头部高度栈
+        if (uiState.boards.isNotEmpty()) {
+            Box(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(top = headerStack.pinnedHeight)
+                    .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                    .onSizeChanged { size -> headerStack.onCollapsibleMeasured(size.height) }
+                    .clipToBounds()
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
-                viewModel.subTypes.forEach { (key, label) ->
-                    FilterChip(
-                        selected = uiState.selectedSubType == key,
-                        onClick = { viewModel.selectSubType(key) },
-                        label = { Text(label) },
-                        shape = MaterialTheme.shapes.small
+                ZoneBoardFilterBar(
+                    board = uiState.selectedBoard,
+                    filters = ZoneBoardFilters(subType = uiState.selectedSubType),
+                    subTypeOptions = viewModel.subTypes,
+                    actions = boardActions
+                )
+            }
+        }
+
+        // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行
+        if (uiState.boards.isNotEmpty()) {
+            val selectedBoardIndex = uiState.boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
+            PrimaryScrollableTabRow(
+                selectedTabIndex = selectedBoardIndex,
+                edgePadding = 16.dp,
+                divider = {},
+                containerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = headerStack.topBarHeight)
+                    .onSizeChanged { size -> headerStack.onTabRowMeasured(size.height) }
+            ) {
+                uiState.boards.forEachIndexed { index, board ->
+                    val isSelected = index == selectedBoardIndex
+                    Tab(
+                        selected = isSelected,
+                        onClick = { viewModel.selectBoard(board) },
+                        text = {
+                            Text(
+                                text = board.label,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     )
                 }
             }
