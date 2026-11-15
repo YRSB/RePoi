@@ -1596,9 +1596,9 @@ class HomeFeedViewModel(
 
     // ==================== 二手板块（#160） ====================
 
-    /** 组装二手板块当前请求参数：作用域（全部省略 / 单区 nodeId）+ 出售求购 + 成色 + 关键词。 */
+    /** 组装二手板块当前请求参数：作用域（经数据层统一派生）+ 出售求购 + 成色 + 关键词。 */
     private fun HomeFeedUiState.resaleQuery(): ResaleQuery = ResaleQuery(
-        zones = zoneScope.zonesParam(),
+        scope = zoneScope,
         type = resale.type,
         purity = resale.purity,
         keyword = resale.keyword

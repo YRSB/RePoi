@@ -353,8 +353,8 @@ class ZoneDetailViewModel(
         fetcher = { cursor ->
             val curResale = _uiState.value.resaleState
             resaleRepository.searchResale(
-                // #160：专区参数放宽为 String，单专区传 nodeId 字符串（聚合由首页按作用域派生）
-                zones = nodeId.toString(),
+                // #150 审查 A4：专区参数统一收 ZoneQueryScope，禁止调用点散拼
+                scope = ZoneQueryScope.Single(nodeId),
                 type = curResale.type,
                 keyword = curResale.keyword.takeIf { it.isNotBlank() },
                 puritys = curResale.purity,

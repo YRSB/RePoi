@@ -4,6 +4,7 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ResaleDetailItem
 import com.nobody.repoi.data.remote.model.ResaleSearchPayload
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 
 /**
  * 二手交易数据仓储，负责管理二手检索与交易列表加载。
@@ -15,8 +16,9 @@ class ResaleRepository(
     /**
      * 多维检索二手交易列表。
      *
-     * @param zones 专区过滤参数（单专区为 nodeId 字符串；聚合「全部」省略即全站；关注聚合不可用，
-     *   因为多专区逗号串在服务端是**交集**语义，见 `docs/research/aggregate-api-verification.md` §5）
+     * @param scope 查询作用域（数据层唯一来源）：全部聚合省略 `zones`、单专区下发 nodeId；
+     *   关注聚合不可用——多专区逗号串在服务端是**交集**语义，见
+     *   `docs/research/aggregate-api-verification.md` §5，调用方必须在请求前隐藏/短路
      * @param hobbyId 关联手办 ID (如指定则筛选该手办的同款二手)
      * @param type 交易类型: 1 出售, 2 求购 (默认 1)
      * @param keyword 检索关键词
@@ -27,7 +29,7 @@ class ResaleRepository(
      * @param pageSize 每页条数 (默认 24)
      */
     suspend fun searchResale(
-        zones: String? = null,
+        scope: ZoneQueryScope = ZoneQueryScope.All,
         type: Int = 1,
         keyword: String? = null,
         category: String? = null,
@@ -43,7 +45,8 @@ class ResaleRepository(
         params["pageSize"] = pageSize.toString()
         params["state"] = "1"
 
-        zones?.trim()?.takeIf { it.isNotBlank() }?.let { params["zones"] = it }
+        // 作用域统一经 ZoneQueryScope 派生，禁止调用点散拼 zone 参数（空关注已由上层短路）
+        scope.zonesParam()?.let { params["zones"] = it }
         val targetItemId = itemId?.takeIf { it > 0L } ?: hobbyId?.takeIf { it > 0L }
         targetItemId?.let { params["itemId"] = it.toString() }
         keyword?.trim()?.takeIf { it.isNotBlank() }?.let { params["keyword"] = it }
