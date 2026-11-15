@@ -92,9 +92,9 @@ data class HomeFeedUiState(
     /** 顶栏专区切换器分组（「快捷」恒含全部/关注，「我的专区」遵循首页设置排序与隐藏）。 */
     val switcherGroups: List<ZoneSwitcherGroup> = defaultZoneSwitcherGroups(),
     /**
-     * 二级板块列表（顺序即 Tab 顺序）：
-     * - 聚合态（全部/关注）= `HOME_ORDER ∩ HOME_IMPLEMENTED`；
-     * - 单专区 = 服务端 `zone/info.tabs` ∩ `HOME_IMPLEMENTED`（请求中/失败先回退 `[ZoneBoard.Action]`）。
+     * 二级板块列表（顺序即 Tab 顺序），唯一来源为 `ZoneBoardCapability` 能力矩阵：
+     * - 聚合态（全部）= `HOME_ORDER` 全 10 项；关注 = 去掉讨论/产品/二手的 7 项；
+     * - 单专区 = 服务端 `zone/info.tabs` ∩ 白名单（请求中/失败先回退 `[ZoneBoard.Action]`）。
      *
      * 为空表示该专区没有可用板块，宿主据此隐藏二级 TabRow 并展示板块空态（不渲染空 Tab 条）。
      */
@@ -1764,7 +1764,7 @@ class HomeFeedViewModel(
      * 同步当前作用域的二级板块列表（顺序即 Tab 顺序）。
      *
      * - 聚合态（全部 / 关注）：客户端固定列表，无网络请求；
-     * - 单专区：异步取 `zone/info.tabs`，用 `ZoneBoard.tabsFor` 与服务端顺序求交；请求中 / 失败保持
+     * - 单专区：异步取 `zone/info.tabs`，由能力矩阵按「服务端顺序 ∩ 白名单」求交；请求中 / 失败保持
      *   兜底 `[ZoneBoard.Action]`；请求期间用户切走则丢弃过期响应。
      *
      * 首页只借用 `zone/info` 的 tabs，不是「进入专区」，因此 `reportVisit = false`，
@@ -1777,7 +1777,7 @@ class HomeFeedViewModel(
             val result = zoneRepository.getZoneInfo(scope.nodeId, reportVisit = false)
             if (_uiState.value.zoneScope != scope) return@launch
             val boards = result.getOrNull()
-                ?.let { info -> ZoneBoard.tabsFor(info.tabs, ZoneBoard.HOME_IMPLEMENTED) }
+                ?.let { info -> homeBoardsFor(scope, info.tabs) }
                 ?: HOME_BOARD_FALLBACK
             _uiState.update { state ->
                 if (state.zoneScope != scope) return@update state
