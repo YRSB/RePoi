@@ -220,7 +220,7 @@ class HomeFeedViewModel(
      * 未注入 [categoryManager]（纯逻辑测试）时为空 Map，UI 回退到通用兜底文案。
      */
     val hobbyCategoryTree: StateFlow<Map<Int, List<CategoryItem>>> =
-        categoryManager?.categoryMap ?: MutableStateFlow(emptyMap())
+        categoryManager?.categoryMap ?: MutableStateFlow<Map<Int, List<CategoryItem>>>(emptyMap())
 
     // 旧持久化值 `all` 在此归一为 `allInfo`（服务端对 `all` 静默回落「推荐」，不能原样发出）
     private val initialSubType: String =
