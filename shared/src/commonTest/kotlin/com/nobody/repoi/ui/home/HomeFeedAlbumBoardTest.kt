@@ -136,7 +136,7 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含分享，但未切过去之前零请求
+        // 聚合态二级 Tab 自动包含分享/讨论/实体板块，但未切过去之前零请求
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, viewModel.uiState.value.boards)
         assertTrue(ZoneBoard.Album in viewModel.uiState.value.boards)
         assertEquals(0, env.albumMock.requestCount)

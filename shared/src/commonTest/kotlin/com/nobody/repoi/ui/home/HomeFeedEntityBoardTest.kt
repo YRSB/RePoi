@@ -314,7 +314,7 @@ class HomeFeedEntityBoardTest {
             "api/zone/items",
             """{"success":true,"code":200,"msg":"ok","data":{"total":1,"hasMore":false,"list":[{"id":21,"itemId":901,"nameCN":"角色901","cover":"c.jpg"}]}}"""
         )
-        viewModel.retryCurrentBoard()
+        viewModel.retrySelectedBoard()
         advanceUntilIdle()
 
         val retried = viewModel.uiState.value

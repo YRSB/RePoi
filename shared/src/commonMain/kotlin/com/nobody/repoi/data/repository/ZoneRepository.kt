@@ -197,13 +197,16 @@ class ZoneRepository(
 
     /**
      * 查询专区讨论贴列表。
-     * @param zoneNodeId 专区节点 ID
+     * @param zoneNodeId 专区节点 ID；**null 表示聚合·全部（省略 `zoneNodeId`，服务端返回全站）**。
+     *   讨论接口的专区过滤只认单值 `zoneNodeId`（String/Long 均可），`zones` 与逗号串会被
+     *   服务端静默忽略并退化为全站，因此**不要**为关注聚合传逗号串；关注态没有多专区通道，
+     *   首页已按 `homeBoardsFor(Follow)` 隐藏该板块（见 `docs/research/aggregate-api-verification.md` §4.3）。
      * @param order 排序类型: upd(回复) / add(新贴) / top(推荐)
      * @param page 页码 (1 起始)
      * @param pageSize 每页条数 (默认 20)
      */
     suspend fun getZonePosts(
-        zoneNodeId: Long,
+        zoneNodeId: Long?,
         order: String = "upd",
         page: Int = 1,
         pageSize: Int = 20

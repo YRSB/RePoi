@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.board
 
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 
 /**
@@ -10,8 +11,10 @@ import com.nobody.repoi.data.remote.model.ZoneEntityItem
  * 设计约束：pane 不注入仓储、不注入偏好、不直接改 ViewModel；所有交互都经过本接口，
  * 便于首页与专区详情各自适配，也便于纯逻辑测试。
  *
- * A 阶段只包含动态板块所需动作；迁移其余板块时在此接口上**按板块追加方法**，
- * `ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（B 阶段 / 后续板块 ticket）。
+ * 已接入板块：动态（A 阶段）、分享（#157）、讨论（#158）、实体 5 类（#161）。迁移其余板块时在此接口上
+ * **按板块追加方法**，`ZoneBoardPane` 的 `when(board)` 分支与两处宿主适配器同步补齐（后续板块 ticket）。
+ * 讨论板块**没有分类过滤**（原版无入口、接口无参数，见 [PostsBoardOptions] KDoc），
+ * 分类回调只为分享板块提供。
  */
 interface ZoneBoardActions {
     /**
@@ -27,6 +30,9 @@ interface ZoneBoardActions {
 
     /** 分享板块分类切换；`null` = 全部分类。仅单专区作用域会传入非空选项。 */
     fun onSelectAlbumCategory(categoryId: Int?)
+
+    /** 讨论板块排序切换（键值见 [PostsBoardOptions.ORDERS]），宿主据此重置并重载首屏。 */
+    fun onSelectPostsOrder(order: String)
 
     /** 首屏错误态「重试」（宿主按当前板块分派刷新）。 */
     fun onRetryInitial()
@@ -45,6 +51,12 @@ data class ZoneBoardItemActions(
     val onActionClick: ((ActionItem) -> Unit)? = null,
     /** 动态卡片图片点击（打开全屏看图）。 */
     val onActionImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
+    /** 讨论帖点击（跳转帖子详情）。 */
+    val onPostClick: ((PostItem) -> Unit)? = null,
+    /** 讨论帖配图点击（打开全屏看图）。 */
+    val onPostImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
+    /** 讨论帖作者点击（跳转用户主页）。 */
+    val onPostUserClick: ((userId: Long) -> Unit)? = null,
     /** 分享（相册）卡片点击（跳转相册详情）。 */
     val onAlbumClick: ((AlbumListItem) -> Unit)? = null,
     /**

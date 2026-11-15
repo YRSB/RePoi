@@ -65,13 +65,16 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
+import com.nobody.repoi.ui.board.ZoneQueryScope
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -105,11 +108,16 @@ fun HomeFeedScreen(
     onNavigateToZoneSettings: (() -> Unit)? = null,
     onNavigateToForumHome: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
+    /** 讨论帖点击（itemId, nodeId, 初始标题）；为空时提示「即将上线」。 */
+    onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
+    /** 讨论帖作者点击。 */
+    onNavigateToUser: ((Long) -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val staggeredGridState = rememberLazyStaggeredGridState()
     val imageViewer = LocalImageViewer.current
+    val messages = LocalAppMessages.current
     val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
     // ≥ 840dp 用锚定下拉菜单，其余用底部抽屉；两种呈现共享同一份分组与选中态。
     val useZoneSwitcherDropdown =
@@ -129,11 +137,16 @@ fun HomeFeedScreen(
         onNavigateToZoneSettings?.invoke()
     }
 
-    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 现有入口，请求与分页语义不变
+    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 现有入口，请求与分页语义不变。
+    // 重试 / 翻页按「当前板块」分派（讨论板块有独立请求链路），筛选值仍由 ViewModel 持有。
     val boardActions = remember(viewModel) {
         object : ZoneBoardActions {
             override fun onSelectSubType(subType: String) {
                 viewModel.selectSubType(subType)
+            }
+
+            override fun onSelectPostsOrder(order: String) {
+                viewModel.selectPostsOrder(order)
             }
 
             override fun onSelectAlbumOrder(order: String) {
@@ -145,17 +158,28 @@ fun HomeFeedScreen(
             }
 
             override fun onRetryInitial() {
-                viewModel.retryCurrentBoard()
+                viewModel.retrySelectedBoard()
             }
 
             override fun onLoadMore() {
-                viewModel.loadNextPage()
+                viewModel.loadMoreSelectedBoard()
             }
         }
     }
     val onCardImageClick = remember(imageViewer) {
         { rawUrls: List<String>, initialIndex: Int ->
             imageViewer.show(rawUrls, initialIndex)
+        }
+    }
+    val handlePostClick = remember(onNavigateToPost) {
+        { item: PostItem ->
+            val targetItemId = if (item.itemId > 0L) item.itemId else item.id
+            val targetNodeId = if (item.id > 0L) item.id else null
+            if (onNavigateToPost != null && targetItemId > 0L) {
+                onNavigateToPost(targetItemId, targetNodeId, item.title.ifBlank { null })
+            } else {
+                messages.show("帖子详情功能即将上线")
+            }
         }
     }
     val handleAlbumClick = remember(onNavigateToAlbum) {
@@ -171,14 +195,36 @@ fun HomeFeedScreen(
             }
         }
     }
-    val boardItemActions = remember(onActionClick, onCardImageClick, handleAlbumClick, onEntityClick) {
+    val boardItemActions = remember(
+        onActionClick,
+        onCardImageClick,
+        handlePostClick,
+        handleAlbumClick,
+        onNavigateToUser,
+        onEntityClick
+    ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
             onActionImageClick = onCardImageClick,
+            onPostClick = handlePostClick,
+            onPostImageClick = onCardImageClick,
+            onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
             onEntityClick = onEntityClick
         )
     }
+
+    // 当前板块内容/分页派生值：三类板块统一经 UiState 的 currentBoard* 投影，宿主不再按板块散写 when
+    val boardItemCount = uiState.currentBoardItemCount
+    val boardHasMore = uiState.currentBoardHasMore
+    val boardIsLoadingMore = uiState.currentBoardIsLoadingMore
+    val boardLoadMoreError = uiState.currentBoardLoadMoreError
+    val boardErrorMessage = uiState.currentBoardErrorMessage
+    val boardLoading = uiState.isCurrentBoardLoading
+    val boardErrorEmpty = boardErrorMessage != null && boardItemCount == 0
+    // 懒加载哨兵：尚未请求过首屏（且无错误）时已计入加载态，此处只兜「既不是加载也不是错误」的真空
+    val boardContentEmpty = boardItemCount == 0 && boardErrorMessage == null && !boardLoading
+    val boardHasFilterBar = uiState.boards.isNotEmpty()
 
     // 上拉触底翻页判断 (瀑布流模式)
     val shouldLoadMore by remember {
@@ -189,13 +235,9 @@ fun HomeFeedScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, uiState.selectedBoard, uiState.currentBoardItemCount) {
-        if (shouldLoadMore &&
-            uiState.currentBoardHasMore &&
-            !uiState.currentBoardIsLoadingMore &&
-            uiState.currentBoardLoadMoreError == null
-        ) {
-            viewModel.loadNextPage()
+    LaunchedEffect(shouldLoadMore, uiState.selectedBoard, boardItemCount) {
+        if (shouldLoadMore && boardHasMore && !boardIsLoadingMore && boardLoadMoreError == null) {
+            viewModel.loadMoreSelectedBoard()
         }
     }
 
@@ -218,7 +260,7 @@ fun HomeFeedScreen(
             initialHeightOffset = -viewModel.scrollMemoryFor(currentBoardKey)
                 .filterCollapseFraction * headerStack.collapsibleHeightPx
         ),
-        canScroll = { uiState.currentBoardItemCount > 0 }
+        canScroll = { boardItemCount > 0 }
     )
     LaunchedEffect(headerStack.collapsibleHeightPx) {
         scrollBehavior.state.heightOffsetLimit = -headerStack.collapsibleHeightPx
@@ -259,19 +301,20 @@ fun HomeFeedScreen(
     }
 
     // 切换专区 / 板块 / 筛选：复位到顶 + 筛选条展开，并清空新键的滚动记忆。
-    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类）。
-    // 首次组合不触发（保留首屏恢复的滚动位置）。
+    // 首次组合不触发（保留首屏恢复的滚动位置）。筛选 token 按板块取当前生效值
+    // （动态 = subType；分享 = 排序 + 分类；讨论 = order），因此切换排序与切换板块走同一套复位逻辑。
     val boardFilterToken = when (uiState.selectedBoard) {
         ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
+        ZoneBoard.Posts -> uiState.posts.order
         else -> uiState.selectedSubType
     }
     var lastSelection by remember {
         mutableStateOf(
-            Triple(uiState.selectedCategory.tabKey, uiState.selectedBoard, boardFilterToken)
+            BoardSelectionKey(uiState.selectedCategory.tabKey, uiState.selectedBoard, boardFilterToken)
         )
     }
     LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, boardFilterToken) {
-        val selection = Triple(
+        val selection = BoardSelectionKey(
             uiState.selectedCategory.tabKey,
             uiState.selectedBoard,
             boardFilterToken
@@ -287,8 +330,8 @@ fun HomeFeedScreen(
     }
 
     // 首屏（含从二级页返回）按当前键恢复滚动位置与折叠比例
-    LaunchedEffect(uiState.currentBoardItemCount > 0, currentBoardKey) {
-        if (restored || uiState.currentBoardItemCount == 0) return@LaunchedEffect
+    LaunchedEffect(boardItemCount > 0, currentBoardKey) {
+        if (restored || boardItemCount <= 0) return@LaunchedEffect
         restored = true
         val memory = viewModel.scrollMemoryFor(currentBoardKey)
         if (memory.index != 0 || memory.offset != 0) {
@@ -302,7 +345,7 @@ fun HomeFeedScreen(
 
     var wasRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.isRefreshing) {
-        if (wasRefreshing && !uiState.isRefreshing && uiState.currentBoardErrorMessage == null) {
+        if (wasRefreshing && !uiState.isRefreshing && boardErrorMessage == null) {
             staggeredGridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
@@ -373,7 +416,7 @@ fun HomeFeedScreen(
                         }
                     }
 
-                    uiState.isCurrentBoardLoading -> {
+                    boardLoading -> {
                         PoiLoadingView(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -384,7 +427,7 @@ fun HomeFeedScreen(
                         )
                     }
 
-                    uiState.currentBoardErrorMessage != null && uiState.currentBoardItemCount == 0 -> {
+                    boardErrorEmpty -> {
                         ElevatedCard(
                             shape = MaterialTheme.shapes.large,
                             colors = CardDefaults.elevatedCardColors(
@@ -401,19 +444,19 @@ fun HomeFeedScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = uiState.currentBoardErrorMessage ?: "数据加载失败",
+                                    text = boardErrorMessage ?: "数据加载失败",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Button(onClick = { viewModel.retryCurrentBoard() }) {
+                                Button(onClick = { viewModel.retrySelectedBoard() }) {
                                     Text("重新加载")
                                 }
                             }
                         }
                     }
 
-                    uiState.currentBoardItemCount == 0 -> {
+                    boardContentEmpty -> {
                         val isEmptyFollow = uiState.selectedCategory.tabKey == ZONE_TAB_KEY_FOLLOW &&
                             uiState.selectedCategory.zoneIds == "-1"
                         ElevatedCard(
@@ -427,7 +470,7 @@ fun HomeFeedScreen(
                                 .padding(top = headerStack.totalHeaderHeight)
                                 .padding(24.dp)
                         ) {
-                            if (isEmptyFollow) {
+                            if (isEmptyFollow && uiState.selectedBoard != ZoneBoard.Posts) {
                                 // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
                                 EmptyState(
                                     icon = Icons.Outlined.Category,
@@ -443,6 +486,7 @@ fun HomeFeedScreen(
                                 ) {
                                     Text(
                                         text = when {
+                                            uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
                                             uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
                                             uiState.selectedBoard.isEntity -> "暂无相关条目"
                                             else -> "暂无该分类下的动态情报"
@@ -478,6 +522,8 @@ fun HomeFeedScreen(
                             actions = boardActions,
                             itemActions = boardItemActions,
                             columns = feedColumns,
+                            // 置顶帖条是单专区语义：聚合态（全部）不渲染
+                            showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -486,7 +532,7 @@ fun HomeFeedScreen(
         }
 
         // 三级筛选行（可折叠）：位移由 scrollBehavior 驱动，高度实测回填头部高度栈
-        if (uiState.boards.isNotEmpty()) {
+        if (boardHasFilterBar) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -508,7 +554,7 @@ fun HomeFeedScreen(
         }
 
         // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行
-        if (uiState.boards.isNotEmpty()) {
+        if (boardHasFilterBar) {
             val selectedBoardIndex = uiState.boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
             PrimaryScrollableTabRow(
                 selectedTabIndex = selectedBoardIndex,
@@ -635,6 +681,18 @@ fun HomeFeedScreen(
         }
     }
 }
+
+/**
+ * 「专区 + 板块 + 该板块筛选值」的选择快照。
+ *
+ * 用于判断「专区/板块/筛选」是否真的变了——变了才复位到顶并清空新键滚动记忆。
+ * 筛选维度按板块取（动态 `subType` / 讨论 `order`），后续板块 ticket 在这里加自己的字段。
+ */
+private data class BoardSelectionKey(
+    val tabKey: String,
+    val board: ZoneBoard,
+    val filterKey: String
+)
 
 /**
  * 动态瀑布流自适应列数：
