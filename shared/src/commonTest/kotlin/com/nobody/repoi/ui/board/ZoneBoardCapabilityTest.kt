@@ -188,7 +188,7 @@ class ZoneBoardCapabilityTest {
 
     @Test
     fun tabTitle_prefersServerTitleAndFallsBackToEnumLabel() {
-        assertEquals("动态", ZoneBoard.Action.tabTitle("最新动态"))
+        assertEquals("最新动态", ZoneBoard.Action.tabTitle("最新动态"))
         assertEquals("动态", ZoneBoard.Action.tabTitle(""))
         assertEquals("动态", ZoneBoard.Action.tabTitle(null))
         // 产品板块文案恒为「产品」（历史 parseTabs 行为）
