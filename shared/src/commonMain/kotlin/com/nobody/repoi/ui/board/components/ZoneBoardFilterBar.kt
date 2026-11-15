@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.board.PostsBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardFilters
@@ -19,11 +20,17 @@ import com.nobody.repoi.ui.board.ZoneBoardFilters
 /**
  * 板块折叠筛选条内容（只渲染行内容，不在内部折叠；折叠位移由宿主的 `scrollBehavior` 驱动）。
  *
- * A 阶段只迁移动态板块的 9 项单选 `FilterChip` 行（从 `ZoneDetailScreen` 内联分支抽出）；
- * 其余板块由宿主暂时保留原内联分支，B 阶段在 [when] 内逐个补。
+ * 已迁移：动态板块 9 项单选 `FilterChip` 行、讨论板块 3 档排序 `FilterChip` 行
+ * （从 `ZoneDetailScreen` 内联分支抽出，首页与详情共用）。其余板块由宿主暂时保留原内联分支。
+ *
+ * 讨论板块**没有分类入口**：原版 2.43 的讨论分支不请求分类、`api/posts/search` 也不接受任何
+ * 分类参数（实测 `itemType`/`category`/`categoryId` 均被忽略），故刻意不渲染分类 Chip，
+ * 证据见 [PostsBoardOptions] KDoc。
  *
  * @param subTypeOptions 动态筛选选项（键 → 文案）。A 阶段由宿主传入 `ZoneDetailViewModel.subTypes`；
  *   #153 合入后改传共享定义，本组件不持有文案/键值，避免两处定义漂移。
+ * @param postsOrderOptions 讨论排序选项（键 → 文案）。来自共享常量 [PostsBoardOptions.ORDERS]，
+ *   首页与专区详情不各写一份。
  */
 @Composable
 fun ZoneBoardFilterBar(
@@ -31,7 +38,8 @@ fun ZoneBoardFilterBar(
     filters: ZoneBoardFilters,
     subTypeOptions: List<Pair<String, String>>,
     actions: ZoneBoardActions,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    postsOrderOptions: List<Pair<String, String>> = PostsBoardOptions.ORDERS
 ) {
     when (board) {
         ZoneBoard.Action -> {
@@ -48,6 +56,26 @@ fun ZoneBoardFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = { actions.onSelectSubType(key) },
+                        label = { Text(label) },
+                        shape = MaterialTheme.shapes.small
+                    )
+                }
+            }
+        }
+        ZoneBoard.Posts -> {
+            // 讨论排序胶囊（回复 / 新贴 / 推荐），无分类入口（原版无入口、接口无参数）
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                postsOrderOptions.forEach { (key, label) ->
+                    val isSelected = filters.postsOrder == key
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { actions.onSelectPostsOrder(key) },
                         label = { Text(label) },
                         shape = MaterialTheme.shapes.small
                     )
