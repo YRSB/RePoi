@@ -74,7 +74,7 @@ class HomeFeedHobbyBoardTest {
         )
     }
 
-    private fun env(savedTabKey: String = "all"): Env {
+    private suspend fun env(savedTabKey: String = "all"): Env {
         val feedMock = MockApi()
         feedMock.route(
             "api/user-action/list-v3",
