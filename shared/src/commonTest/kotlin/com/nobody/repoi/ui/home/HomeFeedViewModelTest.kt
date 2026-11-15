@@ -14,6 +14,7 @@ import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardCapability
 import com.nobody.repoi.ui.board.ZoneQueryScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -830,9 +831,9 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；已接入动态（#155）、分享（#157）、
-        // 讨论（#158）、产品（#159）、二手（#160）与实体 5 类（#161）
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        // 聚合态固定顺序 = 能力矩阵的全部聚合列表；10 类均已接入（#155–#161）
+        assertEquals(ZoneBoardCapability.ALL_BOARDS, state.boards)
+        assertEquals(ZoneBoard.HOME_ORDER, state.boards)
         assertEquals(
             listOf(
                 ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
@@ -868,7 +869,8 @@ class HomeFeedViewModelTest {
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
         // 关注聚合无多专区通道：讨论（`posts/search` 只认单值 zoneNodeId，逗号串退化为全站）、
         // 二手（`resale/search` 的 zones 逗号串是交集语义）与产品（需登录态复验 homeScope）都必须隐藏；
-        // 分享与实体 5 类有 zones 并集通道可用
+        // 分享与实体 5 类有 zones 并集通道可用。期望值直接取自能力矩阵，防止两处规则漂移。
+        assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertEquals(
             listOf(
                 ZoneBoard.Action, ZoneBoard.Album,
@@ -881,6 +883,83 @@ class HomeFeedViewModelTest {
         assertFalse(ZoneBoard.Resale in state.boards)
         assertFalse(ZoneBoard.Hobby in state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
+    }
+
+    @Test
+    fun selectZoneTab_fromHiddenBoard_fallsBackToFirstBoard() = runTest(testDispatcher) {
+        // 从「全部」的讨论板块切到「关注」：讨论在关注态被能力矩阵隐藏，选中必须回落到首板块
+        val env = env()
+        env.stubFocusedZone(100L)
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = listOf(1L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals(ZoneBoard.Posts, viewModel.uiState.value.selectedBoard)
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
+        assertEquals(ZoneBoard.Action, state.selectedBoard)
+        assertEquals(state.boards.first(), state.selectedBoard)
+        assertFalse(ZoneBoard.Posts in state.boards)
+    }
+
+    @Test
+    fun followScope_actionRequestSendsZoneIdsUnionAndOmitsZoneNodeId() = runTest(testDispatcher) {
+        // 关注聚合动态：zoneIds=逗号串（并集），不得下发 zoneNodeId（单值参数只属单专区）
+        val env = env()
+        env.zoneMock.replaceRoute(
+            "api/zone/home-tabs",
+            """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":100,"nameCN":"手办"},{"nodeId":200,"nameCN":"模型"}]}}"""
+        )
+        env.stubFeed(zoneIds = "100,200", items = listOf(item(1, "100")))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+
+        val form = env.lastFeedForm()
+        assertEquals("100,200", form["zoneIds"])
+        assertNull(form["zoneNodeId"], "关注聚合不得下发单值 zoneNodeId")
+        assertEquals(listOf(1L), viewModel.uiState.value.items.map { it.id })
+    }
+
+    @Test
+    fun followScope_hiddenBoardsNeverRequested() = runTest(testDispatcher) {
+        // 隐藏板块不只「不显示」，还必须零请求：直接调用其加载入口也要被安全闸门拦下
+        val env = env()
+        env.stubFocusedZone(100L)
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+        val baselineAlbum = env.albumMock.requestCount
+        assertEquals(0, env.hobbyMock.requestCount)
+        assertEquals(0, env.resaleMock.requestCount)
+
+        // 不在 boards 中的板块：选择被忽略
+        viewModel.selectBoard(ZoneBoard.Posts)
+        viewModel.selectBoard(ZoneBoard.Hobby)
+        viewModel.selectBoard(ZoneBoard.Resale)
+        // 直接调用板块加载入口：同样必须短路（不能绕过 Tab 可见性发请求）
+        viewModel.loadInitialPosts()
+        viewModel.loadInitialResale()
+        advanceUntilIdle()
+
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        assertEquals(0, env.postsRequests, "关注聚合不得请求讨论接口")
+        assertEquals(0, env.hobbyMock.requestCount, "关注聚合不得请求产品接口")
+        assertEquals(0, env.resaleMock.requestCount, "关注聚合不得请求二手接口")
+        assertEquals(baselineAlbum, env.albumMock.requestCount, "未选中分享板块时不得请求相册接口")
     }
 
     @Test
@@ -898,14 +977,7 @@ class HomeFeedViewModelTest {
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
         // 空关注同样按作用域感知列表隐藏讨论/产品/二手板块（并短路不发请求），分享与实体 5 类保留
-        assertEquals(
-            listOf(
-                ZoneBoard.Action, ZoneBoard.Album,
-                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
-                ZoneBoard.Character, ZoneBoard.Person
-            ),
-            state.boards
-        )
+        assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertEquals(homeBoardsFor(state.zoneScope), state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
         assertFalse(ZoneBoard.Hobby in state.boards)
@@ -928,7 +1000,8 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community，客户端只保留已接入的白名单板块`n        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        // 服务端下发 action/album/shop_item/community，客户端只保留白名单内的 action/album
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         // zone/info 请求带上专区 nodeId
         val infoRequest = env.zoneMock.lastRequest()
@@ -1041,9 +1114,9 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("z100", state.selectedCategory.tabKey)
         assertEquals(100L, state.selectedCategory.nodeId)
-        // 单专区板块 = 服务端 tabs ∩ 首页已接入集合；首板块恒为动态（不写死后续票新增的板块）
+        // 单专区板块 = 服务端 tabs ∩ 白名单；首板块恒为动态（不写死后续票新增的板块）
         assertEquals(ZoneBoard.Action, state.boards.first())
-        assertTrue(state.boards.all { it in ZoneBoard.HOME_IMPLEMENTED })
+        assertTrue(state.boards.all { it in ZoneBoard.CLIENT_WHITELIST })
         assertEquals(state.boards.first(), state.selectedBoard)
         assertEquals(listOf(2L), state.items.map { it.id })
         // 只为恢复后的专区请求内容，未先发「全部」请求（回落误判会留下无 zoneNodeId 的请求）
@@ -1252,10 +1325,7 @@ class HomeFeedViewModelTest {
 
         // 懒加载：停在动态板块时绝不请求讨论接口
         assertEquals(0, env.postsRequests)
-        assertEquals(
-            ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED },
-            viewModel.uiState.value.boards
-        )
+        assertEquals(ZoneBoardCapability.ALL_BOARDS, viewModel.uiState.value.boards)
 
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
@@ -1388,14 +1458,8 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(
-            listOf(
-                ZoneBoard.Action, ZoneBoard.Album,
-                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
-                ZoneBoard.Character, ZoneBoard.Person
-            ),
-            state.boards
-        )
+        assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
+        assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
 
         // 直接尝试选中讨论板块：不在当前列表，必须被忽略且不发请求
