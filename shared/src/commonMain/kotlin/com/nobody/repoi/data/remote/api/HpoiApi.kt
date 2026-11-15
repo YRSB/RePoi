@@ -2,6 +2,7 @@ package com.nobody.repoi.data.remote.api
 
 import com.nobody.repoi.data.remote.model.AccountCheckPayload
 import com.nobody.repoi.data.remote.model.ActionListData
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumDetailPayload
 import com.nobody.repoi.data.remote.model.AlbumListPayload
 import com.nobody.repoi.data.remote.model.AttributeListPayload
@@ -129,7 +130,7 @@ class HpoiApi(
         categoryId: Int = 0,
         lastTime: Long = 0L,
         pageSize: Int = 20,
-        subType: String? = "recommend",
+        subType: String? = ActionSubType.DEFAULT.apiValue,
         zoneNodeId: Long? = null,
         zoneIds: String? = null,
     ): CommonResponse<ActionListData> = client.get("api/user-action/list-v3") {
