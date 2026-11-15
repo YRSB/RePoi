@@ -72,6 +72,8 @@ class HomeFeedViewModelTest {
         val dispatcher: CoroutineDispatcher,
     ) {
         val feedRequests: Int get() = feedMock.requestCount
+        /** 讨论接口（`api/posts/search`）请求次数；由 [stubPosts] 的谓词计数。 */
+        var postsRequests: Int = 0
         val userSession = FakeUserSession("utoken-test")
         val messageRepository = MessageRepository(accountMock.api(dispatcher), userSession)
     }
@@ -207,6 +209,38 @@ class HomeFeedViewModelTest {
                 } else {
                     zoneMock.failure(500, "专区信息加载失败")
                 }
+            }
+        )
+    }
+
+    /**
+     * 讨论接口（`api/posts/search`）路由与计数。
+     *
+     * 注意：讨论请求经 `ZoneRepository` 发出，而本测试的 `ZoneRepository` 背后是 [Env.zoneMock]，
+     * 因此必须挂在 zoneMock 上（挂 feedMock 会让请求落到「无路由 → 500」并误判）。
+     */
+    private fun Env.stubPosts(
+        zoneNodeId: Long? = null,
+        order: String = "upd",
+        page: Int = 1,
+        pageSize: Int = 20,
+        ids: List<Long> = emptyList(),
+        pinnedIds: Set<Long> = emptySet(),
+    ) {
+        zoneMock.routeWhen(
+            predicate = { path, _, query ->
+                if (!path.contains("api/posts/search")) return@routeWhen false
+                this.postsRequests += 1
+                (query["zoneNodeId"]?.toLongOrNull()) == zoneNodeId &&
+                    (query["order"] ?: "upd") == order &&
+                    query["page"] == page.toString() &&
+                    query["pageSize"] == pageSize.toString()
+            },
+            body = { _, _, _ ->
+                val list = ids.joinToString(",") { id ->
+                    """{"id":$id,"title":"帖子$id","userName":"用户$id","discussCount":0,"topTime":${if (id in pinnedIds) 1794000000000L else 0L}}"""
+                }
+                """{"success":true,"code":200,"msg":"ok","data":{"list":[$list]}}"""
             }
         )
     }
@@ -771,16 +805,16 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；当前接入动态（#155）与分享（#157）
+        // 聚合态固定顺序 = HOME_ORDER ∩ 首页已接入集合；已接入动态（#155）、分享（#157）与讨论（#158）
         assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
-        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts), state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
         // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
     }
 
     @Test
-    fun followBoards_useAggregateListAndParseFocusZoneIds() = runTest(testDispatcher) {
+    fun followBoards_hideBoardsWithoutMultiZoneChannel() = runTest(testDispatcher) {
         val env = env()
         env.stubFocusedZone(100L)
         env.stubFeed(items = emptyList())
@@ -792,7 +826,10 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        // 关注聚合无多专区通道（`posts/search` 只认单值 zoneNodeId，逗号串退化为全站）：
+        // 讨论板块必须隐藏，绝不能把全站帖子当成「关注专区讨论」展示；分享板块有 zones 通道可用
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertFalse(ZoneBoard.Posts in state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
     }
 
@@ -810,7 +847,9 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
-        assertEquals(ZoneBoard.HOME_ORDER.filter { it in ZoneBoard.HOME_IMPLEMENTED }, state.boards)
+        // 空关注同样按作用域感知列表隐藏讨论板块（并短路不发请求），分享板块保留
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertFalse(ZoneBoard.Posts in state.boards)
     }
 
     @Test
@@ -913,7 +952,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         // 未接入的板块不在 boards 中，选择被忽略
-        viewModel.selectBoard(ZoneBoard.Posts)
+        viewModel.selectBoard(ZoneBoard.Hobby)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
         // 分享板块（#157）已接入，可切换
         viewModel.selectBoard(ZoneBoard.Album)
@@ -1133,5 +1172,192 @@ class HomeFeedViewModelTest {
             ZoneQueryScope.Single(100L),
             FeedCategory(tabKey = "z100", name = "手办", nodeId = 0L, zoneIds = "").toZoneQueryScope()
         )
+    }
+
+    // ── 讨论板块（#158） ────────────────────────────────────────────────
+
+    @Test
+    fun postsBoard_lazyLoadsOnSelection_andAllScopeOmitsZoneFilter() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = listOf(101L, 102L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 懒加载：停在动态板块时绝不请求讨论接口
+        assertEquals(0, env.postsRequests)
+        assertEquals(
+            listOf(ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts),
+            viewModel.uiState.value.boards
+        )
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+
+        assertEquals(1, env.postsRequests)
+        val recorded = env.zoneMock.lastRequest()
+        assertTrue(recorded.encodedPath.orEmpty().contains("api/posts/search"))
+        // 全部聚合：省略 zone 过滤（不能下发 zones，更不能下发逗号串——会被当作用域过滤）
+        assertNull(recorded.queryParameter("zoneNodeId"))
+        assertNull(recorded.queryParameter("zones"))
+        assertEquals("upd", recorded.queryParameter("order"))
+        assertEquals("1", recorded.queryParameter("page"))
+        assertEquals("20", recorded.queryParameter("pageSize"))
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(101L, 102L), state.posts.items.map { it.id })
+        // 聚合态没有置顶语义：不切分置顶帖
+        assertEquals(emptyList(), state.posts.pinnedPosts)
+        // 内容投影走共享面板快照
+        assertEquals(state.posts.items, state.postsBoardContent.items)
+    }
+
+    @Test
+    fun postsBoard_singleZone_requestCarriesZoneNodeId_andSplitsPinnedPosts() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = listOf("action", "posts"))
+        env.stubPosts(zoneNodeId = 100L, ids = listOf(1L, 2L, 3L, 4L, 5L, 6L), pinnedIds = setOf(6L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Posts), viewModel.uiState.value.boards)
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+
+        val recorded = env.zoneMock.lastRequest()
+        assertEquals("100", recorded.queryParameter("zoneNodeId"))
+        assertNull(recorded.queryParameter("zones"))
+        val state = viewModel.uiState.value
+        assertEquals(listOf(6L), state.posts.pinnedPosts.map { it.id })
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), state.posts.items.map { it.id })
+    }
+
+    @Test
+    fun postsOrderSwitch_resetsItemsAndReloadsFirstPageWithNewOrder() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(order = "upd", ids = (1L..20L).toList())
+        env.stubPosts(order = "add", ids = listOf(201L, 202L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals(20, viewModel.uiState.value.posts.items.size)
+        assertTrue(viewModel.uiState.value.posts.hasMore)
+
+        viewModel.selectPostsOrder("add")
+        advanceUntilIdle()
+
+        val recorded = env.zoneMock.lastRequest()
+        assertEquals("add", recorded.queryParameter("order"))
+        assertEquals("1", recorded.queryParameter("page"))
+        val state = viewModel.uiState.value
+        assertEquals(listOf(201L, 202L), state.posts.items.map { it.id })
+        assertFalse(state.posts.hasMore)
+    }
+
+    @Test
+    fun postsPagination_appendsNextPageAndKeepsZoneFilter() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(page = 1, ids = (1L..20L).toList())
+        env.stubPosts(page = 2, ids = listOf(21L, 22L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        viewModel.loadNextPostsPage()
+        advanceUntilIdle()
+
+        val recorded = env.zoneMock.lastRequest()
+        assertEquals("2", recorded.queryParameter("page"))
+        assertNull(recorded.queryParameter("zoneNodeId"))
+        val state = viewModel.uiState.value
+        assertEquals((1L..22L).toList(), state.posts.items.map { it.id })
+        assertFalse(state.posts.hasMore)
+    }
+
+    @Test
+    fun postsBoard_stateIsPreservedWhenSwitchingAwayAndBack() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = listOf(11L, 12L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals(1, env.postsRequests)
+
+        viewModel.selectBoard(ZoneBoard.Action)
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+
+        // 切走再切回：复用已有状态，不重复请求（滚动/筛选按「作用域 + 板块」记忆）
+        assertEquals(1, env.postsRequests)
+        assertEquals(listOf(11L, 12L), viewModel.uiState.value.posts.items.map { it.id })
+    }
+
+    @Test
+    fun followScope_hidesPostsBoard_andNeverRequestsPosts() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFocusedZone(100L)
+        env.stubFeed(items = emptyList())
+        // 计数路由：若关注态误发讨论请求会立刻被断言发现
+        env.stubPosts(ids = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
+        assertFalse(ZoneBoard.Posts in state.boards)
+
+        // 直接尝试选中讨论板块：不在当前列表，必须被忽略且不发请求
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
+        assertEquals(0, env.postsRequests)
+    }
+
+    @Test
+    fun scopeChange_resetsPostsContentAndReloadsWithNewZoneFilter() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        env.stubZoneInfo(100L, tabs = listOf("action", "posts"))
+        env.stubPosts(ids = listOf(1L, 2L))
+        env.stubPosts(zoneNodeId = 100L, ids = listOf(9L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.posts.items.map { it.id })
+
+        // 切专区：旧作用域的讨论内容必须作废，切回讨论板块时按新 zoneNodeId 重新取数
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+        assertEquals(emptyList(), viewModel.uiState.value.posts.items)
+        assertFalse(viewModel.uiState.value.posts.isLoaded)
+
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+        assertEquals("100", env.zoneMock.lastRequest().queryParameter("zoneNodeId"))
+        assertEquals(listOf(9L), viewModel.uiState.value.posts.items.map { it.id })
     }
 }
