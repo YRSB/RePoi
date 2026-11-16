@@ -1,6 +1,9 @@
 package com.nobody.repoi.ui.board
 
 import com.nobody.repoi.data.local.CategoryItem
+import com.nobody.repoi.data.remote.model.HOBBY_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.HOBBY_DEFAULT_CATEGORY_ID
+import com.nobody.repoi.data.remote.model.HOBBY_DEFAULT_ORDER
 
 /**
  * 产品（手办）板块的排序档位、年份/月份候选与分类标签：首页与专区详情**唯一**共享定义（issue #159）。
@@ -13,13 +16,13 @@ import com.nobody.repoi.data.local.CategoryItem
  */
 object HobbyBoardOptions {
     /** 默认排序（与专区详情、独立产品列表历史默认值一致）。 */
-    const val DEFAULT_ORDER: String = "hits7Day"
+    const val DEFAULT_ORDER: String = HOBBY_DEFAULT_ORDER
 
     /** 默认分类（`10000` = 全部周边）。 */
-    const val DEFAULT_CATEGORY_ID: Int = 10000
+    const val DEFAULT_CATEGORY_ID: Int = HOBBY_DEFAULT_CATEGORY_ID
 
     /** 产品板块页大小（专区详情与首页共用；请求参数 `pageSize`）。 */
-    const val PAGE_SIZE: Int = 24
+    const val PAGE_SIZE: Int = HOBBY_BOARD_PAGE_SIZE
 
     /** 6 档排序：`key` = 协议 `order` 值，`value` = 界面文案；顺序即渲染顺序。 */
     val ORDERS: List<Pair<String, String>> = listOf(
@@ -81,12 +84,4 @@ object HobbyBoardOptions {
         }
         return "分类"
     }
-
-    /** 高级筛选是否生效（性别 / 属性 / 比例 / 观感任一非空即生效）。 */
-    fun hasAdvancedFilters(
-        sex: Int?,
-        specs: String?,
-        scale: String?,
-        r18: Int?
-    ): Boolean = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
 }

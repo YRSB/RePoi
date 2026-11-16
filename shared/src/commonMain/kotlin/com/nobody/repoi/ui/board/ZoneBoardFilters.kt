@@ -1,29 +1,7 @@
 package com.nobody.repoi.ui.board
 
+import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
-
-/**
- * 产品板块的筛选值快照（从 `ZoneHobbyTabState` 的纯数据部分拆出，供 pane 只读渲染）。
- *
- * 只承载「已选值」，不含选项列表（排序档位、年份范围、分类树等由宿主注入或由 pane 内组件常量提供）；
- * 所有 setter 一律经 [ZoneBoardActions]，pane 不直接改状态。
- */
-data class ZoneHobbyFilter(
-    val categoryId: Int = HobbyBoardOptions.DEFAULT_CATEGORY_ID,
-    val subCategoryId: Int? = null,
-    val order: String = HobbyBoardOptions.DEFAULT_ORDER,
-    val releaseYear: Int? = null,
-    val releaseMonth: Int? = null,
-    val keyword: String = "",
-    val sex: Int? = null,
-    val specs: String? = null,
-    val scale: String? = null,
-    val r18: Int? = null
-) {
-    /** 高级筛选是否生效（与专区详情历史 `hasAdvancedFilters` 判定一致）。 */
-    val hasAdvancedFilters: Boolean
-        get() = HobbyBoardOptions.hasAdvancedFilters(sex = sex, specs = specs, scale = scale, r18 = r18)
-}
 
 /** 高级筛选弹层入参投影（弹层只关心 4 个高级维度，其余筛选值留在 [ZoneHobbyFilter]）。 */
 fun ZoneHobbyFilter.toAdvancedFilterParam(): HobbyAdvancedFilterParam = HobbyAdvancedFilterParam(

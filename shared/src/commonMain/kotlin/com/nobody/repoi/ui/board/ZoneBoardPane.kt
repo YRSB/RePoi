@@ -387,7 +387,7 @@ private fun BoardGridContainer(
         val errorMessage = page.errorMessage
         when {
             errorMessage != null && itemCount == 0 -> {
-                item(span = StaggeredGridItemSpan.FullLine) {
+                item(key = "zone_board_error", span = StaggeredGridItemSpan.FullLine) {
                     ZoneErrorPlaceholder(
                         message = errorMessage,
                         onRetry = { actions.onRetryInitial() }
@@ -395,7 +395,7 @@ private fun BoardGridContainer(
                 }
             }
             itemCount == 0 -> {
-                item(span = StaggeredGridItemSpan.FullLine) {
+                item(key = "zone_board_empty", span = StaggeredGridItemSpan.FullLine) {
                     ZoneEmptyPlaceholder(
                         text = emptyText,
                         onRefresh = { actions.onRetryInitial() }
@@ -405,7 +405,7 @@ private fun BoardGridContainer(
             else -> {
                 header?.invoke(this)
                 itemsContent()
-                item(span = StaggeredGridItemSpan.FullLine) {
+                item(key = "zone_board_footer", span = StaggeredGridItemSpan.FullLine) {
                     ZonePaginationFooter(
                         isLoadingMore = page.isLoadingMore,
                         loadMoreError = page.loadMoreError,

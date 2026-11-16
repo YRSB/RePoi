@@ -23,7 +23,9 @@ import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.AlbumBoardLoader
 import com.nobody.repoi.ui.board.AlbumBoardOptions
+import com.nobody.repoi.ui.board.AlbumBoardQuery
 import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.PostsBoardOptions
@@ -32,9 +34,10 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
-import com.nobody.repoi.ui.board.ZoneHobbyFilter
+import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
+import com.nobody.repoi.util.paging.LoadStage
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.pagedChunkLoader
@@ -181,7 +184,7 @@ data class ZoneDetailUiState(
     val albumLoadMoreError: String? = null,
 
     // 讨论/帖子 Tab 状态
-    val postsSelectedOrder: String = "upd",
+    val postsSelectedOrder: String = PostsBoardOptions.DEFAULT_ORDER,
     val postsItems: List<PostItem> = emptyList(),
     val pinnedPosts: List<PostItem> = emptyList(),
     val postsPage: Int = 1,
@@ -308,12 +311,17 @@ class ZoneDetailViewModel(
     val uiState: StateFlow<ZoneDetailUiState> = _uiState.asStateFlow()
 
     private var feedJob: Job? = null
-    private var albumJob: Job? = null
     private var albumCategoriesJob: Job? = null
     private var postsJob: Job? = null
 
     // 实体分类加载控制器缓存
     private val entityLoaders = mutableMapOf<String, PagedListLoader<ZoneEntityItem>>()
+
+    // 分享（相册）分页控制器：与首页共用 AlbumBoardLoader，避免两屏各写一份首屏/翻页循环。
+    private val albumBoardLoader = AlbumBoardLoader(
+        scope = viewModelScope,
+        repository = albumRepository
+    )
 
     // 产品 (hobby) 分页加载控制器
     // 请求参数统一由 ItemRepository.queryHobbyBoard 拼装（单专区 zones=nodeId、无 homeScope），
@@ -374,6 +382,26 @@ class ZoneDetailViewModel(
         viewModelScope.launch {
             viewPreferencesManager.isHobbyListGridModeFlow.collect { isGrid ->
                 _uiState.update { it.copy(hobbyState = it.hobbyState.copy(isGridMode = isGrid)) }
+            }
+        }
+        // 分享板块状态投影：分页状态机由 AlbumBoardLoader 承担（与首页共用同一实现）
+        viewModelScope.launch {
+            albumBoardLoader.state.collect { listState ->
+                _uiState.update { state ->
+                    val refreshFinished = state.isRefreshing &&
+                        state.isAlbumTab &&
+                        listState.stage == LoadStage.Idle
+                    state.copy(
+                        albumItems = listState.items,
+                        albumPage = listState.page,
+                        isAlbumLoading = listState.isLoading,
+                        isAlbumLoadingMore = listState.isLoadingMore,
+                        hasMoreAlbum = listState.hasMore,
+                        albumErrorMessage = listState.initialError,
+                        albumLoadMoreError = listState.appendError,
+                        isRefreshing = if (refreshFinished) false else state.isRefreshing
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -470,7 +498,7 @@ class ZoneDetailViewModel(
         nodeId = id
         tabScrollPositions.clear()
         entityLoaders.clear()
-        albumJob?.cancel()
+        albumBoardLoader.reset()
         albumCategoriesJob?.cancel()
         hobbyLoader.reset(clearItems = true)
         resaleLoader.reset(clearItems = true)
@@ -500,7 +528,7 @@ class ZoneDetailViewModel(
                 albumLoadMoreError = null,
                 albumSelectedCategory = null,
                 albumCategoryOptions = emptyList(),
-                postsSelectedOrder = "upd",
+                postsSelectedOrder = PostsBoardOptions.DEFAULT_ORDER,
                 postsItems = emptyList(),
                 pinnedPosts = emptyList(),
                 postsPage = 1,
@@ -729,37 +757,14 @@ class ZoneDetailViewModel(
             _uiState.value.isAlbumTab -> {
                 // 分类候选懒加载兜底：切到分享前请求失败/未触发时再补一次
                 if (_uiState.value.albumCategoryOptions.isEmpty()) syncAlbumCategories()
-                viewModelScope.launch {
-                    val currentOrder = _uiState.value.albumSelectedOrder
-                    val result = albumRepository.getAlbums(
-                        page = 1,
-                        pageSize = AlbumBoardOptions.PAGE_SIZE,
-                        orderString = currentOrder,
-                        zones = nodeId.toString(),
-                        category = _uiState.value.albumSelectedCategory
+                val state = _uiState.value
+                albumBoardLoader.refresh(
+                    AlbumBoardQuery(
+                        scope = ZoneQueryScope.Single(nodeId),
+                        order = state.albumSelectedOrder,
+                        category = state.albumSelectedCategory
                     )
-                    result.onSuccess { page ->
-                        val distinctList = page.items.distinctBy { it.targetAlbumId }
-                        _uiState.update {
-                            it.copy(
-                                albumItems = distinctList,
-                                albumPage = 1,
-                                isRefreshing = false,
-                                isAlbumLoading = false,
-                                hasMoreAlbum = page.hasMore,
-                                albumLoadMoreError = null
-                            )
-                        }
-                    }.onFailure { error ->
-                        _uiState.update {
-                            it.copy(
-                                isRefreshing = false,
-                                isAlbumLoading = false,
-                                albumErrorMessage = error.message ?: "刷新失败"
-                            )
-                        }
-                    }
-                }
+                )
             }
             _uiState.value.isPostsTab -> {
                 viewModelScope.launch {
@@ -929,77 +934,22 @@ class ZoneDetailViewModel(
 
     fun loadInitialAlbum() {
         if (nodeId <= 0L) return
-        albumJob?.cancel()
-        albumJob = viewModelScope.launch {
-            _uiState.update { it.copy(isAlbumLoading = true, albumErrorMessage = null) }
-            val currentOrder = _uiState.value.albumSelectedOrder
-            val result = albumRepository.getAlbums(
-                page = 1,
-                pageSize = AlbumBoardOptions.PAGE_SIZE,
-                orderString = currentOrder,
-                zones = nodeId.toString(),
-                category = _uiState.value.albumSelectedCategory
+        _uiState.update { it.copy(isAlbumLoading = true, albumErrorMessage = null) }
+        val state = _uiState.value
+        albumBoardLoader.loadInitial(
+            AlbumBoardQuery(
+                scope = ZoneQueryScope.Single(nodeId),
+                order = state.albumSelectedOrder,
+                category = state.albumSelectedCategory
             )
-            result.onSuccess { page ->
-                val distinctList = page.items.distinctBy { it.targetAlbumId }
-                _uiState.update {
-                    it.copy(
-                        albumItems = distinctList,
-                        albumPage = 1,
-                        isAlbumLoading = false,
-                        hasMoreAlbum = page.hasMore,
-                        albumErrorMessage = null,
-                        albumLoadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isAlbumLoading = false,
-                        albumErrorMessage = error.message ?: "加载分享失败"
-                    )
-                }
-            }
-        }
+        )
     }
 
     fun loadNextAlbumPage() {
-        val currentState = _uiState.value
-        if (currentState.isAlbumLoadingMore || !currentState.hasMoreAlbum || currentState.isAlbumLoading || currentState.isRefreshing || nodeId <= 0L) return
-
-        val nextPage = currentState.albumPage + 1
-        _uiState.update { it.copy(isAlbumLoadingMore = true, albumLoadMoreError = null) }
-
-        viewModelScope.launch {
-            val result = albumRepository.getAlbums(
-                page = nextPage,
-                pageSize = AlbumBoardOptions.PAGE_SIZE,
-                orderString = currentState.albumSelectedOrder,
-                zones = nodeId.toString(),
-                category = currentState.albumSelectedCategory
-            )
-            result.onSuccess { page ->
-                _uiState.update { state ->
-                    val existingIds = state.albumItems.map { it.targetAlbumId }.toSet()
-                    val uniqueNewItems = page.items.filterNot { it.targetAlbumId in existingIds }
-                    val hasMore = page.hasMore && uniqueNewItems.isNotEmpty()
-                    state.copy(
-                        albumItems = state.albumItems + uniqueNewItems,
-                        albumPage = nextPage,
-                        isAlbumLoadingMore = false,
-                        hasMoreAlbum = hasMore,
-                        albumLoadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isAlbumLoadingMore = false,
-                        albumLoadMoreError = error.message ?: "加载更多失败"
-                    )
-                }
-            }
-        }
+        val state = _uiState.value
+        if (state.isAlbumLoadingMore || !state.hasMoreAlbum || state.isAlbumLoading || state.isRefreshing) return
+        if (nodeId <= 0L) return
+        albumBoardLoader.loadMore()
     }
 
     fun loadInitialPosts() {

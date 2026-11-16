@@ -83,7 +83,6 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.home.components.ZoneSwitcherAnchor
 import com.nobody.repoi.ui.home.components.ZoneSwitcherDropdown
 import com.nobody.repoi.ui.home.components.ZoneSwitcherSheet
-import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.ui.navigation.rememberBottomBarFabPadding
 import com.nobody.repoi.ui.search.SearchNavParam
@@ -145,91 +144,29 @@ fun HomeFeedScreen(
     // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 现有入口，请求与分页语义不变。
     // 重试 / 翻页按「当前板块」分派（讨论板块有独立请求链路），筛选值仍由 ViewModel 持有。
     val boardActions = remember(viewModel) {
-        object : ZoneBoardActions {
-            override fun onSelectSubType(subType: String) {
-                viewModel.selectSubType(subType)
-            }
-
-            override fun onSelectPostsOrder(order: String) {
-                viewModel.selectPostsOrder(order)
-            }
-
-            override fun onSelectAlbumOrder(order: String) {
-                viewModel.selectAlbumOrder(order)
-            }
-
-            override fun onSelectAlbumCategory(categoryId: Int?) {
-                viewModel.selectAlbumCategory(categoryId)
-            }
-
-            override fun onSelectResaleType(type: Int) {
-                viewModel.selectResaleType(type)
-            }
-
-            override fun onSelectResalePurity(purity: String?) {
-                viewModel.selectResalePurity(purity)
-            }
-
-            override fun onResaleKeywordChange(keyword: String) {
-                viewModel.updateResaleKeyword(keyword)
-            }
-
-            override fun onResaleSearch() {
-                viewModel.submitResaleSearch()
-            }
-
-            override fun onRetryInitial() {
-                viewModel.retrySelectedBoard()
-            }
-
-            override fun onLoadMore() {
-                viewModel.loadMoreSelectedBoard()
-            }
-
-            override fun onHobbyOrder(order: String) {
-                viewModel.selectHobbyOrder(order)
-            }
-
-            override fun onHobbyYear(year: Int?) {
-                viewModel.selectHobbyYear(year)
-            }
-
-            override fun onHobbyMonth(month: Int?) {
-                viewModel.selectHobbyMonth(month)
-            }
-
-            override fun onHobbyCategory(categoryId: Int, subCategoryId: Int?) {
-                viewModel.selectHobbyCategory(categoryId, subCategoryId)
-            }
-
-            override fun onHobbyKeywordChange(keyword: String) {
-                viewModel.updateHobbyKeyword(keyword)
-            }
-
-            override fun onHobbySearch() {
-                viewModel.submitHobbySearch()
-            }
-
-            override fun onHobbyAdvancedApply(filterParam: HobbyAdvancedFilterParam) {
-                viewModel.applyHobbyAdvancedFilters(filterParam)
-            }
-
-            override fun onHobbyAdvancedReset() {
-                viewModel.resetHobbyAdvancedFilters()
-            }
-
-            override fun onHobbyViewMode() {
-                viewModel.toggleHobbyViewMode()
-            }
-
-            override fun onHobbyFilterSheetVisible(show: Boolean) {
-                viewModel.setHobbyFilterSheetVisible(show)
-            }
-
-            override fun onHobbyCategoryPickerVisible(show: Boolean) {
-                viewModel.setHobbyCategoryPickerVisible(show)
-            }
-        }
+        ZoneBoardActions(
+            selectSubType = viewModel::selectSubType,
+            selectPostsOrder = viewModel::selectPostsOrder,
+            selectAlbumOrder = viewModel::selectAlbumOrder,
+            selectAlbumCategory = viewModel::selectAlbumCategory,
+            selectResaleType = viewModel::selectResaleType,
+            selectResalePurity = viewModel::selectResalePurity,
+            resaleKeywordChange = viewModel::updateResaleKeyword,
+            resaleSearch = viewModel::submitResaleSearch,
+            retryInitial = viewModel::retrySelectedBoard,
+            loadMore = viewModel::loadMoreSelectedBoard,
+            hobbyOrder = viewModel::selectHobbyOrder,
+            hobbyYear = viewModel::selectHobbyYear,
+            hobbyMonth = viewModel::selectHobbyMonth,
+            hobbyCategory = viewModel::selectHobbyCategory,
+            hobbyKeywordChange = viewModel::updateHobbyKeyword,
+            hobbySearch = viewModel::submitHobbySearch,
+            hobbyAdvancedApply = viewModel::applyHobbyAdvancedFilters,
+            hobbyAdvancedReset = viewModel::resetHobbyAdvancedFilters,
+            hobbyViewMode = viewModel::toggleHobbyViewMode,
+            hobbyFilterSheetVisible = viewModel::setHobbyFilterSheetVisible,
+            hobbyCategoryPickerVisible = viewModel::setHobbyCategoryPickerVisible
+        )
     }
     val onCardImageClick = remember(imageViewer) {
         { rawUrls: List<String>, initialIndex: Int ->

@@ -2,9 +2,9 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.HOBBY_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
-import com.nobody.repoi.ui.board.HobbyBoardOptions
-import com.nobody.repoi.ui.board.ZoneHobbyFilter
+import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -107,7 +107,7 @@ class ItemRepository(
     suspend fun queryHobbyBoard(
         scope: ZoneQueryScope,
         page: Int = 1,
-        pageSize: Int = HobbyBoardOptions.PAGE_SIZE,
+        pageSize: Int = HOBBY_BOARD_PAGE_SIZE,
         filters: ZoneHobbyFilter = ZoneHobbyFilter()
     ): Result<List<HobbyItemSummary>> = queryHobbyList(
         buildHobbyBoardParams(scope = scope, page = page, pageSize = pageSize, filters = filters)
