@@ -4,13 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,13 +19,14 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,8 +36,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -84,11 +86,12 @@ internal fun ZoneSwitcherAnchor(
 }
 
 /**
- * 切换器内容：底部抽屉与宽屏下拉菜单共用同一份列表与选中态。
+ * 切换器内容：底部抽屉与宽屏下拉菜单共用同一份分组与选中态。
  *
- * 纯文本列表，无图标、无勾选图标；选中项「加粗 + 主题色」。各行最小高度 48dp，
- * 整体为单选组语义（[selectableGroup] + `Role.RadioButton`）。
+ * 分区（如「快捷」「我的专区」）以分组标题 + 换行 Chip 网格呈现，单选语义
+ * （[selectableGroup] + [Role.RadioButton]）；尾部两个动作使用带底色的 FilledTonalButton。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ZoneSwitcherContent(
     groups: List<ZoneSwitcherGroup>,
@@ -100,7 +103,6 @@ internal fun ZoneSwitcherContent(
 ) {
     Column(
         modifier = modifier
-            .selectableGroup()
             .padding(vertical = 8.dp)
     ) {
         groups.forEach { group ->
@@ -112,29 +114,29 @@ internal fun ZoneSwitcherContent(
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
                 )
             }
-            group.items.forEach { item ->
-                val selected = item.tabKey == selectedTabKey
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .selectable(
-                            selected = selected,
-                            onClick = { onSelect(item.tabKey) },
-                            role = Role.RadioButton
-                        )
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                group.items.forEach { item ->
+                    val selected = item.tabKey == selectedTabKey
+                    FilterChip(
+                        selected = selected,
+                        onClick = { onSelect(item.tabKey) },
+                        label = {
+                            Text(
+                                text = item.label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        modifier = Modifier.semantics { role = Role.RadioButton }
+                    )
+                }
             }
         }
 
@@ -145,10 +147,10 @@ internal fun ZoneSwitcherContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            TextButton(
+            FilledTonalButton(
                 onClick = onBrowseAllZones,
                 modifier = Modifier
                     .weight(1f)
@@ -156,7 +158,7 @@ internal fun ZoneSwitcherContent(
             ) {
                 Text("浏览全部专区")
             }
-            TextButton(
+            FilledTonalButton(
                 onClick = onOpenHomeSettings,
                 modifier = Modifier
                     .weight(1f)
