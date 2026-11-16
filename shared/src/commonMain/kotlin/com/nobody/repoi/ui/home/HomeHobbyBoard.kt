@@ -1,18 +1,19 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
+import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
-import com.nobody.repoi.ui.board.ZoneHobbyFilter
-import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.board.applyTo
 import com.nobody.repoi.ui.board.toAdvancedFilterParam
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
+import com.nobody.repoi.util.paging.PageChunk
+import com.nobody.repoi.util.paging.PagedListLoader
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,15 +82,23 @@ data class HomeHobbyBoardState(
         )
 }
 
+/** 产品板块一次请求的参数快照（作用域 + 全部筛选值）。 */
+private data class HobbyBoardQuery(
+    val scope: ZoneQueryScope,
+    val filter: ZoneHobbyFilter
+)
+
 /**
  * 首页产品板块控制器：持有版块状态、首屏 / 分页 / 刷新请求与筛选动作。
  *
  * 设计约束：
+ * - 分页状态机统一交给 [PagedListLoader]（页码递增、稳定键去重、并发防重、过期请求取消），
+ *   控制器只维护筛选偏好与弹层显隐，不再手写 `isLoading/hasMore` 状态机（#150 审查）；
  * - 只在切换作用域时重置列表（[onScopeChanged]），排序等筛选值属板块偏好，保留（与分享板块一致）；
  * - 首屏懒加载：首次切到产品板块才发请求，切走再切回不重复请求；
  * - 筛选变化：清空列表、回第一页并重载；
  * - 请求一律经 `ItemRepository.queryHobbyBoard(scope, ...)`，不在这里拼 zone 参数；
- * - 关注聚合不可用：`homeBoardsFor(Follow)` 已隐藏产品 Tab，[loadInitial] 仍对空关注集合短路防御。
+ * - 关注聚合不可用：`ZoneBoardCapability.homeBoardsFor(Follow)` 已隐藏产品 Tab，[loadInitial] 仍对空关注集合短路防御。
  */
 class HomeHobbyBoardController(
     private val repository: ItemRepository,
@@ -98,8 +107,45 @@ class HomeHobbyBoardController(
     private val _state = MutableStateFlow(HomeHobbyBoardState())
     val state: StateFlow<HomeHobbyBoardState> = _state.asStateFlow()
 
-    /** 首屏 / 分页 / 刷新共用的在途请求（新一轮请求会取消旧请求，避免过期响应覆盖）。 */
-    private var loadJob: Job? = null
+    /** 当前请求参数：每次首屏 / 刷新前更新，fetcher 在真正发请求时读取。 */
+    private var query = HobbyBoardQuery(scope = ZoneQueryScope.All, filter = ZoneHobbyFilter())
+
+    /** 当前作用域是否已发起过首屏请求（loader 状态机不承载「懒加载哨兵」语义）。 */
+    private var loaded = false
+
+    private val loader = PagedListLoader<HobbyItemSummary>(
+        scope = scope,
+        initialPage = 1,
+        pageSize = HobbyBoardOptions.PAGE_SIZE,
+        keySelector = { it.actualItemId }
+    ) { page, pageSize ->
+        repository.queryHobbyBoard(
+            scope = query.scope,
+            page = page,
+            pageSize = pageSize,
+            filters = query.filter
+        ).map { items -> PageChunk.of(items, pageSize) }
+    }
+
+    init {
+        scope.launch {
+            loader.state.collect { listState ->
+                _state.update { current ->
+                    current.copy(
+                        items = listState.items,
+                        page = listState.page,
+                        // 作用域重置后 loader 回到 Idle 的默认 hasMore=true，未加载时不应暴露「还有下一页」
+                        hasMore = if (loaded) listState.hasMore else false,
+                        isLoading = listState.isLoading,
+                        isRefreshing = listState.isRefreshing,
+                        isLoadingMore = listState.isLoadingMore,
+                        errorMessage = listState.initialError,
+                        loadMoreError = listState.appendError
+                    )
+                }
+            }
+        }
+    }
 
     /** 同步网格 / 列表偏好（由宿主订阅 `isHobbyListGridModeFlow` 后转发，控制器不直接读偏好）。 */
     fun updateGridMode(isGrid: Boolean) {
@@ -108,8 +154,8 @@ class HomeHobbyBoardController(
 
     /** 切换专区作用域：丢弃当前列表与错误，保留筛选偏好，等下次切到产品板块再懒加载。 */
     fun onScopeChanged() {
-        loadJob?.cancel()
-        loadJob = null
+        loaded = false
+        loader.reset()
         _state.update {
             it.copy(
                 items = emptyList(),
@@ -136,9 +182,10 @@ class HomeHobbyBoardController(
 
     /** 首屏 / 筛选变化 / 错误重试：回第一页并清空列表。 */
     fun loadInitial(zoneScope: ZoneQueryScope) {
-        loadJob?.cancel()
         if (zoneScope.isFollowEmpty) {
             // 防御：关注集合为空时短路，绝不发请求（空 zones 会被服务端当作全站）
+            loaded = false
+            loader.reset()
             _state.update {
                 it.copy(
                     items = emptyList(),
@@ -154,134 +201,28 @@ class HomeHobbyBoardController(
             }
             return
         }
-        _state.update {
-            it.copy(
-                items = emptyList(),
-                page = 1,
-                hasMore = false,
-                isLoading = true,
-                isRefreshing = false,
-                isLoadingMore = false,
-                errorMessage = null,
-                loadMoreError = null
-            )
-        }
-        val requestFilter = _state.value.filter
-        loadJob = scope.launch {
-            repository.queryHobbyBoard(
-                scope = zoneScope,
-                page = 1,
-                pageSize = HobbyBoardOptions.PAGE_SIZE,
-                filters = requestFilter
-            ).onSuccess { list ->
-                val distinctItems = list.distinctBy { it.actualItemId }
-                _state.update { current ->
-                    if (current.filter != requestFilter) return@update current
-                    current.copy(
-                        items = distinctItems,
-                        page = 1,
-                        isLoading = false,
-                        isLoaded = true,
-                        hasMore = list.size >= HobbyBoardOptions.PAGE_SIZE,
-                        errorMessage = null,
-                        loadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _state.update { current ->
-                    if (current.filter != requestFilter) return@update current
-                    current.copy(
-                        isLoading = false,
-                        isLoaded = true,
-                        errorMessage = error.message ?: "加载产品失败"
-                    )
-                }
-            }
-        }
+        loaded = true
+        query = HobbyBoardQuery(scope = zoneScope, filter = _state.value.filter)
+        _state.update { it.copy(isLoaded = true, errorMessage = null, loadMoreError = null) }
+        loader.loadInitial()
     }
 
-    /** 触底翻页：页码 +1，按 `actualItemId` 去重追加；筛选变化后的过期响应丢弃。 */
+    /** 触底翻页：页码与去重交给 loader；筛选变化后的过期响应由 loader 取消旧请求丢弃。 */
     fun loadNextPage(zoneScope: ZoneQueryScope) {
         val snapshot = _state.value
-        if (snapshot.isLoading || snapshot.isLoadingMore || snapshot.isRefreshing) return
         if (!snapshot.isLoaded || !snapshot.hasMore || zoneScope.isFollowEmpty) return
-        val requestedPage = snapshot.page + 1
-        val requestFilter = snapshot.filter
-        _state.update { it.copy(isLoadingMore = true, loadMoreError = null) }
-        loadJob = scope.launch {
-            repository.queryHobbyBoard(
-                scope = zoneScope,
-                page = requestedPage,
-                pageSize = HobbyBoardOptions.PAGE_SIZE,
-                filters = requestFilter
-            ).onSuccess { list ->
-                _state.update { current ->
-                    if (current.filter != requestFilter || current.page != requestedPage - 1) {
-                        return@update current
-                    }
-                    val existingIds = current.items.map { it.actualItemId }.toSet()
-                    val uniqueNewItems = list.filterNot { it.actualItemId in existingIds }
-                    current.copy(
-                        items = current.items + uniqueNewItems,
-                        page = requestedPage,
-                        isLoadingMore = false,
-                        hasMore = list.size >= HobbyBoardOptions.PAGE_SIZE && uniqueNewItems.isNotEmpty(),
-                        loadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _state.update { current ->
-                    if (current.filter != requestFilter) return@update current
-                    current.copy(
-                        isLoadingMore = false,
-                        loadMoreError = error.message ?: "加载更多失败"
-                    )
-                }
-            }
-        }
+        loader.loadMore()
     }
 
     /** 下拉刷新 / FAB 刷新：保持现有条目可见，成功后用第一页替换。 */
     fun refresh(zoneScope: ZoneQueryScope) {
-        loadJob?.cancel()
         if (zoneScope.isFollowEmpty) {
             _state.update { it.copy(isRefreshing = false, isLoading = false, errorMessage = null) }
             return
         }
-        _state.update { it.copy(isRefreshing = true, errorMessage = null, loadMoreError = null) }
-        val requestFilter = _state.value.filter
-        loadJob = scope.launch {
-            repository.queryHobbyBoard(
-                scope = zoneScope,
-                page = 1,
-                pageSize = HobbyBoardOptions.PAGE_SIZE,
-                filters = requestFilter
-            ).onSuccess { list ->
-                val distinctItems = list.distinctBy { it.actualItemId }
-                _state.update { current ->
-                    if (current.filter != requestFilter) return@update current
-                    current.copy(
-                        items = distinctItems,
-                        page = 1,
-                        isRefreshing = false,
-                        isLoading = false,
-                        isLoaded = true,
-                        hasMore = list.size >= HobbyBoardOptions.PAGE_SIZE,
-                        errorMessage = null,
-                        loadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _state.update { current ->
-                    if (current.filter != requestFilter) return@update current
-                    current.copy(
-                        isRefreshing = false,
-                        isLoaded = true,
-                        errorMessage = error.message ?: "刷新失败"
-                    )
-                }
-            }
-        }
+        query = HobbyBoardQuery(scope = zoneScope, filter = _state.value.filter)
+        _state.update { it.copy(errorMessage = null, loadMoreError = null) }
+        loader.refresh()
     }
 
     // ==================== 筛选动作 ====================

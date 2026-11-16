@@ -124,7 +124,6 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
-import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
@@ -536,40 +535,16 @@ fun ZoneDetailScreen(
     // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 的现有入口，不改变请求与分页语义。
     // 触底翻页按当前 Tab 分派（讨论板块有独立分页入口）；重试走 `refresh()`（内部按 Tab 分派）。
     val boardActions = remember(viewModel) {
-        object : ZoneBoardActions {
-            override fun onSelectSubType(subType: String) {
-                viewModel.selectSubType(subType)
-            }
-
-            override fun onSelectPostsOrder(order: String) {
-                viewModel.selectPostsOrder(order)
-            }
-
-            override fun onSelectAlbumOrder(order: String) {
-                viewModel.selectAlbumOrder(order)
-            }
-
-            override fun onSelectAlbumCategory(categoryId: Int?) {
-                viewModel.selectAlbumCategory(categoryId)
-            }
-
-            override fun onSelectResaleType(type: Int) {
-                viewModel.setResaleType(type)
-            }
-
-            override fun onSelectResalePurity(purity: String?) {
-                viewModel.setResalePurity(purity)
-            }
-
-            override fun onResaleKeywordChange(keyword: String) {
-                viewModel.updateResaleKeyword(keyword)
-            }
-
-            override fun onResaleSearch() {
-                viewModel.submitResaleSearch()
-            }
-
-            override fun onRetryInitial() {
+        ZoneBoardActions(
+            selectSubType = viewModel::selectSubType,
+            selectPostsOrder = viewModel::selectPostsOrder,
+            selectAlbumOrder = viewModel::selectAlbumOrder,
+            selectAlbumCategory = viewModel::selectAlbumCategory,
+            selectResaleType = viewModel::setResaleType,
+            selectResalePurity = viewModel::setResalePurity,
+            resaleKeywordChange = viewModel::updateResaleKeyword,
+            resaleSearch = viewModel::submitResaleSearch,
+            retryInitial = {
                 // 实体 5 类走 pane 后仍复用原错误重试入口（loadInitialEntity），保持行为不变
                 val tab = viewModel.uiState.value.selectedTab
                 if (tab in ZoneDetailUiState.ENTITY_TAB_TYPES) {
@@ -577,9 +552,8 @@ fun ZoneDetailScreen(
                 } else {
                     viewModel.refresh()
                 }
-            }
-
-            override fun onLoadMore() {
+            },
+            loadMore = {
                 val tab = viewModel.uiState.value.selectedTab
                 when {
                     // 页脚「加载更多失败，点击重试」按当前 Tab 分派（面板不感知板块专属 loader）
@@ -591,57 +565,28 @@ fun ZoneDetailScreen(
                     viewModel.uiState.value.isHobbyTab -> viewModel.loadNextHobbyPage()
                     else -> viewModel.loadNextPage()
                 }
-            }
-
-            override fun onHobbyOrder(order: String) {
-                viewModel.setHobbyOrder(order)
-            }
-
-            override fun onHobbyYear(year: Int?) {
-                viewModel.setHobbyYear(year)
-            }
-
-            override fun onHobbyMonth(month: Int?) {
-                viewModel.setHobbyMonth(month)
-            }
-
-            override fun onHobbyCategory(categoryId: Int, subCategoryId: Int?) {
+            },
+            hobbyOrder = viewModel::setHobbyOrder,
+            hobbyYear = viewModel::setHobbyYear,
+            hobbyMonth = viewModel::setHobbyMonth,
+            hobbyCategory = { categoryId, subCategoryId ->
                 viewModel.selectHobbyCategory(categoryId, subCategoryId)
-            }
-
-            override fun onHobbyKeywordChange(keyword: String) {
-                viewModel.updateHobbyKeyword(keyword)
-            }
-
-            override fun onHobbySearch() {
-                viewModel.submitHobbySearch()
-            }
-
-            override fun onHobbyAdvancedApply(filterParam: HobbyAdvancedFilterParam) {
+            },
+            hobbyKeywordChange = viewModel::updateHobbyKeyword,
+            hobbySearch = viewModel::submitHobbySearch,
+            hobbyAdvancedApply = { filterParam ->
                 viewModel.applyHobbyAdvancedFilters(
                     sex = filterParam.sex,
                     specs = filterParam.specs,
                     scale = filterParam.scale,
                     r18 = filterParam.r18
                 )
-            }
-
-            override fun onHobbyAdvancedReset() {
-                viewModel.resetHobbyAdvancedFilters()
-            }
-
-            override fun onHobbyViewMode() {
-                viewModel.toggleHobbyViewMode()
-            }
-
-            override fun onHobbyFilterSheetVisible(show: Boolean) {
-                viewModel.openHobbyFilterSheet(show)
-            }
-
-            override fun onHobbyCategoryPickerVisible(show: Boolean) {
-                viewModel.openHobbyCategoryPicker(show)
-            }
-        }
+            },
+            hobbyAdvancedReset = viewModel::resetHobbyAdvancedFilters,
+            hobbyViewMode = viewModel::toggleHobbyViewMode,
+            hobbyFilterSheetVisible = viewModel::openHobbyFilterSheet,
+            hobbyCategoryPickerVisible = viewModel::openHobbyCategoryPicker
+        )
     }
     val boardItemActions = remember(
         onActionClick,

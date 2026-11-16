@@ -978,7 +978,7 @@ class HomeFeedViewModelTest {
         assertTrue(state.zoneScope.isFollowEmpty)
         // 空关注同样按作用域感知列表隐藏讨论/产品/二手板块（并短路不发请求），分享与实体 5 类保留
         assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
-        assertEquals(homeBoardsFor(state.zoneScope), state.boards)
+        assertEquals(ZoneBoardCapability.homeBoardsFor(state.zoneScope), state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
         assertFalse(ZoneBoard.Hobby in state.boards)
         assertFalse(ZoneBoard.Resale in state.boards)
