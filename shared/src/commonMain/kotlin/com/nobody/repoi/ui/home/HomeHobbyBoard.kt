@@ -110,8 +110,8 @@ class HomeHobbyBoardController(
     /** 当前请求参数：每次首屏 / 刷新前更新，fetcher 在真正发请求时读取。 */
     private var query = HobbyBoardQuery(scope = ZoneQueryScope.All, filter = ZoneHobbyFilter())
 
-    /** 当前作用域是否已发起过首屏请求（loader 状态机不承载「懒加载哨兵」语义）。 */
-    private var loaded = false
+    /** 翻页前的现有条目 id 快照：还原「整页且去重后有新增才算还有下一页」的旧语义。 */
+    private var existingHobbyIds: Set<Long> = emptySet()
 
     private val loader = PagedListLoader<HobbyItemSummary>(
         scope = scope,
@@ -124,7 +124,15 @@ class HomeHobbyBoardController(
             page = page,
             pageSize = pageSize,
             filters = query.filter
-        ).map { items -> PageChunk.of(items, pageSize) }
+        ).map { items ->
+            val chunk = PageChunk.of(items, pageSize)
+            if (page == 1) {
+                chunk
+            } else {
+                val hasNewItems = items.any { it.actualItemId !in existingHobbyIds }
+                chunk.copy(hasMore = chunk.hasMore && hasNewItems)
+            }
+        }
     }
 
     init {
@@ -134,8 +142,8 @@ class HomeHobbyBoardController(
                     current.copy(
                         items = listState.items,
                         page = listState.page,
-                        // 作用域重置后 loader 回到 Idle 的默认 hasMore=true，未加载时不应暴露「还有下一页」
-                        hasMore = if (loaded) listState.hasMore else false,
+                        // 未加载 / 已到底的默认状态不应暴露「还有下一页」；非空列表才采用 loader 判定
+                        hasMore = listState.hasMore && listState.items.isNotEmpty(),
                         isLoading = listState.isLoading,
                         isRefreshing = listState.isRefreshing,
                         isLoadingMore = listState.isLoadingMore,
@@ -154,7 +162,6 @@ class HomeHobbyBoardController(
 
     /** 切换专区作用域：丢弃当前列表与错误，保留筛选偏好，等下次切到产品板块再懒加载。 */
     fun onScopeChanged() {
-        loaded = false
         loader.reset()
         _state.update {
             it.copy(
@@ -184,7 +191,6 @@ class HomeHobbyBoardController(
     fun loadInitial(zoneScope: ZoneQueryScope) {
         if (zoneScope.isFollowEmpty) {
             // 防御：关注集合为空时短路，绝不发请求（空 zones 会被服务端当作全站）
-            loaded = false
             loader.reset()
             _state.update {
                 it.copy(
@@ -201,7 +207,6 @@ class HomeHobbyBoardController(
             }
             return
         }
-        loaded = true
         query = HobbyBoardQuery(scope = zoneScope, filter = _state.value.filter)
         _state.update { it.copy(isLoaded = true, errorMessage = null, loadMoreError = null) }
         loader.loadInitial()
@@ -211,6 +216,7 @@ class HomeHobbyBoardController(
     fun loadNextPage(zoneScope: ZoneQueryScope) {
         val snapshot = _state.value
         if (!snapshot.isLoaded || !snapshot.hasMore || zoneScope.isFollowEmpty) return
+        existingHobbyIds = loader.state.value.items.map { it.actualItemId }.toSet()
         loader.loadMore()
     }
 

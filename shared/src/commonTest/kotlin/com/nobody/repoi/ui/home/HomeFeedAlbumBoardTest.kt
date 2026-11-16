@@ -344,6 +344,26 @@ class HomeFeedAlbumBoardTest {
     }
 
     @Test
+    fun albumPagination_allDuplicatePage_stopsPaging() = runTest(testDispatcher) {
+        // 服务端末页可能整页重复返回已展示条目：去重后没有新增即判定到底，避免无限翻页
+        val env = env()
+        val firstPage = (1L..24L).toList()
+        env.stubAlbumPages(mapOf(1 to firstPage, 2 to firstPage))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Album)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.albumHasMore)
+
+        viewModel.loadNextPage()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(24, state.albumItems.size)
+        assertFalse(state.albumHasMore, "整页均为重复项时应判定到底")
+    }
+
+    @Test
     fun emptyFollowAlbum_shortCircuitsWithoutRequest() = runTest(testDispatcher) {
         val env = env()
         val viewModel = env.viewModel()

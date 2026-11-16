@@ -222,6 +222,10 @@ class HomeFeedViewModel(
     /** 分享板块分页控制器（首页与专区详情共用；排序/分类变化由宿主更新参数快照后重载）。 */
     private val albumBoardLoader = AlbumBoardLoader(viewModelScope, albumRepository)
 
+    /** 分享 / 二手刷新是否在途：完成时无条件收起刷新指示器，避免刷新途中切板块后永久卡住。 */
+    private var albumRefreshInFlight = false
+    private var resaleRefreshInFlight = false
+
     /** 分享板块分类候选请求（单专区；切专区时取消）。 */
     private var albumCategoriesJob: Job? = null
 
@@ -284,10 +288,9 @@ class HomeFeedViewModel(
         // 分页状态机由 ResaleBoardState.kt 承担，本 VM 只读投影，不重复去重或改游标。
         viewModelScope.launch {
             resaleBoardLoader.state.collect { listState ->
+                val refreshDone = resaleRefreshInFlight && listState.stage == LoadStage.Idle
+                if (refreshDone) resaleRefreshInFlight = false
                 _uiState.update { state ->
-                    val refreshFinished = state.isRefreshing &&
-                        state.selectedBoard == ZoneBoard.Resale &&
-                        listState.stage == LoadStage.Idle
                     state.copy(
                         resale = state.resale.copy(
                             items = listState.items,
@@ -297,7 +300,7 @@ class HomeFeedViewModel(
                             errorMessage = listState.initialError,
                             loadMoreError = listState.appendError
                         ),
-                        isRefreshing = if (refreshFinished) false else state.isRefreshing
+                        isRefreshing = if (refreshDone) false else state.isRefreshing
                     )
                 }
             }
@@ -306,10 +309,9 @@ class HomeFeedViewModel(
         // 分享板块状态投影：分页状态机由 AlbumBoardLoader 承担，本 VM 只把快照挂到 UI 状态
         viewModelScope.launch {
             albumBoardLoader.state.collect { listState ->
+                val refreshDone = albumRefreshInFlight && listState.stage == LoadStage.Idle
+                if (refreshDone) albumRefreshInFlight = false
                 _uiState.update { state ->
-                    val refreshFinished = state.isRefreshing &&
-                        state.selectedBoard == ZoneBoard.Album &&
-                        listState.stage == LoadStage.Idle
                     state.copy(
                         albumItems = listState.items,
                         albumPage = listState.page,
@@ -318,7 +320,7 @@ class HomeFeedViewModel(
                         isLoadingMoreAlbum = listState.isLoadingMore,
                         albumErrorMessage = listState.initialError,
                         albumLoadMoreError = listState.appendError,
-                        isRefreshing = if (refreshFinished) false else state.isRefreshing
+                        isRefreshing = if (refreshDone) false else state.isRefreshing
                     )
                 }
             }
@@ -1123,6 +1125,7 @@ class HomeFeedViewModel(
             }
             return
         }
+        albumRefreshInFlight = true
         albumBoardLoader.refresh(state.albumBoardQuery())
     }
 
@@ -1382,6 +1385,7 @@ class HomeFeedViewModel(
             loadInitialResale()
             return
         }
+        resaleRefreshInFlight = true
         resaleBoardLoader.refresh(state.resaleQuery())
     }
 

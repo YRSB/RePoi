@@ -67,6 +67,16 @@ class HomeHeaderStackState internal constructor(
         if (heightPx > 0) collapsibleHeightPx = heightPx.toFloat()
     }
 
+    /**
+     * 当前板块没有可折叠筛选行（实体 5 类）时归零。
+     *
+     * 此时筛选行不参与布局，`onSizeChanged` 不会再回填，必须显式清零，否则会沿用上一板块
+     * 约 48–56dp 的旧高度，造成内容顶部留白与折叠位移错误。
+     */
+    fun resetCollapsibleHeight() {
+        collapsibleHeightPx = 0f
+    }
+
     /** 无可用板块（不渲染 Tab 行与筛选行）时把两层实测高度归零，避免内容被空档顶开。 */
     fun clearMeasuredRows() {
         tabRowHeightPx = 0f

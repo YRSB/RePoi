@@ -34,6 +34,7 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.home.ENTITY_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.util.paging.KeyedListLoader
@@ -323,6 +324,9 @@ class ZoneDetailViewModel(
         repository = albumRepository
     )
 
+    /** 分享刷新是否在途：完成时无条件收起刷新指示器，避免刷新途中切 Tab 后永久卡住。 */
+    private var albumRefreshInFlight = false
+
     // 产品 (hobby) 分页加载控制器
     // 请求参数统一由 ItemRepository.queryHobbyBoard 拼装（单专区 zones=nodeId、无 homeScope），
     // 与首页产品板块共用同一构造，保证三作用域参数不会漂移（#159）。
@@ -367,7 +371,7 @@ class ZoneDetailViewModel(
                 keyword = curResale.keyword.takeIf { it.isNotBlank() },
                 puritys = curResale.purity,
                 lastTime = cursor,
-                pageSize = 24
+                pageSize = ResaleBoardOptions.PAGE_SIZE
             ).map { payload ->
                 val list = payload.list
                 PageChunk(
@@ -387,10 +391,9 @@ class ZoneDetailViewModel(
         // 分享板块状态投影：分页状态机由 AlbumBoardLoader 承担（与首页共用同一实现）
         viewModelScope.launch {
             albumBoardLoader.state.collect { listState ->
+                val refreshDone = albumRefreshInFlight && listState.stage == LoadStage.Idle
+                if (refreshDone) albumRefreshInFlight = false
                 _uiState.update { state ->
-                    val refreshFinished = state.isRefreshing &&
-                        state.isAlbumTab &&
-                        listState.stage == LoadStage.Idle
                     state.copy(
                         albumItems = listState.items,
                         albumPage = listState.page,
@@ -399,7 +402,7 @@ class ZoneDetailViewModel(
                         hasMoreAlbum = listState.hasMore,
                         albumErrorMessage = listState.initialError,
                         albumLoadMoreError = listState.appendError,
-                        isRefreshing = if (refreshFinished) false else state.isRefreshing
+                        isRefreshing = if (refreshDone) false else state.isRefreshing
                     )
                 }
             }
@@ -447,7 +450,7 @@ class ZoneDetailViewModel(
             val loader = pagedChunkLoader<ZoneEntityItem>(
                 scope = viewModelScope,
                 initialPage = 1,
-                pageSize = 20,
+                pageSize = ENTITY_BOARD_PAGE_SIZE,
                 keySelector = { it.targetId }
             ) { page, size ->
                 zoneRepository.getZoneItems(scope = zoneScope, itemType = tabType, page = page, pageSize = size)
@@ -758,6 +761,7 @@ class ZoneDetailViewModel(
                 // 分类候选懒加载兜底：切到分享前请求失败/未触发时再补一次
                 if (_uiState.value.albumCategoryOptions.isEmpty()) syncAlbumCategories()
                 val state = _uiState.value
+                albumRefreshInFlight = true
                 albumBoardLoader.refresh(
                     AlbumBoardQuery(
                         scope = ZoneQueryScope.Single(nodeId),
@@ -773,7 +777,7 @@ class ZoneDetailViewModel(
                         zoneNodeId = nodeId,
                         order = currentOrder,
                         page = 1,
-                        pageSize = 20
+                        pageSize = PostsBoardOptions.PAGE_SIZE
                     )
                     result.onSuccess { rawList ->
                         val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
@@ -962,7 +966,7 @@ class ZoneDetailViewModel(
                 zoneNodeId = nodeId,
                 order = currentOrder,
                 page = 1,
-                pageSize = 20
+                pageSize = PostsBoardOptions.PAGE_SIZE
             )
             result.onSuccess { rawList ->
                 val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
@@ -1001,7 +1005,7 @@ class ZoneDetailViewModel(
                 zoneNodeId = nodeId,
                 order = currentState.postsSelectedOrder,
                 page = nextPage,
-                pageSize = 20
+                pageSize = PostsBoardOptions.PAGE_SIZE
             )
             result.onSuccess { newItems ->
                 _uiState.update { state ->

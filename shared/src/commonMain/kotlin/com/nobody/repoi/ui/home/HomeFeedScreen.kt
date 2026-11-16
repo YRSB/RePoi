@@ -299,6 +299,11 @@ fun HomeFeedScreen(
         if (uiState.boards.isEmpty()) headerStack.clearMeasuredRows()
     }
 
+    // 实体 5 类没有筛选行：筛选项不再测量，必须显式清零，避免沿用上一板块的折叠高度。
+    LaunchedEffect(uiState.selectedBoard.isEntity) {
+        if (uiState.selectedBoard.isEntity) headerStack.resetCollapsibleHeight()
+    }
+
     val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)

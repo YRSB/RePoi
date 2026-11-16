@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.POSTS_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.POSTS_DEFAULT_ORDER
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ZoneFocusPayload
 import com.nobody.repoi.data.remote.model.ZoneHomeTabsPayload
@@ -207,9 +209,9 @@ class ZoneRepository(
      */
     suspend fun getZonePosts(
         zoneNodeId: Long?,
-        order: String = "upd",
+        order: String = POSTS_DEFAULT_ORDER,
         page: Int = 1,
-        pageSize: Int = 20
+        pageSize: Int = POSTS_BOARD_PAGE_SIZE
     ): Result<List<PostItem>> = runCatching {
         val response = api.searchPosts(
             zoneNodeId = zoneNodeId,

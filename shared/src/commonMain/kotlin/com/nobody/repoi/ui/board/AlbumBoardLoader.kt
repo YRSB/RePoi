@@ -37,6 +37,12 @@ class AlbumBoardLoader(
 ) {
     private var query = AlbumBoardQuery(scope = ZoneQueryScope.All)
 
+    /**
+     * 翻页前的现有条目键快照：用于还原「整页且去重后有新增才算还有下一页」的旧语义。
+     * 服务端偶尔会在末页重复返回已展示条目，只看 `page.hasMore` 会永远判不到底。
+     */
+    private var existingAlbumIds: Set<Long> = emptySet()
+
     private val loader = PagedListLoader<AlbumListItem>(
         scope = scope,
         initialPage = 1,
@@ -49,7 +55,15 @@ class AlbumBoardLoader(
             orderString = query.order,
             zones = query.scope.zonesParam(),
             category = query.category
-        ).map { payload -> PageChunk(items = payload.items, hasMore = payload.hasMore) }
+        ).map { payload ->
+            val chunk = PageChunk(items = payload.items, hasMore = payload.hasMore)
+            if (page == 1) {
+                chunk
+            } else {
+                val hasNewItems = payload.items.any { it.targetAlbumId !in existingAlbumIds }
+                chunk.copy(hasMore = payload.hasMore && hasNewItems)
+            }
+        }
     }
 
     /** 分页状态机（宿主收集后投影进自己的 UI 状态）。 */
@@ -67,8 +81,9 @@ class AlbumBoardLoader(
         loader.refresh()
     }
 
-    /** 触底翻页 / 页脚重试：沿用当前参数快照。 */
+    /** 触底翻页 / 页脚重试：沿用当前参数快照，并按去重结果修正 hasMore。 */
     fun loadMore() {
+        existingAlbumIds = loader.state.value.items.map { it.targetAlbumId }.toSet()
         loader.loadMore()
     }
 

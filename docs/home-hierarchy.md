@@ -129,25 +129,24 @@ HomeScreen
 
 ### 3.2 专区切换器
 
-**结构（纯文本，无图标）**
+**结构（纯文本 Chip，无图标）**
 
 ```
 快捷
-  全部
-  关注
+  [全部] [关注]                ← 单选 Chip（FlowRow，整组单选）
 我的专区                       ← 按 ZoneTabsSettings.sort（默认/最近/自定义）排序，hiddenZoneIds 生效
-  {专区名}
-  …
+  [{专区名}] …
 ───────────────────────────
-[浏览全部专区]   [首页设置]     ← 文本动作，分别进入 ZoneBrowse / ZoneSettings
+[浏览全部专区] [首页设置]        ← 主 / 次按钮，分别进入 ZoneBrowse / ZoneSettings
 ```
 
-- 选中态：**文字加粗 + `colorScheme.primary`**；不使用勾选图标、不使用专区区图标。
+- 选中态：Chip 选中容器（tonal）+ **文字加粗 + `colorScheme.primary`**；不使用勾选图标、不使用专区区图标。
 - 分组标题：`labelLarge` + `onSurfaceVariant`。
-- 列表项：`bodyLarge`，最小高度 48dp，整行可点；点击 = 切换并关闭切换器。
+- 列表项：M3 `FilterChip`；视觉容器 32dp，触控目标由 `minimumInteractiveComponentSize` 保证 ≥48dp；点击 = 切换并关闭切换器。
 - 「关注」在未登录或关注为空时仍可选择：进入空态（引导去浏览专区），不发请求（保留现有短路逻辑）。
 - 切换器打开方式：点击顶栏标题区；关闭：选择条目、点遮罩、返回手势。
-- 无障碍：列表整体 `role = List`，选中项读取「已选中」状态；切换器展开时焦点移入首个分组标题。
+- 无障碍：每组 Chip 外层 `selectableGroup()`，选中项语义为 `Role.RadioButton`（读屏按单选组朗读「已选中」）；
+  `ModalBottomSheet` / `DropdownMenu` 自带焦点圈定与遮罩关闭，不再额外把焦点移到分组标题。
 
 **自适应**
 

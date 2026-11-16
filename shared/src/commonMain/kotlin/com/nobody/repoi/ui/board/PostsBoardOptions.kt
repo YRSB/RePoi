@@ -1,5 +1,7 @@
 package com.nobody.repoi.ui.board
 
+import com.nobody.repoi.data.remote.model.POSTS_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.POSTS_DEFAULT_ORDER
 import com.nobody.repoi.data.remote.model.PostItem
 
 /**
@@ -30,10 +32,10 @@ import com.nobody.repoi.data.remote.model.PostItem
 object PostsBoardOptions {
 
     /** 每页条数（原版与专区详情现状均为 20）。 */
-    const val PAGE_SIZE = 20
+    const val PAGE_SIZE = POSTS_BOARD_PAGE_SIZE
 
     /** 默认排序：回复（`upd`），与专区详情现状一致。 */
-    const val DEFAULT_ORDER = "upd"
+    const val DEFAULT_ORDER = POSTS_DEFAULT_ORDER
 
     /**
      * 3 档排序（协议键 → 2.43 中文文案），顺序对齐原版排序条。

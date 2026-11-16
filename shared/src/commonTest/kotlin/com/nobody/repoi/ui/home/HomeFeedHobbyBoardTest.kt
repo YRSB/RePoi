@@ -344,6 +344,26 @@ class HomeFeedHobbyBoardTest {
     }
 
     @Test
+    fun hobbyPagination_allDuplicatePage_stopsPaging() = runTest(testDispatcher) {
+        // 末页整页重复时去重后无新增，应判定到底（与分享板块同一口径）
+        val env = env()
+        val firstPage = (1L..24L).toList()
+        env.stubHobbyPages(mapOf(1 to firstPage, 2 to firstPage))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Hobby)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.hobbyBoard.hasMore)
+
+        viewModel.loadMoreSelectedBoard()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(24, state.hobbyBoard.items.size)
+        assertFalse(state.hobbyBoard.hasMore, "整页均为重复项时应判定到底")
+    }
+
+    @Test
     fun hobbySwitchAwayAndBack_keepsStateWithoutReload() = runTest(testDispatcher) {
         val env = env()
         env.stubHobbyPages(mapOf(1 to listOf(61L, 62L)))
