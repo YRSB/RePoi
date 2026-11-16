@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -89,7 +90,8 @@ internal fun ZoneSwitcherAnchor(
  * 切换器内容：底部抽屉与宽屏下拉菜单共用同一份分组与选中态。
  *
  * 分区（如「快捷」「我的专区」）以分组标题 + 换行 Chip 网格呈现，单选语义
- * （[selectableGroup] + [Role.RadioButton]）；尾部两个动作使用带底色的 FilledTonalButton。
+ * （[selectableGroup] + [Role.RadioButton]）；尾部两个动作区分层级——主按钮「浏览全部专区」
+ * 用 primary 容器色，次级「首页设置」用 tonal 容器色，两者都有背景色但视觉权重不同。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -150,7 +152,7 @@ internal fun ZoneSwitcherContent(
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilledTonalButton(
+            Button(
                 onClick = onBrowseAllZones,
                 modifier = Modifier
                     .weight(1f)
