@@ -166,7 +166,7 @@ private val HomeFeedUiState.boardView: HomeBoardView
                     hasMore = !entityState.isEndReached,
                     isLoadingMore = entityState.isLoadingMore,
                     loadMoreError = entityState.loadMoreError,
-                    isRefreshing = isRefreshing,
+                    isRefreshing = isRefreshing || entityState.isRefreshing,
                     isLoading = entityState.isLoading && entityState.items.isEmpty(),
                     errorMessage = entityState.errorMessage
                 )

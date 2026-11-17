@@ -513,13 +513,8 @@ fun HomeFeedScreen(
                             }
                         } else {
                             ZoneEmptyPlaceholder(
-                                text = when {
-                                    uiState.selectedBoard == ZoneBoard.Posts -> "暂无相关讨论"
-                                    uiState.selectedBoard == ZoneBoard.Album -> "暂无相关分享"
-                                    uiState.selectedBoard == ZoneBoard.Resale -> "暂无相关二手条目"
-                                    uiState.selectedBoard.isEntity -> "暂无相关条目"
-                                    else -> "暂无该分类下的动态情报"
-                                },
+                                // 文案与共享面板同源（ZoneBoard.emptyText），避免产品板块落到动态措辞
+                                text = uiState.selectedBoard.emptyText,
                                 onRefresh = { viewModel.refreshFeed() },
                                 modifier = Modifier
                                     .align(Alignment.Center)

@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
+import com.nobody.repoi.data.remote.model.ENTITY_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
@@ -12,9 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** 实体板块单页条目数（与专区详情实体 loader 保持一致）。 */
-const val ENTITY_BOARD_PAGE_SIZE: Int = 20
-
 /**
  * 实体板块（厂商/系列/作品/角色/人物）的分页 / 错误只读快照。
  *
@@ -25,6 +23,7 @@ data class EntityBoardState(
     val items: List<ZoneEntityItem> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isEndReached: Boolean = false,
     val errorMessage: String? = null,
     val loadMoreError: String? = null
@@ -137,6 +136,8 @@ private fun PagedListState<ZoneEntityItem>.toEntityBoardState(): EntityBoardStat
     items = items,
     isLoading = isLoading,
     isLoadingMore = isLoadingMore,
+    // 刷新态必须投影出去：首页 FAB/下拉刷新的指示器只读投影值，丢掉会让刷新静默完成
+    isRefreshing = isRefreshing,
     isEndReached = isEndReached,
     errorMessage = errorMessage,
     loadMoreError = loadMoreError

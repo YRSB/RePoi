@@ -33,6 +33,7 @@ import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.util.paging.LoadStage
 import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -448,9 +449,10 @@ class HomeFeedViewModel(
                     loadInitialFeed()
                     if (categoryChanged) syncBoards(scope)
                 } else if (categoryChanged) {
-                    if (!current.isInitialLoading) {
-                        loadInitialFeed()
-                    }
+                    // 作用域变了就必须为新作用域发一次首屏：旧作用域的响应会在
+                    // `loadActionBoard` 里按 zoneScope 丢弃，若这里因旧的 `isInitialLoading`
+                    // 跳过加载，新作用域将永久停在骨架态（没有任何协程会再复位该标志）。
+                    loadInitialFeed()
                     syncBoards(scope)
                 }
             }
@@ -565,7 +567,7 @@ class HomeFeedViewModel(
         resaleBoardLoader.reset()
         resetEntityBoards()
         hobbyBoardController.onScopeChanged()
-        if (firstBoard.isEntity) ensureEntityLoaded(firstBoard)
+        // 首板块必然是动态（三种作用域的首项都是 Action）：实体板块首屏由 syncBoards 在 tabs 落定后触发
         syncBoards(scope)
         loadInitialFeed()
     }
@@ -835,17 +837,23 @@ class HomeFeedViewModel(
         postsJob = viewModelScope.launch {
             _uiState.update { it.copy(posts = it.posts.copy(isInitialLoading = true, errorMessage = null)) }
             val scope = _uiState.value.zoneScope
+            // 排序也参与失效判定：切排序会取消本协程，但仓储用 runCatching 包住挂起调用，
+            // 取消会以 CancellationException 走 onFailure，若不校验排序会把技术文案写成用户可见错误。
+            val requestOrder = _uiState.value.posts.order
             val result = zoneRepository.getZonePosts(
                 zoneNodeId = scope.zoneNodeId(),
-                order = _uiState.value.posts.order,
+                order = requestOrder,
                 page = 1,
                 pageSize = PostsBoardOptions.PAGE_SIZE
             )
             // 请求期间作用域已切换：丢弃过期响应，避免把别的专区的帖子写进当前状态
             if (_uiState.value.zoneScope != scope) return@launch
+            val superseded = { _uiState.value.posts.order != requestOrder }
             result.onSuccess { rawList ->
+                if (superseded()) return@onSuccess
                 applyPostsFirstPage(rawList)
             }.onFailure { error ->
+                if (error is CancellationException || superseded()) return@onFailure
                 _uiState.update {
                     it.copy(
                         posts = it.posts.copy(
@@ -1166,6 +1174,9 @@ class HomeFeedViewModel(
                     )
                 }
             }.onFailure { error ->
+                // 被后继请求取消（切专区 / 切筛选 / 重建）不是用户可见失败：
+                // 仓储用 runCatching 包住挂起调用，取消会以 CancellationException 流到这里
+                if (error is CancellationException) return@onFailure
                 _uiState.update {
                     it.copy(
                         isRefreshing = false,
@@ -1259,6 +1270,11 @@ class HomeFeedViewModel(
                     )
                 }
             }.onFailure { error ->
+                // 取消（切专区 / 切筛选 / 重载首屏）不是用户可见失败
+                if (error is CancellationException) {
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                    return@onFailure
+                }
                 _uiState.update { state ->
                     state.copy(
                         isLoadingMore = false,
@@ -1274,9 +1290,10 @@ class HomeFeedViewModel(
         postsJob?.cancel()
         postsJob = viewModelScope.launch {
             val scope = _uiState.value.zoneScope
+            val requestOrder = _uiState.value.posts.order
             val result = zoneRepository.getZonePosts(
                 zoneNodeId = scope.zoneNodeId(),
-                order = _uiState.value.posts.order,
+                order = requestOrder,
                 page = 1,
                 pageSize = PostsBoardOptions.PAGE_SIZE
             )
@@ -1284,10 +1301,16 @@ class HomeFeedViewModel(
                 _uiState.update { it.copy(isRefreshing = false) }
                 return@launch
             }
+            // 刷新期间切了排序：回包属于旧排序，落地会把新排序的首屏覆盖成旧序列
+            val superseded = { _uiState.value.posts.order != requestOrder }
             result.onSuccess { rawList ->
-                applyPostsFirstPage(rawList)
+                if (!superseded()) applyPostsFirstPage(rawList)
                 _uiState.update { it.copy(isRefreshing = false) }
             }.onFailure { error ->
+                if (error is CancellationException || superseded()) {
+                    _uiState.update { it.copy(isRefreshing = false) }
+                    return@onFailure
+                }
                 _uiState.update {
                     it.copy(
                         isRefreshing = false,

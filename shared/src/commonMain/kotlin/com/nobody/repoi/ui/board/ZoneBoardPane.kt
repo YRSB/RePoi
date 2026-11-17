@@ -88,12 +88,12 @@ fun ZoneBoardPane(
             val actionContent = content as? ZoneBoardContent.Action
             if (actionContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关动态")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
                     itemCount = actionContent.items.size,
                     page = actionContent.page,
-                    emptyText = "暂无相关动态",
+                    emptyText = board.emptyText,
                     columns = columns,
                     gridState = gridState,
                     contentPadding = contentPadding,
@@ -118,14 +118,14 @@ fun ZoneBoardPane(
             val albumContent = content as? ZoneBoardContent.Album
             if (albumContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关分享")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 // 相册沿用既有列数策略（手机 2 列 / 平板 3-4 列 / 桌面 5 列），不按动态瀑布流的列数渲染
                 val albumColumns = rememberAlbumStaggeredGridColumns()
                 BoardGridContainer(
                     itemCount = albumContent.items.size,
                     page = albumContent.page,
-                    emptyText = "暂无相关分享",
+                    emptyText = board.emptyText,
                     columns = albumColumns,
                     gridState = gridState,
                     contentPadding = contentPadding,
@@ -150,7 +150,7 @@ fun ZoneBoardPane(
             val postsContent = content as? ZoneBoardContent.Posts
             if (postsContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关讨论")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 val onPostClick: (PostItem) -> Unit = itemActions.onPostClick ?: {}
                 val onPostImageClick: (List<String>, Int) -> Unit = itemActions.onPostImageClick ?: { _, _ -> }
@@ -161,7 +161,7 @@ fun ZoneBoardPane(
                 BoardGridContainer(
                     itemCount = postsContent.items.size + visiblePinnedCount,
                     page = postsContent.page,
-                    emptyText = "暂无相关讨论",
+                    emptyText = board.emptyText,
                     columns = columns,
                     gridState = gridState,
                     contentPadding = contentPadding,
@@ -170,7 +170,11 @@ fun ZoneBoardPane(
                     header = {
                         // 置顶帖条只在单专区渲染：聚合态（全部）无置顶语义，关注态已隐藏整个板块
                         if (showPinnedPosts && postsContent.pinnedPosts.isNotEmpty()) {
-                            item(key = "zone_pinned_posts", span = StaggeredGridItemSpan.FullLine) {
+                            item(
+                                key = "zone_pinned_posts",
+                                contentType = "zone_board_pinned",
+                                span = StaggeredGridItemSpan.FullLine
+                            ) {
                                 ZonePinnedPostsBar(
                                     pinnedPosts = postsContent.pinnedPosts,
                                     onPostClick = onPostClick
@@ -198,12 +202,12 @@ fun ZoneBoardPane(
             val resaleContent = content as? ZoneBoardContent.Resale
             if (resaleContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关二手条目")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
                     itemCount = resaleContent.items.size,
                     page = resaleContent.page,
-                    emptyText = "暂无相关二手条目",
+                    emptyText = board.emptyText,
                     columns = columns,
                     gridState = gridState,
                     contentPadding = contentPadding,
@@ -231,7 +235,7 @@ fun ZoneBoardPane(
             val hobbyContent = content as? ZoneBoardContent.Hobby
             if (hobbyContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关产品")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 // 产品沿用专区详情既有列数规则：网格 = 自适应 120dp；列表 = 自适应 420dp
                 val hobbyColumns = remember(hobbyContent.isGridMode) {
@@ -244,7 +248,7 @@ fun ZoneBoardPane(
                 BoardGridContainer(
                     itemCount = hobbyContent.items.size,
                     page = hobbyContent.page,
-                    emptyText = "暂无相关产品",
+                    emptyText = board.emptyText,
                     columns = hobbyColumns,
                     gridState = gridState,
                     contentPadding = contentPadding,
@@ -285,12 +289,12 @@ fun ZoneBoardPane(
             val entityContent = content as? ZoneBoardContent.Entity
             if (entityContent == null) {
                 // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
-                ZoneEmptyPlaceholder("暂无相关条目")
+                ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
                     itemCount = entityContent.items.size,
                     page = entityContent.page,
-                    emptyText = "暂无相关条目",
+                    emptyText = board.emptyText,
                     columns = columns,
                     gridState = gridState,
                     contentPadding = contentPadding,

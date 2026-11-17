@@ -53,7 +53,7 @@ import kotlinx.datetime.toLocalDateTime
  *
  * 已迁移动态（9 项单选 Chip）、分享（6 档排序 + 分类入口，#157）、讨论（3 档排序，#158）、
  * 二手（出售/求购分段 + 成色 Chip，#160）与产品（6 档排序 + 分类级联 + 年份 + 月份 + 高级筛选入口，
- * #159）；其余板块由宿主暂时保留原内联分支。
+ * #159）；实体 5 类本身没有筛选项，渲染空内容（不是「待迁移」）。
  *
  * 讨论板块**没有分类入口**：原版 2.43 的讨论分支不请求分类、`api/posts/search` 也不接受任何
  * 分类参数（实测 `itemType`/`category`/`categoryId` 均被忽略），故刻意不渲染分类 Chip，
@@ -63,8 +63,8 @@ import kotlinx.datetime.toLocalDateTime
  * [com.nobody.repoi.ui.item.list.components.CategoryPickerSheet]）由宿主经 `ZoneBoardHobbySheets`
  * 在内容四态之外渲染，本组件只负责「打开」入口与悬浮 Chip 的选中态。
  *
- * @param subTypeOptions 动态筛选选项（键 → 文案）。由宿主传入共享定义 `ActionSubType` 派生列表，
- *   本组件不持有文案/键值，避免两处定义漂移。
+ * @param subTypeOptions 动态筛选选项（键 → 文案）。仅 [ZoneBoard.Action] 分支渲染；其余板块不消费，
+ *   故默认空列表。由宿主传入共享定义 `ActionSubType` 派生列表，本组件不持有文案/键值，避免两处定义漂移。
  * @param albumCategoryOptions 相册分类候选（单专区作用域才有值；聚合态传空列表即不渲染分类入口，
  *   与原版「仅 `zoneIds` 可解析为单专区时展示分类」一致）。「全部分类」由本组件追加，候选列表不含它。
  * @param hobbyCategoryTree 产品分类树（`parentId -> 子分类`），用于子分类名称回显与级联弹层。
@@ -79,8 +79,8 @@ import kotlinx.datetime.toLocalDateTime
 fun ZoneBoardFilterBar(
     board: ZoneBoard,
     filters: ZoneBoardFilters,
-    subTypeOptions: List<Pair<String, String>>,
     actions: ZoneBoardActions,
+    subTypeOptions: List<Pair<String, String>> = emptyList(),
     albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     hobbyCategoryTree: Map<Int, List<CategoryItem>> = emptyMap(),
     hobbyIsGridMode: Boolean = true,

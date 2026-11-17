@@ -253,7 +253,9 @@ internal fun ZoneSwitcherDropdown(
             onDismissRequest = { onExpandedChange(false) },
             shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.widthIn(min = 240.dp)
+            // 菜单按内容取宽：两个等宽动作按钮需要约 96dp 文案宽，240dp 时各约 52dp，
+            // 「浏览全部专区」/「首页设置」会被压成两行，宽屏下拉只剩这一种呈现。
+            modifier = Modifier.widthIn(min = 360.dp)
         ) {
             ZoneSwitcherContent(
                 groups = groups,

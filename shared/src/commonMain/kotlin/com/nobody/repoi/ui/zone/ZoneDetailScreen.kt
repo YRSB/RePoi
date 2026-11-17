@@ -534,12 +534,18 @@ fun ZoneDetailScreen(
             selectResaleType = viewModel::setResaleType,
             selectResalePurity = viewModel::setResalePurity,
             retryInitial = {
-                // 实体 5 类走 pane 后仍复用原错误重试入口（loadInitialEntity），保持行为不变
-                val tab = viewModel.uiState.value.selectedTab
-                if (tab in ZoneDetailUiState.ENTITY_TAB_TYPES) {
-                    viewModel.loadInitialEntity(tab)
-                } else {
-                    viewModel.refresh()
+                // 按 Tab 分派到各板块的首屏入口：只有 loadInitial* 会进入初始加载态，
+                // 直接用 refresh() 会让错误重试期间渲染「暂无内容」空态（分享/讨论/产品/二手）。
+                val state = viewModel.uiState.value
+                val tab = state.selectedTab
+                when {
+                    state.isResaleTab -> viewModel.loadInitialResale()
+                    tab in ZoneDetailUiState.ENTITY_TAB_TYPES -> viewModel.loadInitialEntity(tab)
+                    state.isPostsTab -> viewModel.loadInitialPosts()
+                    state.isAlbumTab -> viewModel.loadInitialAlbum()
+                    state.isHobbyTab -> viewModel.loadInitialHobby()
+                    // 动态板块沿既有行为：refresh() 走游标首屏
+                    else -> viewModel.refresh()
                 }
             },
             loadMore = {
