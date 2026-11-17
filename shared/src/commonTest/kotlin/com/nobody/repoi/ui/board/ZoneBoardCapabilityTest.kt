@@ -287,15 +287,23 @@ class ZoneBoardCapabilityTest {
 
     @Test
     fun isAvailableOnHome_matchesFullThreeScopeByTenBoardMatrix() {
+        // 期望值必须是**字面**集合：引用 ALL_BOARDS / CLIENT_WHITELIST 会与被测实现同源，
+        // 分支退化成 `true`（或白名单被误改）时用例仍绿，矩阵就不再是回归网。
         val expected: Map<ZoneQueryScope, Set<ZoneBoard>> = mapOf<ZoneQueryScope, Set<ZoneBoard>>(
-            ZoneQueryScope.All to ZoneBoard.HOME_ORDER.toSet(),
+            ZoneQueryScope.All to setOf(
+                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works, ZoneBoard.Character, ZoneBoard.Person
+            ),
             ZoneQueryScope.Follow(listOf(100L)) to setOf(
                 ZoneBoard.Action, ZoneBoard.Album,
                 ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works,
                 ZoneBoard.Character, ZoneBoard.Person
             ),
             // 单专区：白名单内都可能由服务端下发；实际可见性再看 zone/info.tabs
-            ZoneQueryScope.Single(100L) to ZoneBoard.CLIENT_WHITELIST
+            ZoneQueryScope.Single(100L) to setOf(
+                ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
+                ZoneBoard.Company, ZoneBoard.Series, ZoneBoard.Works, ZoneBoard.Character, ZoneBoard.Person
+            )
         )
         expected.forEach { (scope, allowed) ->
             ZoneBoard.entries.forEach { board ->

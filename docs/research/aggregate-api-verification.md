@@ -108,7 +108,7 @@ hobby  : 无zones 与 zones= 同批；zones=33476094 同批；zones=39989602 仅
 实体    : 无zones 与 zones= 的 total 完全一致（见上表）
 ```
 
-**重要纠正**：讨论板块的专区过滤参数是 **`zoneNodeId`（String）**，`zones` 参数被服务端完全忽略。因此设计文档 [home-hierarchy.md](../home-hierarchy.md) §4「讨论：`zones`」与 §1.4「相册/讨论/二手/商品靠 `zones` 参数表达范围」不准确。
+**重要纠正（已在 #163 内同步修正设计文档）**：讨论板块的专区过滤参数是 **`zoneNodeId`（String）**，`zones` 参数被服务端完全忽略。本次验证时 [home-hierarchy.md](../home-hierarchy.md) §4「讨论：`zones`」与 §1.4「相册/讨论/二手/商品靠 `zones` 参数表达范围」尚不准确，现已按本节结论改写为 `zoneNodeId`（见 §5.1 清单）。
 
 **结论**：五类在聚合「全部」态都可以用「不传 zone 过滤（或空串）」表达全站；单专区用各自真实参数即可。**通过**。
 
@@ -296,7 +296,7 @@ album/list 无 zones 首屏 id = 41327307,41327287,...；zones=52 个全站专�
 | **#159** 产品板块 | 单专区：`zones=<nodeId>` 且不传 `homeScope`；全部聚合：不传 `zones`（`homeScope=all` 与省略等价）；关注聚合：只能 `homeScope=follow`（服务端识别，但匿名/伪造 token 均回落全站），**需登录态复验通过后才能上线**，否则隐藏 |
 | **#160** 二手板块 | 单专区/全部可用；关注聚合不可用（`zones` 逗号=交集，实测 0 条），隐藏 |
 | **#161** 实体 5 类 | 单专区与两种聚合都可用：单专区 `zones=<nodeId>`（或 `nodeId`），全部省略，关注 `zones=<逗号串>`（并集）；**不要传 `homeScope`**；注意 works/charactar/person 的 `total` 服务端封顶 10000，翻页逻辑按 `hasMore` 处理 |
-| **#162** 聚合二级板块 | 聚合固定 10 项展示顺序可保留，但需按能力矩阵过滤：全部态 10 项全显示；关注态只显示 `action/album/company/series/works/charactar/person`（`hobby` 待定，`posts/resale_item` 隐藏）；`shop_item/community` 永不出现 |
+| **#162** 聚合二级板块 | 聚合固定 10 项展示顺序可保留，但需按能力矩阵过滤：全部态 10 项全显示；关注态只显示 `action/album/company/series/works/charactar/person`（`hobby` 因 `zones` 交集与 `homeScope=follow` 未复验一并隐藏，`posts/resale_item` 隐藏）；`shop_item/community` 永不出现 |
 
 ### 5.1 需要同步修订的设计文档（**已于 #163 内完成**）
 

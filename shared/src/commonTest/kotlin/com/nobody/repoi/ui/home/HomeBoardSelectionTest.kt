@@ -24,7 +24,8 @@ class HomeBoardSelectionTest {
     }
 
     @Test
-    fun toZoneQueryScope_emptyFollow_keepsEmptyAndIsShortCircuitedUpstream() {
+    fun toZoneQueryScope_emptyFollow_keepsEmptyFollow() {
+        // 短路（关注为空即不发请求）在 HomeFeedViewModel 侧断言，本用例只钉作用域解析结果
         val scope = FeedCategory(tabKey = "follow", zoneIds = "-1").toZoneQueryScope()
         assertEquals(ZoneQueryScope.Follow(emptyList()), scope)
     }

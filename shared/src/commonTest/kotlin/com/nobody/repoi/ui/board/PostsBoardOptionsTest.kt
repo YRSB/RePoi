@@ -55,6 +55,11 @@ class PostsBoardOptionsTest {
         // >5：前 5 条作为置顶条（沿专区详情现状的启发式）
         val large = (1L..6L).map { post(it) }
         assertEquals(listOf(1L, 2L, 3L, 4L, 5L), PostsBoardOptions.partition(large).first.map { it.id })
+        // 恰 5 条仍在「3..5」档：前 2 条（>5 的分界点必须被钉住，否则 `>= 5` 也能全绿）
+        val five = (1L..5L).map { post(it) }
+        val (fivePinned, fiveUnpinned) = PostsBoardOptions.partition(five)
+        assertEquals(listOf(1L, 2L), fivePinned.map { it.id })
+        assertEquals(listOf(3L, 4L, 5L), fiveUnpinned.map { it.id })
         // 3..5 条：前 2 条
         val medium = (1L..3L).map { post(it) }
         assertEquals(listOf(1L, 2L), PostsBoardOptions.partition(medium).first.map { it.id })
@@ -65,12 +70,24 @@ class PostsBoardOptionsTest {
     }
 
     @Test
-    fun partition_neverLosesOrDuplicatesItems() {
+    fun partition_mixedPinnedAndNormal_keepsPinnedFirstAndOrdinaryOrder() {
+        // 混合样本钉住「显式置顶」分支的真实语义：置顶按原序取前 5，普通帖原序进普通列表，
+        // 超出 5 条的显式置顶既不进置顶条也不进普通列表（既有行为，见 [PostsBoardOptions.partition] KDoc）
+        val raw = (1L..6L).map { post(it, pinned = true) } + post(100) + post(101)
+        val (pinned, unpinned) = PostsBoardOptions.partition(raw)
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), pinned.map { it.id })
+        assertEquals(listOf(100L, 101L), unpinned.map { it.id })
+    }
+
+    @Test
+    fun partition_heuristicBranch_neverLosesOrDuplicatesItems() {
+        // 全部样本走「无显式置顶」的启发式分支；显式置顶分支的丢帖语义由
+        // partition_capsExplicitPinnedAtFive / partition_mixedPinnedAndNormal_keepsPinnedFirstAndOrdinaryOrder 钉住
         listOf(0, 1, 2, 3, 5, 6, 20).forEach { size ->
             val raw = (1L..size).map { post(it) }
             val (pinned, unpinned) = PostsBoardOptions.partition(raw)
             val merged = (pinned + unpinned).map { it.id }
-            assertEquals(raw.map { it.id }, merged, "size=$size 时置顶切分不得丢条目或改序")
+            assertEquals(raw.map { it.id }, merged, "size=$size 时启发式置顶切分不得丢条目或改序")
             assertFalse(pinned.any { it.id in unpinned.map { item -> item.id } })
         }
     }
