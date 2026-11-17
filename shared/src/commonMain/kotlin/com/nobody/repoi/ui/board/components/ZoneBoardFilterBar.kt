@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.board.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,6 +74,8 @@ import kotlinx.datetime.toLocalDateTime
  *   首页为 true（自有筛选行）；专区详情为 false（顶栏常驻搜索控制栏已提供两个入口）。
  * @param postsOrderOptions 讨论排序选项（键 → 文案）。来自共享常量 [PostsBoardOptions.ORDERS]，
  *   首页与专区详情不各写一份。
+ * @param rowScrollState 横向滚动状态（Chip 条滚动位置）。宿主可传入按板块持久的状态，
+ *   实现「切走再切回，筛选条仍停在原处」；默认 `rememberScrollState()` 仅随页存活。
  */
 @OptIn(ExperimentalTime::class)
 @Composable
@@ -86,7 +89,8 @@ fun ZoneBoardFilterBar(
     hobbyIsGridMode: Boolean = true,
     showHobbyControlActions: Boolean = true,
     modifier: Modifier = Modifier,
-    postsOrderOptions: List<Pair<String, String>> = PostsBoardOptions.ORDERS
+    postsOrderOptions: List<Pair<String, String>> = PostsBoardOptions.ORDERS,
+    rowScrollState: ScrollState = rememberScrollState()
 ) {
     when (board) {
         ZoneBoard.Action -> {
@@ -94,7 +98,7 @@ fun ZoneBoardFilterBar(
             Row(
                 modifier = modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(rowScrollState)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -113,7 +117,7 @@ fun ZoneBoardFilterBar(
             Row(
                 modifier = modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(rowScrollState)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -171,7 +175,7 @@ fun ZoneBoardFilterBar(
             Row(
                 modifier = modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(rowScrollState)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -190,7 +194,7 @@ fun ZoneBoardFilterBar(
             Row(
                 modifier = modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(rowScrollState)
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -228,7 +232,7 @@ fun ZoneBoardFilterBar(
             Row(
                 modifier = modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(rowScrollState)
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {

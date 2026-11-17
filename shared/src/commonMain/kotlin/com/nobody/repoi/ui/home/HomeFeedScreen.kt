@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.home
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -302,23 +303,20 @@ fun HomeFeedScreen(
     // 页内自持的瀑布流状态注册表：宿主只在「下拉刷新 / FAB」时借当前页回顶
     val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
 
-    // 折叠比例按「作用域 + 板块」键恢复；滚动位置由各页自己的瀑布流状态保存。
-    // 高度实测（当前页筛选行换行数不同）也走这里重算：筛选行已进页内，
-    // 切板块瞬间拿到的还是上一板块的实测高度，等新页测量回填后必须按记忆比例重新折算，
-    // 否则压缩后的比例会被页内快照写回，漂移被固化（原实现的已知缺陷）。
+    // 折叠度按「作用域 + 板块」键恢复：切走前收起多少，切回就收起多少。
+    // 列表为空/错误时纵向滚动被禁用（canScroll = boardItemCount > 0），必须强制展开，
+    // 否则会恢复出「收起却展不开」的死状态；有内容后再按记忆恢复（effect 随 boardItemCount 重跑）。
     LaunchedEffect(currentBoardKey, headerStack.collapsibleHeightPx, boardItemCount > 0) {
         val filterHeight = headerStack.collapsibleHeightPx
         scrollBehavior.state.heightOffsetLimit = -filterHeight
-        if (boardItemCount > 0) {
-            val fraction = viewModel.scrollMemoryFor(currentBoardKey).filterCollapseFraction
-            scrollBehavior.state.contentOffset = 0f
-            scrollBehavior.state.heightOffset =
-                (-fraction * filterHeight).coerceIn(-filterHeight, 0f)
+        val fraction = if (boardItemCount > 0) {
+            viewModel.scrollMemoryOrNull(currentBoardKey)?.filterCollapseFraction ?: 0f
         } else {
-            // 首屏未到：不重置折叠度，只夹到新上限（页面尚无内容，复位会造成闪动）
-            scrollBehavior.state.heightOffset =
-                scrollBehavior.state.heightOffset.coerceIn(-filterHeight, 0f)
+            0f
         }
+        scrollBehavior.state.contentOffset = 0f
+        scrollBehavior.state.heightOffset =
+            (-fraction * filterHeight).coerceIn(-filterHeight, 0f)
     }
 
     // 翻页手势落定 → 同步 ViewModel 的当前板块（筛选行 / 刷新 / 翻页分派都以 selectedBoard 为准）。
@@ -659,10 +657,13 @@ private fun HomeBoardPage(
                 }
             )
         }.collect { (index, offset, filterCollapseFraction) ->
+            // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
+            // 写回会污染本页记忆。滚动位置还需已按要求恢复过（A1）。
+            if (!isCurrent) return@collect
             if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, index, offset)
-                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
             }
+            viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
         }
     }
 
@@ -778,6 +779,24 @@ private fun HomeBoardPage(
                     headerStack.onCollapsibleMeasured(filterBarHeightPx)
                 }
             }
+            // 筛选条横向滚动位置按「作用域 + 板块」记忆：Chip 条滚到一半，切走再切回仍在原处。
+            // 恢复要等内容测量完（maxValue 就绪）再对齐，并先置位 restored 再开始写回，
+            // 否则恢复过程中的 0 会把记忆清掉。
+            val filterRowScroll = remember { ScrollState(0) }
+            var filterRowRestored by remember(memoryKey) { mutableStateOf(false) }
+            LaunchedEffect(memoryKey, filterRowScroll.maxValue) {
+                if (filterRowRestored) return@LaunchedEffect
+                val savedX = viewModel.scrollMemoryFor(memoryKey).filterRowScrollX
+                // 没有横向溢出时不需要等测量；有记忆值则等 maxValue 就绪再对齐
+                if (savedX > 0 && filterRowScroll.maxValue <= 0) return@LaunchedEffect
+                if (savedX > 0) filterRowScroll.scrollTo(savedX)
+                filterRowRestored = true
+            }
+            LaunchedEffect(memoryKey, filterRowScroll) {
+                snapshotFlow { filterRowScroll.value }.collect { scrollX ->
+                    if (filterRowRestored) viewModel.saveBoardFilterRowScroll(memoryKey, scrollX)
+                }
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -795,7 +814,8 @@ private fun HomeBoardPage(
                     actions = boardActions,
                     albumCategoryOptions = uiState.albumCategoryOptions,
                     hobbyCategoryTree = hobbyCategoryTree,
-                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode
+                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode,
+                    rowScrollState = filterRowScroll
                 )
             }
         }

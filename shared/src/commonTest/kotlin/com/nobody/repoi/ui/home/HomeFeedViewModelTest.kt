@@ -684,9 +684,14 @@ class HomeFeedViewModelTest {
 
         viewModel.saveScrollPosition(8, 120)
         viewModel.saveFilterCollapseFraction(0.75f)
+        viewModel.saveBoardFilterRowScroll(viewModel.currentBoardMemoryKey, 240)
         assertEquals(8, viewModel.savedScrollIndex)
         assertEquals(120, viewModel.savedScrollOffset)
         assertEquals(0.75f, viewModel.savedFilterCollapseFraction)
+        // 筛选条横向滚动位置：按板块键独立保存，切走再切回可原样恢复
+        assertEquals(240, viewModel.scrollMemoryFor(viewModel.currentBoardMemoryKey).filterRowScrollX)
+        // 未记录过的键返回 null，宿主据此区分「没有记忆」与「记忆为 0」
+        assertNull(viewModel.scrollMemoryOrNull("z999|action"))
 
         viewModel.saveFilterCollapseFraction(1.4f)
         assertEquals(1f, viewModel.savedFilterCollapseFraction)
@@ -695,6 +700,7 @@ class HomeFeedViewModelTest {
         assertEquals(0, viewModel.savedScrollIndex)
         assertEquals(0, viewModel.savedScrollOffset)
         assertEquals(0f, viewModel.savedFilterCollapseFraction)
+        assertEquals(0, viewModel.scrollMemoryFor(viewModel.currentBoardMemoryKey).filterRowScrollX)
     }
 
     @Test

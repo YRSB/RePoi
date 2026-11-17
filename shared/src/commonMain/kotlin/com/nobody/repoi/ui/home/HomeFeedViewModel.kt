@@ -272,6 +272,21 @@ class HomeFeedViewModel(
     fun scrollMemoryFor(boardKey: String): HomeBoardScrollMemory =
         boardScrollMemories[boardKey] ?: HomeBoardScrollMemory()
 
+    /**
+     * 读取指定键的滚动记忆；未记录过返回 `null`。
+     *
+     * 宿主恢复折叠度需要区分「没有记忆」（该板块从未展示过 → 展开筛选层）与
+     * 「记忆为 0」（用户上次把筛选层展开了 → 也展开，但语义不同：前者不应覆盖高度测量前的状态）。
+     */
+    fun scrollMemoryOrNull(boardKey: String): HomeBoardScrollMemory? = boardScrollMemories[boardKey]
+
+    /** 保存指定「作用域 + 板块」的筛选行横向滚动位置（Chip 条滚到一半，切回仍在原处）。 */
+    fun saveBoardFilterRowScroll(boardKey: String, scrollX: Int) {
+        if (scrollX < 0) return
+        boardScrollMemories[boardKey] =
+            scrollMemoryFor(boardKey).copy(filterRowScrollX = scrollX)
+    }
+
     /** 保存指定「作用域 + 板块」的滚动位置。 */
     fun saveBoardScrollPosition(boardKey: String, index: Int, offset: Int) {
         if (index < 0) return

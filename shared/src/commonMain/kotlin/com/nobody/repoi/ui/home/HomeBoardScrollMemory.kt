@@ -9,11 +9,13 @@ import com.nobody.repoi.data.remote.model.ZoneQueryScope
  * @param index 首个可见条目下标
  * @param offset 首个可见条目滚动偏移（px）
  * @param filterCollapseFraction 三级筛选层折叠比例（0 = 完全展开，1 = 完全收起）
+ * @param filterRowScrollX 三级筛选层横向滚动位置（px）：Chip 条滚到一半，切回仍在原处
  */
 data class HomeBoardScrollMemory(
     val index: Int = 0,
     val offset: Int = 0,
-    val filterCollapseFraction: Float = 0f
+    val filterCollapseFraction: Float = 0f,
+    val filterRowScrollX: Int = 0
 )
 
 /**
