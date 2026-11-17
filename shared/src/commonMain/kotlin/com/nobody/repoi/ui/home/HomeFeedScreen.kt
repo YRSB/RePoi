@@ -302,21 +302,25 @@ fun HomeFeedScreen(
     }
     // 页内自持的瀑布流状态注册表：宿主只在「下拉刷新 / FAB」时借当前页回顶
     val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
+    // 各板块筛选行实测高度（px）：切页时直接取**目标板块**的高度折算 heightOffset，
+    // 而不是沿用头部栈里上一板块的实测值。旧实现用上一板块高度算折叠位移，
+    // 若它更矮，切回时只收起一部分、等本页测量回填后才收到底——观感就是「先露一截再折叠」。
+    val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
+    val currentFilterHeightPx: Float =
+        boardFilterHeights[uiState.selectedBoard] ?: headerStack.collapsibleHeightPx
 
-    // 折叠度按「作用域 + 板块」键恢复：切走前收起多少，切回就收起多少。
-    // 列表为空/错误时纵向滚动被禁用（canScroll = boardItemCount > 0），必须强制展开，
-    // 否则会恢复出「收起却展不开」的死状态；有内容后再按记忆恢复（effect 随 boardItemCount 重跑）。
-    LaunchedEffect(currentBoardKey, headerStack.collapsibleHeightPx, boardItemCount > 0) {
-        val filterHeight = headerStack.collapsibleHeightPx
-        scrollBehavior.state.heightOffsetLimit = -filterHeight
+    // 折叠度恢复：heightOffset 仍是滚动机制的唯一真源（nestedScroll 直接改它，渲染零延迟）。
+    // 列表为空/错误时纵向滚动被禁用（canScroll = boardItemCount > 0），强制展开，避免「收起却展不开」。
+    LaunchedEffect(currentBoardKey, currentFilterHeightPx, boardItemCount > 0) {
         val fraction = if (boardItemCount > 0) {
             viewModel.scrollMemoryOrNull(currentBoardKey)?.filterCollapseFraction ?: 0f
         } else {
             0f
         }
+        scrollBehavior.state.heightOffsetLimit = -currentFilterHeightPx
         scrollBehavior.state.contentOffset = 0f
         scrollBehavior.state.heightOffset =
-            (-fraction * filterHeight).coerceIn(-filterHeight, 0f)
+            (-fraction * currentFilterHeightPx).coerceIn(-currentFilterHeightPx, 0f)
     }
 
     // 翻页手势落定 → 同步 ViewModel 的当前板块（筛选行 / 刷新 / 翻页分派都以 selectedBoard 为准）。
@@ -407,6 +411,9 @@ fun HomeFeedScreen(
                             boardActions = boardActions,
                             boardItemActions = boardItemActions,
                             hobbyCategoryTree = hobbyCategoryTree,
+                            onFilterHeightMeasured = { heightPx ->
+                                boardFilterHeights[board] = heightPx.toFloat()
+                            },
                             onNavigateToZoneBrowse = onNavigateToZoneBrowse,
                             onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state }
                         )
@@ -582,6 +589,8 @@ private fun HomeBoardPage(
     boardActions: ZoneBoardActions,
     boardItemActions: ZoneBoardItemActions,
     hobbyCategoryTree: Map<Int, List<CategoryItem>>,
+    /** 本页筛选行实测高度（px）回填：宿主按板块缓存，供切页时立即按目标板块折算折叠度。 */
+    onFilterHeightMeasured: (Int) -> Unit,
     onNavigateToZoneBrowse: (() -> Unit)?,
     onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit
 ) {
@@ -778,6 +787,9 @@ private fun HomeBoardPage(
         // 拖动中相邻页同时组合，两页都写会把头部高度栈来回覆盖；
         // 且相邻页先测量、落定后才成为当前页，所以回填走 `LaunchedEffect` 而不是直接写在 onSizeChanged 里。
         if (!board.isEntity) {
+            LaunchedEffect(filterBarHeightPx) {
+                if (filterBarHeightPx > 0) onFilterHeightMeasured(filterBarHeightPx)
+            }
             LaunchedEffect(isCurrent, filterBarHeightPx) {
                 if (isCurrent && filterBarHeightPx > 0) {
                     headerStack.onCollapsibleMeasured(filterBarHeightPx)
@@ -806,7 +818,13 @@ private fun HomeBoardPage(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .padding(top = headerStack.pinnedHeight)
-                    .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                    // 位移直接用共享 heightOffset：宿主切换时已按**目标板块缓存高度**折算过，
+                    // 所以这里读到多少就是该板块应有的收起像素。非当前页（拖动中组合的相邻页）
+                    // 按展开渲染，落定后由宿主按记忆恢复。
+                    .offset {
+                        val offsetY = if (isCurrentNow()) scrollBehavior.state.heightOffset else 0f
+                        IntOffset(0, offsetY.roundToInt())
+                    }
                     .onSizeChanged { filterBarHeightPx = it.height }
                     .clipToBounds()
                     .background(MaterialTheme.colorScheme.surface)
