@@ -764,7 +764,8 @@ private fun QuickFilterBar(
     ) {
         // 1. 排序下拉（排序放第 1 位，最常用）
         Box {
-            val currentOrderLabel = orderOptions.find { it.first == uiState.order }?.second ?: "7天热度"
+            val currentOrderLabel = orderOptions.find { it.first == uiState.order }?.second
+                ?: HobbyBoardOptions.ORDERS.first().second
             FilterDropdownChip(
                 label = currentOrderLabel,
                 isSelected = uiState.order != HobbyBoardOptions.DEFAULT_ORDER,

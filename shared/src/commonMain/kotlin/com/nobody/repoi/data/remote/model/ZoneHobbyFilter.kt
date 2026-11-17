@@ -10,6 +10,20 @@ const val HOBBY_DEFAULT_ORDER: String = "hits7Day"
 const val HOBBY_DEFAULT_CATEGORY_ID: Int = 10000
 
 /**
+ * 高级筛选「不限」哨兵（协议原值，取值来自 `POST api/hobby/query-v2` 历史实现）。
+ *
+ * 三个维度共用一套语义：等于哨兵即「用户没有筛选」。**拼参与 Chip 判定必须都引用这里**，
+ * 否则弹层以哨兵回填时会出现「Chip 显示已筛选、请求却未下发该参数」的错位。
+ */
+const val HOBBY_SEX_UNLIMITED: Int = -1
+
+/** 见 [HOBBY_SEX_UNLIMITED]。 */
+const val HOBBY_SCALE_UNLIMITED: String = "0"
+
+/** 见 [HOBBY_SEX_UNLIMITED]。 */
+const val HOBBY_R18_UNLIMITED: Int = -1
+
+/**
  * 产品板块的筛选值快照（数据层查询参数，`ItemRepository.queryHobbyBoard` 直接消费）。
  *
  * 归属数据层：仓库签名直接消费本类型，放在 `ui.board` 会造成 data → ui 反向依赖。
@@ -53,7 +67,7 @@ fun isHobbyAdvancedFilterActive(
     scale: String?,
     r18: Int?
 ): Boolean =
-    (sex != null && sex != -1) ||
+    (sex != null && sex != HOBBY_SEX_UNLIMITED) ||
         !specs.isNullOrBlank() ||
-        (!scale.isNullOrBlank() && scale != "0") ||
-        (r18 != null && r18 != -1)
+        (!scale.isNullOrBlank() && scale != HOBBY_SCALE_UNLIMITED) ||
+        (r18 != null && r18 != HOBBY_R18_UNLIMITED)

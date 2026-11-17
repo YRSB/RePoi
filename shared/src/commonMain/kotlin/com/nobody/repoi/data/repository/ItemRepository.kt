@@ -3,6 +3,9 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.HOBBY_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.HOBBY_R18_UNLIMITED
+import com.nobody.repoi.data.remote.model.HOBBY_SCALE_UNLIMITED
+import com.nobody.repoi.data.remote.model.HOBBY_SEX_UNLIMITED
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
@@ -156,9 +159,9 @@ internal fun buildHobbyBoardParams(
     filters.releaseYear?.let { if (it > 0) params["releaseYear"] = it.toString() }
     filters.releaseMonth?.let { if (it > 0) params["releaseMonth"] = it.toString() }
     if (filters.keyword.isNotBlank()) params["keyword"] = filters.keyword.trim()
-    filters.sex?.let { if (it != -1) params["sex"] = it.toString() }
+    filters.sex?.let { if (it != HOBBY_SEX_UNLIMITED) params["sex"] = it.toString() }
     filters.specs?.let { if (it.isNotBlank()) params["specs"] = it }
-    filters.scale?.let { if (it.isNotBlank() && it != "0") params["scale"] = it }
-    filters.r18?.let { if (it != -1) params["r18"] = it.toString() }
+    filters.scale?.let { if (it.isNotBlank() && it != HOBBY_SCALE_UNLIMITED) params["scale"] = it }
+    filters.r18?.let { if (it != HOBBY_R18_UNLIMITED) params["r18"] = it.toString() }
     return params
 }
