@@ -8,7 +8,9 @@ import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.PostItem
+import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.data.remote.model.ZoneTabItem
+import com.nobody.repoi.data.remote.model.ZoneTabsSettings
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.local.ViewPreferencesManager
@@ -45,6 +47,14 @@ data class FeedCategory(
     val nodeId: Long = 0L,
     val zoneIds: String = "",
     val id: Int = nodeId.toInt()
+)
+
+/** 冷启动判定输入：`combine` 四路流的聚合体（关注专区 / 设置 / 关注数据就绪 / 落盘偏好就绪）。 */
+private data class ColdStartInputs(
+    val focusZones: List<ZoneItem>,
+    val settings: ZoneTabsSettings,
+    val focusZonesLoaded: Boolean,
+    val savedSelectionReady: Boolean
 )
 
 data class HomeFeedUiState(
@@ -143,13 +153,6 @@ class HomeFeedViewModel(
         ActionSubType.ordered.map { it.apiValue to it.label }
 
     /**
-     * 分享板块 6 档排序（key = 协议 `order`，value = 文案）。
-     *
-     * 唯一来源为共享定义 [AlbumBoardOptions]，与专区详情共用，禁止在首页另写一份。
-     */
-    val albumOrders: List<Pair<String, String>> = AlbumBoardOptions.ORDERS
-
-    /**
      * 产品分类树（`parentId -> 子分类`）：供筛选条子分类回显与分类级联弹层。
      *
      * 未注入 [categoryManager]（纯逻辑测试）时为空 Map，UI 回退到通用兜底文案。
@@ -157,13 +160,17 @@ class HomeFeedViewModel(
     val hobbyCategoryTree: StateFlow<Map<Int, List<CategoryItem>>> =
         categoryManager?.categoryMap ?: MutableStateFlow<Map<Int, List<CategoryItem>>>(emptyMap())
 
-    // 旧持久化值 `all` 在此归一为 `allInfo`（服务端对 `all` 静默回落「推荐」，不能原样发出）
-    private val initialSubType: String =
-        ActionSubType.fromPersisted(viewPreferencesManager.getInitialFeedSubType()).apiValue
+    /**
+     * 冷启动落盘的一级 tabKey 与二级板块键（`{tabKey}|{type}`，未设置时为空串）。
+     *
+     * 由 [ViewPreferencesManager] 的**异步预热**填充内存镜像，因此不能在构造期同步读取
+     * （预热未落定时会读到空串，静默丢弃上次的专区/板块选择）。init 中 `awaitPreheat()` 后再读。
+     */
+    private var savedTabKey: String? = null
+    private var savedBoardKey: String? = null
 
-    /** 冷启动落盘的一级 tabKey 与二级板块键（`{tabKey}|{type}`，未设置时为空串）。 */
-    private val savedTabKey: String? = viewPreferencesManager.getInitialFeedZoneTabKey()
-    private val savedBoardKey: String? = viewPreferencesManager.getInitialFeedZoneBoardKey()
+    /** 冷启动偏好是否已落定（预热完成且 saved* 已读取）：[savedSelectionReady] 对外供分类流触发重算。 */
+    private val savedSelectionReady = MutableStateFlow(false)
 
     /**
      * 关注专区数据就绪信号：`zone/home-tabs` 返回后置 true（请求失败也算就绪，按不可用回落）。
@@ -173,11 +180,19 @@ class HomeFeedViewModel(
      */
     private val focusZonesLoaded = MutableStateFlow(false)
 
-    /** 一级冷启动判定是否已完成；单专区需等 [focusZonesLoaded] 后再判定。 */
-    private var coldStartTabResolved: Boolean = zoneTabKeyNodeId(savedTabKey) == null
+    /**
+     * 一级冷启动判定是否已完成。
+     *
+     * 初始 false：必须等 [savedSelectionReady] 才能判定（单专区还需 [focusZonesLoaded]）。
+     * [selectCategory] 在用户主动选择时直接置 true，避免异步判定覆盖用户操作。
+     */
+    private var coldStartTabResolved: Boolean = false
+
+    /** 用户是否已主动切换过一级专区；是则预热落定后不再回填保存值。 */
+    private var userSelectedCategory: Boolean = false
 
     /** 当前生效的二级板块偏好键（`{tabKey}|{type}`）：恢复与写回共用，避免出现两套编码。 */
-    private var currentBoardSelectionKey: String = savedBoardKey.orEmpty()
+    private var currentBoardSelectionKey: String = ""
 
     /**
      * 手动切入单专区后，等 `zone/info.tabs` 返回再落到该专区首板块（US21）。
@@ -190,9 +205,10 @@ class HomeFeedViewModel(
     private val _uiState = MutableStateFlow(
         HomeFeedUiState(
             // 冷启动统一先落「全部」：`follow`/不可用由纯函数立即回落；单专区在关注专区数据
-            // 就绪后再切换到保存的专区（见 init 中的分类流收集）。
+            // 就绪后再切换到保存的专区（见 init 中的分类流收集）。三级 subType 同样等预热落定后
+            // 再从镜像回填（见 init 的偏好读取协程）。
             selectedCategory = FeedCategory(tabKey = ZONE_TAB_KEY_ALL, name = "全部"),
-            selectedSubType = initialSubType
+            selectedSubType = ActionSubType.DEFAULT.apiValue
         )
     )
     val uiState: StateFlow<HomeFeedUiState> = _uiState.asStateFlow()
@@ -352,18 +368,20 @@ class HomeFeedViewModel(
             combine(
                 zoneRepository.focusZonesFlow,
                 zoneRepository.settingsFlow,
-                focusZonesLoaded
-            ) { focusZones, settings, loaded ->
-                Triple(focusZones, settings, loaded)
-            }.collect { (focusZones, settings, loaded) ->
+                focusZonesLoaded,
+                savedSelectionReady
+            ) { focusZones, settings, loaded, savedReady ->
+                ColdStartInputs(focusZones, settings, loaded, savedReady)
+            }.collect { (focusZones, settings, loaded, savedReady) ->
                 val dynamicCategories = buildFeedCategories(focusZones, settings)
                 val switcherGroups = buildZoneSwitcherGroups(dynamicCategories, settings)
                 val current = _uiState.value
 
                 // 一级冷启动判定：`follow`/非法值立即回落「全部」；单专区要等关注专区数据就绪
                 // 后才判定「是否仍在已关注集合中」，避免首帧空列表误判回落（#156 恢复规则 1）。
+                // savedReady 为假时不判定：预热尚未把落盘值填进内存镜像，此时读到的是默认值。
                 var coldStartResolvedTabKey: String? = null
-                if (!coldStartTabResolved && loaded) {
+                if (!coldStartTabResolved && loaded && savedReady) {
                     coldStartTabResolved = true
                     coldStartResolvedTabKey = resolveInitialTabKey(
                         savedTabKey,
@@ -447,9 +465,30 @@ class HomeFeedViewModel(
 
         setupAccountState()
 
-        // 单专区冷启动需等关注专区数据；其余情况（全部/关注/非法值）可立即加载首屏。
-        if (coldStartTabResolved) {
-            loadInitialFeed()
+        // 冷启动偏好只在**预热落定后**读取：ViewPreferencesManager 的内存镜像由异步预热填充，
+        // 构造期同步读取可能读到默认值，从而静默丢弃上次的专区/板块/筛选选择。
+        viewModelScope.launch {
+            viewPreferencesManager.awaitPreheat()
+            if (!userSelectedCategory) {
+                savedTabKey = viewPreferencesManager.getInitialFeedZoneTabKey()
+                savedBoardKey = viewPreferencesManager.getInitialFeedZoneBoardKey()
+                currentBoardSelectionKey = savedBoardKey.orEmpty()
+                val savedSubType =
+                    ActionSubType.fromPersisted(viewPreferencesManager.getInitialFeedSubType()).apiValue
+                _uiState.update {
+                    if (it.selectedSubType == ActionSubType.DEFAULT.apiValue) {
+                        it.copy(selectedSubType = savedSubType)
+                    } else {
+                        it
+                    }
+                }
+            }
+            savedSelectionReady.value = true
+            // 单专区冷启动需等关注专区数据；其余情况（全部/关注/非法值）可立即加载首屏。
+            if (!coldStartTabResolved && zoneTabKeyNodeId(savedTabKey) == null) {
+                coldStartTabResolved = true
+                loadInitialFeed()
+            }
         }
     }
 
@@ -477,9 +516,18 @@ class HomeFeedViewModel(
     }
 
     fun selectCategory(category: FeedCategory) {
-        if (_uiState.value.selectedCategory.tabKey == category.tabKey) return
-        // 用户已主动选专区：冷启动恢复不再回填，避免异步判定的保存值覆盖当前选择
+        // 用户已主动选专区：冷启动恢复不再回填，避免异步判定的保存值覆盖当前选择。
+        // 必须在「同一 tabKey 早退」之前置位：冷启动首帧固定落在「全部」，用户点「全部」时
+        // tabKey 相同，若不在这里标记，稍后的一级恢复仍会把落点改回保存的专区。
         coldStartTabResolved = true
+        userSelectedCategory = true
+        if (_uiState.value.selectedCategory.tabKey == category.tabKey) {
+            // 同一级 tab 的早退分支：单专区冷启动会推迟首屏加载，此处补一次，避免点击后停在加载态。
+            if (_uiState.value.isInitialLoading && _uiState.value.items.isEmpty()) {
+                loadInitialFeed()
+            }
+            return
+        }
         // 不清理旧作用域的滚动记忆：切回时按「作用域 + 板块」键各自恢复
         val scope = category.toZoneQueryScope()
         val fallbackBoards = ZoneBoardCapability.homeBoardsFor(scope)
@@ -818,40 +866,56 @@ class HomeFeedViewModel(
         if (!posts.isLoaded || posts.isInitialLoading || posts.isLoadingMore || !posts.hasMore) return
         if (state.isRefreshing) return
         val nextPage = posts.page + 1
+        val requestOrder = posts.order
         _uiState.update { it.copy(posts = it.posts.copy(isLoadingMore = true, loadMoreError = null)) }
         viewModelScope.launch {
             val scope = _uiState.value.zoneScope
             val result = zoneRepository.getZonePosts(
                 zoneNodeId = scope.zoneNodeId(),
-                order = _uiState.value.posts.order,
+                order = requestOrder,
                 page = nextPage,
                 pageSize = PostsBoardOptions.PAGE_SIZE
             )
             if (_uiState.value.zoneScope != scope) return@launch
+            // 过期页判定：切排序 / 下拉刷新会把列表清空并把页码重置为 1，
+            // 旧请求回程若直接追加会混排不同排序并跳页，因此必须同时校验排序与页码。
+            fun stale(current: HomeFeedUiState): Boolean =
+                current.posts.order != requestOrder ||
+                    current.posts.page != nextPage - 1 ||
+                    current.posts.isInitialLoading
             result.onSuccess { newItems ->
+                if (stale(_uiState.value)) return@onSuccess
                 _uiState.update { current ->
-                    val existingPosts = current.posts.pinnedPosts + current.posts.items
-                    val existingIds = existingPosts.mapTo(HashSet()) { it.id }
-                    val uniqueNewItems = newItems.filterNot { it.id in existingIds }
-                    current.copy(
-                        posts = current.posts.copy(
-                            items = current.posts.items + uniqueNewItems,
-                            page = nextPage,
-                            isLoadingMore = false,
-                            hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
-                                newItems.hasNewKeysAfterDedup(existingPosts) { it.id },
-                            loadMoreError = null
+                    if (stale(current)) {
+                        current.copy(posts = current.posts.copy(isLoadingMore = false))
+                    } else {
+                        val existingPosts = current.posts.pinnedPosts + current.posts.items
+                        val existingIds = existingPosts.mapTo(HashSet()) { it.id }
+                        val uniqueNewItems = newItems.filterNot { it.id in existingIds }
+                        current.copy(
+                            posts = current.posts.copy(
+                                items = current.posts.items + uniqueNewItems,
+                                page = nextPage,
+                                isLoadingMore = false,
+                                hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
+                                    newItems.hasNewKeysAfterDedup(existingPosts) { it.id },
+                                loadMoreError = null
+                            )
                         )
-                    )
+                    }
                 }
             }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        posts = it.posts.copy(
-                            isLoadingMore = false,
-                            loadMoreError = error.message ?: "加载更多失败"
+                _uiState.update { current ->
+                    if (stale(current)) {
+                        current.copy(posts = current.posts.copy(isLoadingMore = false))
+                    } else {
+                        current.copy(
+                            posts = current.posts.copy(
+                                isLoadingMore = false,
+                                loadMoreError = error.message ?: "加载更多失败"
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -987,9 +1051,6 @@ class HomeFeedViewModel(
                 _uiState.update {
                     it.copy(
                         isRefreshing = true,
-                        errorMessage = null,
-                        loadMoreError = null,
-                        posts = it.posts.copy(errorMessage = null, loadMoreError = null),
                         albumErrorMessage = null,
                         albumLoadMoreError = null
                     )
@@ -1000,11 +1061,7 @@ class HomeFeedViewModel(
                 _uiState.update {
                     it.copy(
                         isRefreshing = true,
-                        errorMessage = null,
-                        loadMoreError = null,
-                        posts = it.posts.copy(errorMessage = null, loadMoreError = null),
-                        albumErrorMessage = null,
-                        albumLoadMoreError = null
+                        posts = it.posts.copy(errorMessage = null, loadMoreError = null)
                     )
                 }
                 refreshPosts()
@@ -1014,8 +1071,6 @@ class HomeFeedViewModel(
                 _uiState.update {
                     it.copy(
                         isRefreshing = true,
-                        errorMessage = null,
-                        loadMoreError = null,
                         resale = it.resale.copy(errorMessage = null, loadMoreError = null)
                     )
                 }
@@ -1035,10 +1090,7 @@ class HomeFeedViewModel(
                     it.copy(
                         isRefreshing = true,
                         errorMessage = null,
-                        loadMoreError = null,
-                        posts = it.posts.copy(errorMessage = null, loadMoreError = null),
-                        albumErrorMessage = null,
-                        albumLoadMoreError = null
+                        loadMoreError = null
                     )
                 }
                 loadActionBoard()

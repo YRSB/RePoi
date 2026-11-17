@@ -55,6 +55,10 @@ object PostsBoardOptions {
      * 从 `ZoneDetailViewModel.partitionPosts` 原样迁移（启发式：存在 `isPinned` 时取前 5 条；
      * 否则 >5 取前 5、>2 取前 2、其余不置顶），保证专区详情讨论板块行为不变。
      *
+     * 已知取舍（沿用原实现，勿在别处复制该函数）：显式置顶超过 5 条时，第 6 条起的置顶帖
+     * 既不进置顶条也不进普通列表（`unpinned` 只取 `!isPinned`），会**丢帖**；若要修正，请同时
+     * 更新 `PostsBoardOptionsTest.partition_capsExplicitPinnedAtFive` 并把超出部分回补到普通列表。
+     *
      * 聚合态（全部/关注）不展示置顶条：关注聚合因无多专区通道已隐藏整个讨论板块；全部聚合
      * 由宿主直接跳过本函数，所有条目进入普通列表（置顶是单专区语义）。
      */

@@ -39,6 +39,14 @@ class AlbumRepository(
         listOf(AlbumZoneTab.ALL)
     }
 
+    /**
+     * 相册列表。
+     *
+     * @param zones 原始 `zones` 参数（`null` / 空白 = 不传，即全站）。注意本参数**只能**由
+     *   持有 `ZoneQueryScope` 的调用方经 `scope.zonesParam()` 派生：`All` 与空 `Follow` 都返回
+     *   `null`，而「关注为空必须短路」是上层纪律（服务端把空串当全站）。首页/专区详情的板块路径
+     *   统一走 `AlbumBoardLoader`（内部派生），不要在各调用点散拼 zone 参数。
+     */
     suspend fun getAlbums(
         page: Int = 1,
         pageSize: Int = 24,
@@ -72,12 +80,14 @@ class AlbumRepository(
      * 相册/分享板块的分类选项（单专区专用）。
      *
      * 请求 `GET api/zone/categories?nodeId=&itemType=album`（反编译证据见
-     * `data/remote/model/ZoneCategoryModels.kt` KDoc）；返回已过滤脏数据（`categoryId > 0` 且 `name` 非空），
+     * `data/remote/model/ZoneCategoryModels.kt` KDoc）；`data.visible=false` 表示服务端要求不展示
+     * 分类入口，此时返回空列表；其余情况返回已过滤脏数据（`categoryId > 0` 且 `name` 非空），
      * 「全部」由 UI 自行追加，不在此返回。
      */
     suspend fun getAlbumCategories(nodeId: Long): Result<List<ZoneCategoryItem>> = runCatching {
         val response = api.getZoneCategories(nodeId = nodeId, itemType = "album")
         if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分类失败")
+        if (response.data?.visible == false) return@runCatching emptyList()
         response.data?.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
     }
 

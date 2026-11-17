@@ -16,7 +16,6 @@ import com.nobody.repoi.ui.board.ZoneBoardContent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -50,7 +49,9 @@ class HomeFeedResaleBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        testDispatcher.cancelChildren()
+        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
+        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
@@ -197,12 +198,14 @@ class HomeFeedResaleBoardTest {
         viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        // 关注聚合：zones 逗号串实测为交集语义 → 二手板块必须隐藏（不展示「暂不支持」占位）
-        assertTrue(ZoneBoard.Resale !in state.boards)
         // 不在板块列表中的板块选择被忽略，且不发起任何二手请求
         viewModel.selectBoard(ZoneBoard.Resale)
         advanceUntilIdle()
+
+        // 断言必须读动作之后的状态：动作前快照恒为旧值，无法证伪「不可用板块被写进 selectedBoard」
+        val state = viewModel.uiState.value
+        // 关注聚合：zones 逗号串实测为交集语义 → 二手板块必须隐藏（不展示「暂不支持」占位）
+        assertTrue(ZoneBoard.Resale !in state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         assertEquals(0, env.resaleMock.requestCount)
     }

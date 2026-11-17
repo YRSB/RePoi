@@ -4,7 +4,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.platform.isLandscapeOrientation
 
 /**
@@ -57,7 +56,7 @@ object ResaleBoardOptions {
 }
 
 /**
- * 二手列表列数策略：竖屏 1 列（列表形态），横屏平板 2 列、超宽 3 列（沿用专区详情历史规则）。
+ * 二手列表列数策略：竖屏 1 列（列表形态），横屏 2 列、超宽（≥1200dp）3 列（沿用专区详情历史规则）。
  *
  * 首页与专区详情共用，避免两屏各写一份导致同一板块视觉漂移。
  */
@@ -69,8 +68,7 @@ fun rememberResaleStaggeredGridColumns(): StaggeredGridCells {
         when {
             !isLandscape -> StaggeredGridCells.Fixed(1)
             windowSizeClass.isWidthAtLeastBreakpoint(1200) -> StaggeredGridCells.Fixed(3)
-            windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND) -> StaggeredGridCells.Fixed(2)
-            else -> StaggeredGridCells.Fixed(1)
+            else -> StaggeredGridCells.Fixed(2)
         }
     }
 }

@@ -30,10 +30,14 @@ sealed interface ZoneQueryScope {
         get() = this is Follow && zoneIds.isEmpty()
 
     /**
-     * `zones` 参数（分享/产品/二手/实体 5 类）。
+     * `zones` 参数（分享 / 实体 5 类；动态与讨论用 [zoneNodeId]）。
      * - [All] → null（省略参数）
      * - [Follow] → `"1,2,3"`；空集合 → null（上层已短路，绝不能下发空串——空串等价全站）
      * - [Single] → `nodeId` 字符串
+     *
+     * 注意：**产品与二手不得传 [Follow]**——产品关注态需登录态复验（当前隐藏），二手 `zones`
+     * 逗号串在服务端是**交集**语义（实测 0 条）；两者由 `ZoneBoardCapability` 在关注态隐藏板块，
+     * 本方法不做运行时拦截。
      */
     fun zonesParam(): String? = when (this) {
         All -> null

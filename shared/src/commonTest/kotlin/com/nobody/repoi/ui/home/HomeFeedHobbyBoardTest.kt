@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -16,7 +17,6 @@ import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -51,7 +51,9 @@ class HomeFeedHobbyBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        testDispatcher.cancelChildren()
+        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
+        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
@@ -205,17 +207,23 @@ class HomeFeedHobbyBoardTest {
 
     @Test
     fun emptyFollow_shortCircuitsHobbyWithoutRequest() = runTest(testDispatcher) {
+        // 控制器级防御：即使调用方绕开能力矩阵，空关注集合也绝不能发请求
+        //（空 zones 会被服务端当作全站，属于比隐藏更危险的假「关注」内容）。
         val env = env()
-        env.stubFocusedZone(100L)
-        val viewModel = env.viewModel()
-        advanceUntilIdle()
-        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        val controller = HomeHobbyBoardController(
+            repository = ItemRepository(env.hobbyMock.api(testDispatcher)),
+            scope = backgroundScope
+        )
+
+        controller.loadInitial(ZoneQueryScope.Follow(emptyList()))
         advanceUntilIdle()
 
-        // 防御路径：即使强行触发产品板块懒加载，也不能对空关注集合发请求
-        viewModel.selectBoard(ZoneBoard.Hobby)
-        advanceUntilIdle()
         assertEquals(0, env.hobbyMock.requestCount)
+        val state = controller.state.value
+        assertTrue(state.isLoaded)
+        assertTrue(state.items.isEmpty())
+        assertFalse(state.hasMore)
+        assertFalse(state.isLoading)
     }
 
     @Test

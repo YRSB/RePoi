@@ -28,16 +28,12 @@ class ZoneBoardActions(
     private val selectPostsOrder: (String) -> Unit,
     private val selectResaleType: (Int) -> Unit,
     private val selectResalePurity: (String?) -> Unit,
-    private val resaleKeywordChange: (String) -> Unit,
-    private val resaleSearch: () -> Unit,
     private val retryInitial: () -> Unit,
     private val loadMore: () -> Unit,
     private val hobbyOrder: (String) -> Unit = {},
     private val hobbyYear: (Int?) -> Unit = {},
     private val hobbyMonth: (Int?) -> Unit = {},
     private val hobbyCategory: (Int, Int?) -> Unit = { _, _ -> },
-    private val hobbyKeywordChange: (String) -> Unit = {},
-    private val hobbySearch: () -> Unit = {},
     private val hobbyAdvancedApply: (HobbyAdvancedFilterParam) -> Unit = {},
     private val hobbyAdvancedReset: () -> Unit = {},
     private val hobbyViewMode: () -> Unit = {},
@@ -62,12 +58,6 @@ class ZoneBoardActions(
     /** 二手板块成色切换；`null` = 全部成色。宿主负责清列表并重载。 */
     fun onSelectResalePurity(purity: String?) = selectResalePurity(purity)
 
-    /** 二手板块搜索关键词输入（仅专区详情渲染搜索栏，首页不渲染）。 */
-    fun onResaleKeywordChange(keyword: String) = resaleKeywordChange(keyword)
-
-    /** 二手板块提交搜索（宿主回第一页重载）。 */
-    fun onResaleSearch() = resaleSearch()
-
     /** 首屏错误态「重试」（宿主按当前板块分派刷新）。 */
     fun onRetryInitial() = retryInitial()
 
@@ -87,12 +77,6 @@ class ZoneBoardActions(
 
     /** 产品分类级联选择（一级 + 可选子分类）。 */
     fun onHobbyCategory(categoryId: Int, subCategoryId: Int?) = hobbyCategory(categoryId, subCategoryId)
-
-    /** 产品关键词输入（不触发请求，回车/搜索时才提交）。 */
-    fun onHobbyKeywordChange(keyword: String) = hobbyKeywordChange(keyword)
-
-    /** 提交产品关键词搜索。 */
-    fun onHobbySearch() = hobbySearch()
 
     /** 产品高级筛选「确定」：写回 4 个高级维度并回第一页重载。 */
     fun onHobbyAdvancedApply(filterParam: HobbyAdvancedFilterParam) = hobbyAdvancedApply(filterParam)

@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -14,7 +15,6 @@ import com.nobody.repoi.ui.board.ZoneBoardContent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -51,7 +51,9 @@ class HomeFeedEntityBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        testDispatcher.cancelChildren()
+        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
+        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
@@ -127,6 +129,17 @@ class HomeFeedEntityBoardTest {
         )
     }
 
+    /** 按 `zones` 参数路由不同条目：用于验证作用域切换时旧作用域应答被丢弃。 */
+    private fun Env.stubEntityPagesByZones(allIds: List<Long>, followIds: List<Long>) {
+        zoneMock.routeWhen(
+            predicate = { path, _, _ -> path.contains("api/zone/items") },
+            body = { _, _, query ->
+                val ids = if (query["zones"].isNullOrEmpty()) allIds else followIds
+                entityPage(ids, hasMore = false, itemType = query["itemType"].orEmpty())
+            }
+        )
+    }
+
     /** 单专区 `api/zone/info` 路由（首页据此装配二级板块）。 */
     private fun Env.stubZoneInfo(nodeId: Long, tabs: List<String>) {
         val tabsJson = tabs.joinToString(",") { type -> "\"$type\"" }
@@ -138,6 +151,15 @@ class HomeFeedEntityBoardTest {
         )
     }
 
+    /** 实体板块期望顺序（字面量）：生产端 boards 同样来自 `HOME_ORDER`，用派生值断言会恒真。 */
+    private val expectedEntityOrder = listOf(
+        ZoneBoard.Company,
+        ZoneBoard.Series,
+        ZoneBoard.Works,
+        ZoneBoard.Character,
+        ZoneBoard.Person
+    )
+
     private fun entityOrder(): List<ZoneBoard> = ZoneBoard.HOME_ORDER.filter { it.isEntity }
 
     @Test
@@ -148,7 +170,7 @@ class HomeFeedEntityBoardTest {
         advanceUntilIdle()
 
         // 聚合态二级 Tab 已包含实体 5 类（HOME_ORDER 顺序）
-        assertEquals(entityOrder(), viewModel.uiState.value.boards.filter { it.isEntity })
+        assertEquals(expectedEntityOrder, viewModel.uiState.value.boards.filter { it.isEntity })
         // 未切过去之前不请求实体接口：仅启动时的 zone/home-tabs
         assertEquals(1, env.zoneMock.requestCount)
 
@@ -196,7 +218,7 @@ class HomeFeedEntityBoardTest {
         assertEquals("100,200", request.queryParameter("zones"))
         assertNull(request.queryParameter("homeScope"))
 
-        // 切回「全部」时重建 loader：下次请求省略 zones（旧作用域结果不串数据）
+        // 切回「全部」时重建 loader：再次请求实体省略 zones（作用域参数按当前 scope 重新派生）
         viewModel.selectZoneTab(ZONE_TAB_KEY_ALL)
         advanceUntilIdle()
         viewModel.selectBoard(ZoneBoard.Company)
@@ -205,6 +227,30 @@ class HomeFeedEntityBoardTest {
         assertEquals("/api/zone/items", allRequest.encodedPath)
         assertNull(allRequest.queryParameter("zones"))
         assertNull(allRequest.queryParameter("homeScope"))
+    }
+
+    @Test
+    fun entityScopeSwitchInFlight_dropsStaleResponse() = runTest(testDispatcher) {
+        // 关注域请求仍在途时切回「全部」：旧 loader 必须被作废，其应答不得写进新作用域列表
+        val env = env(focusZoneIds = listOf(100L))
+        env.stubEntityPagesByZones(allIds = listOf(701L), followIds = listOf(601L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Company)
+        // 不推进调度器：请求尚未落地就切换作用域
+        viewModel.selectZoneTab(ZONE_TAB_KEY_ALL)
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Company)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ZoneQueryScope.All, state.zoneScope)
+        val content = state.currentBoardContent as ZoneBoardContent.Entity
+        assertEquals(listOf(701L), content.items.map { it.targetId })
+        assertEquals(listOf(701L), state.entityBoards.getValue(ZoneBoard.Company).items.map { it.targetId })
     }
 
     @Test

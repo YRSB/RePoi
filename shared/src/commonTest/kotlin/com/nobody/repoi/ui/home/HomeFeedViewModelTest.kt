@@ -17,9 +17,10 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardCapability
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -59,9 +60,10 @@ class HomeFeedViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
-        // 先取消仍排在 Main 上的任务，再交还平台 dispatcher；否则 reset 后恢复的续体会抛
-        // "Dispatchers.Main was accessed ... after resetMain()"，并污染下一个测试。
-        testDispatcher.cancelChildren()
+        // StandardTestDispatcher 的 context 不含 Job，CoroutineContext.cancelChildren() 在这里是空操作
+        // （无法取消 ViewModel 自建 SupervisorJob 下的协程）。改为排空仍排在 Main 上的任务，
+        // 再交还平台 dispatcher，避免续体在 reset 之后恢复并污染下一个测试。
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
@@ -103,7 +105,13 @@ class HomeFeedViewModelTest {
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
         if (savedBoardKey.isNotEmpty()) preferences.setFeedZoneBoard(savedBoardKey)
-        val zoneRepository = ZoneRepository(zoneMock.api(testDispatcher), preferences)
+        // 访问上报走注入的虚拟调度器作用域：`advanceUntilIdle()` 后即可确定性观测，
+        // 不再依赖真实 IO 线程（否则「未上报」断言永远是假阴性）。
+        val zoneRepository = ZoneRepository(
+            api = zoneMock.api(testDispatcher),
+            viewPreferencesManager = preferences,
+            visitReportScope = CoroutineScope(testDispatcher + SupervisorJob())
+        )
         // 分享板块（#157）默认空响应路由：未切到分享板块时不会发出请求
         val albumMock = MockApi()
         albumMock.route(
@@ -803,6 +811,11 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.categories.none { it.tabKey == "all" })
 
+        // 先离开「全部」：selectCategory 对同一 tabKey 早退，否则本用例无法证伪兜底分类逻辑
+        viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
+        advanceUntilIdle()
+        assertEquals("follow", viewModel.uiState.value.selectedCategory.tabKey)
+
         viewModel.selectZoneTab(ZONE_TAB_KEY_ALL)
         advanceUntilIdle()
 
@@ -1119,8 +1132,9 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedSingleZone_restoresZoneAndBoardsAfterFocusZonesReady() = runTest(testDispatcher) {
-        // 保存单专区：必须等关注专区数据到达后再判定可用性，不能被首帧空列表误判回落
-        val env = env(savedTabKey = "z100", savedBoardKey = "z100|action")
+        // 保存单专区：必须等关注专区数据到达后再判定可用性，不能被首帧空列表误判回落。
+        // 二级落点取**非首板块**（album），才能区分「恢复保存板块」与「回落首板块」。
+        val env = env(savedTabKey = "z100", savedBoardKey = "z100|album")
         env.stubFocusedZone(100L)
         env.stubZoneInfo(100L, tabs = listOf("action", "album"))
         env.stubFeed(items = listOf(item(1, "100")))
@@ -1135,7 +1149,8 @@ class HomeFeedViewModelTest {
         // 单专区板块 = 服务端 tabs ∩ 白名单；首板块恒为动态（不写死后续票新增的板块）
         assertEquals(ZoneBoard.Action, state.boards.first())
         assertTrue(state.boards.all { it in ZoneBoard.CLIENT_WHITELIST })
-        assertEquals(state.boards.first(), state.selectedBoard)
+        // 恢复保存的二级板块（若恢复逻辑失效会回落首板块 Action）
+        assertEquals(ZoneBoard.Album, state.selectedBoard)
         assertEquals(listOf(2L), state.items.map { it.id })
         // 只为恢复后的专区请求内容，未先发「全部」请求（回落误判会留下无 zoneNodeId 的请求）
         assertEquals("100", env.lastFeedForm()["zoneNodeId"])
@@ -1300,6 +1315,11 @@ class HomeFeedViewModelTest {
         assertEquals(
             "follow:100,200|action",
             homeBoardMemoryKey(ZoneQueryScope.Follow(listOf(100L, 200L)), ZoneBoard.Action)
+        )
+        // 关注集合顺序随设置排序变化：键必须归一（去重 + 升序），否则同一作用域会产出多个键
+        assertEquals(
+            "follow:100,200|action",
+            homeBoardMemoryKey(ZoneQueryScope.Follow(listOf(200L, 100L, 200L)), ZoneBoard.Action)
         )
         assertEquals("z100|action", homeBoardMemoryKey(ZoneQueryScope.Single(100L), ZoneBoard.Action))
     }

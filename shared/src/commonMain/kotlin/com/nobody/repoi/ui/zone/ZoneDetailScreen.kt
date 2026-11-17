@@ -5,13 +5,8 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,11 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -49,7 +42,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -111,13 +103,12 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
 import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
-import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
-import com.nobody.repoi.ui.board.components.ZonePaginationFooter
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
@@ -542,8 +533,6 @@ fun ZoneDetailScreen(
             selectAlbumCategory = viewModel::selectAlbumCategory,
             selectResaleType = viewModel::setResaleType,
             selectResalePurity = viewModel::setResalePurity,
-            resaleKeywordChange = viewModel::updateResaleKeyword,
-            resaleSearch = viewModel::submitResaleSearch,
             retryInitial = {
                 // 实体 5 类走 pane 后仍复用原错误重试入口（loadInitialEntity），保持行为不变
                 val tab = viewModel.uiState.value.selectedTab
@@ -572,8 +561,6 @@ fun ZoneDetailScreen(
             hobbyCategory = { categoryId, subCategoryId ->
                 viewModel.selectHobbyCategory(categoryId, subCategoryId)
             },
-            hobbyKeywordChange = viewModel::updateHobbyKeyword,
-            hobbySearch = viewModel::submitHobbySearch,
             hobbyAdvancedApply = { filterParam ->
                 viewModel.applyHobbyAdvancedFilters(
                     sex = filterParam.sex,
@@ -594,6 +581,7 @@ fun ZoneDetailScreen(
         handlePostClick,
         handleAlbumClick,
         handleResaleClick,
+        handleResaleContactClick,
         onNavigateToUser,
         handleEntityClick,
         handleHobbyClick
@@ -798,7 +786,6 @@ fun ZoneDetailScreen(
                         // 动态板块：走共享面板（唯一内容渲染入口），其余板块本阶段仍用下方内联分支
                         ZoneBoardPane(
                             board = ZoneBoard.Action,
-                            scope = viewModel.zoneScope,
                             content = ZoneBoardContent.Action(
                                 items = uiState.items,
                                 page = ZoneBoardPageView(
@@ -809,7 +796,6 @@ fun ZoneDetailScreen(
                                     isEndReached = !uiState.hasMore
                                 )
                             ),
-                            filters = actionBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -827,7 +813,6 @@ fun ZoneDetailScreen(
                         // 列数由面板内部按相册策略计算，筛选值来自 ViewModel 投影。
                         ZoneBoardPane(
                             board = ZoneBoard.Album,
-                            scope = viewModel.zoneScope,
                             content = ZoneBoardContent.Album(
                                 items = uiState.albumItems,
                                 page = ZoneBoardPageView(
@@ -838,7 +823,6 @@ fun ZoneDetailScreen(
                                     isEndReached = !uiState.hasMoreAlbum
                                 )
                             ),
-                            filters = albumBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -855,9 +839,7 @@ fun ZoneDetailScreen(
                         // 讨论板块：走共享面板（与首页同一渲染入口），单专区恒展示置顶帖条
                         ZoneBoardPane(
                             board = ZoneBoard.Posts,
-                            scope = viewModel.zoneScope,
                             content = uiState.postsBoardContent,
-                            filters = uiState.postsBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -876,7 +858,6 @@ fun ZoneDetailScreen(
                         // 搜索栏 / 更多操作 / 举报弹窗仍属专区详情 chrome，留在宿主渲染。
                         ZoneBoardPane(
                             board = ZoneBoard.Resale,
-                            scope = viewModel.zoneScope,
                             content = ZoneBoardContent.Resale(
                                 items = uiState.resaleState.items,
                                 page = ZoneBoardPageView(
@@ -887,7 +868,6 @@ fun ZoneDetailScreen(
                                     isEndReached = uiState.resaleState.isEndReached
                                 )
                             ),
-                            filters = resaleBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -905,9 +885,7 @@ fun ZoneDetailScreen(
                         // 列数由面板按网格 / 列表模式计算，筛选值与两个弹层显隐来自 ViewModel 投影。
                         ZoneBoardPane(
                             board = ZoneBoard.Hobby,
-                            scope = viewModel.zoneScope,
                             content = uiState.hobbyBoardContent,
-                            filters = uiState.hobbyBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -918,7 +896,6 @@ fun ZoneDetailScreen(
                             actions = boardActions,
                             itemActions = boardItemActions,
                             columns = gridColumns,
-                            hobbyCategoryTree = categoryTree,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else if (uiState.isEntityTab) {
@@ -928,7 +905,6 @@ fun ZoneDetailScreen(
                         val entityBoard = ZoneBoard.fromType(uiState.selectedTab) ?: ZoneBoard.Company
                         ZoneBoardPane(
                             board = entityBoard,
-                            scope = viewModel.zoneScope,
                             content = ZoneBoardContent.Entity(
                                 items = entityState.items,
                                 page = ZoneBoardPageView(
@@ -939,7 +915,6 @@ fun ZoneDetailScreen(
                                     isEndReached = entityState.isEndReached
                                 )
                             ),
-                            filters = ZoneBoardFilters(),
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -1240,8 +1215,15 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 4. 产品高级筛选 / 分类级联两个底板由共享面板 `ZoneBoardPane` 按筛选快照自渲染（与首页同一实现），
-    //    本页不再重复内联（#159）。
+    // 4. 产品高级筛选 / 分类级联两个底板由**宿主**在内容四态之外组合（与首页同一实现）：
+    //    面板在首屏加载/空/错时不挂载，若弹层随面板渲染，「高级筛选」入口在空结果时会点击无响应。
+    if (uiState.isHobbyTab) {
+        ZoneBoardHobbySheets(
+            filters = uiState.hobbyBoardFilters,
+            hobbyCategoryTree = categoryTree,
+            actions = boardActions
+        )
+    }
 
     // 6. 发布弹窗
     if (uiState.showPublishSheet) {

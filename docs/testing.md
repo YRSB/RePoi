@@ -104,9 +104,12 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 
 修复动机与做法（#150 审查 D3 记录，属有意修复而非 scope creep）：
 
-1. 预热改为**一次性** job（不做持续 collect），所有会改写镜像的读写入口先 `awaitPreheat()`
-   （`preheatJob.join()`）再动镜像，从根上消除「写入被旧快照覆盖」的竞态；
-2. `awaitPreheat()` 公开为**有界等待点**，测试用它替代 `delay(10)` + 2s 真实时间轮询
+1. 预热仍是**一次性** job（不做持续 collect）——这一点改动前即已成立；本次真正修根因的是把
+   `preheatJob` 提升为可 join 的 `val`，并在**所有会改写镜像的入口**前置 `awaitPreheat()`，
+   从根上消除「写入被预热协程的旧快照覆盖」的竞态；
+2. 读取侧同样需要屏障：首页 ViewModel 的冷启动偏好（一级/二级/三级）改为在 `awaitPreheat()`
+   之后读取，避免镜像尚未填充时读到默认值并静默丢弃上次选择；
+3. `awaitPreheat()` 公开为**有界等待点**，测试用它替代 `delay(10)` + 2s 真实时间轮询
    （`feedZoneBoard_preheatsFromDataStoreOnColdStart`），不引入重试/睡眠式 flake 掩盖。
 
 判定口径：这类失败是真实时序竞态，不能用「CI 重跑通过」掩盖；修根因后同用例不再依赖真实时钟。

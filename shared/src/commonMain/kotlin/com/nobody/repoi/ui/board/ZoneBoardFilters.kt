@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.board
 
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 
@@ -32,16 +33,16 @@ fun HobbyAdvancedFilterParam.applyTo(base: ZoneHobbyFilter): ZoneHobbyFilter = b
  * 假过滤，本类型刻意不提供 `postsCategory` 字段，证据见 [PostsBoardOptions] KDoc。
  */
 data class ZoneBoardFilters(
-    val subType: String = "recommend",
+    val subType: String = ActionSubType.DEFAULT.apiValue,
     val albumOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
     val albumCategory: Int? = null,
     val postsOrder: String = PostsBoardOptions.DEFAULT_ORDER,
     val hobby: ZoneHobbyFilter = ZoneHobbyFilter(),
-    val resaleType: Int = 1,
+    val resaleType: Int = ResaleBoardOptions.DEFAULT_TYPE,
     val resalePurity: String? = null,
     val resaleKeyword: String = "",
-    /** 产品高级筛选 sheet 显隐（由 pane 自渲染，发布/举报弹层仍留宿主）。 */
+    /** 产品高级筛选 sheet 显隐（由宿主经 `ZoneBoardHobbySheets` 在四态之外渲染）。 */
     val showHobbyFilterSheet: Boolean = false,
-    /** 产品分类级联 sheet 显隐。 */
+    /** 产品分类级联 sheet 显隐（同上，宿主渲染）。 */
     val showHobbyCategoryPickerSheet: Boolean = false
 )

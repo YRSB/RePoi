@@ -26,10 +26,6 @@ data class HomePostsState(
     val errorMessage: String? = null,
     val loadMoreError: String? = null
 ) {
-    /** 首屏/刷新空态判定：置顶帖与普通帖都为空。 */
-    val isEmpty: Boolean
-        get() = items.isEmpty() && pinnedPosts.isEmpty()
-
     /** 作用域切换时清空内容与分页游标，但保留用户选择的排序（按板块记忆的筛选状态）。 */
     fun resetForScope(): HomePostsState = copy(
         items = emptyList(),

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -20,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.loading.PoiLoadingView
 
 /**
  * 板块四态（空 / 错误）的**唯一卡片基元**，由首页与专区详情共享。
@@ -127,8 +127,10 @@ fun ZonePaginationFooter(
     ) {
         when {
             isLoadingMore -> {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp)
+                // 统一加载基元（ADR-0018）：页脚用 28dp 紧凑尺寸，不再直接引用 M3 LoadingIndicator
+                PoiLoadingView(
+                    modifier = Modifier.size(28.dp),
+                    indicatorSize = 28.dp
                 )
             }
             loadMoreError != null -> {

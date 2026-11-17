@@ -35,7 +35,25 @@ data class ZoneHobbyFilter(
     val scale: String? = null,
     val r18: Int? = null
 ) {
-    /** 高级筛选是否生效（性别 / 属性 / 比例 / 观感任一非空即生效）。 */
+    /** 高级筛选是否生效（见 [isHobbyAdvancedFilterActive]）。 */
     val hasAdvancedFilters: Boolean
-        get() = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
+        get() = isHobbyAdvancedFilterActive(sex = sex, specs = specs, scale = scale, r18 = r18)
 }
+
+/**
+ * 高级筛选四维是否**实际生效**（唯一实现，首页产品板块与专区详情共用）。
+ *
+ * 必须与 `ItemRepository.queryHobbyBoard` 的拼参规则同一套「不限」哨兵语义
+ * （`sex` / `r18` 的 `-1`、`scale` 的 `"0"` 视为未设置、不下发）：否则弹层以哨兵值回填时，
+ * 筛选 Chip 会显示为已选中，而请求实际不含任何高级参数。
+ */
+fun isHobbyAdvancedFilterActive(
+    sex: Int?,
+    specs: String?,
+    scale: String?,
+    r18: Int?
+): Boolean =
+    (sex != null && sex != -1) ||
+        !specs.isNullOrBlank() ||
+        (!scale.isNullOrBlank() && scale != "0") ||
+        (r18 != null && r18 != -1)

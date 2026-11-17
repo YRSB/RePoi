@@ -298,16 +298,16 @@ album/list 无 zones 首屏 id = 41327307,41327287,...；zones=52 个全站专�
 | **#161** 实体 5 类 | 单专区与两种聚合都可用：单专区 `zones=<nodeId>`（或 `nodeId`），全部省略，关注 `zones=<逗号串>`（并集）；**不要传 `homeScope`**；注意 works/charactar/person 的 `total` 服务端封顶 10000，翻页逻辑按 `hasMore` 处理 |
 | **#162** 聚合二级板块 | 聚合固定 10 项展示顺序可保留，但需按能力矩阵过滤：全部态 10 项全显示；关注态只显示 `action/album/company/series/works/charactar/person`（`hobby` 待定，`posts/resale_item` 隐藏）；`shop_item/community` 永不出现 |
 
-### 5.1 需要同步修订的设计文档（本 ticket 不改产品/设计代码，仅记录）
+### 5.1 需要同步修订的设计文档（**已于 #163 内完成**）
 
-[docs/home-hierarchy.md](../home-hierarchy.md) 建议由 #162 或后续文档票修订：
+[docs/home-hierarchy.md](../home-hierarchy.md) 已按下述结论修订（现文位置见括号）：
 
-1. §1.4「相册/讨论/二手/商品靠 `zones` 参数表达范围」→ 讨论实际是 `zoneNodeId`（String，仅单值）。
-2. §4 讨论行：`zones` → `zoneNodeId`；聚合参数列应为「无多专区通道」。
-3. §4 产品行与实体行：`zones + homeScope` → **二者互斥**；非空 `homeScope` 会覆盖 `zones`（空串不触发）。
-4. §4 二手行：`zones` 聚合参数的实际语义是**交集**，不能用于关注聚合。
-5. §3.3/§4 白名单：`zone/info.tabs` 会出现 `shop_item`、`community`，客户端白名单过滤正确，无需扩展。
-6. §7.1 验证闸门五项本报告已全部给出结论，可标记完成。
+1. §1.4 / §4 动态与讨论的专区参数：动态只用 `zoneIds`（单区额外重复 `zoneNodeId`）；讨论用 `zoneNodeId`（String、单值）（§1.4、§4 讨论行）。
+2. §4 讨论行：聚合参数列写明「关注聚合无多专区通道 → 隐藏」（§4 讨论行）。
+3. §4 产品行与实体行：`zones` 与 `homeScope` **互斥**，非空 `homeScope` 会覆盖 `zones`（空串不触发）（§4 产品/实体行）。
+4. §4 二手行：`zones` 聚合参数是**交集**语义，不能用于关注聚合（§4 二手行）。
+5. §3.3/§4 白名单：`zone/info.tabs` 的 `shop_item`、`community` 由客户端白名单过滤，无需扩展（§4）。
+6. §7.1 验证闸门五项均已标记完成（§7.1）。
 
 ---
 

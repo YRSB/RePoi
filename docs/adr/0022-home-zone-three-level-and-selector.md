@@ -45,7 +45,7 @@ RePoi 现状与此存在结构性差距：
 
 1. **一级：专区切换器**。顶栏标题 = 「当前专区名 + 展开箭头」，点击后紧凑屏弹 `ModalBottomSheet`（纯文本分组 Chip），≥840dp 用锚定 `DropdownMenu`。列表 = 快捷「全部 / 关注」+「我的专区」（已关注专区，按 `ZoneTabsSettings.sort` 排序）+ 尾部主/次按钮「浏览全部专区」（主）「首页设置」（次）。不提供「进入专区详情」入口，详情页仍由专区广场进入。
 2. **二级：子板块 TabRow**。单区以 `api/zone/info` 的 `tabs[]` 为准，交 RePoi 已实现白名单（10 类）裁剪，保留服务端顺序；聚合态（全部/关注）使用客户端固定 10 类（原版 11 类去掉商品）。使用 `PrimaryScrollableTabRow`。
-3. **三级：板块筛选层**。不做全局统一行：动态 9 项单选 Chip（文案与键值对齐 2.43，`all`→`allInfo`）；相册排序 + 分类；讨论仅排序（原版无分类入口、接口无分类参数，见 [抓包报告附录 C](../../research/aggregate-api-verification.md#附录-c讨论板块分类参数探测)）；产品排序 + 年份/月份 + 分类级联 + 高级筛选抽屉（关注聚合当前隐藏，`homeScope=follow` 需登录态复验）；二手出售/求购（`SegmentedButton`）+ 成色；实体 5 类暂无筛选。筛选条保留现有「随滚动自动收起、到顶强制显示」行为。
+3. **三级：板块筛选层**。不做全局统一行：动态 9 项单选 Chip（文案与键值对齐 2.43，`all`→`allInfo`）；相册排序 + 分类；讨论仅排序（原版无分类入口、接口无分类参数，见 [抓包报告附录 C](../research/aggregate-api-verification.md#附录-c讨论板块分类参数探测)）；产品排序 + 年份/月份 + 分类级联 + 高级筛选抽屉（关注聚合当前隐藏，`homeScope=follow` 需登录态复验）；二手出售/求购（`SegmentedButton`）+ 成色；实体 5 类暂无筛选。筛选条保留现有「随滚动自动收起、到顶强制显示」行为。
 4. **内容复用**：三个层级的展示区复用专区详情已有实现，抽出共享 `ZoneBoardPane`（板块内容 + 筛选 + 分页状态）；`ZoneDetailScreen` 保留自身顶栏/关注按钮/发布入口并复用同一面板，消除两套实现的漂移。
 5. **状态记忆**：一级 `feed_zone_tab_key`（已存在）、二级 `feed_zone_board`（新增，值 `{tabKey}|{type}`）、三级 `feed_sub_type`（已存在）；冷启动若上次为「关注」或不可用则回落「全部」；旧筛选值 `all` 兼容映射为 `allInfo`。
 6. **不做**：商品板块（产品决策）、社群板块（无实现）；聚合态若某板块经抓包验证不可用，则该板块在该场景自动隐藏，不做假入口。
@@ -59,7 +59,7 @@ RePoi 现状与此存在结构性差距：
   - 完全满足 M3「Tabs ≤ 2 级、第三级非 Tab」的层级约束。
 - **消极影响 / 迁移成本**：
   - 需要抽取 `ZoneDetailScreen`（81KB 单文件）中的板块内容与筛选逻辑，回归面大；
-  - 数据层需放宽参数：讨论/二手的 zone 过滤参数由 `Long` 放宽为 `String`，产品补 `homeScope`，实体 5 类由单 `nodeId` 改为 `zones + homeScope`；
+  - 数据层需放宽参数：讨论的专区过滤改用 `zoneNodeId`（String、单值）；二手 `zones` 由 `Long` 放宽为 `String`；实体 5 类由单 `nodeId` 改为 `zones`（支持逗号串并集）。**产品与实体一律不下发 `homeScope`**——非空 `homeScope` 会让服务端忽略 `zones`、退化为全站（抓包实测见报告 §2.2）；产品关注聚合保持隐藏，直至登录态复验 `homeScope=follow`；
   - 聚合态「空 zones 是否等于全站」目前为强推断，上线前需抓包验证，并准备按板块自动隐藏的闸门；
-  - 首页 ViewModel 测试当前被 CI 隔离（`docs/testing.md`），重构缺少回归网，需在实施时先解除隔离或新增未隔离测试类。
+  - 首页 ViewModel 测试曾因真实 DataStore IO 被 CI 隔离，本重构前已改为注入内存 DataStore 并解除隔离（见 `docs/testing.md` 登记表与 [docs/home-hierarchy.md](../home-hierarchy.md) §7.3）。
 - **相关文档**：详细设计规格与逆向事实见 [docs/home-hierarchy.md](../home-hierarchy.md)；术语见 [GLOSSARY.md](../../GLOSSARY.md)。

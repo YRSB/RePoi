@@ -1,7 +1,6 @@
 package com.nobody.repoi.ui.board
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
@@ -16,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.PostItem
-import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
@@ -56,23 +54,19 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *    投影进 [ZoneBoardPageView]。
  * 5. 内部用 `when(board)` 分派而不是泛型化，保留各板块类型安全；迁移新板块时在此加分支并在
  *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardActions] 补对应字段与方法。
- * 6. 产品板块的两个弹层（高级筛选 / 分类级联）由本面板按 [filters] 的可见性自渲染，
- *    首页与专区详情都不再各自复制一份（见 #159）。
+ * 6. 产品板块的两个弹层（高级筛选 / 分类级联）**不在本面板内**：面板只在其「有内容」时存在，
+ *    而首页在空/错/加载态用卡片或加载视图顶替面板，弹层若挂在面板内会让筛选入口在空结果时点击无响应
+ *    （并因显隐标志残留导致后续自行弹出）。宿主须在四态之外无条件组合 [ZoneBoardHobbySheets]（见 #159）。
  * 7. 六个板块的空/错/加载页脚骨架统一收在 [BoardGridContainer]（#150 审查 B6），
  *    避免新增板块时再复制一份「错误卡片 + 空卡片 + 分页页脚」。
  *
  * @param board 当前板块
- * @param scope 当前查询作用域（首页 All/Follow/Single；详情固定 Single），面板不自行拼参
  * @param content 当前板块内容快照
- * @param filters 当前板块筛选值快照（动态 `subType`、分享 `albumOrder` / `albumCategory`、
- *   讨论 `postsOrder`、二手 `resaleType` / `resalePurity`、产品 [ZoneHobbyFilter] 与两个弹层显隐；
- *   实体 5 类暂无筛选项）
  * @param gridState 宿主持有的瀑布流滚动状态
  * @param contentPadding 宿主注入的内容边距
  * @param actions 筛选 / 分页动作
  * @param itemActions 条目点击 / 图片浏览动作
  * @param columns 宿主算好的列数策略（产品与相册按各自规则在面板内计算，不使用该参数）
- * @param hobbyCategoryTree 产品分类树（`parentId -> 子分类`），供分类级联弹层读取；聚合态可传空
  * @param showPinnedPosts 讨论板块是否渲染置顶帖条：单专区 true、聚合态（全部）必须 false
  *   （置顶是单专区语义；关注聚合已由 `homeBoardsFor` 隐藏整个讨论板块）
  * @param modifier 宿主修饰符（通常 `Modifier.fillMaxSize()`）
@@ -80,15 +74,12 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 @Composable
 fun ZoneBoardPane(
     board: ZoneBoard,
-    scope: ZoneQueryScope,
     content: ZoneBoardContent,
-    filters: ZoneBoardFilters,
     gridState: LazyStaggeredGridState,
     contentPadding: PaddingValues,
     actions: ZoneBoardActions,
     itemActions: ZoneBoardItemActions,
     columns: StaggeredGridCells,
-    hobbyCategoryTree: Map<Int, List<CategoryItem>> = emptyMap(),
     showPinnedPosts: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -163,8 +154,12 @@ fun ZoneBoardPane(
             } else {
                 val onPostClick: (PostItem) -> Unit = itemActions.onPostClick ?: {}
                 val onPostImageClick: (List<String>, Int) -> Unit = itemActions.onPostImageClick ?: { _, _ -> }
+                // 只统计真正会渲染的条目：showPinnedPosts=false 时置顶条不渲染，
+                // 若仍计入 itemCount，空列表会被误判为「有内容」，空态/首屏错误态被吞掉。
+                val visiblePinnedCount =
+                    if (showPinnedPosts) postsContent.pinnedPosts.size else 0
                 BoardGridContainer(
-                    itemCount = postsContent.items.size + postsContent.pinnedPosts.size,
+                    itemCount = postsContent.items.size + visiblePinnedCount,
                     page = postsContent.page,
                     emptyText = "暂无相关讨论",
                     columns = columns,
@@ -224,8 +219,9 @@ fun ZoneBoardPane(
                             item = item,
                             onClick = { itemActions.onResaleClick?.invoke(item) },
                             onUserClick = itemActions.onResaleUserClick,
-                            onContactClick = { itemActions.onResaleContactClick?.invoke(item) },
-                            onMoreClick = { itemActions.onResaleMoreClick?.invoke(item) }
+                            // 可空回调原样透传：卡片据 null 隐藏「联系」「更多」，避免渲染可点但无响应的假入口
+                            onContactClick = itemActions.onResaleContactClick?.let { click -> { click(item) } },
+                            onMoreClick = itemActions.onResaleMoreClick?.let { click -> { click(item) } }
                         )
                     }
                 }
@@ -245,69 +241,38 @@ fun ZoneBoardPane(
                         StaggeredGridCells.Adaptive(minSize = 420.dp)
                     }
                 }
-                Box(modifier = modifier.fillMaxSize()) {
-                    BoardGridContainer(
-                        itemCount = hobbyContent.items.size,
-                        page = hobbyContent.page,
-                        emptyText = "暂无相关产品",
-                        columns = hobbyColumns,
-                        gridState = gridState,
-                        contentPadding = contentPadding,
-                        modifier = Modifier,
-                        actions = actions
-                    ) {
-                        if (hobbyContent.isGridMode) {
-                            items(
-                                items = hobbyContent.items,
-                                key = { item -> "zone_hobby_grid_${item.actualItemId}" },
-                                contentType = { "hobby_grid" }
-                            ) { item ->
-                                HobbyGridCard(
-                                    item = item,
-                                    onClick = { itemActions.onHobbyClick?.invoke(item) }
-                                )
-                            }
-                        } else {
-                            items(
-                                items = hobbyContent.items,
-                                key = { item -> "zone_hobby_list_${item.actualItemId}" },
-                                contentType = { "hobby_list" }
-                            ) { item ->
-                                HobbyListCard(
-                                    item = item,
-                                    onClick = { itemActions.onHobbyClick?.invoke(item) }
-                                )
-                            }
+                BoardGridContainer(
+                    itemCount = hobbyContent.items.size,
+                    page = hobbyContent.page,
+                    emptyText = "暂无相关产品",
+                    columns = hobbyColumns,
+                    gridState = gridState,
+                    contentPadding = contentPadding,
+                    modifier = modifier,
+                    actions = actions
+                ) {
+                    if (hobbyContent.isGridMode) {
+                        items(
+                            items = hobbyContent.items,
+                            key = { item -> "zone_hobby_grid_${item.actualItemId}" },
+                            contentType = { "hobby_grid" }
+                        ) { item ->
+                            HobbyGridCard(
+                                item = item,
+                                onClick = { itemActions.onHobbyClick?.invoke(item) }
+                            )
                         }
-                    }
-
-                    // 两个产品筛选弹层由面板统一渲染：可见性来自 [filters]，宿主（首页/详情）无需复制。
-                    // 确定 / 重置会触发筛选 reload，此时列表进入加载态、面板可能被宿主的加载视图替换，
-                    // 故这两个动作同时关闭弹层，避免重新装载后面板复挂载时弹层「回弹」。
-                    if (filters.showHobbyFilterSheet) {
-                        HobbyFilterAdaptiveSheet(
-                            filterParam = filters.hobby.toAdvancedFilterParam(),
-                            onDismiss = { actions.onHobbyFilterSheetVisible(false) },
-                            onApply = { filterParam ->
-                                actions.onHobbyAdvancedApply(filterParam)
-                                actions.onHobbyFilterSheetVisible(false)
-                            },
-                            onReset = {
-                                actions.onHobbyAdvancedReset()
-                                actions.onHobbyFilterSheetVisible(false)
-                            }
-                        )
-                    }
-                    if (filters.showHobbyCategoryPickerSheet) {
-                        CategoryPickerSheet(
-                            selectedCategoryId = filters.hobby.categoryId,
-                            selectedSubCategoryId = filters.hobby.subCategoryId,
-                            getSubCategories = { parentId -> hobbyCategoryTree[parentId].orEmpty() },
-                            onCategorySelected = { categoryId, subCategoryId ->
-                                actions.onHobbyCategory(categoryId, subCategoryId)
-                            },
-                            onDismiss = { actions.onHobbyCategoryPickerVisible(false) }
-                        )
+                    } else {
+                        items(
+                            items = hobbyContent.items,
+                            key = { item -> "zone_hobby_list_${item.actualItemId}" },
+                            contentType = { "hobby_list" }
+                        ) { item ->
+                            HobbyListCard(
+                                item = item,
+                                onClick = { itemActions.onHobbyClick?.invoke(item) }
+                            )
+                        }
                     }
                 }
             }
@@ -351,6 +316,50 @@ fun ZoneBoardPane(
 }
 
 /**
+ * 产品板块的两个弹层（高级筛选 / 分类级联），由**宿主**无条件组合（与内容四态解耦）。
+ *
+ * 为什么不在 [ZoneBoardPane] 内：首页在首屏加载 / 空态 / 错误态时用卡片或加载视图顶替面板，
+ * 若弹层随面板一起消失，筛选条上的「高级筛选」「分类」入口就会变成点击无反馈的死入口；
+ * 弹层显隐标志还会残留，等列表恢复后自行弹出。宿主必须在 `when` 四态之外调用本函数，
+ * 并只在当前板块为 [ZoneBoard.Hobby] 时组合，避免切板块后残留弹层。
+ *
+ * @param filters 产品筛选快照（含两个弹层的显隐与已选值）
+ * @param hobbyCategoryTree 产品分类树（`parentId -> 子分类`）
+ */
+@Composable
+fun ZoneBoardHobbySheets(
+    filters: ZoneBoardFilters,
+    hobbyCategoryTree: Map<Int, List<CategoryItem>>,
+    actions: ZoneBoardActions
+) {
+    if (filters.showHobbyFilterSheet) {
+        HobbyFilterAdaptiveSheet(
+            filterParam = filters.hobby.toAdvancedFilterParam(),
+            onDismiss = { actions.onHobbyFilterSheetVisible(false) },
+            onApply = { filterParam ->
+                actions.onHobbyAdvancedApply(filterParam)
+                actions.onHobbyFilterSheetVisible(false)
+            },
+            onReset = {
+                actions.onHobbyAdvancedReset()
+                actions.onHobbyFilterSheetVisible(false)
+            }
+        )
+    }
+    if (filters.showHobbyCategoryPickerSheet) {
+        CategoryPickerSheet(
+            selectedCategoryId = filters.hobby.categoryId,
+            selectedSubCategoryId = filters.hobby.subCategoryId,
+            getSubCategories = { parentId -> hobbyCategoryTree[parentId].orEmpty() },
+            onCategorySelected = { categoryId, subCategoryId ->
+                actions.onHobbyCategory(categoryId, subCategoryId)
+            },
+            onDismiss = { actions.onHobbyCategoryPickerVisible(false) }
+        )
+    }
+}
+
+/**
  * 板块内容区的统一瀑布流骨架（#150 审查 B6：六个板块原本各有一份同构实现）。
  *
  * 只负责「空态 / 错误态 / 内容 + 分页页脚」三态骨架；条目本身由 [itemsContent] 注入
@@ -387,7 +396,11 @@ private fun BoardGridContainer(
         val errorMessage = page.errorMessage
         when {
             errorMessage != null && itemCount == 0 -> {
-                item(key = "zone_board_error", span = StaggeredGridItemSpan.FullLine) {
+                item(
+                    key = "zone_board_error",
+                    contentType = "zone_board_placeholder",
+                    span = StaggeredGridItemSpan.FullLine
+                ) {
                     ZoneErrorPlaceholder(
                         message = errorMessage,
                         onRetry = { actions.onRetryInitial() }
@@ -395,7 +408,11 @@ private fun BoardGridContainer(
                 }
             }
             itemCount == 0 -> {
-                item(key = "zone_board_empty", span = StaggeredGridItemSpan.FullLine) {
+                item(
+                    key = "zone_board_empty",
+                    contentType = "zone_board_placeholder",
+                    span = StaggeredGridItemSpan.FullLine
+                ) {
                     ZoneEmptyPlaceholder(
                         text = emptyText,
                         onRefresh = { actions.onRetryInitial() }
@@ -405,7 +422,11 @@ private fun BoardGridContainer(
             else -> {
                 header?.invoke(this)
                 itemsContent()
-                item(key = "zone_board_footer", span = StaggeredGridItemSpan.FullLine) {
+                item(
+                    key = "zone_board_footer",
+                    contentType = "zone_board_footer",
+                    span = StaggeredGridItemSpan.FullLine
+                ) {
                     ZonePaginationFooter(
                         isLoadingMore = page.isLoadingMore,
                         loadMoreError = page.loadMoreError,

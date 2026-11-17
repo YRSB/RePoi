@@ -29,10 +29,14 @@ import kotlinx.serialization.json.Json
 
 /**
  * 专区数据仓储，负责管理专区首页标签、专区分组、关注专区状态及专区设置。
+ *
+ * @param visitReportScope 访问上报（`zone/home-tabs/visited`）专用作用域。默认独立 IO scope；
+ *   测试可注入虚拟调度器作用域，从而确定性地断言「首页未上报访问」而不依赖真实线程时序。
  */
 class ZoneRepository(
     private val api: HpoiApi,
-    private val viewPreferencesManager: ViewPreferencesManager
+    private val viewPreferencesManager: ViewPreferencesManager,
+    private val visitReportScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -112,7 +116,7 @@ class ZoneRepository(
      */
     suspend fun getZoneInfo(nodeId: Long, reportVisit: Boolean = true): Result<ZoneInfoPayload> = runCatching {
         if (reportVisit && nodeId > 0L) {
-            repositoryScope.launch {
+            visitReportScope.launch {
                 runCatching { api.reportZoneVisited(nodeId = nodeId) }
             }
         }

@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -165,7 +167,16 @@ class ZoneRepositoryTest {
 
     @Test
     fun getZoneInfo_withReportVisitDisabled_skipsVisitedRequest() = runTest {
-        val (mock, repository) = setup()
+        // 访问上报是 fire-and-forget：必须把上报作用域与请求引擎都放到虚拟调度器上，
+        // 否则「未上报」断言取决于真实线程时序（可能永远为真，回归时也检测不到）。
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val mock = MockApi()
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        val repository = ZoneRepository(
+            api = mock.api(dispatcher),
+            viewPreferencesManager = preferences,
+            visitReportScope = CoroutineScope(dispatcher)
+        )
         mock.route("api/zone/home-tabs/visited", """{"success":true,"code":200,"msg":"ok"}""")
         mock.route(
             "api/zone/info",

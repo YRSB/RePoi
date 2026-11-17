@@ -57,9 +57,6 @@ data class HomeHobbyBoardState(
     /** 高级筛选是否生效（悬浮入口选中态）。 */
     val hasAdvancedFilters: Boolean get() = filter.hasAdvancedFilters
 
-    /** 高级筛选弹层入参。 */
-    val advancedFilterParam: HobbyAdvancedFilterParam get() = filter.toAdvancedFilterParam()
-
     /** 传给共享面板的筛选快照。 */
     val filters: ZoneBoardFilters
         get() = ZoneBoardFilters(
@@ -206,7 +203,11 @@ class HomeHobbyBoardController(
             return
         }
         query = HobbyBoardQuery(scope = zoneScope, filter = _state.value.filter)
-        _state.update { it.copy(isLoaded = true, errorMessage = null, loadMoreError = null) }
+        // 与首屏请求同步置位：宿主在 loader 状态回写前会读到 isLoaded=true/isLoading=false，
+        // 从而闪一帧「暂无相关产品」空态卡片（动态/分享/实体板块均已同步置位规避）。
+        _state.update {
+            it.copy(isLoaded = true, isLoading = true, errorMessage = null, loadMoreError = null)
+        }
         loader.loadInitial()
     }
 
@@ -225,7 +226,7 @@ class HomeHobbyBoardController(
             return
         }
         query = HobbyBoardQuery(scope = zoneScope, filter = _state.value.filter)
-        _state.update { it.copy(errorMessage = null, loadMoreError = null) }
+        _state.update { it.copy(isRefreshing = true, errorMessage = null, loadMoreError = null) }
         loader.refresh()
     }
 

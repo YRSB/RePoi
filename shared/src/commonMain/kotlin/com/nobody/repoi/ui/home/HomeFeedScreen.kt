@@ -68,6 +68,7 @@ import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
+import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
@@ -127,6 +128,10 @@ fun HomeFeedScreen(
     val useZoneSwitcherDropdown =
         windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
     var zoneSwitcherExpanded by remember { mutableStateOf(false) }
+    // 两种呈现共享同一展开标志：跨 840dp 断点时收起，避免另一套呈现首次组合即自动弹出
+    LaunchedEffect(useZoneSwitcherDropdown) {
+        zoneSwitcherExpanded = false
+    }
     val onCloseZoneSwitcher = { zoneSwitcherExpanded = false }
     val onSelectZoneTab: (String) -> Unit = { tabKey ->
         zoneSwitcherExpanded = false
@@ -151,16 +156,12 @@ fun HomeFeedScreen(
             selectAlbumCategory = viewModel::selectAlbumCategory,
             selectResaleType = viewModel::selectResaleType,
             selectResalePurity = viewModel::selectResalePurity,
-            resaleKeywordChange = viewModel::updateResaleKeyword,
-            resaleSearch = viewModel::submitResaleSearch,
             retryInitial = viewModel::retrySelectedBoard,
             loadMore = viewModel::loadMoreSelectedBoard,
             hobbyOrder = viewModel::selectHobbyOrder,
             hobbyYear = viewModel::selectHobbyYear,
             hobbyMonth = viewModel::selectHobbyMonth,
             hobbyCategory = viewModel::selectHobbyCategory,
-            hobbyKeywordChange = viewModel::updateHobbyKeyword,
-            hobbySearch = viewModel::submitHobbySearch,
             hobbyAdvancedApply = viewModel::applyHobbyAdvancedFilters,
             hobbyAdvancedReset = viewModel::resetHobbyAdvancedFilters,
             hobbyViewMode = viewModel::toggleHobbyViewMode,
@@ -236,6 +237,7 @@ fun HomeFeedScreen(
             onPostUserClick = onNavigateToUser,
             onAlbumClick = handleAlbumClick,
             onResaleClick = handleResaleClick,
+            onResaleUserClick = onNavigateToUser,
             onHobbyClick = handleHobbyClick,
             onEntityClick = onEntityClick
         )
@@ -389,9 +391,13 @@ fun HomeFeedScreen(
         if (boardItemCount <= 0) return@LaunchedEffect
         if (restoredKey == currentBoardKey) return@LaunchedEffect
         val memory = viewModel.scrollMemoryFor(currentBoardKey)
-        if (memory.index != 0 || memory.offset != 0) {
+        // 记忆跨专区保留，但切专区后只重新加载第一页：下标可能超出当前已加载条目数。
+        // 越界时按「无记忆」处理并清掉脏数据，否则 Lazy 网格会停在已加载页末尾并把钳制后的位置写回记忆。
+        val inRange = memory.index in 0 until boardItemCount
+        if (inRange && (memory.index != 0 || memory.offset != 0)) {
             staggeredGridState.scrollToItem(memory.index, memory.offset)
         } else {
+            if (!inRange) viewModel.resetBoardScrollMemory(currentBoardKey)
             // 该键尚无记忆：首次进入该板块，回顶并展开筛选层
             staggeredGridState.scrollToItem(0)
         }
@@ -529,9 +535,7 @@ fun HomeFeedScreen(
                         // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
                         ZoneBoardPane(
                             board = uiState.selectedBoard,
-                            scope = uiState.zoneScope,
                             content = uiState.currentBoardContent,
-                            filters = uiState.currentBoardFilters,
                             gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
@@ -542,7 +546,6 @@ fun HomeFeedScreen(
                             actions = boardActions,
                             itemActions = boardItemActions,
                             columns = if (uiState.selectedBoard == ZoneBoard.Resale) resaleColumns else feedColumns,
-                            hobbyCategoryTree = hobbyCategoryTree,
                             // 置顶帖条是单专区语义：聚合态（全部）不渲染
                             showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
                             modifier = Modifier.fillMaxSize()
@@ -550,6 +553,16 @@ fun HomeFeedScreen(
                     }
                 }
             }
+        }
+
+        // 产品两个弹层挂在四态之外（见 `ZoneBoardPane` 约束 6）：空/错/加载态下筛选入口仍可用，
+        // 也不会因面板重新挂载而残留弹层。
+        if (uiState.selectedBoard == ZoneBoard.Hobby) {
+            ZoneBoardHobbySheets(
+                filters = uiState.currentBoardFilters,
+                hobbyCategoryTree = hobbyCategoryTree,
+                actions = boardActions
+            )
         }
 
         // 三级筛选行（可折叠）：位移由 scrollBehavior 驱动，高度实测回填头部高度栈

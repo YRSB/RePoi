@@ -16,7 +16,6 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -27,6 +26,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -50,7 +50,9 @@ class HomeFeedAlbumBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        testDispatcher.cancelChildren()
+        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
+        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
@@ -361,6 +363,37 @@ class HomeFeedAlbumBoardTest {
         val state = viewModel.uiState.value
         assertEquals(24, state.albumItems.size)
         assertFalse(state.albumHasMore, "整页均为重复项时应判定到底")
+    }
+
+    @Test
+    fun albumFailure_showsErrorThenRetryLoads() = runTest(testDispatcher) {
+        val env = env()
+        env.albumMock.replaceRoute(
+            "api/album/list",
+            """{"success":false,"code":500,"msg":"网络异常","data":null}"""
+        )
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Album)
+        advanceUntilIdle()
+
+        val failed = viewModel.uiState.value
+        assertEquals("网络异常", failed.albumErrorMessage)
+        assertTrue(failed.albumItems.isEmpty())
+        assertFalse(failed.isAlbumLoading)
+        assertFalse(failed.currentBoardIsLoadingMore)
+
+        env.albumMock.replaceRoute(
+            "api/album/list",
+            """{"success":true,"code":200,"msg":"ok","data":{"page":1,"list":[{"id":61,"itemId":1061,"nameCN":"相册61","cover":"c.jpg"}]}}"""
+        )
+        viewModel.retrySelectedBoard()
+        advanceUntilIdle()
+
+        val retried = viewModel.uiState.value
+        assertNull(retried.albumErrorMessage)
+        assertEquals(listOf(61L), retried.albumItems.ids())
+        assertEquals("1", env.albumMock.lastRequest().formEntries()["page"])
     }
 
     @Test

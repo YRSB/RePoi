@@ -60,8 +60,8 @@ import kotlinx.datetime.toLocalDateTime
  * 证据见 [PostsBoardOptions] KDoc。
  *
  * 产品行内的两个弹层（[com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet] 与
- * [com.nobody.repoi.ui.item.list.components.CategoryPickerSheet]）由 `ZoneBoardPane` 按筛选快照自渲染，
- * 本组件只负责「打开」入口与悬浮 Chip 的选中态。
+ * [com.nobody.repoi.ui.item.list.components.CategoryPickerSheet]）由宿主经 `ZoneBoardHobbySheets`
+ * 在内容四态之外渲染，本组件只负责「打开」入口与悬浮 Chip 的选中态。
  *
  * @param subTypeOptions 动态筛选选项（键 → 文案）。由宿主传入共享定义 `ActionSubType` 派生列表，
  *   本组件不持有文案/键值，避免两处定义漂移。
@@ -238,7 +238,7 @@ fun ZoneBoardFilterBar(
                     val currentOrderLabel = HobbyBoardOptions.ORDERS
                         .firstOrNull { it.first == hobby.order }
                         ?.second
-                        ?: "7天热度"
+                        ?: HobbyBoardOptions.ORDERS.first().second
                     FilterDropdownChip(
                         label = currentOrderLabel,
                         isSelected = hobby.order != HobbyBoardOptions.DEFAULT_ORDER,
@@ -277,11 +277,11 @@ fun ZoneBoardFilterBar(
                     onClick = { actions.onHobbyCategoryPickerVisible(true) }
                 )
 
-                // 3. 年份下拉
-                val currentYear = Clock.System.now()
-                    .toLocalDateTime(TimeZone.currentSystemDefault())
-                    .year
-                val yearOptions = HobbyBoardOptions.yearOptions(currentYear)
+                // 3. 年份下拉（候选按当前年份一次性派生，避免每次重组读系统时钟并重建列表）
+                val currentYear = remember {
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
+                }
+                val yearOptions = remember(currentYear) { HobbyBoardOptions.yearOptions(currentYear) }
                 Box {
                     var showYearMenu by remember { mutableStateOf(false) }
                     val hasYear = (hobby.releaseYear ?: 0) > 0

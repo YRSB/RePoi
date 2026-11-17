@@ -37,7 +37,9 @@ import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.home.ENTITY_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.isHobbyAdvancedFilterActive
 import com.nobody.repoi.util.paging.KeyedListLoader
+import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
 import com.nobody.repoi.util.paging.LoadStage
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
@@ -77,8 +79,9 @@ data class ZoneHobbyTabState(
     val showCategoryPickerSheet: Boolean = false,
     val isSearchActive: Boolean = false
 ) {
+    /** 高级筛选是否实际生效（与 `queryHobbyBoard` 拼参同一套哨兵语义，见 `isHobbyAdvancedFilterActive`）。 */
     val hasAdvancedFilters: Boolean
-        get() = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
+        get() = isHobbyAdvancedFilterActive(sex = sex, specs = specs, scale = scale, r18 = r18)
 }
 
 /**
@@ -285,24 +288,13 @@ class ZoneDetailViewModel(
      * 动态筛选项（key = 协议键值 `subType`，value = 2.43 中文文案）。
      *
      * 与首页共用唯一共享定义 [ActionSubType]，界面仍按有序 `(key, label)` 列表渲染。
+     * 其余板块的选项列表（分享排序 / 二手类型与成色）已由 `ZoneBoardFilterBar` 直接读共享定义，
+     * 这里不再保留第二份。
      */
     val subTypes: List<Pair<String, String>> =
         ActionSubType.ordered.map { it.apiValue to it.label }
 
-    /** 分享板块 6 档排序（共享定义 [AlbumBoardOptions]，与首页共用，禁止两处硬编码）。 */
-    val albumOrders: List<Pair<String, String>> = AlbumBoardOptions.ORDERS
-
-    /** 二手交易类型（共享定义 [ResaleBoardOptions.TYPES]，首页/详情/市场唯一来源）。 */
-    val resaleTypes: List<Pair<Int, String>> = ResaleBoardOptions.TYPES
-
-    /** 二手成色（共享定义 [ResaleBoardOptions.PURITIES]，含 `null` 全部成色）。 */
-    val resalePurities: List<Pair<String?, String>> = ResaleBoardOptions.PURITIES
-
     val categoryTree: StateFlow<Map<Int, List<CategoryItem>>> = categoryManager.categoryMap
-
-    fun getSubCategories(parentId: Int): List<CategoryItem> {
-        return categoryManager.getSubCategories(parentId)
-    }
 
     private val _uiState = MutableStateFlow(
         ZoneDetailUiState(
@@ -1009,9 +1001,11 @@ class ZoneDetailViewModel(
             )
             result.onSuccess { newItems ->
                 _uiState.update { state ->
-                    val existingIds = (state.pinnedPosts.map { it.id } + state.postsItems.map { it.id }).toSet()
+                    val existingPosts = state.pinnedPosts + state.postsItems
+                    val existingIds = existingPosts.mapTo(HashSet()) { it.id }
                     val uniqueNewItems = newItems.filterNot { it.id in existingIds }
-                    val hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE && uniqueNewItems.isNotEmpty()
+                    val hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
+                        newItems.hasNewKeysAfterDedup(existingPosts) { it.id }
                     state.copy(
                         postsItems = state.postsItems + uniqueNewItems,
                         postsPage = nextPage,
