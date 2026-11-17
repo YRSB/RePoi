@@ -7,14 +7,17 @@ import androidx.compose.runtime.remember
 import com.nobody.repoi.platform.isLandscapeOrientation
 
 /**
- * 二手（`resale_item`）板块的交易类型与成色选项：首页、专区详情与二手市场**唯一**共享定义（issue #160）。
+ * 二手（`resale_item`）板块的交易类型与成色选项：**首页与专区详情两者**共享的唯一定义（issue #160）。
  *
  * 协议参数（`POST api/resale/search`，匿名实测见 `docs/research/aggregate-api-verification.md` §3/§5）：
  * - `type`：`1` 出售 / `2` 求购；
- * - `puritys`：成色多选键（`11/9/8/7`），空表示全部成色（省略参数）；
+ * - `puritys`：成色多选键，本对象沿用专区详情历史新增的一套精简键域（`11/9/8/7`），空表示全部成色（省略参数）；
  * - `zones`：单专区为 `nodeId` 字符串；「全部」聚合省略；关注聚合因逗号串按**交集**处理而不可用。
  *
- * 禁止在首页/详情/市场各写一份（与 [AlbumBoardOptions] 同属「共享常量收敛」）。
+ * 已知不一致（刻意保持现状，勿在二手市场直接复用本对象）：`ui/resale/ResaleMarketScreen` 仍持有原版
+ * **全量**成色键域（`10/9/8/7/6/5/4/11/12`：全新未拆/仅拆/无暇/拆摆/有瑕疵/断件少件/垃圾成色/转单/配件赠品），
+ * 与本对象的键→文案映射不是同一套（例如 `11` 此处为「全新未拆」、市场为「转单」）。两处都直接下发
+ * 同一个 `puritys` 参数，因此**跨屏复制该表会把成色筛成另一类**——市场迁移前必须先把两边键域对齐再收敛。
  */
 object ResaleBoardOptions {
     /** 默认交易类型：出售（与专区详情历史默认值一致）。 */

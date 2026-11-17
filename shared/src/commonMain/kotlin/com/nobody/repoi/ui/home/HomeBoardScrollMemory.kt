@@ -17,20 +17,13 @@ data class HomeBoardScrollMemory(
 )
 
 /**
- * 滚动记忆键：`{scopeKey}|{board.type}`，如 `all|action` / `follow:100,200|action` / `z100|action`。
+ * 滚动记忆键：`{scope.stateKey()}|{board.type}`，如 `all|action` / `follow:100,200|action` / `z100|action`。
  *
- * 关注作用域对 id **归一化**（去重 + 升序）后再拼接：关注集合的顺序随 `ZoneTabsSettings.sort`
- * （`recent` / `custom`）变化，若直接沿用原序，同一逻辑作用域会产生多个键，切换后取不到旧记忆
- * 并让宿主的恢复副作用反复触发。`All` / `Single` 保持原样。
+ * 关注作用域的顺序归一（去重 + 升序）由 [ZoneQueryScope.stateKey] 负责：同一逻辑作用域的键必须唯一，
+ * 否则 `ZoneTabsSettings.sort`（`recent` / `custom`）改变顺序后旧记忆不可达，宿主的恢复副作用会反复触发。
  *
  * 注意：本键仅用于内存滚动记忆，**不是** `feed_zone_board` 的落盘形态（落盘一级部分是 `follow`，
  * 不带 id 列表），两者不要互相解码。
  */
-fun homeBoardMemoryKey(scope: ZoneQueryScope, board: ZoneBoard): String {
-    val scopeKey = if (scope is ZoneQueryScope.Follow) {
-        "follow:" + scope.zoneIds.distinct().sorted().joinToString(",")
-    } else {
-        scope.stateKey()
-    }
-    return "$scopeKey|${board.type}"
-}
+fun homeBoardMemoryKey(scope: ZoneQueryScope, board: ZoneBoard): String =
+    "${scope.stateKey()}|${board.type}"

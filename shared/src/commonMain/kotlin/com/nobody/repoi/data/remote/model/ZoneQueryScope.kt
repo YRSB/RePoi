@@ -48,10 +48,16 @@ sealed interface ZoneQueryScope {
     /** `zoneNodeId` 参数：仅 [Single] 有值（动态与讨论板块使用，讨论不接受逗号串）。 */
     fun zoneNodeId(): Long? = (this as? Single)?.nodeId
 
-    /** 滚动 / 筛选记忆键：`all` / `follow:1,2` / `z123`（对齐原版 `categoryId|supType|zoneNodeId|zoneIds` 的作用域维度）。 */
+    /**
+     * 作用域记忆键：`all` / `follow:1,2` / `z123`（对齐原版 `categoryId|supType|zoneNodeId|zoneIds` 的作用域维度）。
+     *
+     * [Follow] 先**去重 + 升序**再拼接：关注集合顺序由 `ZoneTabsSettings.sort`（`recent` / `custom`）决定，
+     * 同一个逻辑作用域若按原序拼键，`custom` 排序调整后旧键不可达（滚动记忆/筛选折叠比例丢失，
+     * 且历史顺序会留下无主条目）。`zonesParam()` 保持原序（协议不要求有序，且改它会影响请求体）。
+     */
     fun stateKey(): String = when (this) {
         All -> "all"
-        is Follow -> "follow:" + zoneIds.joinToString(",")
+        is Follow -> "follow:" + zoneIds.distinct().sorted().joinToString(",")
         is Single -> "z$nodeId"
     }
 }

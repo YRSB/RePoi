@@ -42,7 +42,8 @@ class ZoneQueryScopeTest {
 
         assertEquals("33476094,39989602,39228575", scope.zonesParam())
         assertNull(scope.zoneNodeId())
-        assertEquals("follow:33476094,39989602,39228575", scope.stateKey())
+        // 记忆键归一：去重 + 升序（与请求参顺序无关，见 stateKey KDoc）
+        assertEquals("follow:33476094,39228575,39989602", scope.stateKey())
         assertFalse(scope.isFollowEmpty)
     }
 
@@ -80,6 +81,19 @@ class ZoneQueryScopeTest {
             ZoneQueryScope.Follow(listOf(1L, 2L)).stateKey(),
             ZoneQueryScope.Follow(listOf(1L, 2L)).stateKey()
         )
+    }
+
+    @Test
+    fun stateKey_followNormalizesOrderAndDuplicates() {
+        // 关注集合顺序由 ZoneTabsSettings.sort（recent/custom）决定：换序不得产生第二个记忆键，
+        // 否则 custom 排序调整后滚动位置与筛选折叠比例丢失（旧键无人回收）。
+        val canonical = ZoneQueryScope.Follow(listOf(1L, 2L, 3L)).stateKey()
+
+        assertEquals("follow:1,2,3", canonical)
+        assertEquals(canonical, ZoneQueryScope.Follow(listOf(3L, 1L, 2L)).stateKey())
+        assertEquals(canonical, ZoneQueryScope.Follow(listOf(2L, 3L, 1L, 2L)).stateKey())
+        // 请求参仍保持原序：归一只作用于记忆键
+        assertEquals("3,1,2", ZoneQueryScope.Follow(listOf(3L, 1L, 2L)).zonesParam())
     }
 
     @Test
