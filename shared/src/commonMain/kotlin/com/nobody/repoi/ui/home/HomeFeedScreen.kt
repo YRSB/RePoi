@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -54,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
@@ -268,11 +271,6 @@ fun HomeFeedScreen(
         ),
         canScroll = { boardItemCount > 0 }
     )
-    LaunchedEffect(headerStack.collapsibleHeightPx) {
-        scrollBehavior.state.heightOffsetLimit = -headerStack.collapsibleHeightPx
-        scrollBehavior.state.heightOffset =
-            scrollBehavior.state.heightOffset.coerceIn(-headerStack.collapsibleHeightPx, 0f)
-    }
 
     // 没有可用板块时二级 Tab 与筛选行都不渲染：把两层实测高度归零，避免内容被空档顶开。
     LaunchedEffect(uiState.boards.isEmpty()) {
@@ -305,12 +303,22 @@ fun HomeFeedScreen(
     val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
 
     // 折叠比例按「作用域 + 板块」键恢复；滚动位置由各页自己的瀑布流状态保存。
-    LaunchedEffect(currentBoardKey, boardItemCount > 0) {
-        if (boardItemCount <= 0) return@LaunchedEffect
-        val memory = viewModel.scrollMemoryFor(currentBoardKey)
-        scrollBehavior.state.contentOffset = 0f
-        scrollBehavior.state.heightOffset =
-            -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
+    // 高度实测（当前页筛选行换行数不同）也走这里重算：筛选行已进页内，
+    // 切板块瞬间拿到的还是上一板块的实测高度，等新页测量回填后必须按记忆比例重新折算，
+    // 否则压缩后的比例会被页内快照写回，漂移被固化（原实现的已知缺陷）。
+    LaunchedEffect(currentBoardKey, headerStack.collapsibleHeightPx, boardItemCount > 0) {
+        val filterHeight = headerStack.collapsibleHeightPx
+        scrollBehavior.state.heightOffsetLimit = -filterHeight
+        if (boardItemCount > 0) {
+            val fraction = viewModel.scrollMemoryFor(currentBoardKey).filterCollapseFraction
+            scrollBehavior.state.contentOffset = 0f
+            scrollBehavior.state.heightOffset =
+                (-fraction * filterHeight).coerceIn(-filterHeight, 0f)
+        } else {
+            // 首屏未到：不重置折叠度，只夹到新上限（页面尚无内容，复位会造成闪动）
+            scrollBehavior.state.heightOffset =
+                scrollBehavior.state.heightOffset.coerceIn(-filterHeight, 0f)
+        }
     }
 
     // 翻页手势落定 → 同步 ViewModel 的当前板块（筛选行 / 刷新 / 翻页分派都以 selectedBoard 为准）。
@@ -400,6 +408,7 @@ fun HomeFeedScreen(
                             bottomContentPadding = bottomContentPadding,
                             boardActions = boardActions,
                             boardItemActions = boardItemActions,
+                            hobbyCategoryTree = hobbyCategoryTree,
                             onNavigateToZoneBrowse = onNavigateToZoneBrowse,
                             onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state }
                         )
@@ -418,29 +427,8 @@ fun HomeFeedScreen(
             )
         }
 
-        // 三级筛选行（可折叠）：位移由 scrollBehavior 驱动，高度实测回填头部高度栈
-        if (boardHasFilterBar) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = headerStack.pinnedHeight)
-                    .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
-                    .onSizeChanged { size -> headerStack.onCollapsibleMeasured(size.height) }
-                    .clipToBounds()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                ZoneBoardFilterBar(
-                    board = uiState.selectedBoard,
-                    filters = uiState.currentBoardFilters,
-                    subTypeOptions = viewModel.subTypes,
-                    actions = boardActions,
-                    albumCategoryOptions = uiState.albumCategoryOptions,
-                    hobbyCategoryTree = hobbyCategoryTree,
-                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode
-                )
-            }
-        }
+        // 三级筛选行已移入各板块页（`HomeBoardPage`）：随分页器横向滑动，
+        // 折叠位移仍由共享的 `scrollBehavior` 驱动，高度回填只认当前页。
 
         // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行。
         // 点击走 ViewModel（立即切板块、立即发请求），指示器跟随分页器当前页实时移动；
@@ -595,6 +583,7 @@ private fun HomeBoardPage(
     bottomContentPadding: Dp,
     boardActions: ZoneBoardActions,
     boardItemActions: ZoneBoardItemActions,
+    hobbyCategoryTree: Map<Int, List<CategoryItem>>,
     onNavigateToZoneBrowse: (() -> Unit)?,
     onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit
 ) {
@@ -609,7 +598,18 @@ private fun HomeBoardPage(
     val contentEmpty = itemCount == 0 && errorMessage == null && !view.isLoading
     val errorEmpty = errorMessage != null && itemCount == 0
     var restoredKey by remember { mutableStateOf<String?>(null) }
-    val topInset = headerStack.totalHeaderHeight
+    // 本页筛选行实测高度：内容顶部留白按「本页」算，滑动中两页各自对齐，不会互相遮挡。
+    // 用 saveable 保存：页被分页器回收后重建时不至于先套用别的板块的留白。
+    var filterBarHeightPx by rememberSaveable { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val ownFilterHeight = if (board.isEntity) {
+        0.dp
+    } else if (filterBarHeightPx > 0) {
+        with(density) { filterBarHeightPx.toDp() }
+    } else {
+        headerStack.collapsibleHeight
+    }
+    val topInset = headerStack.pinnedHeight + ownFilterHeight
 
     // 上拉触底翻页判断（本页自己的瀑布流状态）
     val shouldLoadMore by remember(gridState) {
@@ -764,6 +764,38 @@ private fun HomeBoardPage(
                     // 置顶帖条是单专区语义：聚合态（全部）不渲染
                     showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
                     modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        // 三级筛选行属于本页：随分页器一起横向滑动（滑动中能同时看到相邻页的筛选条），
+        // 折叠位移仍由共享 `scrollBehavior` 驱动。高度只由当前页回填：
+        // 拖动中相邻页同时组合，两页都写会把头部高度栈来回覆盖；
+        // 且相邻页先测量、落定后才成为当前页，所以回填走 `LaunchedEffect` 而不是直接写在 onSizeChanged 里。
+        if (!board.isEntity) {
+            LaunchedEffect(isCurrent, filterBarHeightPx) {
+                if (isCurrent && filterBarHeightPx > 0) {
+                    headerStack.onCollapsibleMeasured(filterBarHeightPx)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = headerStack.pinnedHeight)
+                    .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
+                    .onSizeChanged { filterBarHeightPx = it.height }
+                    .clipToBounds()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                ZoneBoardFilterBar(
+                    board = board,
+                    filters = view.filters,
+                    subTypeOptions = viewModel.subTypes,
+                    actions = boardActions,
+                    albumCategoryOptions = uiState.albumCategoryOptions,
+                    hobbyCategoryTree = hobbyCategoryTree,
+                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode
                 )
             }
         }
