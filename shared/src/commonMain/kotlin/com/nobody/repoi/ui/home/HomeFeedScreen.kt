@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -590,7 +591,8 @@ private fun HomeBoardPage(
     headerStack: HomeHeaderStackState,
     scrollBehavior: TopAppBarScrollBehavior,
     columns: StaggeredGridCells,
-    bottomContentPadding: PaddingValues,
+    /** 内容底部留白（底部悬浮栏高度，Dp；与面板 contentPadding 的 bottom 同源）。 */
+    bottomContentPadding: Dp,
     boardActions: ZoneBoardActions,
     boardItemActions: ZoneBoardItemActions,
     onNavigateToZoneBrowse: (() -> Unit)?,
