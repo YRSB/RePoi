@@ -1,7 +1,4 @@
 package com.nobody.repoi.data.remote.model
-/** 实体板块（`api/zone/items`）单页条目数：首页与专区详情共用的协议常量。 */
-const val ENTITY_BOARD_PAGE_SIZE: Int = 20
-
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -218,6 +215,9 @@ data class ZoneEntityItem(
             else -> "浏览 0"
         }
 }
+
+/** 实体板块（`api/zone/items`）单页条目数：首页与专区详情共用的协议常量。 */
+const val ENTITY_BOARD_PAGE_SIZE: Int = 20
 
 /**
  * api/zone/items 响应 Payload。
