@@ -208,6 +208,46 @@ class ZoneRepositoryTest {
     }
 
     @Test
+    fun getZoneInfo_defaultReportsVisitExactlyOnce() = runTest {
+        // 正例：专区详情走默认 reportVisit = true，删除上报分支或把默认值改成 false 必须让本用例失败
+        // （否则「最近访问」排序会静默失效且无回归网）。
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val mock = MockApi()
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        val repository = ZoneRepository(
+            api = mock.api(dispatcher),
+            viewPreferencesManager = preferences,
+            visitReportScope = CoroutineScope(dispatcher)
+        )
+        mock.route("api/zone/home-tabs/visited", """{"success":true,"code":200,"msg":"ok"}""")
+        mock.route(
+            "api/zone/info",
+            """
+            {
+                "success": true,
+                "code": 200,
+                "msg": "ok",
+                "data": {
+                    "zone": { "nodeId": 100, "name": "figure", "nameCN": "手办" },
+                    "focusState": false,
+                    "followCount": 1728,
+                    "tabs": ["action", "album"]
+                }
+            }
+            """.trimIndent()
+        )
+
+        val result = repository.getZoneInfo(100L)
+        assertTrue(result.isSuccess)
+
+        assertEquals(2, mock.requestCount)
+        val visited = mock.takeRequest()
+        assertTrue(visited.path!!.contains("api/zone/home-tabs/visited"))
+        val info = mock.takeRequest()
+        assertTrue(info.path!!.contains("api/zone/info"))
+    }
+
+    @Test
     fun toggleFocus_follow_and_unfollow_updatesFlow() = runTest {
         val (mock, repository) = setup()
         // 1. 模拟关注成功

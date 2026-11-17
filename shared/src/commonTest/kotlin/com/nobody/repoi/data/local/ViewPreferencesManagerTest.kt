@@ -1,6 +1,7 @@
 package com.nobody.repoi.data.local
 
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -37,7 +38,10 @@ class ViewPreferencesManagerTest {
 
     @Test
     fun feedFilters_persistToDataStoreAndSharedPreferences() = runTest {
-        val manager = manager()
+        // 必须断言落盘内容：读侧（镜像 / getFeedPreferences / *_Flow）都会把旧值 all 归一成 allInfo，
+        // 只断言读取侧无法区分「写侧归一后落盘」和「落盘仍是 all」。
+        val store = TestDataStore.inMemory()
+        val manager = ViewPreferencesManager(store)
         manager.setFeedCategory(100)
         // 旧键 all 写入时即归一为 allInfo，落盘不再出现 all
         manager.setFeedSubType("all")
@@ -49,6 +53,10 @@ class ViewPreferencesManagerTest {
         assertEquals(100, manager.feedCategoryIdFlow.first())
         assertEquals("allInfo", manager.feedSubTypeFlow.first())
         assertEquals(Pair(100, "allInfo"), manager.getFeedPreferences())
+
+        val persisted = store.data.first()
+        assertEquals("allInfo", persisted[stringPreferencesKey("feed_sub_type")])
+        assertEquals(100, persisted[intPreferencesKey("feed_category_id")])
     }
 
     @Test

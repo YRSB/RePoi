@@ -1,6 +1,9 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.HOBBY_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.HOBBY_DEFAULT_CATEGORY_ID
+import com.nobody.repoi.data.remote.model.HOBBY_DEFAULT_ORDER
 import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
@@ -202,13 +205,21 @@ class ItemRepositoryTest {
         val (mock, repository) = setup()
         mock.enqueue(hobbyListJson("默认筛选"))
 
-        // 高级筛选的「不限」哨兵（sex/r18 = -1）与空关键字/空属性不得下发
-        repository.queryHobbyBoard(
+        // 高级筛选的「不限」哨兵（sex/r18 = -1、scale = "0"）与空关键字/空属性不得下发
+        val result = repository.queryHobbyBoard(
             scope = ZoneQueryScope.All,
             filters = ZoneHobbyFilter(sex = -1, r18 = -1, specs = " ", scale = "0", releaseYear = 0, releaseMonth = 0)
         )
+        assertTrue(result.isSuccess)
 
         val form = mock.takeRequest().formEntries()
+        // 正向基线：参数整体丢失（或响应解码失败）时下面的「缺席」断言会全部误绿
+        assertEquals("1", form["page"])
+        assertEquals(HOBBY_BOARD_PAGE_SIZE.toString(), form["pageSize"])
+        assertEquals(HOBBY_DEFAULT_CATEGORY_ID.toString(), form["category"])
+        assertEquals(HOBBY_DEFAULT_ORDER, form["order"])
+        assertFalse(form.containsKey("zones"))
+
         assertFalse(form.containsKey("sex"))
         assertFalse(form.containsKey("r18"))
         assertFalse(form.containsKey("specs"))
