@@ -12,8 +12,9 @@ import com.nobody.repoi.ui.board.ZoneBoardPageView
  * 从 `HomeFeedUiState` 数据类本体拆出：状态类只负责「状态形状」，本文件只负责「按当前板块投影」。
  * 两屏渲染口径仍统一由 [ZoneBoardContent] / [ZoneBoardFilters] 约束。
  *
- * 关键约束：**所有按板块分派的字段只在 [boardView] 一处 `when`**，各公开投影 getter 只读同一次
- * 映射结果。新增板块只在 [boardView] 增加一个分支，不再出现 9 个平行 `when`（Repeated Switches）。
+ * 关键约束：所有按板块分派的字段只在 [boardView] 一处 `when`，各公开 getter 复用同一份映射定义。
+ * [boardView] 是即时计算属性（不缓存）：一次重组内读取多个 getter 会各计算一次，成本与拆分前一致。
+ * 新增板块只需在 [boardView] 增加一个分支，不再出现 9 个平行 `when`（Repeated Switches）。
  */
 
 /** 当前板块的全部 UI 投影字段（一次 `when` 计算）。 */

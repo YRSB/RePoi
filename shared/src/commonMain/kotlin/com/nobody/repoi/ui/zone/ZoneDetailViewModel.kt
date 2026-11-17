@@ -376,7 +376,7 @@ class ZoneDetailViewModel(
                 val list = payload.list
                 PageChunk(
                     items = list,
-                    hasMore = list.size >= 24 && !list.lastOrNull()?.addDate.isNullOrBlank()
+                    hasMore = list.size >= ResaleBoardOptions.PAGE_SIZE && !list.lastOrNull()?.addDate.isNullOrBlank()
                 )
             }
         }
@@ -789,7 +789,7 @@ class ZoneDetailViewModel(
                                 postsPage = 1,
                                 isRefreshing = false,
                                 isPostsLoading = false,
-                                hasMorePosts = rawList.size >= 20,
+                                hasMorePosts = rawList.size >= PostsBoardOptions.PAGE_SIZE,
                                 postsLoadMoreError = null
                             )
                         }
@@ -977,7 +977,7 @@ class ZoneDetailViewModel(
                         pinnedPosts = pinned,
                         postsPage = 1,
                         isPostsLoading = false,
-                        hasMorePosts = rawList.size >= 20,
+                        hasMorePosts = rawList.size >= PostsBoardOptions.PAGE_SIZE,
                         postsErrorMessage = null,
                         postsLoadMoreError = null
                     )
@@ -1011,7 +1011,7 @@ class ZoneDetailViewModel(
                 _uiState.update { state ->
                     val existingIds = (state.pinnedPosts.map { it.id } + state.postsItems.map { it.id }).toSet()
                     val uniqueNewItems = newItems.filterNot { it.id in existingIds }
-                    val hasMore = newItems.size >= 20 && uniqueNewItems.isNotEmpty()
+                    val hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE && uniqueNewItems.isNotEmpty()
                     state.copy(
                         postsItems = state.postsItems + uniqueNewItems,
                         postsPage = nextPage,

@@ -324,6 +324,24 @@ class HomeFeedViewModelTest {
     }
 
     @Test
+    fun selectCategory_singleZone_landsOnServerFirstBoard() = runTest(testDispatcher) {
+        val env = env()
+        env.stubZoneInfo(nodeId = 100L, tabs = listOf("album", "action"))
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectCategory(
+            FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(ZoneBoard.Album, ZoneBoard.Action), state.boards)
+        assertEquals(ZoneBoard.Album, state.selectedBoard, "单专区应落到服务端首板块而非硬编码 action")
+    }
+
+    @Test
     fun selectCategory_persistsFilterAndReloads() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
@@ -1346,6 +1364,25 @@ class HomeFeedViewModelTest {
         assertEquals(emptyList(), state.posts.pinnedPosts)
         // 内容投影走共享面板快照
         assertEquals(state.posts.items, state.postsBoardContent.items)
+    }
+
+    @Test
+    fun postsRefresh_cancelledByOrderChange_clearsRefreshing() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = listOf(1L, 2L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+
+        viewModel.refresh()
+        // 刷新在途时切排序：loadInitialPosts 取消刷新协程，必须兜底复位刷新态
+        viewModel.selectPostsOrder("add")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isRefreshing, "取消刷新后必须复位 isRefreshing")
+        assertFalse(viewModel.uiState.value.currentBoardIsRefreshing)
     }
 
     @Test

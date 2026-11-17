@@ -13,6 +13,7 @@ import com.nobody.repoi.ui.board.toAdvancedFilterParam
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
+import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -110,8 +111,8 @@ class HomeHobbyBoardController(
     /** 当前请求参数：每次首屏 / 刷新前更新，fetcher 在真正发请求时读取。 */
     private var query = HobbyBoardQuery(scope = ZoneQueryScope.All, filter = ZoneHobbyFilter())
 
-    /** 翻页前的现有条目 id 快照：还原「整页且去重后有新增才算还有下一页」的旧语义。 */
-    private var existingHobbyIds: Set<Long> = emptySet()
+    /** 翻页前的现有条目快照：还原「整页且去重后有新增才算还有下一页」的旧语义。 */
+    private var existingHobbies: List<HobbyItemSummary> = emptyList()
 
     private val loader = PagedListLoader<HobbyItemSummary>(
         scope = scope,
@@ -125,13 +126,10 @@ class HomeHobbyBoardController(
             pageSize = pageSize,
             filters = query.filter
         ).map { items ->
-            val chunk = PageChunk.of(items, pageSize)
-            if (page == 1) {
-                chunk
-            } else {
-                val hasNewItems = items.any { it.actualItemId !in existingHobbyIds }
-                chunk.copy(hasMore = chunk.hasMore && hasNewItems)
-            }
+            val byPage = PageChunk.of(items, pageSize)
+            val hasMore = byPage.hasMore &&
+                (page == 1 || items.hasNewKeysAfterDedup(existingHobbies) { it.actualItemId })
+            byPage.copy(hasMore = hasMore)
         }
     }
 
@@ -216,7 +214,7 @@ class HomeHobbyBoardController(
     fun loadNextPage(zoneScope: ZoneQueryScope) {
         val snapshot = _state.value
         if (!snapshot.isLoaded || !snapshot.hasMore || zoneScope.isFollowEmpty) return
-        existingHobbyIds = loader.state.value.items.map { it.actualItemId }.toSet()
+        existingHobbies = loader.state.value.items
         loader.loadMore()
     }
 

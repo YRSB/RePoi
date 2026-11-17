@@ -145,8 +145,9 @@ HomeScreen
 - 列表项：M3 `FilterChip`；视觉容器 32dp，触控目标由 `minimumInteractiveComponentSize` 保证 ≥48dp；点击 = 切换并关闭切换器。
 - 「关注」在未登录或关注为空时仍可选择：进入空态（引导去浏览专区），不发请求（保留现有短路逻辑）。
 - 切换器打开方式：点击顶栏标题区；关闭：选择条目、点遮罩、返回手势。
-- 无障碍：每组 Chip 外层 `selectableGroup()`，选中项语义为 `Role.RadioButton`（读屏按单选组朗读「已选中」）；
-  `ModalBottomSheet` / `DropdownMenu` 自带焦点圈定与遮罩关闭，不再额外把焦点移到分组标题。
+- 无障碍：每组 Chip 外层 `selectableGroup()`，读屏按单选组朗读选中态；选中项由 M3 `FilterChip` 提供选择语义，
+  调用侧另声明 `Role.RadioButton`（M3 Chip 内部角色为 Checkbox，合并结果以系统实际读屏为准，当前未新增 UI 断言）。
+- `ModalBottomSheet` / `DropdownMenu` 自带焦点圈定与遮罩关闭，不再额外把焦点移到分组标题。
 
 **自适应**
 

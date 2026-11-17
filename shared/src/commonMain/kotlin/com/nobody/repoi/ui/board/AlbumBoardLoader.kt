@@ -6,6 +6,7 @@ import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.PagedListState
+import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 
@@ -38,10 +39,10 @@ class AlbumBoardLoader(
     private var query = AlbumBoardQuery(scope = ZoneQueryScope.All)
 
     /**
-     * 翻页前的现有条目键快照：用于还原「整页且去重后有新增才算还有下一页」的旧语义。
+     * 翻页前的现有条目快照：用于还原「整页且去重后有新增才算还有下一页」的旧语义。
      * 服务端偶尔会在末页重复返回已展示条目，只看 `page.hasMore` 会永远判不到底。
      */
-    private var existingAlbumIds: Set<Long> = emptySet()
+    private var existingAlbums: List<AlbumListItem> = emptyList()
 
     private val loader = PagedListLoader<AlbumListItem>(
         scope = scope,
@@ -56,13 +57,9 @@ class AlbumBoardLoader(
             zones = query.scope.zonesParam(),
             category = query.category
         ).map { payload ->
-            val chunk = PageChunk(items = payload.items, hasMore = payload.hasMore)
-            if (page == 1) {
-                chunk
-            } else {
-                val hasNewItems = payload.items.any { it.targetAlbumId !in existingAlbumIds }
-                chunk.copy(hasMore = payload.hasMore && hasNewItems)
-            }
+            val hasMore = payload.hasMore &&
+                (page == 1 || payload.items.hasNewKeysAfterDedup(existingAlbums) { it.targetAlbumId })
+            PageChunk(items = payload.items, hasMore = hasMore)
         }
     }
 
@@ -83,7 +80,7 @@ class AlbumBoardLoader(
 
     /** 触底翻页 / 页脚重试：沿用当前参数快照，并按去重结果修正 hasMore。 */
     fun loadMore() {
-        existingAlbumIds = loader.state.value.items.map { it.targetAlbumId }.toSet()
+        existingAlbums = loader.state.value.items
         loader.loadMore()
     }
 

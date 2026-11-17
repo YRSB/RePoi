@@ -402,12 +402,19 @@ fun HomeFeedScreen(
     }
 
     var wasRefreshing by remember { mutableStateOf(false) }
+    // 记录刷新发起时的板块键：刷新途中切板块后，完成收尾不能把新板块滚回顶部或覆写其记忆
+    var refreshBoardKey by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(uiState.currentBoardIsRefreshing) {
-        if (wasRefreshing && !uiState.currentBoardIsRefreshing && boardErrorMessage == null) {
+        if (!wasRefreshing && uiState.currentBoardIsRefreshing) refreshBoardKey = currentBoardKey
+        val completedForCurrentBoard = wasRefreshing &&
+            !uiState.currentBoardIsRefreshing &&
+            refreshBoardKey == currentBoardKey
+        if (completedForCurrentBoard && boardErrorMessage == null) {
             staggeredGridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
         }
+        if (wasRefreshing && !uiState.currentBoardIsRefreshing) refreshBoardKey = null
         wasRefreshing = uiState.currentBoardIsRefreshing
     }
 

@@ -30,6 +30,7 @@ import com.nobody.repoi.ui.board.ZoneBoardCapability
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
 import com.nobody.repoi.util.paging.LoadStage
+import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -177,6 +178,14 @@ class HomeFeedViewModel(
 
     /** 当前生效的二级板块偏好键（`{tabKey}|{type}`）：恢复与写回共用，避免出现两套编码。 */
     private var currentBoardSelectionKey: String = savedBoardKey.orEmpty()
+
+    /**
+     * 手动切入单专区后，等 `zone/info.tabs` 返回再落到该专区首板块（US21）。
+     *
+     * 单专区的真实板块顺序由服务端决定；同步兜底只含动态板块，提前把 `{tab}|action` 写死会让
+     * [syncBoards] 永远恢复到 action，服务端首板块非 action 时落点错误。
+     */
+    private var pendingSingleZoneFirstBoard: Boolean = false
 
     private val _uiState = MutableStateFlow(
         HomeFeedUiState(
@@ -474,9 +483,13 @@ class HomeFeedViewModel(
         // 不清理旧作用域的滚动记忆：切回时按「作用域 + 板块」键各自恢复
         val scope = category.toZoneQueryScope()
         val fallbackBoards = ZoneBoardCapability.homeBoardsFor(scope)
-        // 切专区：二级板块重置为该专区首板块，并把「一级|首板块」写回偏好（#156 恢复规则 4）
+        // 切专区：二级板块重置为该专区首板块，并把「一级|首板块」写回偏好（#156 恢复规则 4）。
+        // 单专区的真实首板块要等服务端 tabs，先不写死 action，由 syncBoards 落定后再落盘。
         val firstBoard = fallbackBoards.firstOrNull() ?: ZoneBoard.Action
-        currentBoardSelectionKey = encodeBoardKey(category.tabKey, firstBoard.type)
+        pendingSingleZoneFirstBoard = scope is ZoneQueryScope.Single
+        currentBoardSelectionKey = if (pendingSingleZoneFirstBoard) "" else {
+            encodeBoardKey(category.tabKey, firstBoard.type)
+        }
         _uiState.update {
             it.copy(
                 selectedCategory = category,
@@ -523,7 +536,10 @@ class HomeFeedViewModel(
         if (!ZoneBoardCapability.isAvailableOnHome(current.zoneScope, board)) return
         if (current.selectedBoard == board || board !in current.boards) return
         currentBoardSelectionKey = encodeBoardKey(current.selectedCategory.tabKey, board.type)
-        _uiState.update { it.copy(selectedBoard = board) }
+        // 用户手动选板块：取消「单专区待定首板块」恢复，尊重当前选择
+        pendingSingleZoneFirstBoard = false
+        // 刷新属于旧板块：切走后立即收起全局刷新指示器，避免把残留刷新态画到新板块上
+        _uiState.update { it.copy(selectedBoard = board, isRefreshing = false) }
         if (board == ZoneBoard.Posts) ensurePostsLoaded()
         viewModelScope.launch { persistBoardSelection() }
         when {
@@ -766,6 +782,8 @@ class HomeFeedViewModel(
         if (ZoneBoard.Posts !in state.boards) return
         if (state.zoneScope.isFollowEmpty) return
         postsJob?.cancel()
+        // 刷新协程被取消时不会执行收尾复位，这里兜底清掉全局刷新态，避免翻页/刷新被永久挡住
+        _uiState.update { if (it.isRefreshing) it.copy(isRefreshing = false) else it }
         postsJob = viewModelScope.launch {
             _uiState.update { it.copy(posts = it.posts.copy(isInitialLoading = true, errorMessage = null)) }
             val scope = _uiState.value.zoneScope
@@ -812,8 +830,8 @@ class HomeFeedViewModel(
             if (_uiState.value.zoneScope != scope) return@launch
             result.onSuccess { newItems ->
                 _uiState.update { current ->
-                    val existingIds = (current.posts.pinnedPosts.map { it.id } +
-                        current.posts.items.map { it.id }).toSet()
+                    val existingPosts = current.posts.pinnedPosts + current.posts.items
+                    val existingIds = existingPosts.mapTo(HashSet()) { it.id }
                     val uniqueNewItems = newItems.filterNot { it.id in existingIds }
                     current.copy(
                         posts = current.posts.copy(
@@ -821,7 +839,7 @@ class HomeFeedViewModel(
                             page = nextPage,
                             isLoadingMore = false,
                             hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
-                                uniqueNewItems.isNotEmpty(),
+                                newItems.hasNewKeysAfterDedup(existingPosts) { it.id },
                             loadMoreError = null
                         )
                     )
@@ -903,6 +921,7 @@ class HomeFeedViewModel(
         val fallbackBoards = ZoneBoardCapability.homeBoardsFor(scope)
         val firstBoard = fallbackBoards.firstOrNull() ?: ZoneBoard.Action
         // 重置同时回到默认专区首板块，并保持二级偏好键与一级/板块选中态一致
+        pendingSingleZoneFirstBoard = false
         currentBoardSelectionKey = encodeBoardKey(defaultCategory.tabKey, firstBoard.type)
         _uiState.update {
             it.copy(
@@ -1172,8 +1191,11 @@ class HomeFeedViewModel(
                     val existingKeys = state.items.map { item -> "${item.id}_${item.actionDate}" }.toSet()
                     val uniqueNewItems = nextPageList.filterNot { item -> "${item.id}_${item.actionDate}" in existingKeys }
                     val nextCursor = if (newLastTime > 0L) newLastTime else state.lastTime
+                    val hasNewPageItems = nextPageList.hasNewKeysAfterDedup(state.items) {
+                        "${it.id}_${it.actionDate}"
+                    }
                     val hasMorePages = nextPageList.isNotEmpty() &&
-                        uniqueNewItems.isNotEmpty() &&
+                        hasNewPageItems &&
                         newLastTime > 0L &&
                         newLastTime != state.lastTime
                     state.copy(
@@ -1490,14 +1512,30 @@ class HomeFeedViewModel(
                 ?: ZoneBoardCapability.SINGLE_FALLBACK_BOARDS
             // 服务端 title 仅在单专区有意义：按板块取首次出现的 tab（与详情 parseTabs 同口径）
             val titles = buildBoardTitles(info?.tabs.orEmpty())
+            val before = _uiState.value
+            if (before.zoneScope != scope) return@launch
+            // 服务端 tabs 到达后重新套用恢复规则：冷启动保存的板块此时才可能出现在列表中
+            val restoredBoard = boardForSelection(before.selectedCategory.tabKey, boards)
+            val targetBoard = when {
+                // 手动切入单专区：落该专区首板块（US21），而不是同步兜底的 action
+                pendingSingleZoneFirstBoard ->
+                    boards.firstOrNull() ?: restoredBoard ?: before.selectedBoard
+
+                restoredBoard != null -> restoredBoard
+                before.selectedBoard in boards -> before.selectedBoard
+                else -> boards.firstOrNull() ?: before.selectedBoard
+            }
+            if (pendingSingleZoneFirstBoard) {
+                pendingSingleZoneFirstBoard = false
+                currentBoardSelectionKey = encodeBoardKey(before.selectedCategory.tabKey, targetBoard.type)
+                viewModelScope.launch { persistBoardSelection() }
+            }
             _uiState.update { state ->
                 if (state.zoneScope != scope) return@update state
-                // 服务端 tabs 到达后重新套用恢复规则：冷启动保存的板块此时才可能出现在列表中
-                val restoredBoard = boardForSelection(state.selectedCategory.tabKey, boards)
                 state.copy(
                     boards = boards,
                     boardTitles = titles,
-                    selectedBoard = restoredBoard ?: state.selectedBoard
+                    selectedBoard = targetBoard
                 )
             }
             // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
