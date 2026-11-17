@@ -31,7 +31,8 @@ data class ZoneBoardPageView(
  * 每板块内容快照（sealed，保留类型安全）。
  *
  * 首页与专区详情把各自的 ViewModel 状态投影为同一结构后传给 `ZoneBoardPane`，保证两端只维护一套
- * 内容渲染逻辑。A 阶段只有 [Action] 被 pane 消费，其余变体为 B 阶段与各板块 ticket 预留。
+ * 内容渲染逻辑。`ZoneBoardPane` 已覆盖白名单全部 10 类板块：本节所有变体都由两处宿主投影后消费
+ * （新增板块时同步补齐 pane 分支与两处投影，不要另起一条渲染路径）。
  */
 sealed interface ZoneBoardContent {
     /** 分页 / 错误视图（所有板块共有）。 */
