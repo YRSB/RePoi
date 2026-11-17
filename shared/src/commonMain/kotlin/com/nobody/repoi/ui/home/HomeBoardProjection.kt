@@ -17,8 +17,8 @@ import com.nobody.repoi.ui.board.ZoneBoardPageView
  * 新增板块只需在 [boardView] 增加一个分支，不再出现 9 个平行 `when`（Repeated Switches）。
  */
 
-/** 当前板块的全部 UI 投影字段（一次 `when` 计算）。 */
-private data class HomeBoardView(
+/** 任意板块的全部 UI 投影字段（一次 `when` 计算；横向分页器按页取用）。 */
+internal data class HomeBoardView(
     val content: ZoneBoardContent,
     val filters: ZoneBoardFilters,
     val itemCount: Int,
@@ -60,18 +60,22 @@ val HomeFeedUiState.postsBoardContent: ZoneBoardContent.Posts
         )
     )
 
-/** 实体板块的只读状态快照（非实体板块取默认值，调用方仅在实体板块消费）。 */
-private val HomeFeedUiState.currentEntityBoardState: EntityBoardState
-    get() = entityBoards[selectedBoard] ?: EntityBoardState()
+/** 当前板块的投影快照（头部高度、折叠可滚动性、刷新态读取）。 */
+internal val HomeFeedUiState.currentBoardView: HomeBoardView
+    get() = boardView(selectedBoard)
 
 /**
- * 当前板块的投影快照。
+ * 任意板块的投影快照。
  *
  * 实体 5 类共用同一套分页字段，讨论 / 分享 / 二手 / 产品各自持有独立 loader 状态，
  * 动态板块沿用全局字段；此处把差异集中到唯一 `when`，其余 getter 只做字段转发。
+ *
+ * 横向分页器会同时组合多个板块（当前页 + 拖动中的相邻页），因此投影必须按传入的 [board]
+ * 求值，而不是读宿主选中的 `selectedBoard`。未加载过的板块统一按「首屏加载中」处理：
+ * 滑动到该页时先给加载态，落定后由 `selectBoard` 发起首屏请求，避免把「尚未请求」误判成空态。
  */
-private val HomeFeedUiState.boardView: HomeBoardView
-    get() = when (selectedBoard) {
+internal fun HomeFeedUiState.boardView(board: ZoneBoard): HomeBoardView {
+    return when (board) {
         ZoneBoard.Album -> HomeBoardView(
             content = ZoneBoardContent.Album(
                 items = albumItems,
@@ -92,7 +96,9 @@ private val HomeFeedUiState.boardView: HomeBoardView
             isLoadingMore = isLoadingMoreAlbum,
             loadMoreError = albumLoadMoreError,
             isRefreshing = isRefreshing,
-            isLoading = isAlbumLoading && albumItems.isEmpty(),
+            // 懒加载：尚未请求过首屏（且无错误）时也算加载态，滑动到该页不会先闪一帧空态卡片
+            isLoading = (isAlbumLoading || !isAlbumLoaded) &&
+                albumItems.isEmpty() && albumErrorMessage == null,
             errorMessage = albumErrorMessage
         )
 
@@ -143,32 +149,36 @@ private val HomeFeedUiState.boardView: HomeBoardView
             isLoadingMore = hobbyBoard.isLoadingMore,
             loadMoreError = hobbyBoard.loadMoreError,
             isRefreshing = hobbyBoard.isRefreshing,
-            isLoading = hobbyBoard.isLoading && hobbyBoard.items.isEmpty(),
+            // 懒加载：同分享板块，未发起过首屏时按加载态处理
+            isLoading = (hobbyBoard.isLoading || !hobbyBoard.isLoaded) &&
+                hobbyBoard.items.isEmpty() && hobbyBoard.errorMessage == null,
             errorMessage = hobbyBoard.errorMessage
         )
 
         else -> {
-            if (selectedBoard.isEntity) {
-                val entityState = currentEntityBoardState
+            if (board.isEntity) {
+                // 从未加载过该实体板块时 map 无键：按加载态处理，等 selectBoard 建 loader 后回填
+                val entityState = entityBoards[board]
                 HomeBoardView(
                     content = ZoneBoardContent.Entity(
-                        items = entityState.items,
+                        items = entityState?.items ?: emptyList(),
                         page = pageView(
-                            isLoading = entityState.isLoading,
-                            isLoadingMore = entityState.isLoadingMore,
-                            errorMessage = entityState.errorMessage,
-                            loadMoreError = entityState.loadMoreError,
-                            isEndReached = entityState.isEndReached
+                            isLoading = entityState?.isLoading ?: true,
+                            isLoadingMore = entityState?.isLoadingMore ?: false,
+                            errorMessage = entityState?.errorMessage,
+                            loadMoreError = entityState?.loadMoreError,
+                            isEndReached = entityState?.isEndReached ?: false
                         )
                     ),
                     filters = ZoneBoardFilters(),
-                    itemCount = entityState.items.size,
-                    hasMore = !entityState.isEndReached,
-                    isLoadingMore = entityState.isLoadingMore,
-                    loadMoreError = entityState.loadMoreError,
-                    isRefreshing = isRefreshing || entityState.isRefreshing,
-                    isLoading = entityState.isLoading && entityState.items.isEmpty(),
-                    errorMessage = entityState.errorMessage
+                    itemCount = entityState?.items?.size ?: 0,
+                    hasMore = !(entityState?.isEndReached ?: false),
+                    isLoadingMore = entityState?.isLoadingMore ?: false,
+                    loadMoreError = entityState?.loadMoreError,
+                    isRefreshing = isRefreshing || (entityState?.isRefreshing ?: false),
+                    isLoading = (entityState == null || entityState.isLoading) &&
+                        (entityState?.items?.isEmpty() ?: true),
+                    errorMessage = entityState?.errorMessage
                 )
             } else {
                 HomeBoardView(
@@ -194,42 +204,71 @@ private val HomeFeedUiState.boardView: HomeBoardView
             }
         }
     }
+}
 
 /** 当前板块内容快照（传给共享面板 `ZoneBoardPane`，保证两屏同一渲染口径）。 */
 val HomeFeedUiState.currentBoardContent: ZoneBoardContent
-    get() = boardView.content
+    get() = currentBoardView.content
 
 /** 当前板块筛选值快照（传给共享面板/筛选条）。实体 5 类暂无筛选项，保持默认值。 */
 val HomeFeedUiState.currentBoardFilters: ZoneBoardFilters
-    get() = boardView.filters
+    get() = currentBoardView.filters
 
 /** 当前板块条目数（内容区四态 / 触底翻页 / 折叠可滚动性共用）。 */
 val HomeFeedUiState.currentBoardItemCount: Int
-    get() = boardView.itemCount
+    get() = currentBoardView.itemCount
 
 /** 当前板块是否还有下一页。 */
 val HomeFeedUiState.currentBoardHasMore: Boolean
-    get() = boardView.hasMore
+    get() = currentBoardView.hasMore
 
 /** 当前板块是否正在追加下一页。 */
 val HomeFeedUiState.currentBoardIsLoadingMore: Boolean
-    get() = boardView.isLoadingMore
+    get() = currentBoardView.isLoadingMore
 
 /** 当前板块追加失败信息（页脚重试用）。 */
 val HomeFeedUiState.currentBoardLoadMoreError: String?
-    get() = boardView.loadMoreError
+    get() = currentBoardView.loadMoreError
 
 /** 当前板块是否正在下拉刷新（产品刷新态由板块状态承载，其余板块共用全局 isRefreshing）。 */
 val HomeFeedUiState.currentBoardIsRefreshing: Boolean
-    get() = boardView.isRefreshing
+    get() = currentBoardView.isRefreshing
 
 /** 当前板块首屏加载中（宿主统一用 `PoiLoadingView` 展示）。 */
 val HomeFeedUiState.isCurrentBoardLoading: Boolean
-    get() = boardView.isLoading
+    get() = currentBoardView.isLoading
 
 /** 当前板块首屏错误（仅在列表为空时展示错误态）。 */
 val HomeFeedUiState.currentBoardErrorMessage: String?
-    get() = boardView.errorMessage
+    get() = currentBoardView.errorMessage
+
+/**
+ * 板块筛选值快照（token 化）。
+ *
+ * 同一板块内筛选变化 → 回顶并清空该键的滚动记忆；换板块不算筛选变化（交给按 key 的恢复逻辑）。
+ * 筛选维度按板块取当前生效值（动态 = subType；分享 = 排序 + 分类；讨论 = order；
+ * 二手 = 出售求购 + 成色；产品 = 全部筛选值），因此切筛选与切板块共用同一套 token 比较。
+ */
+internal fun HomeFeedUiState.boardFilterToken(board: ZoneBoard): String = when (board) {
+    ZoneBoard.Album -> "$albumSelectedOrder|${albumSelectedCategory ?: "all"}"
+    ZoneBoard.Posts -> posts.order
+    ZoneBoard.Resale -> "${resale.type}|${resale.purity ?: "all"}"
+    ZoneBoard.Hobby -> with(hobbyBoard.filter) {
+        listOf(
+            order,
+            categoryId,
+            subCategoryId ?: "all",
+            releaseYear ?: "all",
+            releaseMonth ?: "all",
+            keyword,
+            sex ?: "all",
+            specs ?: "all",
+            scale ?: "all",
+            r18 ?: "all"
+        ).joinToString("|")
+    }
+    else -> selectedSubType
+}
 
 private fun pageView(
     isLoading: Boolean,

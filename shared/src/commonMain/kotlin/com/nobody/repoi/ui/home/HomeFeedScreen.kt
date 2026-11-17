@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -30,6 +33,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -39,10 +43,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -120,7 +124,6 @@ fun HomeFeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val hobbyCategoryTree by viewModel.hobbyCategoryTree.collectAsStateWithLifecycle()
-    val staggeredGridState = rememberLazyStaggeredGridState()
     val imageViewer = LocalImageViewer.current
     val messages = LocalAppMessages.current
     val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
@@ -243,38 +246,12 @@ fun HomeFeedScreen(
         )
     }
 
-    // 当前板块内容/分页派生值：三类板块统一经 UiState 的 currentBoard* 投影，宿主不再按板块散写 when
+    // 当前板块条目数：折叠可滚动性（顶栏 canScroll）与下拉刷新指示器高度共用的边界值
     val boardItemCount = uiState.currentBoardItemCount
-    val boardHasMore = uiState.currentBoardHasMore
-    val boardIsLoadingMore = uiState.currentBoardIsLoadingMore
-    val boardLoadMoreError = uiState.currentBoardLoadMoreError
-    val boardErrorMessage = uiState.currentBoardErrorMessage
-    val boardLoading = uiState.isCurrentBoardLoading
-    val boardErrorEmpty = boardErrorMessage != null && boardItemCount == 0
-    // 懒加载哨兵：尚未请求过首屏（且无错误）时已计入加载态，此处只兜「既不是加载也不是错误」的真空
-    val boardContentEmpty = boardItemCount == 0 && boardErrorMessage == null && !boardLoading
     val boardHasFilterBar = uiState.boards.isNotEmpty()
-
-    // 上拉触底翻页判断 (瀑布流模式)
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val totalCount = staggeredGridState.layoutInfo.totalItemsCount
-            val lastVisibleIndex = staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalCount > 0 && lastVisibleIndex >= totalCount - 3
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore, uiState.selectedBoard, boardItemCount) {
-        if (shouldLoadMore && boardHasMore && !boardIsLoadingMore && boardLoadMoreError == null) {
-            viewModel.loadMoreSelectedBoard()
-        }
-    }
 
     // 滚动记忆键：作用域 + 板块，跨「专区 ↔ 板块」切换互不覆盖
     val currentBoardKey = homeBoardMemoryKey(uiState.zoneScope, uiState.selectedBoard)
-    val memoryKey by rememberUpdatedState(currentBoardKey)
-    // 已完成恢复的键（按 key 记录而不是一次性布尔）：切换回有记忆的板块时仍会恢复，首次进入才回顶
-    var restoredKey by remember { mutableStateOf<String?>(null) }
 
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topBarHeight = statusBarTopPadding + 64.dp
@@ -314,114 +291,53 @@ fun HomeFeedScreen(
     // 二手列表沿用专区详情的列数策略（竖屏 1 列 / 横屏 2-3 列），与动态瀑布流不同
     val resaleColumns = rememberResaleStaggeredGridColumns()
 
-    // 滚动 / 折叠比例按「作用域 + 板块」键保存（仅内存；持久化为 #156）
-    LaunchedEffect(staggeredGridState, scrollBehavior.state) {
-        snapshotFlow {
-            val driverHeight = headerStack.collapsibleHeightPx
-            Triple(
-                staggeredGridState.firstVisibleItemIndex,
-                staggeredGridState.firstVisibleItemScrollOffset,
-                if (driverHeight > 0f) {
-                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
-            )
-        }.collect { (currentIndex, currentOffset, filterCollapseFraction) ->
-            // 只写回「已完成恢复」的键：切换瞬间旧板块的首帧不会把新键的位置写坏（A1）
-            if (restoredKey == memoryKey) {
-                viewModel.saveBoardScrollPosition(memoryKey, currentIndex, currentOffset)
-                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
+    // ---- 二级板块横向分页 ----
+    // 页数与顺序完全由 UiState.boards 决定（能力矩阵 ∩ 服务端 tabs）；页面以板块为 key，
+    // 各页的瀑布流状态因此按板块保存，滑动来回不丢滚动位置。
+    val boards = uiState.boards
+    val selectedBoardIndex = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
+    // 页数下限 1：无可用板块时宿主不组合分页器（只渲染卡片式空态），避免 0 页状态被 Pager 拒绝
+    val pagerState = rememberPagerState(initialPage = selectedBoardIndex) {
+        boards.size.coerceAtLeast(1)
+    }
+    // 页内自持的瀑布流状态注册表：宿主只在「下拉刷新 / FAB」时借当前页回顶
+    val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
+
+    // 折叠比例按「作用域 + 板块」键恢复；滚动位置由各页自己的瀑布流状态保存。
+    LaunchedEffect(currentBoardKey, boardItemCount > 0) {
+        if (boardItemCount <= 0) return@LaunchedEffect
+        val memory = viewModel.scrollMemoryFor(currentBoardKey)
+        scrollBehavior.state.contentOffset = 0f
+        scrollBehavior.state.heightOffset =
+            -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
+    }
+
+    // 翻页手势落定 → 同步 ViewModel 的当前板块（筛选行 / 刷新 / 翻页分派都以 selectedBoard 为准）。
+    // 作用域切换会整体替换 boards：先把分页器对齐到新选中板块再开始监听，
+    // 否则旧页码会被映射成新作用域的某个板块，切专区后落在错误的二级页。
+    LaunchedEffect(pagerState, boards) {
+        if (boards.isNotEmpty()) {
+            val target = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
+            if (pagerState.currentPage != target) pagerState.scrollToPage(target)
+        }
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            boards.getOrNull(page)?.let { board ->
+                if (board != uiState.selectedBoard) viewModel.selectBoard(board)
             }
         }
     }
 
-    // 切换筛选：复位到顶 + 展开筛选条，并清空当前键的滚动记忆。
-    // 切换专区 / 板块不在这里复位——交给下方按 key 的恢复逻辑（有记忆则恢复，首次进入才回顶）。
-    // 筛选 token 按板块取当前生效值（动态 = subType；分享 = 排序 + 分类；讨论 = order；
-    // 二手 = 出售求购 + 成色；产品 = 全部筛选值），因此切换筛选与切换板块用同一套 token 比较。
-    val boardFilterToken = when (uiState.selectedBoard) {
-        ZoneBoard.Album -> "${uiState.albumSelectedOrder}|${uiState.albumSelectedCategory ?: "all"}"
-        ZoneBoard.Posts -> uiState.posts.order
-        ZoneBoard.Resale -> "${uiState.resale.type}|${uiState.resale.purity ?: "all"}"
-        ZoneBoard.Hobby -> with(uiState.hobbyBoard.filter) {
-            listOf(
-                order,
-                categoryId,
-                subCategoryId ?: "all",
-                releaseYear ?: "all",
-                releaseMonth ?: "all",
-                keyword,
-                sex ?: "all",
-                specs ?: "all",
-                scale ?: "all",
-                r18 ?: "all"
-            ).joinToString("|")
-        }
-        else -> uiState.selectedSubType
-    }
-    var lastSelection by remember {
-        mutableStateOf(
-            BoardSelectionKey(uiState.selectedCategory.tabKey, uiState.selectedBoard, boardFilterToken)
-        )
-    }
-    LaunchedEffect(uiState.selectedCategory, uiState.selectedBoard, boardFilterToken) {
-        val selection = BoardSelectionKey(
-            uiState.selectedCategory.tabKey,
-            uiState.selectedBoard,
-            boardFilterToken
-        )
-        if (selection == lastSelection) return@LaunchedEffect
-        val previous = lastSelection
-        lastSelection = selection
-        // 仅「同一专区同一板块内的筛选变化」清空记忆并回顶；专区/板块切换由恢复逻辑处理（A1）
-        if (previous.tabKey == selection.tabKey && previous.board == selection.board) {
-            viewModel.resetBoardScrollMemory(currentBoardKey)
-            scrollBehavior.state.heightOffset = 0f
-            scrollBehavior.state.contentOffset = 0f
-            staggeredGridState.scrollToItem(0)
-            restoredKey = currentBoardKey
+    // 板块变更（Tab 点击 / 专区切换 / 冷启动恢复）反向驱动分页器位置
+    LaunchedEffect(selectedBoardIndex, boards.size) {
+        if (boards.isNotEmpty() && pagerState.currentPage != selectedBoardIndex) {
+            pagerState.scrollToPage(selectedBoardIndex)
         }
     }
 
-    // 按「作用域 + 板块」键恢复滚动位置与折叠比例：切到有记忆的板块则恢复，首次进入才回顶；
-    // 首屏（含从二级页返回）同样走这里。restoredKey 在恢复动作完成后才置位，避免恢复过程中的
-    // 中间滚动位置被快照写回覆盖记忆（A1 / US18 / US19）。
-    LaunchedEffect(currentBoardKey, boardItemCount > 0) {
-        if (boardItemCount <= 0) return@LaunchedEffect
-        if (restoredKey == currentBoardKey) return@LaunchedEffect
-        val memory = viewModel.scrollMemoryFor(currentBoardKey)
-        // 记忆跨专区保留，但切专区后只重新加载第一页：下标可能超出当前已加载条目数。
-        // 越界时按「无记忆」处理并清掉脏数据，否则 Lazy 网格会停在已加载页末尾并把钳制后的位置写回记忆。
-        val inRange = memory.index in 0 until boardItemCount
-        if (inRange && (memory.index != 0 || memory.offset != 0)) {
-            staggeredGridState.scrollToItem(memory.index, memory.offset)
-        } else {
-            if (!inRange) viewModel.resetBoardScrollMemory(currentBoardKey)
-            // 该键尚无记忆：首次进入该板块，回顶并展开筛选层
-            staggeredGridState.scrollToItem(0)
-        }
+    val scrollCurrentBoardToTop: suspend () -> Unit = {
+        pageGridStates[uiState.selectedBoard]?.scrollToItem(0)
+        scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
-        scrollBehavior.state.heightOffset =
-            -memory.filterCollapseFraction * headerStack.collapsibleHeightPx
-        restoredKey = currentBoardKey
-    }
-
-    var wasRefreshing by remember { mutableStateOf(false) }
-    // 记录刷新发起时的板块键：刷新途中切板块后，完成收尾不能把新板块滚回顶部或覆写其记忆
-    var refreshBoardKey by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(uiState.currentBoardIsRefreshing) {
-        if (!wasRefreshing && uiState.currentBoardIsRefreshing) refreshBoardKey = currentBoardKey
-        val completedForCurrentBoard = wasRefreshing &&
-            !uiState.currentBoardIsRefreshing &&
-            refreshBoardKey == currentBoardKey
-        if (completedForCurrentBoard && boardErrorMessage == null) {
-            staggeredGridState.scrollToItem(0)
-            scrollBehavior.state.heightOffset = 0f
-            scrollBehavior.state.contentOffset = 0f
-        }
-        if (wasRefreshing && !uiState.currentBoardIsRefreshing) refreshBoardKey = null
-        wasRefreshing = uiState.currentBoardIsRefreshing
     }
 
     Box(
@@ -432,11 +348,7 @@ fun HomeFeedScreen(
         PullToRefreshBox(
             isRefreshing = uiState.currentBoardIsRefreshing,
             onRefresh = {
-                scope.launch {
-                    staggeredGridState.scrollToItem(0)
-                    scrollBehavior.state.heightOffset = 0f
-                    scrollBehavior.state.contentOffset = 0f
-                }
+                scope.launch { scrollCurrentBoardToTop() }
                 viewModel.refreshFeed()
             },
             state = pullRefreshState,
@@ -456,94 +368,39 @@ fun HomeFeedScreen(
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
-                when {
-                    // 该专区没有任何已接入板块：不渲染空 Tab 条，只给卡片式空态与刷新入口（§3.6）
-                    uiState.boards.isEmpty() -> {
-                        ZoneEmptyPlaceholder(
-                            text = "该专区暂无可用板块",
-                            onRefresh = { viewModel.refreshBoards() },
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(top = headerStack.totalHeaderHeight)
-                                .padding(24.dp)
-                        )
-                    }
-
-                    boardLoading -> {
-                        PoiLoadingView(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    top = headerStack.totalHeaderHeight,
-                                    bottom = bottomContentPadding
-                                )
-                        )
-                    }
-
-                    // 卡片式错误态：与专区详情共用同一基元；产品板块同样纳入四态（A5 / Spec c5）
-                    boardErrorEmpty -> {
-                        ZoneErrorPlaceholder(
-                            message = boardErrorMessage ?: "数据加载失败",
-                            onRetry = { viewModel.retrySelectedBoard() },
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(top = headerStack.totalHeaderHeight)
-                                .padding(24.dp)
-                        )
-                    }
-
-                    // 卡片式空态：与专区详情共用同一基元；关注为空时换成引导页（不发起请求）
-                    boardContentEmpty -> {
-                        if (uiState.zoneScope.isFollowEmpty && uiState.selectedBoard != ZoneBoard.Posts) {
-                            // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
-                            ZoneBoardStatusCard(
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .padding(top = headerStack.totalHeaderHeight)
-                                    .padding(24.dp)
-                            ) {
-                                EmptyState(
-                                    icon = Icons.Outlined.Category,
-                                    title = "还没有关注的专区",
-                                    description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
-                                    actionLabel = "去专区广场",
-                                    onAction = { onNavigateToZoneBrowse?.invoke() }
-                                )
-                            }
-                        } else {
-                            ZoneEmptyPlaceholder(
-                                // 文案与共享面板同源（ZoneBoard.emptyText），避免产品板块落到动态措辞
-                                text = uiState.selectedBoard.emptyText,
-                                onRefresh = { viewModel.refreshFeed() },
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .padding(top = headerStack.totalHeaderHeight)
-                                    .padding(24.dp)
-                            )
-                        }
-                    }
-
-                    else -> {
-                        // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
-                        // 加载 / 错误 / 空三态仍由上方首页卡片式分支接管，pane 只负责列表与页脚，
-                        // 因此不会重复展示首屏错误。内容与筛选快照由 UiState 按板块投影（动态 / 分享）。
-                        ZoneBoardPane(
-                            board = uiState.selectedBoard,
-                            content = uiState.currentBoardContent,
-                            gridState = staggeredGridState,
-                            contentPadding = PaddingValues(
-                                start = 8.dp,
-                                end = 8.dp,
-                                top = headerStack.totalHeaderHeight + 6.dp,
-                                bottom = bottomContentPadding
-                            ),
-                            actions = boardActions,
-                            itemActions = boardItemActions,
-                            columns = if (uiState.selectedBoard == ZoneBoard.Resale) resaleColumns else feedColumns,
-                            // 置顶帖条是单专区语义：聚合态（全部）不渲染
-                            showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
-                            modifier = Modifier.fillMaxSize()
+                // 该专区没有任何已接入板块：不渲染空 Tab 条与分页器，只给卡片式空态与刷新入口（§3.6）
+                if (boards.isEmpty()) {
+                    ZoneEmptyPlaceholder(
+                        text = "该专区暂无可用板块",
+                        onRefresh = { viewModel.refreshBoards() },
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = headerStack.totalHeaderHeight)
+                            .padding(24.dp)
+                    )
+                } else {
+                    // 二级板块左右滑分页：每页自持瀑布流状态与四态，页面以板块为 key。
+                    // 相邻页不预取：落定后由 selectBoard 发起该板块首屏请求，未请求过的页先给加载态。
+                    HorizontalPager(
+                        state = pagerState,
+                        key = { index -> boards[index] },
+                        beyondViewportPageCount = 0,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        val board = boards[page]
+                        HomeBoardPage(
+                            board = board,
+                            uiState = uiState,
+                            view = uiState.boardView(board),
+                            viewModel = viewModel,
+                            headerStack = headerStack,
+                            scrollBehavior = scrollBehavior,
+                            columns = if (board == ZoneBoard.Resale) resaleColumns else feedColumns,
+                            bottomContentPadding = bottomContentPadding,
+                            boardActions = boardActions,
+                            boardItemActions = boardItemActions,
+                            onNavigateToZoneBrowse = onNavigateToZoneBrowse,
+                            onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state }
                         )
                     }
                 }
@@ -584,11 +441,13 @@ fun HomeFeedScreen(
             }
         }
 
-        // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行
+        // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行。
+        // 点击走 ViewModel（立即切板块、立即发请求），指示器跟随分页器当前页实时移动；
+        // 左右滑手势由分页器处理，落定后再回写 ViewModel。
         if (boardHasFilterBar) {
-            val selectedBoardIndex = uiState.boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
+            val currentPage = pagerState.currentPage.coerceIn(0, boards.lastIndex)
             PrimaryScrollableTabRow(
-                selectedTabIndex = selectedBoardIndex,
+                selectedTabIndex = currentPage,
                 edgePadding = 16.dp,
                 divider = {},
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -598,8 +457,8 @@ fun HomeFeedScreen(
                     .padding(top = headerStack.topBarHeight)
                     .onSizeChanged { size -> headerStack.onTabRowMeasured(size.height) }
             ) {
-                uiState.boards.forEachIndexed { index, board ->
-                    val isSelected = index == selectedBoardIndex
+                boards.forEachIndexed { index, board ->
+                    val isSelected = index == currentPage
                     Tab(
                         selected = isSelected,
                         onClick = { viewModel.selectBoard(board) },
@@ -683,8 +542,7 @@ fun HomeFeedScreen(
         FloatingActionButton(
             onClick = {
                 scope.launch {
-                    staggeredGridState.scrollToItem(0)
-                    scrollBehavior.state.heightOffset = 0f
+                    scrollCurrentBoardToTop()
                     viewModel.refreshFeed()
                 }
             },
@@ -715,16 +573,200 @@ fun HomeFeedScreen(
 }
 
 /**
- * 「专区 + 板块 + 该板块筛选值」的选择快照。
+ * 单个板块页：四态 + 瀑布流内容 + 该板块自己的滚动状态与触底翻页。
  *
- * 用于判断「专区/板块/筛选」是否真的变了——变了才复位到顶并清空新键滚动记忆。
- * 筛选维度按板块取（动态 `subType` / 讨论 `order`），后续板块 ticket 在这里加自己的字段。
+ * 分页器会同时组合相邻页，因此这里只读传入的 [view]（按 [board] 投影），不读宿主选中的板块：
+ * - 滚动位置、筛选变化回顶、刷新收尾只作用于本页；
+ * - 触底翻页只在 `board == selectedBoard` 时发起（ViewModel 按选中板块派发请求）；
+ * - 未请求过首屏的板块由投影给 `isLoading`，滑动到该页不会先闪一帧空态卡片。
  */
-private data class BoardSelectionKey(
-    val tabKey: String,
-    val board: ZoneBoard,
-    val filterKey: String
-)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeBoardPage(
+    board: ZoneBoard,
+    uiState: HomeFeedUiState,
+    view: HomeBoardView,
+    viewModel: HomeFeedViewModel,
+    headerStack: HomeHeaderStackState,
+    scrollBehavior: TopAppBarScrollBehavior,
+    columns: StaggeredGridCells,
+    bottomContentPadding: PaddingValues,
+    boardActions: ZoneBoardActions,
+    boardItemActions: ZoneBoardItemActions,
+    onNavigateToZoneBrowse: (() -> Unit)?,
+    onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit
+) {
+    val gridState = rememberLazyStaggeredGridState()
+    LaunchedEffect(gridState, board) { onGridStateReady(board, gridState) }
+
+    val isCurrent = board == uiState.selectedBoard
+    val memoryKey = homeBoardMemoryKey(uiState.zoneScope, board)
+    val itemCount = view.itemCount
+    val errorMessage = view.errorMessage
+    // 卡片式空态：既不是加载也不是错误时才成立（未请求过的板块已由投影计入加载态）
+    val contentEmpty = itemCount == 0 && errorMessage == null && !view.isLoading
+    val errorEmpty = errorMessage != null && itemCount == 0
+    var restoredKey by remember { mutableStateOf<String?>(null) }
+    val topInset = headerStack.totalHeaderHeight
+
+    // 上拉触底翻页判断（本页自己的瀑布流状态）
+    val shouldLoadMore by remember(gridState) {
+        derivedStateOf {
+            val totalCount = gridState.layoutInfo.totalItemsCount
+            val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalCount > 0 && lastVisibleIndex >= totalCount - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMore, isCurrent, view.hasMore, view.isLoadingMore, view.loadMoreError) {
+        if (isCurrent && shouldLoadMore && view.hasMore &&
+            !view.isLoadingMore && view.loadMoreError == null
+        ) {
+            boardActions.onLoadMore()
+        }
+    }
+
+    // 按「作用域 + 板块」键恢复滚动位置：首屏、切专区、滑回本页都走这里。
+    // 记忆跨专区保留，但切专区后只重新加载第一页：下标可能超出当前已加载条目数，
+    // 越界时按「无记忆」处理并清掉脏数据，否则 Lazy 网格会停在已加载页末尾。
+    LaunchedEffect(memoryKey, itemCount > 0) {
+        if (itemCount <= 0) return@LaunchedEffect
+        if (restoredKey == memoryKey) return@LaunchedEffect
+        val memory = viewModel.scrollMemoryFor(memoryKey)
+        val inRange = memory.index in 0 until itemCount
+        if (inRange && (memory.index != 0 || memory.offset != 0)) {
+            gridState.scrollToItem(memory.index, memory.offset)
+        } else {
+            if (!inRange) viewModel.resetBoardScrollMemory(memoryKey)
+            gridState.scrollToItem(0)
+        }
+        restoredKey = memoryKey
+    }
+
+    // 滚动位置 / 折叠比例按本板块键保存（仅内存；持久化为 #156）。
+    // 只写回「已完成恢复」的键：切换瞬间旧板块的首帧不会把新键的位置写坏（A1）。
+    LaunchedEffect(gridState, scrollBehavior.state, memoryKey) {
+        snapshotFlow {
+            val driverHeight = headerStack.collapsibleHeightPx
+            Triple(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset,
+                if (driverHeight > 0f) {
+                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            )
+        }.collect { (index, offset, filterCollapseFraction) ->
+            if (restoredKey == memoryKey) {
+                viewModel.saveBoardScrollPosition(memoryKey, index, offset)
+                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
+            }
+        }
+    }
+
+    // 同一板块内筛选变化：回顶 + 展开筛选层 + 清空本板块记忆（换板块不算筛选变化）
+    val filterToken = uiState.boardFilterToken(board)
+    var lastFilterToken by remember(memoryKey) { mutableStateOf(filterToken) }
+    LaunchedEffect(filterToken, memoryKey) {
+        if (filterToken == lastFilterToken) return@LaunchedEffect
+        lastFilterToken = filterToken
+        viewModel.resetBoardScrollMemory(memoryKey)
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
+        gridState.scrollToItem(0)
+        restoredKey = memoryKey
+    }
+
+    // 刷新收尾：完成且无错误时回顶。只在本页仍是选中板块时动手，
+    // 刷新途中滑到别的板块不会把新板块滚回顶部（本轮修复的跨板块副作用）。
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(view.isRefreshing) {
+        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrent) {
+            gridState.scrollToItem(0)
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+        }
+        wasRefreshing = view.isRefreshing
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            view.isLoading -> {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = topInset, bottom = bottomContentPadding)
+                )
+            }
+
+            // 卡片式错误态：与专区详情共用同一基元；产品板块同样纳入四态（A5 / Spec c5）
+            errorEmpty -> {
+                ZoneErrorPlaceholder(
+                    message = errorMessage ?: "数据加载失败",
+                    onRetry = { if (isCurrent) boardActions.onRetryInitial() },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = topInset)
+                        .padding(24.dp)
+                )
+            }
+
+            // 卡片式空态：与专区详情共用同一基元；关注为空时换成引导页（不发起请求）
+            contentEmpty -> {
+                if (uiState.zoneScope.isFollowEmpty && board != ZoneBoard.Posts) {
+                    // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
+                    ZoneBoardStatusCard(
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = topInset)
+                            .padding(24.dp)
+                    ) {
+                        EmptyState(
+                            icon = Icons.Outlined.Category,
+                            title = "还没有关注的专区",
+                            description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
+                            actionLabel = "去专区广场",
+                            onAction = { onNavigateToZoneBrowse?.invoke() }
+                        )
+                    }
+                } else {
+                    ZoneEmptyPlaceholder(
+                        // 文案与共享面板同源（ZoneBoard.emptyText），避免产品板块落到动态措辞
+                        text = board.emptyText,
+                        onRefresh = { if (isCurrent) viewModel.refreshFeed() },
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = topInset)
+                            .padding(24.dp)
+                    )
+                }
+            }
+
+            else -> {
+                // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
+                // 加载 / 错误 / 空三态由上方卡片式分支接管，pane 只负责列表与页脚。
+                ZoneBoardPane(
+                    board = board,
+                    content = view.content,
+                    gridState = gridState,
+                    contentPadding = PaddingValues(
+                        start = 8.dp,
+                        end = 8.dp,
+                        top = topInset + 6.dp,
+                        bottom = bottomContentPadding
+                    ),
+                    actions = boardActions,
+                    itemActions = boardItemActions,
+                    columns = columns,
+                    // 置顶帖条是单专区语义：聚合态（全部）不渲染
+                    showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
 
 /**
  * 动态瀑布流自适应列数：
