@@ -589,6 +589,10 @@ private fun HomeBoardPage(
     LaunchedEffect(gridState, board) { onGridStateReady(board, gridState) }
 
     val isCurrent = board == uiState.selectedBoard
+    // 组合期的 [isCurrent] 会被长生命周期协程捕获后失效（effect 的 key 不含它，不会重启）。
+    // 切页瞬间旧页仍在跑 snapshotFlow，必须用实时判断立刻停写记忆，否则会把新板块的
+    // heightOffset（通常 0）当成旧板块的折叠度写回去——表现为「收起后切走再切回又展开了」。
+    val isCurrentNow: () -> Boolean = { uiState.selectedBoard == board }
     val memoryKey = homeBoardMemoryKey(uiState.zoneScope, board)
     val itemCount = view.itemCount
     val errorMessage = view.errorMessage
@@ -659,7 +663,7 @@ private fun HomeBoardPage(
         }.collect { (index, offset, filterCollapseFraction) ->
             // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
             // 写回会污染本页记忆。滚动位置还需已按要求恢复过（A1）。
-            if (!isCurrent) return@collect
+            if (!isCurrentNow()) return@collect
             if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, index, offset)
             }
@@ -684,7 +688,7 @@ private fun HomeBoardPage(
     // 刷新途中滑到别的板块不会把新板块滚回顶部（本轮修复的跨板块副作用）。
     var wasRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(view.isRefreshing) {
-        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrent) {
+        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrentNow()) {
             gridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
