@@ -87,6 +87,8 @@ data class SeriesDetailUiState(
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
+    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+    val collectCountBase: Int? = null,
     val isMasked: Boolean = false,
     val isIntroExpanded: Boolean = false
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
@@ -327,6 +329,18 @@ class SeriesDetailViewModel(
                         collectCountDelta = collectDeltaOf(it.originalCollected, previousCollected),
                         commentActionMessage = result.exceptionOrNull()?.message ?: "收藏状态更新失败"
                     )
+                }
+            }
+            else {
+                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+                collectRepository.getCollectCount(nodeId).onSuccess { count ->
+                    _uiState.update { current ->
+                        current.copy(
+                            collectCountBase = count.total,
+                            collectCountDelta = 0,
+                            originalCollected = nextCollected
+                        )
+                    }
                 }
             }
         }

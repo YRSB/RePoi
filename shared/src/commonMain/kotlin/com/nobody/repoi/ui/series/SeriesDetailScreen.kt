@@ -149,7 +149,8 @@ fun SeriesDetailScreen(
                 },
                 floatingToolbar = {
                     if (series != null) {
-                        val finalCollectCount = (series.collect) + uiState.collectCountDelta
+                        val baseCollect = uiState.collectCountBase ?: series.collect
+                        val finalCollectCount = baseCollect + uiState.collectCountDelta
                         SeriesFloatingActionBar(
                             collectCount = maxOf(0, finalCollectCount),
                             isCollected = uiState.isCollected,

@@ -153,8 +153,9 @@ class CharacterDetailCollectToggleTest {
     }
 
     private fun assertCollectRequest(collectMock: MockApi, expectedPath: String) {
-        val recorded = collectMock.takeRequest()
-        assertEquals(expectedPath, recorded.encodedPath)
+        val recorded = buildList {
+            repeat(collectMock.requestCount) { add(collectMock.takeRequest()) }
+        }.first { it.encodedPath == expectedPath }
         assertEquals("7", recorded.formEntries()["id"])
     }
 
@@ -204,6 +205,39 @@ class CharacterDetailCollectToggleTest {
         }
     }
 
+
+    @Test
+    fun toggleCollect_refreshesCountBaseFromServer() = runTest(testDispatcher) {
+        val detailMock = MockApi()
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(detailMock, collectRepository)
+        detailMock.enqueue(
+            detailMock.ok("""{"charactar":{"id":7,"itemId":70,"nameCN":"角色A","collect":8},"isAddFav":false}""")
+        )
+        collectMock.route("collect/item/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectMock.route(
+            "hobby/collectCount",
+            """{"success":true,"code":200,"msg":"ok","data":{"collect":{"care":41,"want":2,"preorder":0,"buy":3,"resell":0}}}"""
+        )
+
+        viewModel.loadDetail(CharacterNavParam(characterId = 7L))
+        advanceUntilIdle()
+        assertEquals(8, viewModel.uiState.value.character?.collect ?: 0)
+
+        viewModel.toggleCollect()
+        advanceUntilIdle()
+
+        // 写成功后基线改由服务端计数提供（五分类之和），本地 delta 归零
+        assertEquals(46, viewModel.uiState.value.collectCountBase)
+        assertEquals(0, viewModel.uiState.value.collectCountDelta)
+        assertTrue(viewModel.uiState.value.isCollected)
+        assertTrue(viewModel.uiState.value.originalCollected)
+        val paths = buildList {
+            repeat(collectMock.requestCount) { add(collectMock.takeRequest().encodedPath) }
+        }
+        assertTrue(paths.any { it?.contains("hobby/collectCount") == true })
+    }
     private fun newRepository(collectMock: MockApi): CollectRepository =
         CollectRepository(collectMock.api(testDispatcher), collectMock.json)
 

@@ -152,7 +152,7 @@ fun PersonDetailScreen(
                 },
                 floatingToolbar = {
                     if (person != null) {
-                        val baseCollect = person?.collect?.toLong() ?: 0L
+                        val baseCollect = (uiState.collectCountBase ?: (person?.collect ?: 0)).toLong()
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         PersonFloatingActionBar(
                             collectCount = displayCollect,
