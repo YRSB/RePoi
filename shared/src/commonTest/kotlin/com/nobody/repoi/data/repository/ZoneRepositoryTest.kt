@@ -2,6 +2,7 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -436,5 +437,38 @@ class ZoneRepositoryTest {
             assertTrue(result.isSuccess, "itemType=$type 应请求成功")
             assertEquals(type, mock.takeRequest().queryParameter("itemType"))
         }
+    }
+
+    @Test
+    fun getZoneHomeTabs_tokenExpiredNotifiesSessionSelfHealing() = runTest {
+        val mock = MockApi()
+        // 专区首页流遇 4001 由深管道通知会话，不再静默失败
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+        val repository = ZoneRepository(
+            api = mock.api(tokenProvider = { "tok-zone" }),
+            viewPreferencesManager = ViewPreferencesManager(TestDataStore.viewPrefs())
+        )
+
+        val result = repository.getZoneHomeTabs()
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        mock.assertTokenExpiredNotified("tok-zone")
+    }
+
+    @Test
+    fun getZonePosts_tokenExpiredNotifiesSessionSelfHealing() = runTest {
+        val mock = MockApi()
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+        val repository = ZoneRepository(
+            api = mock.api(tokenProvider = { "tok-zone-posts" }),
+            viewPreferencesManager = ViewPreferencesManager(TestDataStore.viewPrefs())
+        )
+
+        val result = repository.getZonePosts(zoneNodeId = 100L)
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        mock.assertTokenExpiredNotified("tok-zone-posts")
     }
 }

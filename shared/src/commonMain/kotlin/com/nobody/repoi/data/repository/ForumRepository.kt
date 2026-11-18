@@ -121,21 +121,13 @@ class ForumRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<PostItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.searchPosts(
+        api.searchPosts(
             forumNodeId = forumNodeId,
             order = order,
             keyword = keyword?.ifBlank { null },
             itemType = itemType?.ifBlank { null },
             page = page,
             pageSize = pageSize
-        )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取帖子列表失败")
-        }
-        response.data?.list ?: emptyList()
+        ).list
     }
 }

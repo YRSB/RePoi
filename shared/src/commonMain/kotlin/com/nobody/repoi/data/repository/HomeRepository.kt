@@ -3,7 +3,6 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
-import com.nobody.repoi.data.remote.model.ApiException
 
 /**
  * 首页动态信息流数据仓储。
@@ -30,19 +29,13 @@ class HomeRepository(
         zoneNodeId: Long? = null,
         zoneIds: String? = null
     ): Result<List<ActionItem>> = runCatching {
-        val response = api.getActionList(
+        api.getActionList(
             categoryId = categoryId,
             lastTime = lastTime,
             pageSize = pageSize,
             subType = subType,
             zoneNodeId = zoneNodeId,
             zoneIds = zoneIds
-        )
-
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "数据加载失败")
-        }
+        ).list.orEmpty()
     }
 }

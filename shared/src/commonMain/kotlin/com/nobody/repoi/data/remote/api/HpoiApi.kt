@@ -179,14 +179,14 @@ class HpoiApi(
         subType: String? = ActionSubType.DEFAULT.apiValue,
         zoneNodeId: Long? = null,
         zoneIds: String? = null,
-    ): CommonResponse<ActionListData> = client.get("api/user-action/list-v3") {
+    ): ActionListData = client.get("api/user-action/list-v3") {
         parameter("categoryId", categoryId)
         parameter("lastTime", lastTime)
         parameter("pageSize", pageSize)
         if (subType != null) parameter("subType", subType)
         if (zoneNodeId != null) parameter("zoneNodeId", zoneNodeId)
         if (zoneIds != null) parameter("zoneIds", zoneIds)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "数据加载失败")
 
     suspend fun getFollowDynamics(
         page: Int? = null,
@@ -222,10 +222,10 @@ class HpoiApi(
             setBody(formOf(params))
         }.unwrapData(json, "获取手办列表失败")
 
-    suspend fun getAllCategories(): CommonResponse<CategoryTreeData> =
+    suspend fun getAllCategories(): CategoryTreeData =
         client.post("api/category/web/all") {
             setBody(FormDataContent(Parameters.Empty))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "分类加载失败")
 
     // ── 条目详情/时间轴/分组 ────────────────────────────────────────
 
@@ -307,13 +307,13 @@ class HpoiApi(
 
     // ── 专区 ───────────────────────────────────────────────────────
 
-    suspend fun getZoneHomeTabs(): CommonResponse<ZoneHomeTabsPayload> =
-        client.get("api/zone/home-tabs").decodeRefAware(json)
+    suspend fun getZoneHomeTabs(): ZoneHomeTabsPayload =
+        client.get("api/zone/home-tabs").unwrapData(json, "获取专区数据失败")
 
-    suspend fun getZoneInfo(nodeId: Long): CommonResponse<ZoneInfoPayload> =
+    suspend fun getZoneInfo(nodeId: Long): ZoneInfoPayload =
         client.get("api/zone/info") {
             parameter("nodeId", nodeId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取专区详情失败")
 
     /**
      * 专区板块分类选项（相册板块传 `itemType = "album"`）。
@@ -324,11 +324,11 @@ class HpoiApi(
     suspend fun getZoneCategories(
         nodeId: Long,
         itemType: String,
-    ): CommonResponse<ZoneCategoriesPayload> =
+    ): ZoneCategoriesPayload =
         client.get("api/zone/categories") {
             parameter("nodeId", nodeId)
             parameter("itemType", itemType)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取专区分类失败")
 
     /**
      * 专区关联实体条目（厂商/系列/作品/角色/人物）。
@@ -347,13 +347,13 @@ class HpoiApi(
         category: Int = 0,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<ZoneItemsPayload> = client.get("api/zone/items") {
+    ): ZoneItemsPayload = client.get("api/zone/items") {
         if (zones != null) parameter("zones", zones)
         parameter("itemType", itemType)
         parameter("category", category)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取专区条目失败")
 
     // ── 二手 ───────────────────────────────────────────────────────
 
@@ -367,29 +367,29 @@ class HpoiApi(
             parameter("nodeId", nodeId)
         }.unwrapData(json, "获取二手交易详情失败")
 
-    suspend fun toggleZoneFocus(nodeId: Long): CommonResponse<ZoneFocusPayload> =
+    suspend fun toggleZoneFocus(nodeId: Long): ZoneFocusPayload =
         client.post("api/zone/focus") {
             setBody(formOf("nodeId" to nodeId))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "关注状态切换失败")
 
     suspend fun updateZoneSettings(
         showAll: Boolean,
         sort: String,
         hiddenZoneIds: String,
         customOrder: String,
-    ): CommonResponse<JsonObject> = client.post("api/zone/home-tabs/settings") {
+    ): Unit = client.post("api/zone/home-tabs/settings") {
         setBody(
             formOf(
                 "showAll" to showAll, "sort" to sort,
                 "hiddenZoneIds" to hiddenZoneIds, "customOrder" to customOrder,
             ),
         )
-    }.decodeRefAware(json)
+    }.unwrapUnit(json, "保存专区设置失败")
 
-    suspend fun reportZoneVisited(nodeId: Long): CommonResponse<JsonObject> =
+    suspend fun reportZoneVisited(nodeId: Long): Unit =
         client.post("api/zone/home-tabs/visited") {
             setBody(formOf("nodeId" to nodeId))
-        }.decodeRefAware(json)
+        }.unwrapUnit(json, "专区访问上报失败")
 
     // ── 讨论/帖子/版块 ─────────────────────────────────────────────
 
@@ -401,7 +401,7 @@ class HpoiApi(
         pageSize: Int = 20,
         keyword: String? = null,
         itemType: String? = null,
-    ): CommonResponse<PostListPayload> = client.get("api/posts/search") {
+    ): PostListPayload = client.get("api/posts/search") {
         if (zoneNodeId != null) parameter("zoneNodeId", zoneNodeId)
         if (forumNodeId != null) parameter("forumNodeId", forumNodeId)
         if (order != null) parameter("order", order)
@@ -409,7 +409,7 @@ class HpoiApi(
         parameter("pageSize", pageSize)
         if (keyword != null) parameter("keyword", keyword)
         if (itemType != null) parameter("itemType", itemType)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取讨论列表失败")
 
     suspend fun getPostInfo(nodeId: Long? = null, itemId: Long? = null): CommonResponse<PostDetailPayload> =
         client.get("api/posts/info-v2") {
@@ -786,36 +786,36 @@ class HpoiApi(
         setBody(formOf("account" to account, "password" to password, "loginType" to loginType))
     }.decodeRefAware(json)
 
-    suspend fun search(params: Map<String, String>): CommonResponse<SearchResponsePayload> =
+    suspend fun search(params: Map<String, String>): SearchResponsePayload =
         client.post("api/search") {
             setBody(formOf(params))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "搜索失败")
 
-    suspend fun getHotwords(category: Int): CommonResponse<HotwordPayload> =
+    suspend fun getHotwords(category: Int): HotwordPayload =
         client.post("api/search/hotword") {
             setBody(formOf("category" to category))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "热词加载失败")
 
-    suspend fun getAutoFill(type: Int, keywords: String): CommonResponse<AutoFillPayload> =
+    suspend fun getAutoFill(type: Int, keywords: String): AutoFillPayload =
         client.post("api/search/auto/fill") {
             setBody(formOf("type" to type, "keywords" to keywords))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "联想词加载失败")
 
     suspend fun searchUsers(
         keyword: String,
         page: Int = 1,
         pageSize: Int = 10,
-    ): CommonResponse<UserSearchPayload> = client.post("api/search/user") {
+    ): UserSearchPayload? = client.post("api/search/user") {
         headers[HttpHeaders.Accept] = "*/*"
         setBody(formOf("keyword" to keyword, "page" to page, "pageSize" to pageSize))
-    }.decodeRefAware(json)
+    }.unwrapDataOrNull(json, "搜索用户失败")
 
     // ── 厂商 ───────────────────────────────────────────────────────
 
-    suspend fun getElementAttributes(categoryId: Int): CommonResponse<AttributeListPayload> =
+    suspend fun getElementAttributes(categoryId: Int): AttributeListPayload =
         client.get("api/charactar/attribute/list") {
             parameter("categoryId", categoryId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "属性加载失败")
 
     suspend fun getCompanyDetail(companyId: Long): CompanyDetailPayload =
         client.get("api/company/v2/get") {
