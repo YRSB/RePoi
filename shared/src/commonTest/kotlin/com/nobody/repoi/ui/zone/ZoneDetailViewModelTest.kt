@@ -105,7 +105,7 @@ class ZoneDetailViewModelTest {
             """{"success":true,"code":200,"msg":"ok","data":[{"categoryId":1,"name":"手办"},{"categoryId":2,"name":"周边"}]}"""
         )
         mockApi.route(
-            "api/report",
+            "api/web-report/add",
             """{"success":true,"code":200,"msg":"ok","data":{}}"""
         )
         mockApi.route(
@@ -114,7 +114,7 @@ class ZoneDetailViewModelTest {
         )
         mockApi.route(
             "api/album/list",
-            """{"success":true,"code":200,"msg":"ok","data":{"hasMore":true,"items":[{"targetAlbumId":101,"title":"相册1"}]}}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":101,"itemId":1101,"nameCN":"相册1","cover":"c.jpg"}]}}"""
         )
         mockApi.route(
             "api/posts/search",
@@ -256,9 +256,9 @@ class ZoneDetailViewModelTest {
         vm.setResaleType(2)
         advanceUntilIdle()
         assertEquals(2, vm.activeSnapshot.value.filters.resaleType)
-        vm.setResalePurity("95")
+        vm.setResalePurity("9")
         advanceUntilIdle()
-        assertEquals("95", vm.activeSnapshot.value.filters.resalePurity)
+        assertEquals("9", vm.activeSnapshot.value.filters.resalePurity)
         vm.updateResaleKeyword("手办")
         assertEquals("手办", vm.activeSnapshot.value.filters.resaleKeyword)
         vm.submitResaleSearch()

@@ -80,6 +80,7 @@ data class HomeFeedUiState(
     val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     val userAvatar: String? = null,
     val unreadMessageCount: Int = 0,
+    val actionItems: List<ActionItem> = emptyList(),
     /**
      * 当前活跃板块的只读快照镜像（由 `ZoneBoardSession.activeSnapshot` 收集驱动，避免散装字段）。
      */
@@ -271,7 +272,17 @@ class HomeFeedViewModel(
         // 收集会话控制器的活跃板块快照，同步更新 UI 状态快照镜像
         viewModelScope.launch {
             session.activeSnapshot.collect { snapshot ->
-                _uiState.update { it.copy(currentBoardSnapshot = snapshot) }
+                _uiState.update { state ->
+                    val nextActionItems = if (snapshot.board == ZoneBoard.Action) {
+                        (snapshot.content as? ZoneBoardContent.Action)?.items ?: state.actionItems
+                    } else {
+                        state.actionItems
+                    }
+                    state.copy(
+                        currentBoardSnapshot = snapshot,
+                        actionItems = nextActionItems
+                    )
+                }
             }
         }
 
@@ -321,9 +332,10 @@ class HomeFeedViewModel(
                     )
                 }
 
+                val boardChanged = nextBoard != current.selectedBoard
                 if (categoryChanged) {
-                    session.updateScope(scope)
                     session.dispatch(ZoneBoardIntent.SelectBoard(nextBoard))
+                    session.updateScope(scope)
                     // 恢复该作用域目标板块已保存的滚动记忆
                     val memoryKey = homeBoardMemoryKey(scope, nextBoard)
                     boardScrollMemories[memoryKey]?.let { saved ->
@@ -331,7 +343,14 @@ class HomeFeedViewModel(
                         session.dispatch(ZoneBoardIntent.SaveFilterCollapseFraction(nextBoard, saved.filterCollapseFraction))
                         session.dispatch(ZoneBoardIntent.SaveFilterRowScroll(nextBoard, saved.filterRowScrollX))
                     }
-                    syncAlbumCategories(scope)
+                    if (nextBoard == ZoneBoard.Album) {
+                        syncAlbumCategories(scope)
+                    }
+                } else if (boardChanged) {
+                    session.dispatch(ZoneBoardIntent.SelectBoard(nextBoard))
+                    if (nextBoard == ZoneBoard.Album) {
+                        syncAlbumCategories(scope)
+                    }
                 }
 
                 if (coldStartResolvedTabKey != null) {
@@ -407,8 +426,8 @@ class HomeFeedViewModel(
             persistBoardSelection()
         }
 
-        session.updateScope(scope)
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
+        session.updateScope(scope)
         val memoryKey = homeBoardMemoryKey(scope, firstBoard)
         boardScrollMemories[memoryKey]?.let { saved ->
             session.dispatch(ZoneBoardIntent.SaveScrollPosition(firstBoard, saved.index, saved.offset))
@@ -417,7 +436,9 @@ class HomeFeedViewModel(
         }
 
         syncBoards(scope)
-        syncAlbumCategories(scope)
+        if (firstBoard == ZoneBoard.Album) {
+            syncAlbumCategories(scope)
+        }
     }
 
     fun selectBoard(board: ZoneBoard) {
@@ -429,6 +450,9 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(selectedBoard = board) }
         viewModelScope.launch { persistBoardSelection() }
         session.dispatch(ZoneBoardIntent.SelectBoard(board))
+        if (board == ZoneBoard.Album) {
+            syncAlbumCategories(current.zoneScope)
+        }
     }
 
     fun ensureBoardLoaded(board: ZoneBoard) {
@@ -602,8 +626,8 @@ class HomeFeedViewModel(
             persistBoardSelection()
         }
 
-        session.updateScope(scope)
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
+        session.updateScope(scope)
         session.dispatch(ZoneBoardIntent.SelectSubType(defaultSubType))
         syncBoards(scope)
     }
@@ -694,19 +718,22 @@ class HomeFeedViewModel(
                 )
             }
             session.dispatch(ZoneBoardIntent.SelectBoard(targetBoard))
+            if (targetBoard == ZoneBoard.Album) {
+                syncAlbumCategories(scope)
+            }
         }
     }
 
     private fun syncAlbumCategories(scope: ZoneQueryScope) {
         albumCategoriesJob?.cancel()
         val albumRepo = albumRepository
-        if (scope !is ZoneQueryScope.Single || albumRepo == null) {
+        if (scope !is ZoneQueryScope.Single || albumRepo == null || _uiState.value.selectedBoard != ZoneBoard.Album) {
             _uiState.update { it.copy(albumCategoryOptions = emptyList()) }
             return
         }
         albumCategoriesJob = viewModelScope.launch {
             val result = albumRepo.getAlbumCategories(scope.nodeId)
-            if (_uiState.value.zoneScope != scope) return@launch
+            if (_uiState.value.zoneScope != scope || _uiState.value.selectedBoard != ZoneBoard.Album) return@launch
             val options = result.getOrNull().orEmpty()
                 .map { AlbumCategoryOption(it.categoryId, it.name.orEmpty()) }
                 .filter { it.id > 0 && it.name.isNotBlank() }

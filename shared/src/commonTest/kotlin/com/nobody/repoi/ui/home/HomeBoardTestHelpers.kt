@@ -27,7 +27,7 @@ import com.nobody.repoi.ui.board.itemCount
  */
 
 val HomeFeedUiState.items: List<ActionItem>
-    get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items.orEmpty()
+    get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items ?: actionItems
 
 val HomeFeedUiState.lastTime: Long
     get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items?.lastOrNull()?.actionDate?.let {
@@ -59,7 +59,7 @@ val HomeFeedUiState.albumItems: List<AlbumListItem>
     get() = (currentBoardSnapshot.content as? ZoneBoardContent.Album)?.items.orEmpty()
 
 val HomeFeedUiState.albumPage: Int
-    get() = if (currentBoardSnapshot.pageView.isEndReached) 2 else 1
+    get() = currentBoardSnapshot.pageView.page
 
 val HomeFeedUiState.isAlbumLoading: Boolean
     get() = currentBoardSnapshot.board == ZoneBoard.Album && currentBoardSnapshot.pageView.isLoading
@@ -105,7 +105,7 @@ val HomeFeedUiState.posts: PostsTestState
             order = currentBoardSnapshot.filters.postsOrder,
             items = postsContent?.items.orEmpty(),
             pinnedPosts = postsContent?.pinnedPosts.orEmpty(),
-            page = 1,
+            page = currentBoardSnapshot.pageView.page,
             isLoaded = currentBoardSnapshot.board == ZoneBoard.Posts && (!currentBoardSnapshot.pageView.isLoading || currentBoardSnapshot.content.itemCount > 0),
             isInitialLoading = currentBoardSnapshot.board == ZoneBoard.Posts && currentBoardSnapshot.pageView.isLoading && currentBoardSnapshot.content.itemCount == 0,
             isLoadingMore = currentBoardSnapshot.board == ZoneBoard.Posts && currentBoardSnapshot.pageView.isLoadingMore,
@@ -201,7 +201,7 @@ val HomeFeedUiState.hobbyBoard: HobbyBoardTestState
             filter = currentBoardSnapshot.filters.hobby,
             isGridMode = hobbyContent?.isGridMode ?: true,
             items = hobbyContent?.items.orEmpty(),
-            page = 1,
+            page = currentBoardSnapshot.pageView.page,
             hasMore = currentBoardSnapshot.board == ZoneBoard.Hobby && !currentBoardSnapshot.pageView.isEndReached,
             isLoading = currentBoardSnapshot.board == ZoneBoard.Hobby && currentBoardSnapshot.pageView.isLoading,
             isLoadingMore = currentBoardSnapshot.board == ZoneBoard.Hobby && currentBoardSnapshot.pageView.isLoadingMore,

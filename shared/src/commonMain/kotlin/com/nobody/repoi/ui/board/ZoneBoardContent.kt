@@ -20,6 +20,7 @@ import com.nobody.repoi.data.remote.model.ZoneEntityItem
  * @param isEndReached 是否已经到底（页脚渲染「已经到底啦」）
  */
 data class ZoneBoardPageView(
+    val page: Int = 1,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,

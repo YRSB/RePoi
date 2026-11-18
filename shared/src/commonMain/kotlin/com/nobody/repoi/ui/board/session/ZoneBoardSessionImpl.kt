@@ -27,11 +27,7 @@ import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.applyTo
 import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
-import com.nobody.repoi.util.paging.KeyedListLoader
-import com.nobody.repoi.util.paging.PageChunk
-import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
-import com.nobody.repoi.util.paging.pagedChunkLoader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -523,45 +519,11 @@ private class AlbumBoardPager(
 
     private var order: String = AlbumBoardOptions.DEFAULT_ORDER
     private var category: Int? = null
+    private var page: Int = 1
+    private var hasMore: Boolean = true
     private var items: List<AlbumListItem> = emptyList()
     private var pageView: ZoneBoardPageView = ZoneBoardPageView()
-    private var existingAlbums: List<AlbumListItem> = emptyList()
-    private var currentScope: ZoneQueryScope = ZoneQueryScope.All
-
-    private val loader = PagedListLoader<AlbumListItem>(
-        scope = coroutineScope,
-        initialPage = 1,
-        pageSize = AlbumBoardOptions.PAGE_SIZE,
-        keySelector = { it.targetAlbumId }
-    ) { page, pageSize ->
-        albumRepository.getAlbums(
-            page = page,
-            pageSize = pageSize,
-            orderString = order,
-            zones = currentScope.zonesParam(),
-            category = category
-        ).map { payload ->
-            val hasMore = payload.hasMore &&
-                (page == 1 || payload.items.hasNewKeysAfterDedup(existingAlbums) { it.targetAlbumId })
-            PageChunk(items = payload.items, hasMore = hasMore)
-        }
-    }
-
-    init {
-        coroutineScope.launch {
-            loader.state.collect { state ->
-                items = state.items
-                pageView = ZoneBoardPageView(
-                    isLoading = state.isLoading,
-                    isLoadingMore = state.isLoadingMore,
-                    errorMessage = state.initialError,
-                    loadMoreError = state.appendError,
-                    isEndReached = !state.hasMore
-                )
-                onChanged()
-            }
-        }
-    }
+    private var job: Job? = null
 
     override fun ensureLoaded(scope: ZoneQueryScope) {
         if (isLoaded || pageView.isLoading) return
@@ -569,35 +531,121 @@ private class AlbumBoardPager(
     }
 
     override fun loadInitial(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         isLoaded = true
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.loadInitial()
+        pageView = ZoneBoardPageView(page = 1, isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqOrder = order
+            val reqCategory = category
+            val result = albumRepository.getAlbums(
+                page = 1,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = reqOrder,
+                zones = scope.zonesParam(),
+                category = reqCategory
+            )
+            result.onSuccess { payload ->
+                if (order != reqOrder || category != reqCategory) return@onSuccess
+                val distinctList = payload.items.distinctBy { it.targetAlbumId }
+                items = distinctList
+                page = 1
+                hasMore = payload.hasMore
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || order != reqOrder || category != reqCategory) return@onFailure
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, errorMessage = error.message ?: "加载失败")
+                onChanged()
+            }
+        }
     }
 
     override fun loadMore(scope: ZoneQueryScope) {
-        currentScope = scope
         if (!isLoaded || pageView.isLoading || pageView.isLoadingMore || pageView.isEndReached || scope.isFollowEmpty) return
-        existingAlbums = loader.state.value.items
-        loader.loadMore()
+        pageView = pageView.copy(isLoadingMore = true, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqOrder = order
+            val reqCategory = category
+            val nextPage = page + 1
+            val result = albumRepository.getAlbums(
+                page = nextPage,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = reqOrder,
+                zones = scope.zonesParam(),
+                category = reqCategory
+            )
+            result.onSuccess { payload ->
+                if (order != reqOrder || category != reqCategory) return@onSuccess
+                val existingKeys = items.map { it.targetAlbumId }.toSet()
+                val uniqueNewItems = payload.items.filterNot { it.targetAlbumId in existingKeys }
+                val hasNewItems = payload.items.hasNewKeysAfterDedup(items) { it.targetAlbumId }
+                val more = payload.hasMore && hasNewItems
+                items = items + uniqueNewItems
+                page = nextPage
+                hasMore = more
+                pageView = pageView.copy(page = nextPage, isLoadingMore = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || order != reqOrder || category != reqCategory) {
+                    pageView = pageView.copy(isLoadingMore = false)
+                    onChanged()
+                    return@onFailure
+                }
+                pageView = pageView.copy(isLoadingMore = false, loadMoreError = error.message ?: "加载更多失败")
+                onChanged()
+            }
+        }
     }
 
     override fun refresh(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.refresh()
+        pageView = pageView.copy(isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqOrder = order
+            val reqCategory = category
+            val result = albumRepository.getAlbums(
+                page = 1,
+                pageSize = AlbumBoardOptions.PAGE_SIZE,
+                orderString = reqOrder,
+                zones = scope.zonesParam(),
+                category = reqCategory
+            )
+            result.onSuccess { payload ->
+                if (order != reqOrder || category != reqCategory) return@onSuccess
+                val distinctList = payload.items.distinctBy { it.targetAlbumId }
+                items = distinctList
+                page = 1
+                hasMore = payload.hasMore
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || order != reqOrder || category != reqCategory) return@onFailure
+                pageView = pageView.copy(isLoading = false, errorMessage = error.message ?: "刷新失败")
+                onChanged()
+            }
+        }
     }
 
     fun setOrder(newOrder: String, scope: ZoneQueryScope) {
@@ -613,9 +661,10 @@ private class AlbumBoardPager(
     }
 
     override fun onScopeChanged(newScope: ZoneQueryScope) {
-        currentScope = newScope
-        loader.reset(clearItems = true)
+        job?.cancel()
         items = emptyList()
+        page = 1
+        hasMore = true
         isLoaded = false
         category = null
         pageView = ZoneBoardPageView()
@@ -666,12 +715,13 @@ private class PostsBoardPager(
         if (scope.isFollowEmpty) {
             pinnedPosts = emptyList()
             items = emptyList()
+            page = 1
             hasMore = false
-            pageView = ZoneBoardPageView(isEndReached = true)
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        pageView = ZoneBoardPageView(isLoading = true, errorMessage = null, loadMoreError = null)
+        pageView = ZoneBoardPageView(page = 1, isLoading = true, errorMessage = null, loadMoreError = null)
         onChanged()
 
         job = coroutineScope.launch {
@@ -694,11 +744,11 @@ private class PostsBoardPager(
                 }
                 page = 1
                 hasMore = rawList.size >= PostsBoardOptions.PAGE_SIZE
-                pageView = ZoneBoardPageView(isLoading = false, isEndReached = !hasMore)
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
                 onChanged()
             }.onFailure { error ->
                 if (error is CancellationException || order != reqOrder) return@onFailure
-                pageView = ZoneBoardPageView(isLoading = false, errorMessage = error.message ?: "加载失败")
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, errorMessage = error.message ?: "加载失败")
                 onChanged()
             }
         }
@@ -728,7 +778,7 @@ private class PostsBoardPager(
                 items = items + uniqueNewItems
                 page = nextPage
                 hasMore = more
-                pageView = pageView.copy(isLoadingMore = false, isEndReached = !more)
+                pageView = pageView.copy(page = nextPage, isLoadingMore = false, isEndReached = !more)
                 onChanged()
             }.onFailure { error ->
                 if (error is CancellationException || order != reqOrder) {
@@ -747,8 +797,9 @@ private class PostsBoardPager(
         if (scope.isFollowEmpty) {
             pinnedPosts = emptyList()
             items = emptyList()
+            page = 1
             hasMore = false
-            pageView = ZoneBoardPageView(isEndReached = true)
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
@@ -775,7 +826,7 @@ private class PostsBoardPager(
                 }
                 page = 1
                 hasMore = rawList.size >= PostsBoardOptions.PAGE_SIZE
-                pageView = ZoneBoardPageView(isLoading = false, isEndReached = !hasMore)
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
                 onChanged()
             }.onFailure { error ->
                 if (error is CancellationException || order != reqOrder) return@onFailure
@@ -829,60 +880,20 @@ private class HobbyBoardPager(
         private set
 
     private var filter: ZoneHobbyFilter = ZoneHobbyFilter()
-    private var isGridMode: Boolean = true
+    private var isGridMode: Boolean = viewPreferencesManager.isHobbyListGridMode
     private var showFilterSheet: Boolean = false
     private var showCategoryPickerSheet: Boolean = false
+    private var page: Int = 1
+    private var hasMore: Boolean = true
     private var items: List<HobbyItemSummary> = emptyList()
     private var pageView: ZoneBoardPageView = ZoneBoardPageView()
-    private var existingHobbies: List<HobbyItemSummary> = emptyList()
-    private var currentScope: ZoneQueryScope = ZoneQueryScope.All
-
-    private val loader = PagedListLoader<HobbyItemSummary>(
-        scope = coroutineScope,
-        initialPage = 1,
-        pageSize = HobbyBoardOptions.PAGE_SIZE,
-        keySelector = { it.actualItemId }
-    ) { reqPage, reqPageSize ->
-        itemRepository.queryHobbyBoard(
-            scope = currentScope,
-            page = reqPage,
-            pageSize = reqPageSize,
-            filters = filter
-        ).map { list ->
-            val byPage = PageChunk.of(list, reqPageSize)
-            val hasMore = byPage.hasMore &&
-                (reqPage == 1 || list.hasNewKeysAfterDedup(existingHobbies) { it.actualItemId })
-            byPage.copy(hasMore = hasMore)
-        }
-    }
-
-    init {
-        coroutineScope.launch {
-            viewPreferencesManager.isHobbyListGridModeFlow.collect { grid ->
-                if (isGridMode != grid) {
-                    isGridMode = grid
-                    onChanged()
-                }
-            }
-        }
-        coroutineScope.launch {
-            loader.state.collect { state ->
-                items = state.items
-                pageView = ZoneBoardPageView(
-                    isLoading = state.isLoading,
-                    isLoadingMore = state.isLoadingMore,
-                    errorMessage = state.initialError,
-                    loadMoreError = state.appendError,
-                    isEndReached = !state.hasMore
-                )
-                onChanged()
-            }
-        }
-    }
+    private var job: Job? = null
 
     fun toggleViewMode() {
+        isGridMode = !isGridMode
+        onChanged()
         coroutineScope.launch {
-            viewPreferencesManager.setHobbyListGridMode(!isGridMode)
+            viewPreferencesManager.setHobbyListGridMode(isGridMode)
         }
     }
 
@@ -892,35 +903,115 @@ private class HobbyBoardPager(
     }
 
     override fun loadInitial(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         isLoaded = true
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.loadInitial()
+        pageView = ZoneBoardPageView(page = 1, isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqFilter = filter
+            val result = itemRepository.queryHobbyBoard(
+                scope = scope,
+                page = 1,
+                pageSize = HobbyBoardOptions.PAGE_SIZE,
+                filters = reqFilter
+            )
+            result.onSuccess { list ->
+                if (filter != reqFilter) return@onSuccess
+                val distinctList = list.distinctBy { it.actualItemId }
+                items = distinctList
+                page = 1
+                hasMore = list.size >= HobbyBoardOptions.PAGE_SIZE
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || filter != reqFilter) return@onFailure
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, errorMessage = error.message ?: "加载失败")
+                onChanged()
+            }
+        }
     }
 
     override fun loadMore(scope: ZoneQueryScope) {
-        currentScope = scope
         if (!isLoaded || pageView.isLoading || pageView.isLoadingMore || pageView.isEndReached || scope.isFollowEmpty) return
-        existingHobbies = loader.state.value.items
-        loader.loadMore()
+        pageView = pageView.copy(isLoadingMore = true, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqFilter = filter
+            val nextPage = page + 1
+            val result = itemRepository.queryHobbyBoard(
+                scope = scope,
+                page = nextPage,
+                pageSize = HobbyBoardOptions.PAGE_SIZE,
+                filters = reqFilter
+            )
+            result.onSuccess { list ->
+                if (filter != reqFilter) return@onSuccess
+                val existingKeys = items.map { it.actualItemId }.toSet()
+                val uniqueNewItems = list.filterNot { it.actualItemId in existingKeys }
+                val hasNewItems = list.hasNewKeysAfterDedup(items) { it.actualItemId }
+                val more = list.size >= HobbyBoardOptions.PAGE_SIZE && hasNewItems
+                items = items + uniqueNewItems
+                page = nextPage
+                hasMore = more
+                pageView = pageView.copy(page = nextPage, isLoadingMore = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || filter != reqFilter) {
+                    pageView = pageView.copy(isLoadingMore = false)
+                    onChanged()
+                    return@onFailure
+                }
+                pageView = pageView.copy(isLoadingMore = false, loadMoreError = error.message ?: "加载更多失败")
+                onChanged()
+            }
+        }
     }
 
     override fun refresh(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.refresh()
+        pageView = pageView.copy(isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqFilter = filter
+            val result = itemRepository.queryHobbyBoard(
+                scope = scope,
+                page = 1,
+                pageSize = HobbyBoardOptions.PAGE_SIZE,
+                filters = reqFilter
+            )
+            result.onSuccess { list ->
+                if (filter != reqFilter) return@onSuccess
+                val distinctList = list.distinctBy { it.actualItemId }
+                items = distinctList
+                page = 1
+                hasMore = list.size >= HobbyBoardOptions.PAGE_SIZE
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || filter != reqFilter) return@onFailure
+                pageView = pageView.copy(isLoading = false, errorMessage = error.message ?: "刷新失败")
+                onChanged()
+            }
+        }
     }
 
     fun setOrder(order: String, scope: ZoneQueryScope) {
@@ -980,9 +1071,10 @@ private class HobbyBoardPager(
     }
 
     override fun onScopeChanged(newScope: ZoneQueryScope) {
-        currentScope = newScope
-        loader.reset(clearItems = true)
+        job?.cancel()
         items = emptyList()
+        page = 1
+        hasMore = true
         isLoaded = false
         showFilterSheet = false
         showCategoryPickerSheet = false
@@ -1023,51 +1115,9 @@ private class ResaleBoardPager(
     private var purity: String? = null
     private var keyword: String = ""
     private var items: List<ResaleSearchItem> = emptyList()
+    private var hasMore: Boolean = true
     private var pageView: ZoneBoardPageView = ZoneBoardPageView()
-    private var existingItems: List<ResaleSearchItem> = emptyList()
-    private var currentScope: ZoneQueryScope = ZoneQueryScope.All
-
-    private val loader = KeyedListLoader<ResaleSearchItem, String?>(
-        scope = coroutineScope,
-        initialKey = null,
-        keySelector = { it.id },
-        nextKeyProvider = { _, state -> state.items.lastOrNull()?.addDate },
-        fetcher = { cursor ->
-            resaleRepository.searchResale(
-                scope = currentScope,
-                type = type,
-                keyword = keyword.takeIf { it.isNotBlank() },
-                puritys = purity,
-                lastTime = cursor,
-                pageSize = ResaleBoardOptions.PAGE_SIZE
-            ).map { payload ->
-                val list = payload.list
-                val hasMore = list.size >= ResaleBoardOptions.PAGE_SIZE &&
-                    !list.lastOrNull()?.addDate.isNullOrBlank() &&
-                    (cursor == null || list.hasNewKeysAfterDedup(existingItems) { it.id })
-                PageChunk(
-                    items = list,
-                    hasMore = hasMore
-                )
-            }
-        }
-    )
-
-    init {
-        coroutineScope.launch {
-            loader.state.collect { state ->
-                items = state.items
-                pageView = ZoneBoardPageView(
-                    isLoading = state.isLoading,
-                    isLoadingMore = state.isLoadingMore,
-                    errorMessage = state.initialError,
-                    loadMoreError = state.appendError,
-                    isEndReached = !state.hasMore
-                )
-                onChanged()
-            }
-        }
-    }
+    private var job: Job? = null
 
     override fun ensureLoaded(scope: ZoneQueryScope) {
         if (isLoaded || pageView.isLoading) return
@@ -1075,39 +1125,135 @@ private class ResaleBoardPager(
     }
 
     override fun loadInitial(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         isLoaded = true
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            existingItems = emptyList()
+            hasMore = false
             pageView = ZoneBoardPageView(isEndReached = true)
             onChanged()
             return
         }
-        existingItems = emptyList()
-        loader.loadInitial()
+        pageView = ZoneBoardPageView(isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqType = type
+            val reqPurity = purity
+            val reqKeyword = keyword
+            val result = resaleRepository.searchResale(
+                scope = scope,
+                type = reqType,
+                keyword = reqKeyword.takeIf { it.isNotBlank() },
+                puritys = reqPurity,
+                lastTime = null,
+                pageSize = ResaleBoardOptions.PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                if (type != reqType || purity != reqPurity || keyword != reqKeyword) return@onSuccess
+                val list = payload.list
+                val distinctList = list.distinctBy { it.id }
+                val lastAddDate = distinctList.lastOrNull()?.addDate
+                val more = distinctList.size >= ResaleBoardOptions.PAGE_SIZE && !lastAddDate.isNullOrBlank()
+                items = distinctList
+                hasMore = more
+                pageView = ZoneBoardPageView(isLoading = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || type != reqType || purity != reqPurity || keyword != reqKeyword) return@onFailure
+                pageView = ZoneBoardPageView(isLoading = false, errorMessage = error.message ?: "加载失败")
+                onChanged()
+            }
+        }
     }
 
     override fun loadMore(scope: ZoneQueryScope) {
-        currentScope = scope
         if (!isLoaded || pageView.isLoading || pageView.isLoadingMore || pageView.isEndReached || scope.isFollowEmpty) return
-        existingItems = loader.state.value.items
-        loader.loadMore()
+        val cursor = items.lastOrNull()?.addDate
+        if (cursor.isNullOrBlank()) {
+            pageView = pageView.copy(isEndReached = true)
+            onChanged()
+            return
+        }
+        pageView = pageView.copy(isLoadingMore = true, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqType = type
+            val reqPurity = purity
+            val reqKeyword = keyword
+            val result = resaleRepository.searchResale(
+                scope = scope,
+                type = reqType,
+                keyword = reqKeyword.takeIf { it.isNotBlank() },
+                puritys = reqPurity,
+                lastTime = cursor,
+                pageSize = ResaleBoardOptions.PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                if (type != reqType || purity != reqPurity || keyword != reqKeyword) return@onSuccess
+                val list = payload.list
+                val existingKeys = items.map { it.id }.toSet()
+                val uniqueNewItems = list.filterNot { it.id in existingKeys }
+                val hasNewItems = list.hasNewKeysAfterDedup(items) { it.id }
+                val lastAddDate = list.lastOrNull()?.addDate
+                val more = list.size >= ResaleBoardOptions.PAGE_SIZE && !lastAddDate.isNullOrBlank() && hasNewItems
+                items = items + uniqueNewItems
+                hasMore = more
+                pageView = pageView.copy(isLoadingMore = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || type != reqType || purity != reqPurity || keyword != reqKeyword) {
+                    pageView = pageView.copy(isLoadingMore = false)
+                    onChanged()
+                    return@onFailure
+                }
+                pageView = pageView.copy(isLoadingMore = false, loadMoreError = error.message ?: "加载更多失败")
+                onChanged()
+            }
+        }
     }
 
     override fun refresh(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            existingItems = emptyList()
+            hasMore = false
             pageView = ZoneBoardPageView(isEndReached = true)
             onChanged()
             return
         }
-        existingItems = emptyList()
-        loader.refresh()
+        pageView = pageView.copy(isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val reqType = type
+            val reqPurity = purity
+            val reqKeyword = keyword
+            val result = resaleRepository.searchResale(
+                scope = scope,
+                type = reqType,
+                keyword = reqKeyword.takeIf { it.isNotBlank() },
+                puritys = reqPurity,
+                lastTime = null,
+                pageSize = ResaleBoardOptions.PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                if (type != reqType || purity != reqPurity || keyword != reqKeyword) return@onSuccess
+                val list = payload.list
+                val distinctList = list.distinctBy { it.id }
+                val lastAddDate = distinctList.lastOrNull()?.addDate
+                val more = distinctList.size >= ResaleBoardOptions.PAGE_SIZE && !lastAddDate.isNullOrBlank()
+                items = distinctList
+                hasMore = more
+                pageView = ZoneBoardPageView(isLoading = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException || type != reqType || purity != reqPurity || keyword != reqKeyword) return@onFailure
+                pageView = pageView.copy(isLoading = false, errorMessage = error.message ?: "刷新失败")
+                onChanged()
+            }
+        }
     }
 
     fun setType(newType: Int, scope: ZoneQueryScope) {
@@ -1133,10 +1279,9 @@ private class ResaleBoardPager(
     }
 
     override fun onScopeChanged(newScope: ZoneQueryScope) {
-        currentScope = newScope
-        loader.reset(clearItems = true)
+        job?.cancel()
         items = emptyList()
-        existingItems = emptyList()
+        hasMore = true
         isLoaded = false
         pageView = ZoneBoardPageView()
         onChanged()
@@ -1171,44 +1316,11 @@ private class EntityBoardPager(
     override var isLoaded: Boolean = false
         private set
 
+    private var page: Int = 1
+    private var hasMore: Boolean = true
     private var items: List<ZoneEntityItem> = emptyList()
     private var pageView: ZoneBoardPageView = ZoneBoardPageView()
-    private var existingItems: List<ZoneEntityItem> = emptyList()
-    private var currentScope: ZoneQueryScope = ZoneQueryScope.All
-
-    private val loader = pagedChunkLoader<ZoneEntityItem>(
-        scope = coroutineScope,
-        initialPage = 1,
-        pageSize = ENTITY_BOARD_PAGE_SIZE,
-        keySelector = { it.targetId }
-    ) { page, size ->
-        zoneRepository.getZoneItems(
-            scope = currentScope,
-            itemType = board.type,
-            page = page,
-            pageSize = size
-        ).map { payload ->
-            val hasMore = payload.hasMore &&
-                (page == 1 || payload.list.hasNewKeysAfterDedup(existingItems) { it.targetId })
-            PageChunk(items = payload.list, hasMore = hasMore)
-        }
-    }
-
-    init {
-        coroutineScope.launch {
-            loader.state.collect { state ->
-                items = state.items
-                pageView = ZoneBoardPageView(
-                    isLoading = state.isLoading,
-                    isLoadingMore = state.isLoadingMore,
-                    errorMessage = state.initialError,
-                    loadMoreError = state.appendError,
-                    isEndReached = !state.hasMore
-                )
-                onChanged()
-            }
-        }
-    }
+    private var job: Job? = null
 
     override fun ensureLoaded(scope: ZoneQueryScope) {
         if (isLoaded || pageView.isLoading) return
@@ -1216,41 +1328,116 @@ private class EntityBoardPager(
     }
 
     override fun loadInitial(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         isLoaded = true
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.loadInitial()
+        pageView = ZoneBoardPageView(page = 1, isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val result = zoneRepository.getZoneItems(
+                scope = scope,
+                itemType = board.type,
+                page = 1,
+                pageSize = ENTITY_BOARD_PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                val distinctList = payload.list.distinctBy { it.targetId }
+                items = distinctList
+                page = 1
+                hasMore = payload.hasMore
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, errorMessage = error.message ?: "加载失败")
+                onChanged()
+            }
+        }
     }
 
     override fun loadMore(scope: ZoneQueryScope) {
-        currentScope = scope
         if (!isLoaded || pageView.isLoading || pageView.isLoadingMore || pageView.isEndReached || scope.isFollowEmpty) return
-        existingItems = loader.state.value.items
-        loader.loadMore()
+        pageView = pageView.copy(isLoadingMore = true, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val nextPage = page + 1
+            val result = zoneRepository.getZoneItems(
+                scope = scope,
+                itemType = board.type,
+                page = nextPage,
+                pageSize = ENTITY_BOARD_PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                val existingKeys = items.map { it.targetId }.toSet()
+                val uniqueNewItems = payload.list.filterNot { it.targetId in existingKeys }
+                val hasNewItems = payload.list.hasNewKeysAfterDedup(items) { it.targetId }
+                val more = payload.hasMore && hasNewItems
+                items = items + uniqueNewItems
+                page = nextPage
+                hasMore = more
+                pageView = pageView.copy(page = nextPage, isLoadingMore = false, isEndReached = !more)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException) {
+                    pageView = pageView.copy(isLoadingMore = false)
+                    onChanged()
+                    return@onFailure
+                }
+                pageView = pageView.copy(isLoadingMore = false, loadMoreError = error.message ?: "加载更多失败")
+                onChanged()
+            }
+        }
     }
 
     override fun refresh(scope: ZoneQueryScope) {
-        currentScope = scope
+        job?.cancel()
         if (scope.isFollowEmpty) {
-            loader.reset(clearItems = true)
             items = emptyList()
-            pageView = ZoneBoardPageView(isEndReached = true)
+            page = 1
+            hasMore = false
+            pageView = ZoneBoardPageView(page = 1, isEndReached = true)
             onChanged()
             return
         }
-        loader.refresh()
+        pageView = pageView.copy(isLoading = true, errorMessage = null, loadMoreError = null)
+        onChanged()
+
+        job = coroutineScope.launch {
+            val result = zoneRepository.getZoneItems(
+                scope = scope,
+                itemType = board.type,
+                page = 1,
+                pageSize = ENTITY_BOARD_PAGE_SIZE
+            )
+            result.onSuccess { payload ->
+                val distinctList = payload.list.distinctBy { it.targetId }
+                items = distinctList
+                page = 1
+                hasMore = payload.hasMore
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, isEndReached = !hasMore)
+                onChanged()
+            }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
+                pageView = ZoneBoardPageView(page = 1, isLoading = false, errorMessage = error.message ?: "刷新失败")
+                onChanged()
+            }
+        }
     }
 
     override fun onScopeChanged(newScope: ZoneQueryScope) {
-        currentScope = newScope
-        loader.reset(clearItems = true)
+        job?.cancel()
         items = emptyList()
+        page = 1
+        hasMore = true
         isLoaded = false
         pageView = ZoneBoardPageView()
         onChanged()

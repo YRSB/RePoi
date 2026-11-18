@@ -80,7 +80,7 @@ class ZoneBoardSessionTest {
             initialBoard: ZoneBoard = ZoneBoard.Action
         ): ZoneBoardSession {
             return factory.create(
-                coroutineScope = testScope.backgroundScope,
+                coroutineScope = testScope,
                 initialScope = initialScope,
                 initialBoard = initialBoard
             )
@@ -94,7 +94,7 @@ class ZoneBoardSessionTest {
         )
         mockApi.route(
             "api/album/list",
-            """{"success":true,"code":200,"msg":"ok","data":{"hasMore":true,"items":[{"targetAlbumId":101,"title":"相册1"},{"targetAlbumId":102,"title":"相册2"}]}}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":101,"nameCN":"相册1"},{"id":102,"nameCN":"相册2"}]}}"""
         )
         mockApi.route(
             "api/posts/search",
