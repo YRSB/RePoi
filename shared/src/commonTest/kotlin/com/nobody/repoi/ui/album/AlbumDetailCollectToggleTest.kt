@@ -202,8 +202,9 @@ class AlbumDetailCollectToggleTest {
         assertEquals(40L, (state.album?.collect ?: 0L) + state.collectCountDelta)
         assertNull(env.collectRepository.observeCollectState(ALBUM_ID).value)
         assertEquals(2L, env.collectRepository.collectMutationGeneration.value)
-        assertEquals("/api/collect/item/add", env.collectMock.takeRequest().encodedPath)
-        assertEquals("/api/collect/del", env.collectMock.takeRequest().encodedPath)
+        val requests = env.collectMock.consumeAsPairs()
+        assertWriteRequest(requests, "/api/collect/item/add")
+        assertWriteRequest(requests, "/api/collect/del")
     }
 
     @Test
@@ -243,8 +244,9 @@ class AlbumDetailCollectToggleTest {
         assertEquals(40L, (state.album?.collect ?: 0L) + state.collectCountDelta)
         assertTrue(env.collectRepository.observeCollectState(ALBUM_ID).value?.isCollected == true)
         assertEquals(2L, env.collectRepository.collectMutationGeneration.value)
-        assertEquals("/api/collect/del", env.collectMock.takeRequest().encodedPath)
-        assertEquals("/api/collect/item/add", env.collectMock.takeRequest().encodedPath)
+        val requests = env.collectMock.consumeAsPairs()
+        assertWriteRequest(requests, "/api/collect/del")
+        assertWriteRequest(requests, "/api/collect/item/add")
     }
 
     @Test
@@ -270,14 +272,65 @@ class AlbumDetailCollectToggleTest {
         assertTrue(state.isCollected)
         assertEquals(1L, state.collectCountDelta)
         assertFalse(state.isCollectPending)
-        assertEquals(1, env.collectMock.requestCount, "防抖锁期间第二次切换不应发请求")
-        assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
-        assertEquals("/api/collect/item/add", env.collectMock.takeRequest().encodedPath)
+        val writes = env.collectMock.consumeAsPairs()
+            .filter { it.first == "/api/collect/item/add" || it.first == "/api/collect/del" }
+        assertEquals(1, writes.size, "防抖锁期间第二次切换不应发写请求")
+        assertEquals("/api/collect/item/add", writes.single().first)
+        assertEquals("$ALBUM_ID", writes.single().second["id"])
     }
 
+
+    @Test
+    fun toggleCollect_refreshesCountBaseFromServer() = runTest(testDispatcher) {
+        val env = Env(testDispatcher, backgroundScope)
+        env.stubAlbum(collect = 40L)
+        env.stubCollectState(collected = false)
+        env.collectMock.route(
+            "collect/item/add",
+            """{"success":true,"code":200,"msg":"ok","data":{}}"""
+        )
+        env.collectMock.route(
+            "hobby/collectCount",
+            """{"success":true,"code":200,"msg":"ok","data":{"collect":{"care":41,"want":2,"preorder":0,"buy":3,"resell":0}}}"""
+        )
+        val viewModel = env.viewModel()
+
+        viewModel.loadDetail(AlbumNavParam(albumId = ALBUM_ID))
+        advanceUntilIdle()
+
+        viewModel.toggleCollect()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isCollected)
+        assertFalse(state.isCollectPending)
+        assertEquals(46L, state.collectCountBase, "写成功后基线应取服务端五分类人数总和")
+        assertEquals(0L, state.collectCountDelta, "服务端基线生效后本地增量必须归零")
+        assertEquals(46L, (state.collectCountBase ?: 0L) + state.collectCountDelta)
+        assertEquals("已收藏该相册 ★", state.interactionActionMessage)
+        assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
+        val paths = buildList {
+            repeat(env.collectMock.requestCount) { add(env.collectMock.takeRequest().encodedPath) }
+        }
+        assertTrue(paths.any { it?.contains("hobby/collectCount") == true }, "写成功后必须拉取服务端计数")
+    }
     /** 消费并丢弃首屏阶段的请求记录，保证后续断言只针对切换收藏。 */
     private fun MockApi.drainRequests() {
         repeat(requestCount) { takeRequest() }
+    }
+
+    /** 写后会追加 collectCount 计数请求，故按路径筛选写请求而不是按 FIFO 首位断言。 */
+    private fun MockApi.consumeAsPairs(): List<Pair<String?, Map<String, String>>> =
+        (0 until requestCount).map { takeRequest() }.map { request ->
+            request.encodedPath to request.formEntries()
+        }
+
+    private fun assertWriteRequest(
+        requests: List<Pair<String?, Map<String, String>>>,
+        path: String
+    ) {
+        val entry = requests.first { it.first == path }
+        assertEquals("$ALBUM_ID", entry.second["id"])
     }
 
     private class Env(

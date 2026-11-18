@@ -92,6 +92,8 @@ data class AlbumDetailUiState(
     val isFollowPending: Boolean = false,
     val praiseCountDelta: Long = 0L,
     val collectCountDelta: Long = 0L,
+    /** 写成功后由服务端计数刷新的基线；null 时回落到相册详情接口的 collect 字段 */
+    val collectCountBase: Long? = null,
     val interactionActionMessage: String? = null
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     val isFollowed: Boolean get() = followState.isFollowed
@@ -535,6 +537,15 @@ class AlbumDetailViewModel(
                             isCollectPending = false,
                             interactionActionMessage = if (nextCollected) "已收藏该相册 ★" else "已取消收藏"
                         )
+                    }
+                    // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+                    collectRepository.getCollectCount(albumId).onSuccess { count ->
+                        _uiState.update { current ->
+                            current.copy(
+                                collectCountBase = count.total.toLong(),
+                                collectCountDelta = 0
+                            )
+                        }
                     }
                 },
                 onFailure = { err ->
