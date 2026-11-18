@@ -1,4 +1,6 @@
 package com.nobody.repoi.data.remote.model
+    /** 五类收藏人数总和，作为详情页服务端计数基线 */
+    val total: Int get() = care + want + preorder + buy + resell
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
