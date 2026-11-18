@@ -3,6 +3,7 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
 import com.nobody.repoi.data.remote.model.HobbyDetailData
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
@@ -23,57 +24,38 @@ class HobbyDetailRepository(
      * 获取手办基础详情数据 (api/item/get-v2)。
      */
     suspend fun getHobbyDetail(itemId: Long, itemType: String): Result<HobbyDetailData> = runCatching {
-        val response = api.getHobbyDetail(itemId = itemId, itemType = itemType)
-        if (response.isSuccess) {
-            response.data?.itemData ?: throw ApiException(response.code, "未找到手办详情数据")
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取手办详情失败")
-        }
+        api.getHobbyDetail(itemId = itemId, itemType = itemType).itemData
+            ?: throw ApiException(-1, "未找到手办详情数据")
     }
 
     /**
      * 获取手办结构化属性参数列表 (api/item/infoList)。
      */
     suspend fun getInfoList(nodeId: Long, itemType: String): Result<List<InfoListEntry>> = runCatching {
-        val response = api.getInfoList(nodeId = nodeId, itemType = itemType)
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取属性列表失败")
-        }
+        api.getInfoList(nodeId = nodeId, itemType = itemType).list.orEmpty()
     }
 
     /**
      * 获取手办发售情报时间轴 (api/user-action/item-info/list)。
      */
     suspend fun getTimeline(nodeId: Long, page: Int = 1, pageSize: Int = 20): Result<List<HobbyTimelineItem>> = runCatching {
-        val response = api.getTimeline(nodeId = nodeId, page = page, pageSize = pageSize)
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取情报时间轴失败")
-        }
+        api.getTimeline(nodeId = nodeId, page = page, pageSize = pageSize).list.orEmpty()
     }
 
     /**
      * 获取官方宣发图片/定妆照 (api/pic/list/relate-v2, type=official)。
      */
     suspend fun getOfficialPics(itemId: Long, itemType: String): Result<List<PicItem>> = runCatching {
-        val response = api.getPicList(
+        val list = api.getPicList(
             itemId = itemId,
             itemType = itemType,
             picSubType = "official",
             page = 1,
             pageSize = 30
-        )
-        if (response.isSuccess) {
-            val list = response.data?.list ?: emptyList()
-            // 过滤并优先保留官方定妆照
-            val officialOnly = list.filter { it.subType == null || it.subType == "official" }
-            if (officialOnly.isNotEmpty()) officialOnly else list
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取官图列表失败")
-        }
+        ).list.orEmpty()
+        // 过滤并优先保留官方定妆照
+        val officialOnly = list.filter { it.subType == null || it.subType == "official" }
+        if (officialOnly.isNotEmpty()) officialOnly else list
     }
 
     /**
@@ -86,18 +68,13 @@ class HobbyDetailRepository(
         pageSize: Int = 9,
         order: String = "hits"
     ): Result<List<HobbyAlbumItem>> = runCatching {
-        val response = api.getHobbyAlbum(
+        api.getHobbyAlbum(
             nodeId = nodeId,
             itemType = itemType,
             page = page,
             pageSize = pageSize,
             order = order
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取用户相册失败")
-        }
+        ).list.orEmpty()
     }
 
     /**
@@ -110,19 +87,14 @@ class HobbyDetailRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<List<CommentItem>> = runCatching {
-        val response = api.getComments(
+        api.getComments(
             nodeId = nodeId,
             type = type,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else if (response.isCommentNotFound) {
-            emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取评论列表失败")
-        }
+        ).list.orEmpty()
+    }.recoverCatching { error ->
+        if (error is CommentNotFoundException) emptyList() else throw error
     }
 
     /**
@@ -153,21 +125,11 @@ class HobbyDetailRepository(
                 )
             }
 
-            val groupItems = groupResult.getOrNull()?.let { resp ->
-                if (resp.isSuccess) {
-                    resp.data?.groups?.flatMap { group ->
-                        group.items?.map { item ->
-                            item.copy(typeName = group.typeName)
-                        } ?: emptyList()
-                    } ?: emptyList()
-                } else emptyList()
-            } ?: emptyList()
+            val groupItems = groupResult.getOrNull()?.groups.orEmpty().flatMap { group ->
+                group.items?.map { item -> item.copy(typeName = group.typeName) }.orEmpty()
+            }
 
-            val pushItems = pushResult.getOrNull()?.let { resp ->
-                if (resp.isSuccess) {
-                    resp.data?.hobbys ?: emptyList()
-                } else emptyList()
-            } ?: emptyList()
+            val pushItems = pushResult.getOrNull()?.hobbys.orEmpty()
 
             val excludedIds = buildSet {
                 if (itemNodeId > 0L) add(itemNodeId)

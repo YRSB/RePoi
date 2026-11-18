@@ -47,21 +47,32 @@ class WorksDetailRepositoryTest {
     }
 
     @Test
-    fun getWorksHobbys_failureEmptiesInsteadOfThrowing() = runTest {
+    fun getWorksHobbys_failurePropagatesApiException() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(mock.failure(500, "error"))
         val result = repository.getWorksHobbys(2706L)
-        assertTrue(result.isSuccess)
-        assertTrue(result.getOrThrow().isEmpty())
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
     @Test
-    fun getWorksCharacters_failureEmptiesInsteadOfThrowing() = runTest {
+    fun getWorksHobbys_tokenExpiredTriggersSelfHealing() = runTest {
+        val mock = MockApi()
+        val repository = WorksDetailRepository(mock.api(tokenProvider = { "tok-detail" }))
+        mock.enqueue(mock.failure(4001, "登录过期"))
+        val result = repository.getWorksHobbys(2706L)
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        mock.assertTokenExpiredNotified("tok-detail")
+    }
+
+    @Test
+    fun getWorksCharacters_failurePropagatesApiException() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(mock.failure(500, "error"))
         val result = repository.getWorksCharacters(28L)
-        assertTrue(result.isSuccess)
-        assertTrue(result.getOrThrow().isEmpty())
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
     @Test

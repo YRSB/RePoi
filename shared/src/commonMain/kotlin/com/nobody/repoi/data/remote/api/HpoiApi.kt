@@ -217,10 +217,10 @@ class HpoiApi(
         setBody(formOf("page" to page, "pageSize" to pageSize, "categoryId" to categoryId, "order" to order))
     }.decodeRefAware(json)
 
-    suspend fun queryHobbyList(params: Map<String, String>): CommonResponse<HobbyListData> =
+    suspend fun queryHobbyList(params: Map<String, String>): HobbyListData =
         client.post("api/hobby/query-v2") {
             setBody(formOf(params))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取手办列表失败")
 
     suspend fun getAllCategories(): CommonResponse<CategoryTreeData> =
         client.post("api/category/web/all") {
@@ -229,36 +229,36 @@ class HpoiApi(
 
     // ── 条目详情/时间轴/分组 ────────────────────────────────────────
 
-    suspend fun getHobbyDetail(itemId: Long, itemType: String): CommonResponse<HobbyDetailPayload> =
+    suspend fun getHobbyDetail(itemId: Long, itemType: String): HobbyDetailPayload =
         client.get("api/item/get-v2") {
             parameter("itemId", itemId)
             parameter("itemType", itemType)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取手办详情失败")
 
-    suspend fun getInfoList(nodeId: Long, itemType: String): CommonResponse<InfoListPayload> =
+    suspend fun getInfoList(nodeId: Long, itemType: String): InfoListPayload =
         client.post("api/item/infoList") {
             setBody(formOf("id" to nodeId, "itemType" to itemType))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取属性列表失败")
 
     suspend fun getTimeline(
         nodeId: Long,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<HobbyTimelinePayload> = client.get("api/user-action/item-info/list") {
+    ): HobbyTimelinePayload = client.get("api/user-action/item-info/list") {
         parameter("nodeId", nodeId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取情报时间轴失败")
 
-    suspend fun getHobbyGroup(id: Long): CommonResponse<HobbyGroupPayload> =
+    suspend fun getHobbyGroup(id: Long): HobbyGroupPayload =
         client.post("api/hobby/group") {
             setBody(formOf("id" to id))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取手办分组失败")
 
-    suspend fun getHobbyPushList(page: Int = 1, pageSize: Int = 10): CommonResponse<HobbyPushListPayload> =
+    suspend fun getHobbyPushList(page: Int = 1, pageSize: Int = 10): HobbyPushListPayload =
         client.post("api/hobby/push/list/V2") {
             setBody(formOf("page" to page, "pageSize" to pageSize))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取推荐手办失败")
 
     // ── 图片/相册 ──────────────────────────────────────────────────
 
@@ -270,40 +270,40 @@ class HpoiApi(
         pageSize: Int = 20,
         order: String? = null,
         nodeId: Long? = null,
-    ): CommonResponse<PicListPayload> = client.post("api/pic/list/relate-v2") {
+    ): PicListPayload = client.post("api/pic/list/relate-v2") {
         setBody(
             formOf(
                 "itemId" to itemId, "itemType" to itemType, "subType" to picSubType,
                 "page" to page, "pageSize" to pageSize, "order" to order, "nodeId" to nodeId,
             ),
         )
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取图片列表失败")
 
-    suspend fun getAlbumDetail(albumId: Long, itemId: Long? = null): CommonResponse<AlbumDetailPayload> =
+    suspend fun getAlbumDetail(albumId: Long, itemId: Long? = null): AlbumDetailPayload =
         client.post("api/album/detail") {
             setBody(formOf("id" to albumId, "itemId" to itemId))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取相册详情失败")
 
     suspend fun getRelatedAlbums(
         albumId: Long,
         page: Int = 1,
         pageSize: Int = 8,
-    ): CommonResponse<RelatedAlbumPayload> = client.post("api/album/relate/album") {
+    ): RelatedAlbumPayload = client.post("api/album/relate/album") {
         setBody(formOf("nodeId" to albumId, "page" to page, "pageSize" to pageSize))
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取相关相册失败")
 
     suspend fun getRelatedHobbies(
         albumId: Long,
         itemType: String = "album",
         pageSize: Int = 8,
-    ): CommonResponse<RelatedHobbyPayload> = client.post("api/item/relate/hobby") {
+    ): RelatedHobbyPayload = client.post("api/item/relate/hobby") {
         setBody(formOf("id" to albumId, "itemType" to itemType, "pageSize" to pageSize))
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取相关手办失败")
 
-    suspend fun getTags(albumId: Long): CommonResponse<ItemTagsPayload> =
+    suspend fun getTags(albumId: Long): ItemTagsPayload =
         client.post("api/item/tags") {
             setBody(formOf("id" to albumId))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取相册标签失败")
 
     // ── 专区 ───────────────────────────────────────────────────────
 
@@ -357,15 +357,15 @@ class HpoiApi(
 
     // ── 二手 ───────────────────────────────────────────────────────
 
-    suspend fun searchResale(params: Map<String, String>): CommonResponse<ResaleSearchPayload> =
+    suspend fun searchResale(params: Map<String, String>): ResaleSearchPayload =
         client.post("api/resale/search") {
             setBody(formOf(params))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取二手交易列表失败")
 
-    suspend fun getResaleDetail(nodeId: Long): CommonResponse<ResaleDetailPayload> =
+    suspend fun getResaleDetail(nodeId: Long): ResaleDetailPayload =
         client.get("api/resale/data/get") {
             parameter("nodeId", nodeId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取二手交易详情失败")
 
     suspend fun toggleZoneFocus(nodeId: Long): CommonResponse<ZoneFocusPayload> =
         client.post("api/zone/focus") {
@@ -506,24 +506,24 @@ class HpoiApi(
         category: Int? = null,
         releaseStart: String? = null,
         releaseEnd: String? = null,
-    ): CommonResponse<AlbumListPayload> = client.post("api/album/list") {
+    ): AlbumListPayload = client.post("api/album/list") {
         setBody(
             formOf(
                 "page" to page, "pageSize" to pageSize, "order" to order, "zones" to zones,
                 "category" to category, "releaseStart" to releaseStart, "releaseEnd" to releaseEnd,
             ),
         )
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取相册列表失败")
 
     suspend fun getPraiseTop(
         type: String = "month",
         page: Int = 1,
         pageSize: Int = 10,
-    ): CommonResponse<PraiseTopPayload> = client.get("api/item/praise/top") {
+    ): PraiseTopPayload = client.get("api/item/praise/top") {
         parameter("type", type)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取点赞榜失败")
 
     suspend fun getHobbyAlbum(
         nodeId: Long,
@@ -531,23 +531,23 @@ class HpoiApi(
         page: Int = 1,
         pageSize: Int = 6,
         order: String = "hits",
-    ): CommonResponse<HobbyAlbumPayload> = client.post("api/hobby/album") {
+    ): HobbyAlbumPayload = client.post("api/hobby/album") {
         setBody(
             formOf(
                 "id" to nodeId, "itemType" to itemType,
                 "page" to page, "pageSize" to pageSize, "order" to order,
             ),
         )
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取用户相册失败")
 
     suspend fun getComments(
         nodeId: Long,
         type: String? = null,
         page: Int = 1,
         pageSize: Int = 10,
-    ): CommonResponse<CommentPayload> = client.post("api/comment/get") {
+    ): CommentPayload = client.post("api/comment/get") {
         setBody(formOf("id" to nodeId, "type" to type, "page" to page, "pageSize" to pageSize))
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取评论失败")
 
     suspend fun getCommentReplies(
         commentId: Long,
@@ -576,19 +576,19 @@ class HpoiApi(
     suspend fun getAlbumLikeInfo(
         nodeId: Long,
         itemType: String = "album",
-    ): CommonResponse<ItemLikeInfoPayload> = client.post("api/item/likeInfo") {
+    ): ItemLikeInfoPayload = client.post("api/item/likeInfo") {
         setBody(formOf("nodeId" to nodeId, "itemType" to itemType))
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取点赞状态失败")
 
-    suspend fun praiseAlbumAdd(id: Long, itemType: String = "album"): CommonResponse<JsonObject> =
+    suspend fun praiseAlbumAdd(id: Long, itemType: String = "album"): Unit =
         client.post("api/item/praise/add") {
             setBody(formOf("id" to id, "itemType" to itemType))
-        }.decodeRefAware(json)
+        }.unwrapUnit(json, "相册点赞失败")
 
-    suspend fun praiseAlbumDel(id: Long, itemType: String = "album"): CommonResponse<JsonObject> =
+    suspend fun praiseAlbumDel(id: Long, itemType: String = "album"): Unit =
         client.post("api/item/praise/del") {
             setBody(formOf("id" to id, "itemType" to itemType))
-        }.decodeRefAware(json)
+        }.unwrapUnit(json, "取消相册点赞失败")
 
     suspend fun addComment(
         nodeId: Long,
@@ -817,50 +817,50 @@ class HpoiApi(
             parameter("categoryId", categoryId)
         }.decodeRefAware(json)
 
-    suspend fun getCompanyDetail(companyId: Long): CommonResponse<CompanyDetailPayload> =
+    suspend fun getCompanyDetail(companyId: Long): CompanyDetailPayload =
         client.get("api/company/v2/get") {
             parameter("companyId", companyId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取厂商详情失败")
 
     suspend fun getCompanyActions(
         companyNodeId: Long,
         subType: String? = null,
         category: Int = 0,
         lastId: Long = 0L,
-    ): CommonResponse<CompanyActionPayload> = client.get("api/user-action/company/list") {
+    ): CompanyActionPayload = client.get("api/user-action/company/list") {
         parameter("companyNodeId", companyNodeId)
         if (subType != null) parameter("subType", subType)
         parameter("category", category)
         parameter("lastId", lastId)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取厂商动态失败")
 
     suspend fun getCompanySeries(
         companyNodeId: Long,
         page: Int = 1,
         pageSize: Int = 9,
-    ): CommonResponse<CompanySeriesPayload> = client.get("api/company/series") {
+    ): CompanySeriesPayload = client.get("api/company/series") {
         parameter("companyNodeId", companyNodeId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取厂商系列失败")
 
-    suspend fun getCompanyTags(companyId: Long): CommonResponse<CompanyTagPayload> =
+    suspend fun getCompanyTags(companyId: Long): CompanyTagPayload =
         client.get("api/company/tag/display") {
             parameter("companyId", companyId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取厂商标签失败")
 
-    suspend fun getCompanyMyVotes(companyId: Long): CommonResponse<CompanyMyVotesData> =
+    suspend fun getCompanyMyVotes(companyId: Long): CompanyMyVotesData =
         client.get("api/company/tag/myVotes") {
             parameter("companyId", companyId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取厂商印象数据失败")
 
     suspend fun submitCompanyTagVote(
         companyId: Long,
         normalTagIds: String,
         scoreTagIds: String,
-    ): CommonResponse<Unit> = client.post("api/company/tag/vote") {
+    ): Unit = client.post("api/company/tag/vote") {
         setBody(formOf("companyId" to companyId, "normalTagIds" to normalTagIds, "scoreTagIds" to scoreTagIds))
-    }.decodeRefAware(json)
+    }.unwrapUnit(json, "提交印象投票失败")
 
     // ── 收藏 ───────────────────────────────────────────────────────
 
@@ -950,153 +950,153 @@ class HpoiApi(
             setBody(formOf("nodeId" to nodeId, "json" to payloadJson))
         }.decodeRefAware(json)
 
-    suspend fun getMaskState(itemNodeId: Long): CommonResponse<JsonElement> =
+    suspend fun getMaskState(itemNodeId: Long): JsonElement =
         client.get("api/mask/state-v2") {
             parameter("itemNodeId", itemNodeId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取屏蔽状态失败")
 
     // ── 系列/人物/作品/角色 ─────────────────────────────────────────
 
-    suspend fun getSeriesDetail(itemId: Long, itemType: String = "series"): CommonResponse<SeriesDetailPayload> =
+    suspend fun getSeriesDetail(itemId: Long, itemType: String = "series"): SeriesDetailPayload =
         client.get("api/item/get-v2") {
             parameter("itemId", itemId)
             parameter("itemType", itemType)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取系列详情失败")
 
     suspend fun getSeriesHobbys(
         id: Long,
         itemType: String = "series",
         pageSize: Int = 9,
-    ): CommonResponse<RelatedHobbyPayload> = client.post("api/item/relate/hobby") {
+    ): RelatedHobbyPayload = client.post("api/item/relate/hobby") {
         setBody(formOf("id" to id, "itemType" to itemType, "pageSize" to pageSize))
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取系列关联手办失败")
 
     suspend fun getSeriesLinkSeries(
         seriesId: Long,
         isChild: Int,
         page: Int = 1,
         pageSize: Int = 6,
-    ): CommonResponse<SeriesLinkPayload> = client.get("api/series/link/series") {
+    ): SeriesLinkPayload = client.get("api/series/link/series") {
         parameter("seriesId", seriesId)
         parameter("isChild", isChild)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取系列列表失败")
 
     suspend fun getSeriesAlbums(
         seriesId: Long,
         page: Int = 1,
         pageSize: Int = 6,
-    ): CommonResponse<SeriesAlbumPayload> = client.get("api/series/album") {
+    ): SeriesAlbumPayload = client.get("api/series/album") {
         parameter("seriesId", seriesId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取系列相册失败")
 
     suspend fun getSeriesGoods(
         nodeId: Long,
         page: Int = 1,
         pageSize: Int = 10,
-    ): CommonResponse<SeriesGoodsPayload> = client.get("api/goods/tb/more-v2") {
+    ): SeriesGoodsPayload = client.get("api/goods/tb/more-v2") {
         parameter("nodeId", nodeId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取系列商品失败")
 
-    suspend fun getSeriesForum(seriesId: Long): CommonResponse<SeriesForumPayload> =
+    suspend fun getSeriesForum(seriesId: Long): SeriesForumPayload? =
         client.get("api/series/forum") {
             parameter("seriesId", seriesId)
-        }.decodeRefAware(json)
+        }.unwrapDataOrNull(json, "获取系列论坛失败")
 
-    suspend fun getPersonDetail(personId: Long): CommonResponse<PersonDetailPayload> =
+    suspend fun getPersonDetail(personId: Long): PersonDetailPayload =
         client.get("api/person/get") {
             parameter("personId", personId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取人物详情失败")
 
     suspend fun getPersonWorks(
         personId: Long,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<PersonWorksPayload> = client.get("api/person/works/get") {
+    ): PersonWorksPayload = client.get("api/person/works/get") {
         parameter("personId", personId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取人物作品失败")
 
     suspend fun getPersonCharacter(
         personId: Long,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<PersonCharacterPayload> = client.get("api/person/character/get") {
+    ): PersonCharacterPayload = client.get("api/person/character/get") {
         parameter("personId", personId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取人物角色失败")
 
-    suspend fun getPersonHobby(personId: Long): CommonResponse<PersonHobbyPayload> =
+    suspend fun getPersonHobby(personId: Long): PersonHobbyPayload =
         client.get("api/person/hobby/get") {
             parameter("personId", personId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取人物周边失败")
 
-    suspend fun getWorksDetail(worksId: Long): CommonResponse<WorksDetailPayload> =
+    suspend fun getWorksDetail(worksId: Long): WorksDetailPayload =
         client.get("api/works/get") {
             parameter("worksId", worksId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取作品详情失败")
 
     suspend fun getWorksAlbums(
         worksId: Long,
         page: Int = 1,
         pageSize: Int = 10,
-    ): CommonResponse<WorksAlbumPayload> = client.get("api/works/album/get") {
+    ): WorksAlbumPayload = client.get("api/works/album/get") {
         parameter("worksId", worksId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取作品相册失败")
 
-    suspend fun getWorksCharacters(worksId: Long): CommonResponse<WorksCharacterPayload> =
+    suspend fun getWorksCharacters(worksId: Long): WorksCharacterPayload =
         client.get("api/works/character/home/get") {
             parameter("worksId", worksId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取作品角色失败")
 
-    suspend fun getCharacterDetail(characterId: Long): CommonResponse<CharacterDetailPayload> =
+    suspend fun getCharacterDetail(characterId: Long): CharacterDetailPayload =
         client.get("api/charactar/get") {
             parameter("charactarId", characterId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取角色详情失败")
 
     suspend fun getCharacterWorks(
         characterId: Long,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<CharacterWorksPayload> = client.get("api/charactar/works/get") {
+    ): CharacterWorksPayload = client.get("api/charactar/works/get") {
         parameter("charactarId", characterId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取角色登场作品失败")
 
     suspend fun getCharacterAlbums(
         characterId: Long,
         page: Int = 1,
         pageSize: Int = 20,
-    ): CommonResponse<CharacterAlbumPayload> = client.get("api/charactar/album/get") {
+    ): CharacterAlbumPayload = client.get("api/charactar/album/get") {
         parameter("charactarId", characterId)
         parameter("page", page)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取角色相关相册失败")
 
     suspend fun getCharacterRelevant(
         characterId: Long,
         pageSize: Int = 10,
-    ): CommonResponse<CharacterRelevantPayload> = client.get("api/charactar/relevant/get") {
+    ): CharacterRelevantPayload = client.get("api/charactar/relevant/get") {
         parameter("charactarId", characterId)
         parameter("pageSize", pageSize)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取推荐要素失败")
 
     // ── 历史/消息/黑名单 ────────────────────────────────────────────
 
-    suspend fun getItemZones(nodeId: Long): CommonResponse<ZoneItemPayload> =
+    suspend fun getItemZones(nodeId: Long): ZoneItemPayload =
         client.get("api/zone/item") {
             parameter("nodeId", nodeId)
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取属性标签失败")
 
     suspend fun getUserHistoryList(itemType: String, page: Int = 1): CommonResponse<UserHistoryPayload> =
         client.post("api/user/read/item/get") {
