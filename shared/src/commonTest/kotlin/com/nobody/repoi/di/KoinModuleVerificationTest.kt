@@ -53,6 +53,7 @@ import com.nobody.repoi.ui.login.LoginViewModel
 import com.nobody.repoi.ui.search.SearchLandingViewModel
 import com.nobody.repoi.ui.search.SearchResultViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
+import com.nobody.repoi.ui.zone.ZoneDetailViewModel
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.Json
@@ -176,6 +177,7 @@ class KoinModuleVerificationTest {
             // 解析一次即可捕获 Koin 参数漂移（Koin 无编译期校验，否则只在运行期崩溃）
             koin.getOrNull<UserCollectViewModel>().shouldNotBeNull()
             koin.getOrNull<PictureGalleryViewModel>().shouldNotBeNull()
+            koin.getOrNull<ZoneDetailViewModel>().shouldNotBeNull()
         } finally {
             app.close()
         }

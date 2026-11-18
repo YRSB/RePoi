@@ -190,6 +190,13 @@ class ZoneBoardSessionImpl(
                 scrollPositions[ZoneBoard.Resale] = BoardScrollPosition()
                 resalePager.setPurity(intent.purity, currentScope)
             }
+            is ZoneBoardIntent.UpdateResaleKeyword -> {
+                resalePager.updateKeyword(intent.keyword)
+            }
+            is ZoneBoardIntent.SubmitResaleSearch -> {
+                scrollPositions[ZoneBoard.Resale] = BoardScrollPosition()
+                resalePager.submitSearch(currentScope)
+            }
 
             // ── 筛选意图：Hobby ──
             is ZoneBoardIntent.SelectHobbyOrder -> {
@@ -224,6 +231,13 @@ class ZoneBoardSessionImpl(
             }
             is ZoneBoardIntent.SetHobbyCategoryPickerVisible -> {
                 hobbyPager.setCategoryPickerVisible(intent.visible)
+            }
+            is ZoneBoardIntent.UpdateHobbyKeyword -> {
+                hobbyPager.updateKeyword(intent.keyword)
+            }
+            is ZoneBoardIntent.SubmitHobbySearch -> {
+                scrollPositions[ZoneBoard.Hobby] = BoardScrollPosition()
+                hobbyPager.submitSearch(currentScope)
             }
 
             // ── 滚动记忆意图 ──
@@ -953,6 +967,16 @@ private class HobbyBoardPager(
         onChanged()
     }
 
+    fun updateKeyword(keyword: String) {
+        if (filter.keyword == keyword) return
+        filter = filter.copy(keyword = keyword)
+        onChanged()
+    }
+
+    fun submitSearch(scope: ZoneQueryScope) {
+        loadInitial(scope)
+    }
+
     override fun onScopeChanged(newScope: ZoneQueryScope) {
         currentScope = newScope
         loader.reset(clearItems = true)
@@ -1085,6 +1109,16 @@ private class ResaleBoardPager(
     fun setPurity(newPurity: String?, scope: ZoneQueryScope) {
         if (!ResaleBoardOptions.isValidPurity(newPurity) || newPurity == purity) return
         purity = newPurity
+        loadInitial(scope)
+    }
+
+    fun updateKeyword(newKeyword: String) {
+        if (keyword == newKeyword) return
+        keyword = newKeyword
+        onChanged()
+    }
+
+    fun submitSearch(scope: ZoneQueryScope) {
         loadInitial(scope)
     }
 

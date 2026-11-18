@@ -64,6 +64,12 @@ sealed interface ZoneBoardIntent {
     /** 切换二手成色筛选（null 表示全部成色）。 */
     data class SelectResalePurity(val purity: String?) : ZoneBoardIntent
 
+    /** 更新二手搜索关键词。 */
+    data class UpdateResaleKeyword(val keyword: String) : ZoneBoardIntent
+
+    /** 提交二手关键词搜索。 */
+    data object SubmitResaleSearch : ZoneBoardIntent
+
     // ── 筛选意图：Hobby 产品板块 ──
 
     /** 切换产品 6 档排序。 */
@@ -92,6 +98,12 @@ sealed interface ZoneBoardIntent {
 
     /** 设置产品分类级联选择器弹层显隐。 */
     data class SetHobbyCategoryPickerVisible(val visible: Boolean) : ZoneBoardIntent
+
+    /** 更新产品搜索关键词。 */
+    data class UpdateHobbyKeyword(val keyword: String) : ZoneBoardIntent
+
+    /** 提交产品关键词搜索。 */
+    data object SubmitHobbySearch : ZoneBoardIntent
 
     // ── 滚动记忆意图 ──
 
