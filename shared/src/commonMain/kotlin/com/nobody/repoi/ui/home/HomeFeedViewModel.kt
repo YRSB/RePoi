@@ -451,13 +451,9 @@ class HomeFeedViewModel(
                     // 产品板块同理：清空列表并取消在途请求，筛选偏好保留
                     hobbyBoardController.onScopeChanged()
                 }
-                // 冷启动恢复可能直接把落点定在讨论/分享/二手/实体/产品板块（`feed_zone_board` 命中）：补一次懒加载
-                ensurePostsLoaded()
-                when {
-                    nextBoard == ZoneBoard.Album -> ensureAlbumLoaded()
-                    nextBoard == ZoneBoard.Resale -> ensureResaleLoaded()
-                    nextBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
-                    nextBoard.isEntity -> ensureEntityLoaded(nextBoard)
+                // 冷启动恢复可能直接把落点定在非动态板块（`feed_zone_board` 命中）：补一次懒加载
+                if (nextBoard != ZoneBoard.Action) {
+                    ensureBoardLoaded(nextBoard)
                 }
                 if (coldStartResolvedTabKey != null) {
                     // 冷启动落点确定（含回落「全部」）：补上被推迟的首屏加载，专区变化时装配板块
@@ -1643,14 +1639,10 @@ class HomeFeedViewModel(
                     selectedBoard = targetBoard
                 )
             }
-            // 板块列表落定后，若当前仍停在讨论板块（例如刷新板块列表），补一次懒加载
-            ensurePostsLoaded()
-            // 冷启动恢复到分享/二手/实体/产品板块：tabs 到达后补触发懒加载（恢复路径绕过 selectBoard）
-            when {
-                _uiState.value.selectedBoard == ZoneBoard.Album -> ensureAlbumLoaded()
-                _uiState.value.selectedBoard == ZoneBoard.Resale -> ensureResaleLoaded()
-                _uiState.value.selectedBoard == ZoneBoard.Hobby -> ensureHobbyLoaded()
-                _uiState.value.selectedBoard.isEntity -> ensureEntityLoaded(_uiState.value.selectedBoard)
+            // 板块列表落定后，若当前落点在非动态板块（恢复路径绕过 selectBoard），补一次懒加载
+            val currentSelected = _uiState.value.selectedBoard
+            if (currentSelected != ZoneBoard.Action) {
+                ensureBoardLoaded(currentSelected)
             }
         }
     }
