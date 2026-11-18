@@ -149,15 +149,21 @@ class ProfileViewModel(
                 )
             }
 
-            // 档案解析收敛到持有会话的 ViewModel，仓储只消费传入档案
-            if (isRefresh) {
+            // 档案解析收敛到持有会话的 ViewModel，仓储只消费传入档案；失败只解析一次并可见
+            val profileResult = if (isRefresh) {
                 userSession.refreshProfile()
+            } else {
+                (userSession.state.value as? SessionState.Authenticated)?.profile
+                    ?.let { Result.success(it) }
+                    ?: userSession.refreshProfile()
             }
-            val profile = (userSession.state.value as? SessionState.Authenticated)?.profile
-                ?: userSession.refreshProfile().getOrNull()
-            if (profile == null) {
+            val profile = profileResult.getOrElse { e ->
                 _uiState.update {
-                    it.copy(isLoading = false, isRefreshing = false, errorMessage = "获取用户信息失败")
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        errorMessage = e.message ?: "获取用户信息失败"
+                    )
                 }
                 return@launch
             }

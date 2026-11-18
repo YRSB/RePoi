@@ -22,7 +22,7 @@
 fun loadsBindingStatus() = runTest {
     val mock = MockApi()
     mock.enqueue(mock.ok("""{...}"""))
-    val repository = SettingsRepository(mock.api(), FakeUserSession("utoken-test"))
+    val repository = SettingsRepository(mock.api())
 
     val result = repository.checkAccount()
 
@@ -63,7 +63,7 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
     val mock = MockApi()
     mock.enqueue(mock.ok("""{...}"""))
     val session = FakeUserSession("utoken-test")
-    val repository = SettingsRepository(mock.api(testDispatcher), session)
+    val repository = SettingsRepository(mock.api(testDispatcher))
     val viewModel = SettingsAccountViewModel(repository, session)
     advanceUntilIdle()
 
@@ -142,9 +142,9 @@ CI 失败后经 `test-reports` 产物下载 XML 提取（`gh run download <run-i
    - `PostItem` 模型**没有 `isPinned` 序列化字段**，其置顶状态由计算属性 `val isPinned: Boolean get() = topTime > 0L` 动态判定；
    - 在 Mock JSON 中书写 `"isPinned": true` 会被忽略；**必须显式提供非零 `topTime`**（如 `"topTime": 1000`）。
 2. **专区分类结构 (`ZoneCategoriesPayload`)**：
-   - `HpoiApi.getZoneCategories` 解码目标为 `CommonResponse<ZoneCategoriesPayload>`；
+   - `HpoiApi.getZoneCategories` 返回洁净载荷 `ZoneCategoriesPayload`（传输信封由网络管道内部剥离）；
    - Payload 为包装对象 `{ "visible": true, "categories": [{ "categoryId": 1, "name": "手办" }] }`；
-   - **严禁**将 `data` 直接 mock 为平铺数组 `[{ ... }]`，否则反序列化为空，导致分类标签无法挂载。
+   - **严禁**将响应 `data` mock 为平铺数组 `[{ ... }]`，否则反序列化为空，导致分类标签无法挂载。
 3. **相册与列表分页根键 (`AlbumListItem` / `PagedListLoader`)**：
    - 相册列表响应键名为 `"list"`（`{ "data": { "list": [...] } }`），而非 `"items"`。
 4. **板块筛选与排序键值有效性**：

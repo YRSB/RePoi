@@ -121,14 +121,13 @@ class UserRepository(
      * 获取用户收藏相似度 (api/user/collect/similarity)。
      */
     suspend fun getCollectSimilarity(userId: Long): Result<Int> =
-        runCatching { api.getCollectSimilarity(userNodeId = userId)?.similarity ?: 0 }.recover { 0 }
+        runCatching { api.getCollectSimilarity(userNodeId = userId)?.similarity ?: 0 }
 
     /**
      * 获取用户个人动态列表 (api/user-action/user/list)。
      */
     suspend fun getUserActionList(userId: Long, pageSize: Int = 20, lastTime: Long = 0L): Result<List<ActionItem>> =
         runCatching { api.getUserActionList(userNodeId = userId, pageSize = pageSize, lastTime = lastTime)?.list ?: emptyList() }
-            .recover { emptyList() }
 
     /**
      * 获取用户获赞条目列表 (api/item/praise/forUser)。

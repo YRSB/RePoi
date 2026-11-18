@@ -55,23 +55,18 @@ internal class UserSessionImpl(
     }
 
     override suspend fun login(account: String, password: String): Result<LoginData> = runCatching {
-        val response = api.login(account = account, password = password)
-        if (response.isSuccess || (response.success && response.data?.utoken?.isNotBlank() == true)) {
-            val data = response.data ?: throw ApiException(response.code, "服务器未返回登录数据")
-            val token = data.utoken?.takeIf { it.isNotBlank() }
-                ?: throw ApiException(response.code, "未获取到有效的登录令牌")
-            val userId = data.user?.actualUserId ?: 0L
-            val userName = data.user?.userName
-            mutex.withLock {
-                tokenManager.saveToken(token, userName)
-                if (userId > 0L) tokenManager.saveCurrentUser(userId, userName)
-                _state.value = SessionState.Authenticated(userId = userId, token = token)
-            }
-            launchProfileRefresh()
-            data
-        } else {
-            throw ApiException(response.code, response.msg ?: "登录失败")
+        val data = api.login(account = account, password = password)
+        val token = data.utoken?.takeIf { it.isNotBlank() }
+            ?: throw ApiException(200, "未获取到有效的登录令牌")
+        val userId = data.user?.actualUserId ?: 0L
+        val userName = data.user?.userName
+        mutex.withLock {
+            tokenManager.saveToken(token, userName)
+            if (userId > 0L) tokenManager.saveCurrentUser(userId, userName)
+            _state.value = SessionState.Authenticated(userId = userId, token = token)
         }
+        launchProfileRefresh()
+        data
     }
 
     override suspend fun loginWithToken(rawToken: String): Result<UserProfile> = runCatching {

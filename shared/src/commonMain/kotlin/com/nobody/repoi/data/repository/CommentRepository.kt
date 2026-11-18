@@ -76,17 +76,17 @@ class CommentRepository(
             )?.toCommentThreadPage() ?: CommentThreadPage()
         }
         repliesResult.getOrNull()?.let { return@runCatching it }
-        val error = repliesResult.exceptionOrNull() ?: ApiException(-9005, "找不到该评论")
+        val error = repliesResult.exceptionOrNull()
+            ?: return@runCatching CommentThreadPage(comment = parentSnapshot)
 
-        // 评论未命中是领域正常态：映射为空回复页，不用字符串匹配
+        // 评论未命中是领域正常态：网络管道抛专用异常，仓储映射为空回复页
         if (error is CommentNotFoundException) {
             return@runCatching CommentThreadPage(comment = parentSnapshot)
         }
 
-        // 个别讨论节点被上游当做普通评论传入或报删除时，自动回落 discuss/reply/get
+        // 个别讨论节点被上游当做普通评论传入或报删除时，按业务码回落 discuss/reply/get
         val canFallback = error is ApiException &&
-            (error.code == -900 || error.code == -9005 || error.code == 404 ||
-                error.message?.contains("删除") == true)
+            (error.code == -900 || error.code == -9005 || error.code == 404)
         if (canFallback) {
             val fallback = runCatching {
                 api.getDiscussReplies(discussNodeId = commentId, page = page)
