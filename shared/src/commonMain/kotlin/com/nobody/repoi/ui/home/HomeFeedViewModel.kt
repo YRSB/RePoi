@@ -593,6 +593,15 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.ToggleHobbyViewMode)
     }
 
+    fun updateHobbyKeyword(keyword: String) {
+        session.dispatch(ZoneBoardIntent.UpdateHobbyKeyword(keyword))
+    }
+
+    fun submitHobbySearch() {
+        resetScrollPosition()
+        session.dispatch(ZoneBoardIntent.SubmitHobbySearch)
+    }
+
     // ── 分享（Album）板块意图转发 ──
 
     fun selectAlbumOrder(order: String) {
@@ -625,6 +634,15 @@ class HomeFeedViewModel(
         if (!ResaleBoardOptions.isValidPurity(purity)) return
         resetScrollPosition()
         session.dispatch(ZoneBoardIntent.SelectResalePurity(purity))
+    }
+
+    fun updateResaleKeyword(keyword: String) {
+        session.dispatch(ZoneBoardIntent.UpdateResaleKeyword(keyword))
+    }
+
+    fun submitResaleSearch() {
+        resetScrollPosition()
+        session.dispatch(ZoneBoardIntent.SubmitResaleSearch)
     }
 
     // ── 动态（Action）板块意图转发 ──
