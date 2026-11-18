@@ -110,12 +110,17 @@ class AlbumRepositoryTest {
     }
 
     @Test
-    fun getZoneTabs_failureFallsBackToAll() = runTest {
+    fun getZoneTabs_failureBubblesUp() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(mock.failure(500, "error"))
         val result = repository.getZoneTabs()
-        assertTrue(result.isSuccess)
-        assertEquals(listOf(AlbumZoneTab.ALL), result.getOrThrow())
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
+
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+        val expiredResult = repository.getZoneTabs()
+        assertTrue(expiredResult.isFailure)
+        assertEquals(4001, (expiredResult.exceptionOrNull() as ApiException).code)
     }
 
     @Test

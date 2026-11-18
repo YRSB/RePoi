@@ -223,4 +223,20 @@ class CommentRepositoryTest {
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
         mock.assertTokenExpiredNotified("tok-praise")
     }
+
+    @Test
+    fun getReplies_非领域码即使消息含删除也不回落Discuss() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(4003, "该评论已被删除"))
+        mock.enqueue(
+            """{"success":true,"code":-1,"msg":"","data":{"discuss":{"id":36213759,"floor":7,"replyCount":0,"content":"自愈主楼"},"discussReplyList":[]}}"""
+        )
+
+        val result = repository.getReplies(commentId = 36213759L, page = 1)
+
+        assertTrue(result.isFailure)
+        assertEquals(4003, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(1, mock.requestCount)
+    }
+
 }

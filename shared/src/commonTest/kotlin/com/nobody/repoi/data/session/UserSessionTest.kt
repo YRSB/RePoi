@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.session
 
+import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.repository.FakeTokenManager
 import com.nobody.repoi.data.repository.MockApi
 import kotlinx.coroutines.CompletableDeferred
@@ -204,6 +205,47 @@ class UserSessionTest {
         assertEquals(before, session.state.value)
         assertEquals("old-token", tokenManager.currentToken)
         assertEquals(5L, tokenManager.currentUserId)
+    }
+
+    @Test
+    fun 账号登录白名单外成功码携带有效令牌_仍持久化并切换已认证() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.routeWhen(
+            predicate = { path, form -> path == "/api/user/loginV2" && form["account"] == "alice" },
+            body = { _, _ ->
+                """{"success":true,"code":1001,"msg":"ok","data":{"utoken":"token-quirk","user":{"id":31,"userName":"alice"}}}"""
+            },
+        )
+        mock.route("api/user/self", mock.ok("""{"user":{"id":31,"nickname":"爱丽丝","userName":"alice"}}"""))
+        val tokenManager = FakeTokenManager()
+        val session = sessionOf(mock, tokenManager)
+        advanceUntilIdle()
+
+        val result = session.login("alice", "pwd-123")
+
+        assertTrue(result.isSuccess, result.exceptionOrNull()?.toString())
+        assertEquals("token-quirk", tokenManager.currentToken)
+        assertEquals(31L, tokenManager.currentUserId)
+        assertEquals("token-quirk", (session.state.value as SessionState.Authenticated).token)
+    }
+
+    @Test
+    fun 账号登录4001_经在途快照自愈并清空会话() = runTest(testDispatcher) {
+        val mock = MockApi()
+        mock.route("api/user/self", mock.ok("""{"user":{"id":5,"nickname":"旧用户","userName":"old"}}"""))
+        mock.route("api/user/loginV2", mock.failure(4001, "登录已过期"))
+        val tokenManager = FakeTokenManager(token = "old-token", userId = 5L)
+        val session = sessionOf(mock, tokenManager)
+        advanceUntilIdle()
+        assertTrue(session.isAuthenticated)
+
+        val result = session.login("alice", "expired")
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(SessionState.Unauthenticated, session.state.value)
+        assertEquals("", tokenManager.currentToken)
+        assertEquals(1, tokenManager.clearTokenCalls)
     }
 
     @Test

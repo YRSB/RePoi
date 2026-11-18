@@ -171,6 +171,17 @@ class HpoiApi(
         if (envelope.isCommentNotFound) throw CommentNotFoundException(envelope.code, message)
         throw ApiException(envelope.code, message)
     }
+
+    /** 登录端点 quirk：白名单外 code 但 success=true 且 utoken 非空仍算成功；4001 始终先在途自愈。 */
+    private suspend fun HttpResponse.unwrapLogin(json: Json, fallbackMessage: String): LoginData {
+        val envelope = decodeRefAware<CommonResponse<LoginData>>(json)
+        if (envelope.isTokenExpired) checkBusinessSuccess(envelope, fallbackMessage)
+        val accepted = envelope.isSuccess ||
+            (envelope.success && envelope.data?.utoken?.isNotBlank() == true)
+        if (!accepted) checkBusinessSuccess(envelope, fallbackMessage)
+        return envelope.data ?: throw ApiException(envelope.code, "服务器未返回登录数据")
+    }
+
     // ── 首页动态/关注 ──────────────────────────────────────────────
 
     suspend fun getActionList(
@@ -208,15 +219,6 @@ class HpoiApi(
     }.unwrapData(json, "获取关注动态失败")
 
     // ── 手办列表/分类 ──────────────────────────────────────────────
-
-    suspend fun getHobbyList(
-        page: Int = 1,
-        pageSize: Int = 20,
-        categoryId: Int = 10000,
-        order: String? = "hits7Day",
-    ): CommonResponse<HobbyListData> = client.post("api/hobby/query-v2") {
-        setBody(formOf("page" to page, "pageSize" to pageSize, "categoryId" to categoryId, "order" to order))
-    }.decodeRefAware(json)
 
     suspend fun queryHobbyList(params: Map<String, String>): HobbyListData =
         client.post("api/hobby/query-v2") {
@@ -783,9 +785,9 @@ class HpoiApi(
         account: String,
         password: String,
         loginType: String = "6",
-    ): CommonResponse<LoginData> = client.post("api/user/loginV2") {
+    ): LoginData = client.post("api/user/loginV2") {
         setBody(formOf("account" to account, "password" to password, "loginType" to loginType))
-    }.decodeRefAware(json)
+    }.unwrapLogin(json, "登录失败")
 
     suspend fun search(params: Map<String, String>): SearchResponsePayload =
         client.post("api/search") {

@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.repository
 
+import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.AmazonMoneyData
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.repository.FollowRepository
@@ -334,6 +335,28 @@ class UserRepositoryTest {
 
         val req2 = mock.takeRequest()
         assertEquals("77777", req2.formEntries()["userId"])
+    }
+
+    @Test
+    fun getCollectSimilarity_failureBubblesUp() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+
+        val result = repository.getCollectSimilarity(88888L)
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+    }
+
+    @Test
+    fun getUserActionList_failureBubblesUp() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "服务异常"))
+
+        val result = repository.getUserActionList(88888L)
+
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
 }

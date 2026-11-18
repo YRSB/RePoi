@@ -193,4 +193,43 @@ class HpoiApiTest {
 
         assertEquals(500, error.code)
     }
+
+    @Test
+    fun login_成功响应交付洁净载荷() = runTest {
+        val api = apiOf(envelope(200, """{"utoken":"token-a","user":{"id":31,"userName":"alice"}}"""))
+
+        val data = api.login("alice", "pwd-123")
+
+        assertEquals("token-a", data.utoken)
+        assertEquals(31L, data.user?.actualUserId)
+    }
+
+    @Test
+    fun login_白名单外成功码但携带有效令牌时仍交付载荷() = runTest {
+        val api = apiOf(
+            envelope(1001, """{"utoken":"token-a","user":{"id":31,"userName":"alice"}}""", success = true),
+        )
+
+        val data = api.login("alice", "pwd-123")
+
+        assertEquals("token-a", data.utoken)
+    }
+
+    @Test
+    fun login_业务失败抛ApiException且4001驱动在途令牌自愈() = runTest {
+        val failureApi = apiOf(envelope(1001, "null", msg = "账号或密码错误", success = false))
+        val error = assertFailsWith<ApiException> { failureApi.login("alice", "wrong") }
+        assertEquals(1001, error.code)
+        assertEquals("账号或密码错误", error.message)
+
+        val notified = mutableListOf<String>()
+        val expiredApi = apiOf(
+            envelope(4001, "null", msg = "登录已过期", success = false),
+            token = "tok-login",
+            onTokenExpired = { notified.add(it) },
+        )
+        val expiredError = assertFailsWith<ApiException> { expiredApi.login("alice", "expired") }
+        assertEquals(4001, expiredError.code)
+        assertEquals(listOf("tok-login"), notified)
+    }
 }

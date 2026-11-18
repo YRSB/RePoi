@@ -4,7 +4,6 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ZoneCategoryItem
 
 data class AlbumPage(
@@ -32,9 +31,6 @@ class AlbumRepository(
                 tabs.add(AlbumZoneTab(key = "z${zone.nodeId}", name = name, zoneIds = zone.nodeId.toString()))
             }
         tabs
-    }.recoverCatching { error ->
-        if ((error as? ApiException)?.code == 4001) throw error
-        listOf(AlbumZoneTab.ALL)
     }
 
     /**
