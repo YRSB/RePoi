@@ -3,7 +3,11 @@ package com.nobody.repoi.ui.home
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.itemCount
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -15,6 +19,11 @@ import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardCapability
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.session.ZoneBoardIntent
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
+import com.nobody.repoi.ui.board.session.ZoneBoardSessionImpl
+import com.nobody.repoi.ui.board.session.ZoneBoardSnapshot
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -83,6 +92,19 @@ class HomeFeedViewModelTest {
         var postsRequests: Int = 0
         val userSession = FakeUserSession("utoken-test")
         val messageRepository = MessageRepository(accountMock.api(dispatcher), userSession)
+        val homeRepository = HomeRepository(feedMock.api(dispatcher))
+        val albumRepository = AlbumRepository(albumMock.api(dispatcher))
+        val resaleRepository = ResaleRepository(resaleMock.api(dispatcher))
+        val itemRepository = ItemRepository(hobbyMock.api(dispatcher))
+
+        val sessionFactory: ZoneBoardSession.Factory = ZoneBoardSessionImpl.Factory(
+            homeRepository = homeRepository,
+            albumRepository = albumRepository,
+            zoneRepository = zoneRepository,
+            itemRepository = itemRepository,
+            resaleRepository = resaleRepository,
+            viewPreferencesManager = preferences
+        )
     }
 
     private suspend fun env(
@@ -142,14 +164,12 @@ class HomeFeedViewModelTest {
 
     private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
         HomeFeedViewModel(
-            HomeRepository(feedMock.api(dispatcher)),
-            AlbumRepository(albumMock.api(dispatcher)),
-            ResaleRepository(resaleMock.api(dispatcher)),
-            ItemRepository(hobbyMock.api(dispatcher)),
-            zoneRepository,
-            preferences,
-            if (accounts) userSession else FakeUserSession(),
-            if (accounts) messageRepository else null
+            sessionFactory = sessionFactory,
+            zoneRepository = zoneRepository,
+            viewPreferencesManager = preferences,
+            userSession = if (accounts) userSession else FakeUserSession(),
+            messageRepository = if (accounts) messageRepository else null,
+            albumRepository = albumRepository
         )
 
     private fun item(id: Long, date: String? = null): ActionItem {
@@ -743,14 +763,12 @@ class HomeFeedViewModelTest {
         env.stubFeed(items = emptyList())
         val session = FakeUserSession()
         val viewModel = HomeFeedViewModel(
-            HomeRepository(env.feedMock.api(env.dispatcher)),
-            AlbumRepository(env.albumMock.api(env.dispatcher)),
-            ResaleRepository(env.resaleMock.api(env.dispatcher)),
-            ItemRepository(env.hobbyMock.api(env.dispatcher)),
-            env.zoneRepository,
-            env.preferences,
-            session,
-            MessageRepository(env.accountMock.api(env.dispatcher), session)
+            sessionFactory = env.sessionFactory,
+            zoneRepository = env.zoneRepository,
+            viewPreferencesManager = env.preferences,
+            userSession = session,
+            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher), session),
+            albumRepository = env.albumRepository
         )
         advanceUntilIdle()
 
@@ -767,14 +785,12 @@ class HomeFeedViewModelTest {
         )
         val session = FakeUserSession(SessionState.Prewarming)
         val viewModel = HomeFeedViewModel(
-            HomeRepository(env.feedMock.api(env.dispatcher)),
-            AlbumRepository(env.albumMock.api(env.dispatcher)),
-            ResaleRepository(env.resaleMock.api(env.dispatcher)),
-            ItemRepository(env.hobbyMock.api(env.dispatcher)),
-            env.zoneRepository,
-            env.preferences,
-            session,
-            MessageRepository(env.accountMock.api(env.dispatcher), session)
+            sessionFactory = env.sessionFactory,
+            zoneRepository = env.zoneRepository,
+            viewPreferencesManager = env.preferences,
+            userSession = session,
+            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher), session),
+            albumRepository = env.albumRepository
         )
         advanceUntilIdle()
         assertEquals(0, viewModel.uiState.value.unreadMessageCount)
@@ -987,9 +1003,6 @@ class HomeFeedViewModelTest {
         viewModel.selectBoard(ZoneBoard.Posts)
         viewModel.selectBoard(ZoneBoard.Hobby)
         viewModel.selectBoard(ZoneBoard.Resale)
-        // 直接调用板块加载入口：同样必须短路（不能绕过 Tab 可见性发请求）
-        viewModel.loadInitialPosts()
-        viewModel.loadInitialResale()
         advanceUntilIdle()
 
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
@@ -1474,7 +1487,7 @@ class HomeFeedViewModelTest {
 
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
-        viewModel.loadNextPostsPage()
+        viewModel.loadNextPage()
         advanceUntilIdle()
 
         val recorded = env.zoneMock.lastRequest()
@@ -1559,5 +1572,77 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertEquals("100", env.zoneMock.lastRequest().queryParameter("zoneNodeId"))
         assertEquals(listOf(9L), viewModel.uiState.value.posts.items.map { it.id })
+    }
+
+    @Test
+    fun sessionIntegration_sessionFactoryCreatesSessionAndTracksActiveSnapshot() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = listOf(item(101, "1000")))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 验证 session 已由 factory 创建，且 activeSnapshot 正常流转并与 uiState 同步
+        val session = viewModel.session
+        val activeSnapshot = session.activeSnapshot.value
+        assertEquals(ZoneBoard.Action, activeSnapshot.board)
+        val actionContent = activeSnapshot.content as ZoneBoardContent.Action
+        assertEquals(listOf(101L), actionContent.items.map { it.id })
+        assertEquals(listOf(101L), viewModel.uiState.value.items.map { it.id })
+        assertFalse(activeSnapshot.pageView.isLoading)
+    }
+
+    @Test
+    fun sessionIntegration_boardSelectionDispatchesToSessionAndUpdatesActiveSnapshot() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubPosts(ids = listOf(201L, 202L))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        // 切换到讨论板块，分发至 session 并更新 activeSnapshot
+        viewModel.selectBoard(ZoneBoard.Posts)
+        advanceUntilIdle()
+
+        val activeSnapshot = viewModel.session.activeSnapshot.value
+        assertEquals(ZoneBoard.Posts, activeSnapshot.board)
+        val postsContent = activeSnapshot.content as ZoneBoardContent.Posts
+        assertEquals(listOf(201L, 202L), postsContent.items.map { it.id })
+        assertEquals(listOf(201L, 202L), viewModel.uiState.value.posts.items.map { it.id })
+    }
+
+    @Test
+    fun sessionIntegration_scopeUpdateDelegatesToSessionAndResetsState() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = listOf(item(301, "3000")))
+        env.stubZoneInfo(100L, tabs = listOf("action"))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
+        advanceUntilIdle()
+
+        val activeSnapshot = viewModel.session.activeSnapshot.value
+        assertEquals(ZoneBoard.Action, activeSnapshot.board)
+        val actionContent = activeSnapshot.content as ZoneBoardContent.Action
+        assertEquals(listOf(301L), actionContent.items.map { it.id })
+    }
+
+    @Test
+    fun sessionIntegration_scrollMemoryDelegatesToSession() = runTest(testDispatcher) {
+        val env = env()
+        env.stubFeed(items = emptyList())
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        viewModel.saveBoardScrollPosition(viewModel.currentBoardMemoryKey, index = 5, offset = 120)
+        viewModel.saveBoardFilterCollapseFraction(viewModel.currentBoardMemoryKey, fraction = 0.8f)
+        viewModel.saveBoardFilterRowScroll(viewModel.currentBoardMemoryKey, scrollX = 45)
+
+        val scrollPos = viewModel.session.activeSnapshot.value.scrollPosition
+        assertEquals(5, scrollPos.index)
+        assertEquals(120, scrollPos.offset)
+        assertEquals(0.8f, scrollPos.filterCollapseFraction)
+        assertEquals(45, scrollPos.filterRowScrollX)
     }
 }

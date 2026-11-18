@@ -27,3 +27,7 @@ internal fun FeedCategory.toZoneQueryScope(): ZoneQueryScope = when (tabKey) {
         if (zoneNodeId != null) ZoneQueryScope.Single(zoneNodeId) else ZoneQueryScope.All
     }
 }
+
+/** 查询作用域（由 [HomeFeedUiState.selectedCategory] 派生）。 */
+val HomeFeedUiState.zoneScope: ZoneQueryScope
+    get() = selectedCategory.toZoneQueryScope()

@@ -41,6 +41,7 @@ import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.user.history.UserHistoryViewModel
@@ -52,6 +53,7 @@ import com.nobody.repoi.ui.login.LoginViewModel
 import com.nobody.repoi.ui.search.SearchLandingViewModel
 import com.nobody.repoi.ui.search.SearchResultViewModel
 import com.nobody.repoi.ui.settings.SettingsViewModel
+import com.nobody.repoi.ui.zone.ZoneDetailViewModel
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.Json
@@ -172,6 +174,9 @@ class KoinModuleVerificationTest {
             // 解析一次即可捕获 Koin 参数漂移（Koin 无编译期校验，否则只在运行期崩溃）
             koin.getOrNull<UserCollectViewModel>().shouldNotBeNull()
             koin.getOrNull<PictureGalleryViewModel>().shouldNotBeNull()
+            koin.getOrNull<ZoneDetailViewModel>().shouldNotBeNull()
+            // 子板块会话控制器工厂（深模块）
+            koin.getOrNull<ZoneBoardSession.Factory>().shouldNotBeNull()
         } finally {
             app.close()
         }

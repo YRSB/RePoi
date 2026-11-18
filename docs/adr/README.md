@@ -34,6 +34,7 @@
 | [ADR-0020](0020-zone-category-bar-and-forum-entry.md) | 专区分类栏纯化与讨论板顶栏解耦重构 | **社区/导航拓扑/Tab栏纯化**：清除分类栏伪Tab、TabRow挂载尾部常驻专区广场锚点、讨论板提升至TopAppBar动作区、消除与底栏重叠的冗余头像 | 分类栏条款已被 ADR-0022 取代 (Superseded in part by ADR-0022) - 2026-11-15 |
 | [ADR-0021](0021-action-card-entity-poster-square.md) | 动态流卡片非相册海报按实体分流（手办 9:13 与其余 1:1） | **UI/防跳变/多媒体**：手办/周边 9:13 刚性定框、厂商/角色/作品/系列/人物及未知类型 1:1 正方形、纯分类器 ActionPosterShape、相册策略保持 ADR-0016 现状 | 已采纳 (Accepted) - 2026-11-14 |
 | [ADR-0022](0022-home-zone-three-level-and-selector.md) | 首页三级信息架构与专区切换器重构 | **首页/层级导航/自适应**：顶栏纯文本专区切换器（底部抽屉/宽屏下拉）、二级 `PrimaryScrollableTabRow` 子板块、板块自带三级筛选、复用专区详情板块实现、商品与社群不做、取代 ADR-0020 分类栏条款 | 已采纳 (Accepted) - 2026-11-15 |
+| [ADR-0023](0023-zone-board-session-deep-module.md) | 专区子板块会话控制器 (ZoneBoardSession) 深模块化与散装适配器清理 | **深模块/子板块状态机/解耦**：单一响应式快照流 activeSnapshot、封闭意图 ZoneBoardIntent、统合 10 类板块生命周期与不变性、物理清除 17 参数适配器 ZoneBoardActions 与 HomeBoardProjection、宿主 UIState 平铺字段彻底清理 | 已采纳 (Accepted) - 2026-11-18 |
 
 
 

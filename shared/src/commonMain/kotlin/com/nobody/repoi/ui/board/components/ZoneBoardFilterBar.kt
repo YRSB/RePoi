@@ -47,8 +47,8 @@ import com.nobody.repoi.ui.board.HobbyBoardOptions
 import com.nobody.repoi.ui.board.PostsBoardOptions
 import com.nobody.repoi.ui.board.ResaleBoardOptions
 import com.nobody.repoi.ui.board.ZoneBoard
-import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.session.ZoneBoardIntent
 import com.nobody.repoi.ui.resale.components.FilterDropdownChip
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -88,7 +88,7 @@ import kotlinx.datetime.toLocalDateTime
 fun ZoneBoardFilterBar(
     board: ZoneBoard,
     filters: ZoneBoardFilters,
-    actions: ZoneBoardActions,
+    onIntent: (ZoneBoardIntent) -> Unit,
     subTypeOptions: List<Pair<String, String>> = emptyList(),
     albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     hobbyCategoryTree: Map<Int, List<CategoryItem>> = emptyMap(),
@@ -112,7 +112,7 @@ fun ZoneBoardFilterBar(
                     val isSelected = filters.subType == key
                     FilterChip(
                         selected = isSelected,
-                        onClick = { actions.onSelectSubType(key) },
+                        onClick = { onIntent(ZoneBoardIntent.SelectSubType(key)) },
                         label = { Text(label) }
                     )
                 }
@@ -131,7 +131,7 @@ fun ZoneBoardFilterBar(
                     val isSelected = filters.albumOrder == key
                     FilterChip(
                         selected = isSelected,
-                        onClick = { actions.onSelectAlbumOrder(key) },
+                        onClick = { onIntent(ZoneBoardIntent.SelectAlbumOrder(key)) },
                         label = { Text(label) }
                     )
                 }
@@ -158,7 +158,7 @@ fun ZoneBoardFilterBar(
                             DropdownMenuItem(
                                 text = { Text("全部分类") },
                                 onClick = {
-                                    actions.onSelectAlbumCategory(null)
+                                    onIntent(ZoneBoardIntent.SelectAlbumCategory(null))
                                     expanded = false
                                 }
                             )
@@ -166,7 +166,7 @@ fun ZoneBoardFilterBar(
                                 DropdownMenuItem(
                                     text = { Text(option.name) },
                                     onClick = {
-                                        actions.onSelectAlbumCategory(option.id)
+                                        onIntent(ZoneBoardIntent.SelectAlbumCategory(option.id))
                                         expanded = false
                                     }
                                 )
@@ -189,7 +189,7 @@ fun ZoneBoardFilterBar(
                     val isSelected = filters.postsOrder == key
                     FilterChip(
                         selected = isSelected,
-                        onClick = { actions.onSelectPostsOrder(key) },
+                        onClick = { onIntent(ZoneBoardIntent.SelectPostsOrder(key)) },
                         label = { Text(label) }
                     )
                 }
@@ -214,7 +214,7 @@ fun ZoneBoardFilterBar(
                         val isSelected = filters.resaleType == typeKey
                         ToggleButton(
                             checked = isSelected,
-                            onCheckedChange = { if (!isSelected) actions.onSelectResaleType(typeKey) },
+                            onCheckedChange = { if (!isSelected) onIntent(ZoneBoardIntent.SelectResaleType(typeKey)) },
                             modifier = Modifier.semantics {
                                 role = Role.RadioButton
                                 this.selected = isSelected
@@ -239,7 +239,7 @@ fun ZoneBoardFilterBar(
                     val isSelected = filters.resalePurity == purityKey
                     FilterChip(
                         selected = isSelected,
-                        onClick = { actions.onSelectResalePurity(purityKey) },
+                        onClick = { onIntent(ZoneBoardIntent.SelectResalePurity(purityKey)) },
                         label = { Text(label) }
                     )
                 }
@@ -278,7 +278,7 @@ fun ZoneBoardFilterBar(
                             DropdownMenuItem(
                                 text = { Text(label, style = MaterialTheme.typography.bodySmall) },
                                 onClick = {
-                                    actions.onHobbyOrder(orderKey)
+                                    onIntent(ZoneBoardIntent.SelectHobbyOrder(orderKey))
                                     showOrderMenu = false
                                 }
                             )
@@ -297,7 +297,7 @@ fun ZoneBoardFilterBar(
                     ),
                     isSelected = isCategoryActive,
                     isExpanded = filters.showHobbyCategoryPickerSheet,
-                    onClick = { actions.onHobbyCategoryPickerVisible(true) }
+                    onClick = { onIntent(ZoneBoardIntent.SetHobbyCategoryPickerVisible(true)) }
                 )
 
                 // 3. 年份下拉（候选按当前年份一次性派生，避免每次重组读系统时钟并重建列表）
@@ -324,7 +324,7 @@ fun ZoneBoardFilterBar(
                             DropdownMenuItem(
                                 text = { Text(label, style = MaterialTheme.typography.bodySmall) },
                                 onClick = {
-                                    actions.onHobbyYear(year)
+                                    onIntent(ZoneBoardIntent.SelectHobbyYear(year))
                                     showYearMenu = false
                                 }
                             )
@@ -352,7 +352,7 @@ fun ZoneBoardFilterBar(
                             DropdownMenuItem(
                                 text = { Text(label, style = MaterialTheme.typography.bodySmall) },
                                 onClick = {
-                                    actions.onHobbyMonth(month)
+                                    onIntent(ZoneBoardIntent.SelectHobbyMonth(month))
                                     showMonthMenu = false
                                 }
                             )
@@ -364,7 +364,7 @@ fun ZoneBoardFilterBar(
                     // 5. 高级筛选入口（弹层由 pane 自渲染，选中态表示 4 个高级维度任一已生效）
                     FilterChip(
                         selected = hobby.hasAdvancedFilters,
-                        onClick = { actions.onHobbyFilterSheetVisible(true) },
+                        onClick = { onIntent(ZoneBoardIntent.SetHobbyFilterSheetVisible(true)) },
                         label = { Text("高级筛选") },
                         leadingIcon = {
                             Icon(
@@ -377,7 +377,7 @@ fun ZoneBoardFilterBar(
 
                     // 6. 网格 / 列表切换
                     IconButton(
-                        onClick = { actions.onHobbyViewMode() }
+                        onClick = { onIntent(ZoneBoardIntent.ToggleHobbyViewMode) }
                     ) {
                         Icon(
                             imageVector = if (hobbyIsGridMode) {

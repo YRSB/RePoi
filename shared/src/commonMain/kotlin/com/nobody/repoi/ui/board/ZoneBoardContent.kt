@@ -20,6 +20,7 @@ import com.nobody.repoi.data.remote.model.ZoneEntityItem
  * @param isEndReached 是否已经到底（页脚渲染「已经到底啦」）
  */
 data class ZoneBoardPageView(
+    val page: Int = 1,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
@@ -76,3 +77,14 @@ sealed interface ZoneBoardContent {
         override val page: ZoneBoardPageView
     ) : ZoneBoardContent
 }
+
+/** ZoneBoardContent 条目数量计算扩展。 */
+val ZoneBoardContent.itemCount: Int
+    get() = when (this) {
+        is ZoneBoardContent.Action -> items.size
+        is ZoneBoardContent.Album -> items.size
+        is ZoneBoardContent.Posts -> items.size + pinnedPosts.size
+        is ZoneBoardContent.Hobby -> items.size
+        is ZoneBoardContent.Resale -> items.size
+        is ZoneBoardContent.Entity -> items.size
+    }

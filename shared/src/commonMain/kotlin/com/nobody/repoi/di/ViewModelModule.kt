@@ -6,6 +6,8 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.ui.album.AlbumDetailViewModel
 import com.nobody.repoi.ui.album.AlbumRankListViewModel
 import com.nobody.repoi.ui.album.AlbumViewModel
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
+import com.nobody.repoi.ui.board.session.ZoneBoardSessionImpl
 import com.nobody.repoi.ui.character.CharacterAlbumListViewModel
 import com.nobody.repoi.ui.character.CharacterDetailViewModel
 import com.nobody.repoi.ui.character.CharacterWorksListViewModel
@@ -93,7 +95,17 @@ val viewModelModule = module {
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
-    viewModelOf(::HomeFeedViewModel)
+    viewModel {
+        HomeFeedViewModel(
+            sessionFactory = get(),
+            zoneRepository = get(),
+            viewPreferencesManager = get(),
+            userSession = get(),
+            messageRepository = getOrNull(),
+            categoryManager = getOrNull(),
+            albumRepository = getOrNull()
+        )
+    }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
@@ -123,6 +135,18 @@ val viewModelModule = module {
     viewModel { VendorActionsViewModel(get()) }
     viewModel { WorksDetailViewModel(get(), get()) }
     viewModel { ZoneBrowseViewModel(get()) }
-    viewModel { ZoneDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModelOf(::ZoneDetailViewModel)
     viewModel { ZoneSettingsViewModel(get()) }
+
+    // ── 子板块会话控制器工厂（深模块） ──
+    single<ZoneBoardSession.Factory> {
+        ZoneBoardSessionImpl.Factory(
+            homeRepository = get(),
+            albumRepository = get(),
+            zoneRepository = get(),
+            itemRepository = get(),
+            resaleRepository = get(),
+            viewPreferencesManager = get()
+        )
+    }
 }
