@@ -115,12 +115,23 @@ class ZoneBoardSessionImpl(
     private val _activeSnapshot: MutableStateFlow<ZoneBoardSnapshot>
     override val activeSnapshot: StateFlow<ZoneBoardSnapshot>
 
+    private val _actionSnapshot: MutableStateFlow<ZoneBoardSnapshot>
+    override val actionSnapshot: StateFlow<ZoneBoardSnapshot>
+
     init {
         val initialScroll = scrollPositions[activeBoard] ?: BoardScrollPosition()
         _activeSnapshot = MutableStateFlow(pagerFor(activeBoard).currentSnapshot(initialScroll))
         activeSnapshot = _activeSnapshot.asStateFlow()
+
+        val actionScroll = scrollPositions[ZoneBoard.Action] ?: BoardScrollPosition()
+        _actionSnapshot = MutableStateFlow(actionPager.currentSnapshot(actionScroll))
+        actionSnapshot = _actionSnapshot.asStateFlow()
+
         // 初始活跃板块触发首屏懒加载
         pagerFor(activeBoard).ensureLoaded(currentScope)
+        if (activeBoard != ZoneBoard.Action) {
+            actionPager.ensureLoaded(currentScope)
+        }
     }
 
     override fun snapshotFor(board: ZoneBoard): ZoneBoardSnapshot {
@@ -280,10 +291,18 @@ class ZoneBoardSessionImpl(
         }
         val activePager = pagerFor(activeBoard)
         activePager.ensureLoaded(scope)
+        if (activeBoard != ZoneBoard.Action) {
+            actionPager.ensureLoaded(scope)
+        }
+        _actionSnapshot.value = actionPager.currentSnapshot(BoardScrollPosition())
         _activeSnapshot.value = snapshotFor(activeBoard)
     }
 
     private fun handleBoardChanged(board: ZoneBoard) {
+        if (board == ZoneBoard.Action) {
+            val scroll = scrollPositions[ZoneBoard.Action] ?: BoardScrollPosition()
+            _actionSnapshot.value = actionPager.currentSnapshot(scroll)
+        }
         if (board == activeBoard) {
             val scroll = scrollPositions[board] ?: BoardScrollPosition()
             _activeSnapshot.value = pagerFor(board).currentSnapshot(scroll)

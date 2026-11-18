@@ -102,7 +102,7 @@ class ZoneDetailViewModelTest {
         )
         mockApi.route(
             "api/zone/categories",
-            """{"success":true,"code":200,"msg":"ok","data":[{"categoryId":1,"name":"手办"},{"categoryId":2,"name":"周边"}]}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"visible":true,"categories":[{"categoryId":1,"name":"手办"},{"categoryId":2,"name":"周边"}]}}"""
         )
         mockApi.route(
             "api/web-report/add",
@@ -267,9 +267,9 @@ class ZoneDetailViewModelTest {
         // 5. Hobby 板块排序、分类、高级筛选、搜索与视图切换
         vm.selectTab("hobby")
         advanceUntilIdle()
-        vm.setHobbyOrder("release_desc")
+        vm.setHobbyOrder("release")
         advanceUntilIdle()
-        assertEquals("release_desc", vm.activeSnapshot.value.filters.hobby.order)
+        assertEquals("release", vm.activeSnapshot.value.filters.hobby.order)
         vm.setHobbyYear(2026)
         advanceUntilIdle()
         assertEquals(2026, vm.activeSnapshot.value.filters.hobby.releaseYear)

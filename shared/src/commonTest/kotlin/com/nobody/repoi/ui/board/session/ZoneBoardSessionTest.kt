@@ -432,16 +432,16 @@ class ZoneBoardSessionTest {
     @Test
     fun testPostsLoadMoreDeduplicatesAgainstPinnedPosts() = runTest(testDispatcher) {
         val mockApi = MockApi()
+        setupDefaultRoutes(mockApi)
         // 首屏返回 1 个置顶帖 (id=999) 与 19 个普通帖 (id=1..19)，共 20 条（满一页）
-        val pinnedPost = """{"id":999,"title":"置顶讨论","isPinned":true}"""
+        val pinnedPost = """{"id":999,"title":"置顶讨论","topTime":1000}"""
         val normalPosts = (1..19).joinToString(",") { id ->
             """{"id":$id,"title":"讨论$id","isPinned":false}"""
         }
-        mockApi.route(
+        mockApi.replaceRoute(
             "api/posts/search",
             """{"success":true,"code":200,"msg":"ok","data":{"list":[$pinnedPost,$normalPosts]}}"""
         )
-        setupDefaultRoutes(mockApi)
         val env = TestEnv(this, mockApi)
 
         val session = env.createSession(

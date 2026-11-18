@@ -17,6 +17,9 @@ interface ZoneBoardSession {
     /** 当前活跃板块的响应式状态快照流。 */
     val activeSnapshot: StateFlow<ZoneBoardSnapshot>
 
+    /** 动态（Action）基础板块的响应式状态快照流（供宿主快速响应专区动态更新）。 */
+    val actionSnapshot: StateFlow<ZoneBoardSnapshot>
+
     /**
      * 获取指定板块的当前状态快照。
      *

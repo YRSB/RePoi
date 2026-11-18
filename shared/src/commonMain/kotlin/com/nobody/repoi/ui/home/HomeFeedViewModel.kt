@@ -273,17 +273,15 @@ class HomeFeedViewModel(
         // 收集会话控制器的活跃板块快照，同步更新 UI 状态快照镜像
         viewModelScope.launch {
             session.activeSnapshot.collect { snapshot ->
-                _uiState.update { state ->
-                    val nextActionItems = if (snapshot.board == ZoneBoard.Action) {
-                        (snapshot.content as? ZoneBoardContent.Action)?.items ?: state.actionItems
-                    } else {
-                        state.actionItems
-                    }
-                    state.copy(
-                        currentBoardSnapshot = snapshot,
-                        actionItems = nextActionItems
-                    )
-                }
+                _uiState.update { it.copy(currentBoardSnapshot = snapshot) }
+            }
+        }
+
+        // 收集动态板块快照，同步维护 actionItems 兼容状态
+        viewModelScope.launch {
+            session.actionSnapshot.collect { snapshot ->
+                val items = (snapshot.content as? ZoneBoardContent.Action)?.items.orEmpty()
+                _uiState.update { it.copy(actionItems = items) }
             }
         }
 
@@ -335,8 +333,8 @@ class HomeFeedViewModel(
 
                 val boardChanged = nextBoard != current.selectedBoard
                 if (categoryChanged) {
-                    session.dispatch(ZoneBoardIntent.SelectBoard(nextBoard))
                     session.updateScope(scope)
+                    session.dispatch(ZoneBoardIntent.SelectBoard(nextBoard))
                     // 恢复该作用域目标板块已保存的滚动记忆
                     val memoryKey = homeBoardMemoryKey(scope, nextBoard)
                     boardScrollMemories[memoryKey]?.let { saved ->
