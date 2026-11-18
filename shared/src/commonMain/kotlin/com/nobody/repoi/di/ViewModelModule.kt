@@ -123,6 +123,6 @@ val viewModelModule = module {
     viewModel { VendorActionsViewModel(get()) }
     viewModel { WorksDetailViewModel(get(), get()) }
     viewModel { ZoneBrowseViewModel(get()) }
-    viewModel { ZoneDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModelOf(::ZoneDetailViewModel)
     viewModel { ZoneSettingsViewModel(get()) }
 }
