@@ -127,7 +127,7 @@ val networkModule = module {
             }
         }
     }
-    single { HpoiApi(get(named("hpoi")), get()) }
+    single { HpoiApi(get(named("hpoi")), get()) { token -> get<UserSession>().notifyTokenExpired(token) } }
     single { ExHobbyApi(get(named("exhobby")), get()) }
     single { com.nobody.repoi.data.remote.interceptor.CommonParamsInterceptor(tokenProvider = { get<UserSession>().currentToken }) }
 }

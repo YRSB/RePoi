@@ -151,6 +151,17 @@ class CommonParamsPluginTest {
     }
 
     @Test
+    fun requestCarriesInFlightTokenSnapshot() = runTest {
+        var snapshot: String? = null
+        val client = testClient(onRequest = { request ->
+            snapshot = request.attributes.getOrNull(PoiRequestTokenAttributeKey)
+        })
+        client.get("https://www.hpoi.net.cn/api/user/self")
+        assertEquals("test_token_123", snapshot)
+        client.close()
+    }
+
+    @Test
     fun mergeKeepsExistingAndSkipsNulls() {
         val merged = CommonParams.merge(
             mapOf("id" to "12345", "order" to null, "platform" to "custom"),
