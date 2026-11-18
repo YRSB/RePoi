@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -616,6 +617,17 @@ private fun HomeBoardPage(
     val contentEmpty = itemCount == 0 && errorMessage == null && !view.isLoading
     val errorEmpty = errorMessage != null && itemCount == 0
     var restoredKey by remember { mutableStateOf<String?>(null) }
+    // 本页折叠度（0 = 展开，1 = 收起）：由本板块记忆初始化，滚动时跟随共享 heightOffset 更新。
+    // 渲染位移 = 本页折叠度 × 本页筛选行高度，因此拖动中滑回的页也保持自己的折叠形态，
+    // 不会出现「滑回过程中是展开的、松手落定才折叠」。
+    var collapseFraction by remember(memoryKey) {
+        mutableFloatStateOf(viewModel.scrollMemoryOrNull(memoryKey)?.filterCollapseFraction ?: 0f)
+    }
+    // 空态/错误态没有可滚动内容（canScroll = false），宿主会强制展开；这里同步本页状态，
+    // 避免从记忆恢复出「收起却展不开」的筛选行。
+    LaunchedEffect(itemCount, isCurrent) {
+        if (isCurrent && itemCount == 0) collapseFraction = 0f
+    }
     // 本页筛选行实测高度：内容顶部留白按「本页」算，滑动中两页各自对齐，不会互相遮挡。
     // 用 saveable 保存：页被分页器回收后重建时不至于先套用别的板块的留白。
     var filterBarHeightPx by rememberSaveable { mutableStateOf(0) }
@@ -680,6 +692,7 @@ private fun HomeBoardPage(
             // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
             // 写回会污染本页记忆。滚动位置还需已按要求恢复过（A1）。
             if (!isCurrentProvider()) return@collect
+            collapseFraction = filterCollapseFraction
             if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, index, offset)
             }
@@ -825,11 +838,20 @@ private fun HomeBoardPage(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .padding(top = headerStack.pinnedHeight)
-                    // 位移直接用共享 heightOffset：宿主切换时已按**目标板块缓存高度**折算过，
-                    // 所以这里读到多少就是该板块应有的收起像素。非当前页（拖动中组合的相邻页）
-                    // 按展开渲染，落定后由宿主按记忆恢复。
+                    // 位移 = 本页折叠度 × 本页筛选行高度：
+                    // - 当前页用共享 heightOffset（滚动零延迟，且与列表位移一致）；
+                    // - 非当前页（拖动中组合的相邻页）用自己的折叠度，滑回时看到的就是它原本的形态。
                     .offset {
-                        val offsetY = if (isCurrentProvider()) scrollBehavior.state.heightOffset else 0f
+                        val heightPx = if (filterBarHeightPx > 0) {
+                            filterBarHeightPx
+                        } else {
+                            headerStack.collapsibleHeightPx.roundToInt()
+                        }
+                        val offsetY = if (isCurrentProvider()) {
+                            scrollBehavior.state.heightOffset
+                        } else {
+                            -(collapseFraction * heightPx)
+                        }
                         IntOffset(0, offsetY.roundToInt())
                     }
                     .onSizeChanged { filterBarHeightPx = it.height }
