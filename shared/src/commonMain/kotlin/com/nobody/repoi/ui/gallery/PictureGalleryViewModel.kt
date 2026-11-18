@@ -278,6 +278,7 @@ class PictureGalleryViewModel(
         _uiState.update {
             it.copy(
                 isCollected = false,
+                collectCount = item.collect,
                 showRaw = false,
                 isLongImage = false,
                 relateItems = emptyList(),
@@ -326,6 +327,7 @@ class PictureGalleryViewModel(
     fun toggleCollect(item: UserCollectPicItem): Boolean {
         val wasCollected = _uiState.value.isCollected
         val nowCollected = !wasCollected
+        val pageIndex = currentIndex
 
         // 乐观更新：先翻转星标与徽章，失败时回滚
         _uiState.update {
@@ -338,14 +340,21 @@ class PictureGalleryViewModel(
         viewModelScope.launch {
             // 写侧直接交给自治仓储：成功后状态池与变更代数均由仓储内部原子推进
             val result = collectRepository.toggleItemCollect(item.id, wasCollected)
-            result.onFailure { error ->
+            if (result.isFailure) {
                 // 回滚到请求前状态
                 _uiState.update {
                     it.copy(
                         isCollected = wasCollected,
                         collectCount = (it.collectCount + if (nowCollected) -1 else 1).coerceAtLeast(0),
-                        toastMessage = error.message ?: "操作失败，请稍后重试"
+                        toastMessage = result.exceptionOrNull()?.message ?: "操作失败，请稍后重试"
                     )
+                }
+            } else {
+                // 写成功后以服务端五分类总数直接覆盖徽章；计数请求失败时保留乐观 ±1
+                collectRepository.getCollectCount(item.id).onSuccess { count ->
+                    // 翻页/切图后丢弃上一张图的计数结果，避免污染新页基线
+                    if (currentIndex != pageIndex) return@onSuccess
+                    _uiState.update { it.copy(collectCount = count.total) }
                 }
             }
         }
