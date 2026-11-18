@@ -98,14 +98,19 @@ class PersonDetailRepositoryTest {
     }
 
     @Test
-    fun personLists_degradeToEmptyOnBusinessFailure() = runTest {
+    fun personLists_propagateBusinessFailure() = runTest {
         val (mock, _, repository) = setup()
         val failure = """{"success":false,"code":500,"msg":"error","data":null}"""
         repeat(3) { mock.enqueue(failure) }
 
-        assertTrue(repository.getPersonWorks(1589L).getOrThrow().isEmpty())
-        assertTrue(repository.getPersonCharacter(1589L).getOrThrow().isEmpty())
-        assertTrue(repository.getPersonHobby(1589L).getOrThrow().isEmpty())
+        listOf(
+            repository.getPersonWorks(1589L),
+            repository.getPersonCharacter(1589L),
+            repository.getPersonHobby(1589L)
+        ).forEach { result ->
+            assertTrue(result.isFailure)
+            assertEquals(500, (result.exceptionOrNull() as ApiException).code)
+        }
     }
 
     @Test

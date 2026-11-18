@@ -55,11 +55,7 @@ class ResaleRepository(
         regionNodeId?.trim()?.takeIf { it.isNotBlank() && it != "0" }?.let { params["regionNodeId"] = it }
         lastTime?.trim()?.takeIf { it.isNotBlank() }?.let { params["lastTime"] = it }
 
-        val response = api.searchResale(params)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取二手交易列表失败")
-        }
-        response.data ?: ResaleSearchPayload()
+        api.searchResale(params)
     }
 
     /**
@@ -68,11 +64,7 @@ class ResaleRepository(
      * @param nodeId 二手交易 ID
      */
     suspend fun getResaleDetail(nodeId: Long): Result<ResaleDetailItem> = runCatching {
-        val response = api.getResaleDetail(nodeId)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取二手交易详情失败")
-        }
-        response.data?.resale
+        api.getResaleDetail(nodeId).resale
             ?: throw ApiException(-1, "二手交易详情数据为空")
     }
 }

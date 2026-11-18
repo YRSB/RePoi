@@ -4,6 +4,7 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AlbumData
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.data.remote.model.SeriesData
 import com.nobody.repoi.data.remote.model.SeriesForumPayload
@@ -24,12 +25,8 @@ class SeriesDetailRepository(
      * 获取系列主体详情 (api/item/get-v2?itemId=...&itemType=series)。
      */
     suspend fun getSeriesDetail(itemId: Long): Result<SeriesData> = runCatching {
-        val response = api.getSeriesDetail(itemId = itemId, itemType = "series")
-        if (response.isSuccess) {
-            response.data?.itemData ?: throw ApiException(response.code, "未找到该系列数据")
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取系列详情失败")
-        }
+        api.getSeriesDetail(itemId = itemId, itemType = "series").itemData
+            ?: throw ApiException(-1, "未找到该系列数据")
     }
 
     /**
@@ -39,16 +36,11 @@ class SeriesDetailRepository(
         nodeId: Long,
         pageSize: Int = 9
     ): Result<List<RelatedHobbyItem>> = runCatching {
-        val response = api.getSeriesHobbys(
+        api.getSeriesHobbys(
             id = nodeId,
             itemType = "series",
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.hobbys ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).hobbys.orEmpty()
     }
 
     /**
@@ -59,17 +51,12 @@ class SeriesDetailRepository(
         page: Int = 1,
         pageSize: Int = 6
     ): Result<List<SeriesLinkItem>> = runCatching {
-        val response = api.getSeriesLinkSeries(
+        api.getSeriesLinkSeries(
             seriesId = seriesId,
             isChild = 1,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).list.orEmpty()
     }
 
     /**
@@ -80,17 +67,12 @@ class SeriesDetailRepository(
         page: Int = 1,
         pageSize: Int = 6
     ): Result<List<SeriesLinkItem>> = runCatching {
-        val response = api.getSeriesLinkSeries(
+        api.getSeriesLinkSeries(
             seriesId = seriesId,
             isChild = 2,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).list.orEmpty()
     }
 
     /**
@@ -101,16 +83,11 @@ class SeriesDetailRepository(
         page: Int = 1,
         pageSize: Int = 6
     ): Result<List<AlbumData>> = runCatching {
-        val response = api.getSeriesAlbums(
+        api.getSeriesAlbums(
             seriesId = seriesId,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.album ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).album.orEmpty()
     }
 
     /**
@@ -121,28 +98,18 @@ class SeriesDetailRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<List<SeriesGoodsItem>> = runCatching {
-        val response = api.getSeriesGoods(
+        api.getSeriesGoods(
             nodeId = nodeId,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).list.orEmpty()
     }
 
     /**
      * 获取系列论坛与讨论帖 (api/series/forum)。
      */
     suspend fun getSeriesForum(seriesId: Long): Result<SeriesForumPayload?> = runCatching {
-        val response = api.getSeriesForum(seriesId = seriesId)
-        if (response.isSuccess) {
-            response.data
-        } else {
-            null
-        }
+        api.getSeriesForum(seriesId = seriesId)
     }
 
     /**
@@ -157,14 +124,9 @@ class SeriesDetailRepository(
      * state == 1 表示已屏蔽，若未登录或未屏蔽安全返回 false。
      */
     suspend fun getMaskState(nodeId: Long): Result<Boolean> = runCatching {
-        val response = api.getMaskState(nodeId)
-        if (response.isSuccess) {
-            val jsonObject = response.data as? JsonObject
-            val state = (jsonObject?.get("state") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
-            state == 1
-        } else {
-            false
-        }
+        val jsonObject = api.getMaskState(nodeId) as? JsonObject
+        val state = (jsonObject?.get("state") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        state == 1
     }
 
     /**
@@ -176,18 +138,13 @@ class SeriesDetailRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<List<CommentItem>> = runCatching {
-        val response = api.getComments(
+        api.getComments(
             nodeId = nodeId,
             type = type,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else if (response.isCommentNotFound) {
-            emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取评论失败")
-        }
+        ).list.orEmpty()
+    }.recoverCatching { error ->
+        if (error is CommentNotFoundException) emptyList() else throw error
     }
 }

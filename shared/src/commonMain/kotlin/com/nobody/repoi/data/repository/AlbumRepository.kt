@@ -56,7 +56,7 @@ class AlbumRepository(
         orderString: String? = null
     ): Result<AlbumPage> = runCatching {
         val finalOrder = orderString?.ifBlank { null } ?: order.apiValue
-        val response = api.getAlbumList(
+        val rawList = api.getAlbumList(
             page = page,
             pageSize = pageSize,
             order = finalOrder,
@@ -64,14 +64,9 @@ class AlbumRepository(
             category = category,
             releaseStart = releaseStart,
             releaseEnd = releaseEnd
-        )
-        if (response.isSuccess) {
-            val rawList = response.data?.list ?: emptyList()
-            val items = rawList.filter { it.targetAlbumId > 0L }
-            AlbumPage(items = items, hasMore = rawList.size >= pageSize)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取相册列表失败")
-        }
+        ).list.orEmpty()
+        val items = rawList.filter { it.targetAlbumId > 0L }
+        AlbumPage(items = items, hasMore = rawList.size >= pageSize)
     }
 
     /**
@@ -84,8 +79,8 @@ class AlbumRepository(
      */
     suspend fun getAlbumCategories(nodeId: Long): Result<List<ZoneCategoryItem>> = runCatching {
         val data = api.getZoneCategories(nodeId = nodeId, itemType = "album")
-        if (!data.visible) return@runCatching emptyList()
-        data.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
+        if (data.visible == false) emptyList()
+        else data.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
     }
 
     suspend fun getRankingWindow(
@@ -107,13 +102,8 @@ class AlbumRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<AlbumPage> = runCatching {
-        val response = api.getPraiseTop(type = type, page = page, pageSize = pageSize)
-        if (response.isSuccess) {
-            val rawList = response.data?.list ?: emptyList()
-            val items = rawList.filter { it.targetAlbumId > 0L }
-            AlbumPage(items = items, hasMore = rawList.size >= pageSize)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取点赞榜失败")
-        }
+        val rawList = api.getPraiseTop(type = type, page = page, pageSize = pageSize).list.orEmpty()
+        val items = rawList.filter { it.targetAlbumId > 0L }
+        AlbumPage(items = items, hasMore = rawList.size >= pageSize)
     }
 }
