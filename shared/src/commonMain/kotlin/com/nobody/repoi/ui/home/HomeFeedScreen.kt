@@ -279,9 +279,17 @@ fun HomeFeedScreen(
         if (uiState.boards.isEmpty()) headerStack.clearMeasuredRows()
     }
 
-    // 实体 5 类没有筛选行：筛选项不再测量，必须显式清零，避免沿用上一板块的折叠高度。
-    LaunchedEffect(uiState.selectedBoard.isEntity) {
-        if (uiState.selectedBoard.isEntity) headerStack.resetCollapsibleHeight()
+    // 实体 5 类没有筛选行：筛选项不再测量，显式清零；
+    // 从实体板块切回非实体板块时，立即用缓存的高度恢复，避免高度栈踩空为 0。
+    LaunchedEffect(uiState.selectedBoard) {
+        val board = uiState.selectedBoard
+        if (board.isEntity) {
+            headerStack.resetCollapsibleHeight()
+        } else {
+            boardFilterHeights[board]?.let { heightPx ->
+                if (heightPx > 0f) headerStack.onCollapsibleMeasured(heightPx.roundToInt())
+            }
+        }
     }
 
     val pullRefreshState = rememberPullToRefreshState()
@@ -307,16 +315,27 @@ fun HomeFeedScreen(
     // 而不是沿用头部栈里上一板块的实测值。旧实现用上一板块高度算折叠位移，
     // 若它更矮，切回时只收起一部分、等本页测量回填后才收到底——观感就是「先露一截再折叠」。
     val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
-    val currentFilterHeightPx: Float =
-        boardFilterHeights[uiState.selectedBoard] ?: headerStack.collapsibleHeightPx
+    val currentFilterHeightPx: Float = if (uiState.selectedBoard.isEntity) {
+        0f
+    } else {
+        boardFilterHeights[uiState.selectedBoard]
+            ?: if (headerStack.collapsibleHeightPx > 0f) {
+                headerStack.collapsibleHeightPx
+            } else {
+                with(LocalDensity.current) { 48.dp.toPx() }
+            }
+    }
 
     // 折叠度恢复：heightOffset 仍是滚动机制的唯一真源（nestedScroll 直接改它，渲染零延迟）。
-    // 列表为空/错误时纵向滚动被禁用（canScroll = boardItemCount > 0），强制展开，避免「收起却展不开」。
-    LaunchedEffect(currentBoardKey, currentFilterHeightPx, boardItemCount > 0) {
-        val fraction = if (boardItemCount > 0) {
-            viewModel.scrollMemoryOrNull(currentBoardKey)?.filterCollapseFraction ?: 0f
-        } else {
+    // 只有在数据真正加载完毕且确认为空态（或错误）时才强制展开，避免懒加载或刷新期间抹平记忆。
+    val currentView = uiState.currentBoardView
+    val isConfirmedEmptyOrError =
+        (boardItemCount == 0 && !currentView.isLoading) || currentView.errorMessage != null
+    LaunchedEffect(currentBoardKey, currentFilterHeightPx, isConfirmedEmptyOrError) {
+        val fraction = if (isConfirmedEmptyOrError) {
             0f
+        } else {
+            viewModel.scrollMemoryOrNull(currentBoardKey)?.filterCollapseFraction ?: 0f
         }
         scrollBehavior.state.heightOffsetLimit = -currentFilterHeightPx
         scrollBehavior.state.contentOffset = 0f
@@ -623,10 +642,21 @@ private fun HomeBoardPage(
     var collapseFraction by remember(memoryKey) {
         mutableFloatStateOf(viewModel.scrollMemoryOrNull(memoryKey)?.filterCollapseFraction ?: 0f)
     }
-    // 空态/错误态没有可滚动内容（canScroll = false），宿主会强制展开；这里同步本页状态，
-    // 避免从记忆恢复出「收起却展不开」的筛选行。
-    LaunchedEffect(itemCount, isCurrent) {
-        if (isCurrent && itemCount == 0) collapseFraction = 0f
+    // 仅在真实空态（已加载完毕且条目为 0）且非加载中时强制展开；正在加载时保留记忆，避免首屏抹平
+    LaunchedEffect(itemCount, isCurrent, view.isLoading) {
+        if (isCurrent && itemCount == 0 && !view.isLoading) collapseFraction = 0f
+    }
+    // 折叠状态恢复门禁：切到本板块时，必须等宿主将共享 heightOffset 更新为本板块记忆值后，
+    // 才允许开始写回 ViewModel，避免上一板块的残余 heightOffset 反向污染本板块记忆。
+    var filterRestored by remember(memoryKey) { mutableStateOf(false) }
+    LaunchedEffect(memoryKey, isCurrent) {
+        if (!isCurrent) {
+            filterRestored = false
+            return@LaunchedEffect
+        }
+        val targetFraction = viewModel.scrollMemoryOrNull(memoryKey)?.filterCollapseFraction ?: 0f
+        collapseFraction = targetFraction
+        filterRestored = true
     }
     // 本页筛选行实测高度：内容顶部留白按「本页」算，滑动中两页各自对齐，不会互相遮挡。
     // 用 saveable 保存：页被分页器回收后重建时不至于先套用别的板块的留白。
@@ -678,7 +708,13 @@ private fun HomeBoardPage(
     // 只写回「已完成恢复」的键：切换瞬间旧板块的首帧不会把新键的位置写坏（A1）。
     LaunchedEffect(gridState, scrollBehavior.state, memoryKey) {
         snapshotFlow {
-            val driverHeight = headerStack.collapsibleHeightPx
+            val driverHeight = if (board.isEntity) {
+                0f
+            } else if (filterBarHeightPx > 0) {
+                filterBarHeightPx.toFloat()
+            } else {
+                headerStack.collapsibleHeightPx
+            }
             Triple(
                 gridState.firstVisibleItemIndex,
                 gridState.firstVisibleItemScrollOffset,
@@ -690,13 +726,15 @@ private fun HomeBoardPage(
             )
         }.collect { (index, offset, filterCollapseFraction) ->
             // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
-            // 写回会污染本页记忆。滚动位置还需已按要求恢复过（A1）。
+            // 写回会污染本页记忆。折叠比例与滚动位置必须已对齐恢复完成，避免残余偏移污染。
             if (!isCurrentProvider()) return@collect
-            collapseFraction = filterCollapseFraction
+            if (filterRestored) {
+                collapseFraction = filterCollapseFraction
+                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
+            }
             if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, index, offset)
             }
-            viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
         }
     }
 
@@ -847,7 +885,7 @@ private fun HomeBoardPage(
                         } else {
                             headerStack.collapsibleHeightPx.roundToInt()
                         }
-                        val offsetY = if (isCurrentProvider()) {
+                        val offsetY = if (isCurrentProvider() && filterRestored) {
                             scrollBehavior.state.heightOffset
                         } else {
                             -(collapseFraction * heightPx)
