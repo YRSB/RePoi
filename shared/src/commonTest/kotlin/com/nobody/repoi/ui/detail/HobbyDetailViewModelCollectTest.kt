@@ -2,6 +2,10 @@ package com.nobody.repoi.ui.detail
 
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectData
+import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
+import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
+import com.nobody.repoi.ui.collect.CollectEditViewModel
+import com.nobody.repoi.ui.navigation.CollectEditNavParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -142,5 +146,95 @@ class HobbyDetailViewModelCollectTest {
         // 失败不误报为未收藏，保持初始态
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
+    }
+
+    /**
+     * 编辑页「未收藏 → 添加收藏」经同一状态池推送详情页：爱心亮起、计数由 0 变 +1，
+     * 代数只在保存成功后推进 1 代（加载时的 refresh 不推进）。
+     */
+    @Test
+    fun collectEditAddFromEmpty_thenDetailReadsFavoriteAndPositiveDelta() = runTest(testDispatcher) {
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
+        env.stubBasics(nodeId = 100L)
+        env.collectMock.route("collectCount", env.collectMock.ok("""{"collect":{}}"""))
+        env.collectMock.route("collect/tag", env.collectMock.ok("""{"favTags":[]}"""))
+        env.collectMock.route("collect/state", env.collectMock.ok("""{}"""))
+        env.collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val detail = env.viewModel()
+        detail.loadDetail(DetailNavParam(itemId = 59570L))
+        advanceUntilIdle()
+        assertFalse(detail.uiState.value.isFavorite)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
+        assertEquals(0L, env.collectRepository.collectMutationGeneration.value)
+
+        val edit = CollectEditViewModel(
+            env.collectRepository,
+            SaveHobbyCollectUseCase(env.collectRepository),
+            DeleteHobbyCollectUseCase(env.collectRepository)
+        )
+        edit.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+        assertNull(env.collectRepository.observeCollectState(100L).value)
+        assertEquals(0L, env.collectRepository.collectMutationGeneration.value)
+
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(edit.uiState.value.saveSuccess)
+        assertEquals(CollectConstants.STATE_CARE, env.collectRepository.observeCollectState(100L).value?.state)
+        assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
+        assertTrue(detail.uiState.value.isFavorite)
+        assertEquals(1, detail.uiState.value.collectCountDelta)
+    }
+
+    /**
+     * 编辑页「已收藏 care → 改档 buy → 取消收藏」的全过程：
+     * 详情读数跟随新档位，增量基线保持在已收藏态（改档 0，取消 -1），代数累计 +2。
+     */
+    @Test
+    fun collectEditTierChangeThenDelete_thenDetailReadsNewTierAndNegativeDelta() = runTest(testDispatcher) {
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
+        env.stubBasics(nodeId = 100L)
+        env.collectMock.route("collectCount", env.collectMock.ok("""{"collect":{}}"""))
+        env.collectMock.route("collect/tag", env.collectMock.ok("""{"favTags":[]}"""))
+        env.collectMock.route("collect/state", env.collectMock.ok("""{"collect":{"id":100,"state":"care"}}"""))
+        env.collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val detail = env.viewModel()
+        detail.loadDetail(DetailNavParam(itemId = 59570L))
+        advanceUntilIdle()
+        assertTrue(detail.uiState.value.isFavorite)
+        assertEquals(CollectConstants.STATE_CARE, detail.uiState.value.currentCollectData?.state)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
+
+        val edit = CollectEditViewModel(
+            env.collectRepository,
+            SaveHobbyCollectUseCase(env.collectRepository),
+            DeleteHobbyCollectUseCase(env.collectRepository)
+        )
+        edit.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+        assertEquals(CollectConstants.STATE_CARE, edit.uiState.value.selectedState)
+        assertEquals(0L, env.collectRepository.collectMutationGeneration.value)
+
+        edit.selectState(CollectConstants.STATE_BUY)
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        assertEquals(CollectConstants.STATE_BUY, env.collectRepository.observeCollectState(100L).value?.state)
+        assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
+        assertTrue(detail.uiState.value.isFavorite)
+        assertEquals(CollectConstants.STATE_BUY, detail.uiState.value.currentCollectData?.state)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
+
+        edit.deleteCollect()
+        advanceUntilIdle()
+
+        assertNull(env.collectRepository.observeCollectState(100L).value)
+        assertEquals(2L, env.collectRepository.collectMutationGeneration.value)
+        assertFalse(detail.uiState.value.isFavorite)
+        assertNull(detail.uiState.value.currentCollectData)
+        assertEquals(-1, detail.uiState.value.collectCountDelta)
     }
 }
