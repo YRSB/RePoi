@@ -16,16 +16,17 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.ui.board.AlbumBoardOptions
@@ -77,7 +83,7 @@ import kotlinx.datetime.toLocalDateTime
  * @param rowScrollState 横向滚动状态（Chip 条滚动位置）。宿主可传入按板块持久的状态，
  *   实现「切走再切回，筛选条仍停在原处」；默认 `rememberScrollState()` 仅随页存活。
  */
-@OptIn(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ZoneBoardFilterBar(
     board: ZoneBoard,
@@ -190,7 +196,7 @@ fun ZoneBoardFilterBar(
             }
         }
         ZoneBoard.Resale -> {
-            // 二手：出售/求购分段切换 + 成色单选 Chip（选项来自共享定义，首页与详情同一实现）
+            // 二手：出售/求购 M3 Expressive Connected Button Group + 成色单选 Chip
             Row(
                 modifier = modifier
                     .fillMaxWidth()
@@ -199,17 +205,30 @@ fun ZoneBoardFilterBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                SingleChoiceSegmentedButtonRow {
+                Row(
+                    modifier = Modifier.selectableGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     ResaleBoardOptions.TYPES.forEachIndexed { index, (typeKey, label) ->
-                        SegmentedButton(
-                            selected = filters.resaleType == typeKey,
-                            onClick = { actions.onSelectResaleType(typeKey) },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = ResaleBoardOptions.TYPES.size
-                            )
+                        val isSelected = filters.resaleType == typeKey
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = { if (!isSelected) actions.onSelectResaleType(typeKey) },
+                            modifier = Modifier.semantics {
+                                role = Role.RadioButton
+                                this.selected = isSelected
+                            },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                ResaleBoardOptions.TYPES.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
                         ) {
-                            Text(label)
+                            Text(
+                                text = label,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
                         }
                     }
                 }
