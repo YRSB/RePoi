@@ -196,19 +196,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(3L, repository.collectMutationGeneration.value)
     }
 
-    /** 过渡代理对齐：手动标记画廊写操作同时推进旧计数与新代数，两边不遗漏。 */
-    @Test
-    fun markGalleryMutation_transitionalProxy_advancesBothCounters() {
-        val (_, repository) = setup()
-        assertEquals(0L, repository.galleryMutationCount.value)
-        assertEquals(0L, repository.collectMutationGeneration.value)
-
-        repository.markGalleryMutation()
-
-        assertEquals(1L, repository.galleryMutationCount.value)
-        assertEquals(1L, repository.collectMutationGeneration.value)
-    }
-
     /**
      * 并发首访 + 并发写：多线程同时观察与切换同一批 nodeId，
      * CAS 状态池仍保证「同 nodeId 同实例」，代数恰好等于成功写操作数。

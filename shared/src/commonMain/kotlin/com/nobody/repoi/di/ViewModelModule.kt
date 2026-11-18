@@ -77,9 +77,9 @@ import org.koin.dsl.module
  */
 val viewModelModule = module {
     viewModel { AlbumViewModel(get(), get()) }
-    viewModelOf(::AlbumDetailViewModel)
+    viewModel { AlbumDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AlbumRankListViewModel(get()) }
-    viewModelOf(::CharacterDetailViewModel)
+    viewModel { CharacterDetailViewModel(get(), get(), get()) }
     viewModel { CharacterAlbumListViewModel(get()) }
     viewModel { CharacterWorksListViewModel(get()) }
     viewModelOf(::CollectEditViewModel)
@@ -94,7 +94,7 @@ val viewModelModule = module {
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
-    viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
+    viewModel { PictureGalleryViewModel(get(), get(named("download"))) }
     viewModel {
         HomeFeedViewModel(
             sessionFactory = get(),
