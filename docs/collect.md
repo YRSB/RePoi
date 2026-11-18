@@ -2,22 +2,23 @@
 
 收藏是 RePoi 最容易改坏的领域：**8 个列表 × 6 档收藏状态 × 3 种排序 × 写侧跨页同步**。
 本文只记录代码里读不出来、但改错就会静默失效的约定。设计动因见
-[ADR-0011](adr/0011-collect-architecture-eventbus-decoupling.md)。
+[ADR-0011](adr/0011-collect-architecture-eventbus-decoupling.md) 与
+[ADR-0025](adr/0025-autonomous-collect-store-and-mutation-generation.md)。
 
 ---
 
 ## 1. 单一数据源：`CollectRepository`
 
-`data/repository/CollectRepository.kt` 是收藏业务的**唯一权威数据源**。
+`data/repository/CollectRepository.kt` 是收藏业务的**唯一权威数据源与自治存储**。
 `UserRepository` 不含任何收藏职责；若你在那里找收藏列表，说明你在读旧代码。
 
-### 1.1 条目状态池
+### 1.1 条目状态池与写侧代数
 
 ```kotlin
 fun observeCollectState(nodeId: Long): StateFlow<CollectData?>   // 非挂起，同 nodeId 必返回同一实例
 suspend fun refreshCollectState(nodeId: Long): Result<CollectData?>  // 网络拉取 + 成功才写池
-val galleryMutationCount: StateFlow<Long>                        // 画廊写操作单调计数
-fun markGalleryMutation()
+val collectMutationGeneration: StateFlow<Long>                   // 收藏写操作单调代数（写成功自动+1）
+suspend fun toggleItemCollect(nodeId: Long, isCollected: Boolean): Result<Boolean> // 统一切换条目收藏
 ```
 
 **并发模型是 CAS 不可变快照，不是 Mutex**：
@@ -90,24 +91,28 @@ Kotlin 可见性不参与签名，这是本项目踩过的坑。
 
 ---
 
-## 4. 跨页同步：脏位 + 恢复感知（无事件总线）
+## 4. 跨页同步：收藏变更代数 + 恢复感知（无事件总线）
 
-画廊写操作会改动画廊自己的列表，但**不会**自动让收藏页的图片列表与服务端排序对齐。
-链路：
+画廊或二级详情页（相册/厂商/系列/角色/人物/手办/作品编辑）的写操作会改动自身数据，但**不会**自动让收藏中心各子列表与服务端排序对齐。
+ADR-0025 确立的链路：
 
 ```text
-PictureGalleryViewModel.toggleCollect 成功
-  → collectRepository.markGalleryMutation()          // 计数 +1
+任意收藏写操作（toggleItemCollect / saveCollect / deleteCollect / cancelCollectBatch / saveWorksCollect 等）成功
+  → CollectRepository 内部自动原子执行 _collectMutationGeneration.update { it + 1 }
 返回收藏页（Nav3 出栈）→ LifecycleEventEffect(ON_RESUME)
   → viewModel.onIntent(OnResume)
-  → 比对 galleryMutationCount 与已消费值
-  → 变大 → 对图片页静默 refresh()
+  → 比对 collectMutationGeneration 与已消费游标 consumedMutationGeneration
+  → 变大 →
+      1. 当前激活 Tab 立即静默 refresh()
+      2. 其余已有数据的 Tab 加入 dirtyCategories
+      3. 用户后续切入 dirty Tab 时，平滑 refresh()（保留现有列表原位更新，无骨架屏白屏）
 ```
 
-两条硬约束：
+三条硬约束：
 
-- **不要用共享流 / Channel 做这件事**。ADR-0011 明确拒绝事件总线；计数是**状态**，可重读、不丢、无订阅者也能观察。
-- `consumedGalleryMutationCount` 必须落 `savedState`，否则配置变更重建 ViewModel 后会重复刷新（或漏刷新）。
+- **不要用共享流 / Channel 做这件事**。ADR-0011 明确拒绝事件总线；代数是**状态**，可重读、不丢、无订阅者也能观察。
+- **写侧严禁保留外部手动 mark 方法**。所有写操作成功后必须在仓储内部自动推进代数，调用端无法绕过。
+- `consumedMutationGeneration` 必须落 `savedState`，否则配置变更或进程重建后会重复刷新（或漏刷新）。批量取消成功后主动同步该游标以保证幂等。
 
 ---
 
