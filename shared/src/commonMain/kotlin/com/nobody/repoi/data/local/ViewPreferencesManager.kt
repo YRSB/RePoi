@@ -191,6 +191,21 @@ class ViewPreferencesManager(
         }
 
     /**
+     * 读取收藏中心已消费的收藏变更代数游标（从未写入过时为 0）。
+     *
+     * 直读 DataStore 而不走预热镜像：ViewModel 构造期即可确定性恢复，不依赖预热协程时序。
+     */
+    suspend fun getConsumedCollectMutationGeneration(): Long =
+        dataStore.data.first()[KEY_CONSUMED_COLLECT_MUTATION_GENERATION] ?: 0L
+
+    /** 持久化收藏中心已消费的代数游标，抵抗配置变更与进程重建后的重复刷新。 */
+    suspend fun setConsumedCollectMutationGeneration(generation: Long) {
+        dataStore.edit { prefs ->
+            prefs[KEY_CONSUMED_COLLECT_MUTATION_GENERATION] = generation
+        }
+    }
+
+    /**
      * 同步获取初始分类 ID（启动时无锁零延迟，杜绝首屏跳变）。
      */
     fun getInitialFeedCategoryId(): Int = feedCategoryId
@@ -321,6 +336,8 @@ class ViewPreferencesManager(
         private val KEY_CACHED_ZONE_SETTINGS = stringPreferencesKey("cached_zone_settings_json")
         private val KEY_EXHOBBY_ENABLED = booleanPreferencesKey("is_exhobby_enabled")
         private val KEY_IMAGE_CACHE_MAX_BYTES = longPreferencesKey("image_cache_max_bytes")
+        private val KEY_CONSUMED_COLLECT_MUTATION_GENERATION =
+            longPreferencesKey("consumed_collect_mutation_generation")
 
         private fun keyOfCollectHobbyOrder(collectState: String) =
             stringPreferencesKey("collect_hobby_order_$collectState")

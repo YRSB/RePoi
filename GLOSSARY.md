@@ -64,6 +64,10 @@ _Avoid_: 收藏夹 (Favorites), 喜爱 (Likes), 标记 (Bookmarks)
 由收藏仓储维护的单调递增代数计数器，任意实体收藏写操作（手办、相册、图片、通用条目、作品）成功即在内部自动原子 +1；列表页凭「已消费代数」比对差值判定是否需要静默刷新，属状态而非事件，无订阅者也不丢。
 _Avoid_: 画廊写操作计数 (GalleryMutationCount), 刷新广播, 收藏失效事件, 脏位标志
 
+**已消费代数游标 (ConsumedMutationGeneration)**:
+收藏中心上次已处理的收藏变更代数，由 `ViewPreferencesManager` 持久化于 DataStore；页面重建后读回并按仓储当前代数夹逼，避免旧进程游标阻塞新进程刷新。
+_Avoid_: SavedStateHandle 游标, tick 计数, 恢复槽注入
+
 **恢复感知刷新 (Resumed Refresh)**:
 页面重新获得焦点时读取收藏变更代数，仅当代数较上次消费值增长才静默重载受影响列表，避免出栈返回时无谓请求。
 _Avoid_: 返回刷新, 自动重载, 生命周期刷新
