@@ -225,9 +225,9 @@ class ZoneBoardSessionTest {
         session.dispatch(ZoneBoardIntent.SelectBoard(ZoneBoard.Hobby))
         advanceUntilIdle()
         session.dispatch(ZoneBoardIntent.SaveScrollPosition(ZoneBoard.Hobby, index = 7, offset = 30))
-        session.dispatch(ZoneBoardIntent.ApplyHobbyFilter(HobbyAdvancedFilterParam(sex = "女", scale = "1/7")))
+        session.dispatch(ZoneBoardIntent.ApplyHobbyFilter(HobbyAdvancedFilterParam(sex = 1, scale = "1/7")))
         advanceUntilIdle()
-        assertEquals("女", session.activeSnapshot.value.filters.hobby.sex)
+        assertEquals(1, session.activeSnapshot.value.filters.hobby.sex)
         assertEquals("1/7", session.activeSnapshot.value.filters.hobby.scale)
         assertEquals(0, session.activeSnapshot.value.scrollPosition.index)
 

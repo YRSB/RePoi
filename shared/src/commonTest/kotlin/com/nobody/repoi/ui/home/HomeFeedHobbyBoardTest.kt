@@ -210,20 +210,17 @@ class HomeFeedHobbyBoardTest {
         // 控制器级防御：即使调用方绕开能力矩阵，空关注集合也绝不能发请求
         //（空 zones 会被服务端当作全站，属于比隐藏更危险的假「关注」内容）。
         val env = env()
-        val controller = HomeHobbyBoardController(
-            repository = ItemRepository(env.hobbyMock.api(testDispatcher)),
-            scope = backgroundScope
-        )
-
-        controller.loadInitial(ZoneQueryScope.Follow(emptyList()))
+        val viewModel = env.viewModel()
+        viewModel.session.updateScope(ZoneQueryScope.Follow(emptyList()))
+        viewModel.session.dispatch(ZoneBoardIntent.SelectBoard(ZoneBoard.Hobby))
         advanceUntilIdle()
 
         assertEquals(0, env.hobbyMock.requestCount)
-        val state = controller.state.value
-        assertTrue(state.isLoaded)
-        assertTrue(state.items.isEmpty())
-        assertFalse(state.hasMore)
-        assertFalse(state.isLoading)
+        val snapshot = viewModel.session.snapshotFor(ZoneBoard.Hobby)
+        val hobbyContent = snapshot.content as ZoneBoardContent.Hobby
+        assertTrue(hobbyContent.items.isEmpty())
+        assertTrue(snapshot.pageView.isEndReached)
+        assertFalse(snapshot.pageView.isLoading)
     }
 
     @Test
