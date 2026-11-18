@@ -60,8 +60,8 @@ class ZoneDetailViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private class TestEnv(val testScope: TestScope, val mockApi: MockApi) {
-        val dispatcher = testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!
+    private inner class TestEnv(val testScope: TestScope, val mockApi: MockApi) {
+        val dispatcher: kotlinx.coroutines.CoroutineDispatcher = testDispatcher
         val preferences = ViewPreferencesManager(TestDataStore.inMemory())
         val homeRepository = HomeRepository(mockApi.api(dispatcher))
         val albumRepository = AlbumRepository(mockApi.api(dispatcher))

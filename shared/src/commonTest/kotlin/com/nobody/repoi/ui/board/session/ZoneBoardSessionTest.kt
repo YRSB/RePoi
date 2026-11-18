@@ -58,13 +58,13 @@ class ZoneBoardSessionTest {
         Dispatchers.resetMain()
     }
 
-    private class TestEnv(val testScope: TestScope, val mockApi: MockApi) {
+    private inner class TestEnv(val testScope: TestScope, val mockApi: MockApi) {
         val preferences = ViewPreferencesManager(TestDataStore.inMemory())
-        val homeRepository = HomeRepository(mockApi.api(testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!))
-        val albumRepository = AlbumRepository(mockApi.api(testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!))
-        val zoneRepository = ZoneRepository(mockApi.api(testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!), preferences)
-        val itemRepository = ItemRepository(mockApi.api(testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!))
-        val resaleRepository = ResaleRepository(mockApi.api(testScope.coroutineContext[kotlinx.coroutines.CoroutineDispatcher]!!))
+        val homeRepository = HomeRepository(mockApi.api(testDispatcher))
+        val albumRepository = AlbumRepository(mockApi.api(testDispatcher))
+        val zoneRepository = ZoneRepository(mockApi.api(testDispatcher), preferences)
+        val itemRepository = ItemRepository(mockApi.api(testDispatcher))
+        val resaleRepository = ResaleRepository(mockApi.api(testDispatcher))
 
         val factory = ZoneBoardSessionImpl.Factory(
             homeRepository = homeRepository,
@@ -80,7 +80,7 @@ class ZoneBoardSessionTest {
             initialBoard: ZoneBoard = ZoneBoard.Action
         ): ZoneBoardSession {
             return factory.create(
-                coroutineScope = testScope,
+                coroutineScope = testScope.backgroundScope,
                 initialScope = initialScope,
                 initialBoard = initialBoard
             )

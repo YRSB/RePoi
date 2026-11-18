@@ -120,10 +120,11 @@ class ZoneBoardSessionImpl(
     override val activeSnapshot: StateFlow<ZoneBoardSnapshot>
 
     init {
+        val initialScroll = scrollPositions[activeBoard] ?: BoardScrollPosition()
+        _activeSnapshot = MutableStateFlow(pagerFor(activeBoard).currentSnapshot(initialScroll))
+        activeSnapshot = _activeSnapshot.asStateFlow()
         // 初始活跃板块触发首屏懒加载
         pagerFor(activeBoard).ensureLoaded(currentScope)
-        _activeSnapshot = MutableStateFlow(snapshotFor(activeBoard))
-        activeSnapshot = _activeSnapshot.asStateFlow()
     }
 
     override fun snapshotFor(board: ZoneBoard): ZoneBoardSnapshot {
