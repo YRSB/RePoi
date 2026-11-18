@@ -196,7 +196,7 @@ class HpoiApi(
         subType: String? = null,
         type: String = "item",
         isHome: Int? = null,
-    ): CommonResponse<JsonObject> = client.get("api/user-action/collect/care/list-v2") {
+    ): JsonObject = client.get("api/user-action/collect/care/list-v2") {
         if (page != null) parameter("page", page)
         parameter("lastId", lastId)
         parameter("pageSize", pageSize)
@@ -204,7 +204,7 @@ class HpoiApi(
         if (subType != null) parameter("subType", subType)
         parameter("type", type)
         if (isHome != null) parameter("isHome", isHome)
-    }.decodeRefAware(json)
+    }.unwrapData(json, "获取关注动态失败")
 
     // ── 手办列表/分类 ──────────────────────────────────────────────
 
