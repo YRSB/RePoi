@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.MaskItem
 import com.nobody.repoi.data.repository.SettingsRepository
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,18 +29,19 @@ data class SettingsShieldListUiState(
 )
 
 class SettingsShieldListViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val userSession: UserSession,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        SettingsShieldListUiState(isLoading = settingsRepository.isLoggedIn)
+        SettingsShieldListUiState(isLoading = userSession.isAuthenticated)
     )
     val uiState: StateFlow<SettingsShieldListUiState> = _uiState.asStateFlow()
     private var loadSequence = 0L
 
     init {
         viewModelScope.launch {
-            settingsRepository.tokenFlow.collect { token ->
+            userSession.tokenFlow.collect { token ->
                 if (token.isNotBlank()) {
                     loadTab(_uiState.value.tab)
                 } else {
@@ -67,7 +69,7 @@ class SettingsShieldListViewModel(
     }
 
     fun blockItem(itemNodeId: Long) {
-        if (!settingsRepository.isLoggedIn) return
+        if (!userSession.isAuthenticated) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBlocking = true, errorMessage = null) }
             settingsRepository.addMask(itemNodeId = itemNodeId)
@@ -87,7 +89,7 @@ class SettingsShieldListViewModel(
     }
 
     fun executeUnblock() {
-        if (!settingsRepository.isLoggedIn) return
+        if (!userSession.isAuthenticated) return
         val target = _uiState.value.unblockTarget ?: return
         val originTab = _uiState.value.tab
         viewModelScope.launch {
@@ -122,7 +124,7 @@ class SettingsShieldListViewModel(
     }
 
     private fun loadTab(tab: ShieldListTab) {
-        if (!settingsRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(tab = tab, items = emptyList(), isLoading = false, loadFailed = false) }
             return
         }

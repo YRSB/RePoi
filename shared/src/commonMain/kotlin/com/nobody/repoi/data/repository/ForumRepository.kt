@@ -5,7 +5,6 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ForumDetailData
 import com.nobody.repoi.data.remote.model.ForumItem
 import com.nobody.repoi.data.remote.model.PostItem
-import com.nobody.repoi.data.session.UserSession
 
 /**
  * 讨论板版块数据仓储。
@@ -13,7 +12,6 @@ import com.nobody.repoi.data.session.UserSession
  */
 class ForumRepository(
     private val api: HpoiApi,
-    private val userSession: UserSession
 ) {
 
     /**
@@ -21,15 +19,7 @@ class ForumRepository(
      * @param forumPage 分页页码，从 1 开始
      */
     suspend fun getFocusForums(forumPage: Int = 1): Result<List<ForumItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getFocusForumList(forumPage = forumPage)
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取已关注版块失败")
-        }
-        response.data?.forumList ?: emptyList()
+        api.getFocusForumList(forumPage = forumPage)?.forumList ?: emptyList()
     }
 
     /**
@@ -37,15 +27,7 @@ class ForumRepository(
      * @param forumPage 分页页码，从 1 开始
      */
     suspend fun getUnfocusForums(forumPage: Int = 1): Result<List<ForumItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getUnfocusForumList(forumPage = forumPage)
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取未关注版块失败")
-        }
-        response.data?.forumList ?: emptyList()
+        api.getUnfocusForumList(forumPage = forumPage)?.forumList ?: emptyList()
     }
 
     /**
@@ -54,21 +36,11 @@ class ForumRepository(
      * @param follow true=关注，false=取关
      */
     suspend fun toggleFocus(forumNodeId: Long, follow: Boolean): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再关注版块")
-        }
         if (forumNodeId <= 0L) throw ApiException(400, "版块ID无效")
-        val response = api.toggleForumFocus(
+        api.toggleForumFocus(
             forumNodeId = forumNodeId,
             state = if (follow) 1 else 0
         )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "版块关注操作失败")
-        }
     }
 
     /**
@@ -76,17 +48,7 @@ class ForumRepository(
      * @param orderedIds 按展示顺序排列的版块 id 列表
      */
     suspend fun updateFocusOrder(orderedIds: List<Long>): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再调整版块排序")
-        }
-        val response = api.updateForumFocusOrder(order = orderedIds.joinToString(","))
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "保存版块排序失败")
-        }
+        api.updateForumFocusOrder(order = orderedIds.joinToString(","))
     }
 
     /**
@@ -94,16 +56,8 @@ class ForumRepository(
      * @param forumId 版块节点 ID
      */
     suspend fun getForumDetail(forumId: Long): Result<ForumDetailData?> = runCatching {
-        val snapshotToken = userSession.currentToken
         if (forumId <= 0L) throw ApiException(400, "版块ID无效")
-        val response = api.getForumDetail(forumId = forumId)
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取版块详情失败")
-        }
-        response.data?.forum
+        api.getForumDetail(forumId = forumId)?.forum
     }
 
     /**

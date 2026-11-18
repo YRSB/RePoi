@@ -3,8 +3,6 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.UserCollectCategory
-import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,15 +22,9 @@ class CollectRepositoryTest {
 
     private fun setup(): Pair<MockApi, CollectRepository> {
         val mock = MockApi()
-        return mock to CollectRepository(mock.api(), mock.json, FakeUserSession("utoken-test"))
+        return mock to CollectRepository(mock.api(), mock.json)
     }
 
-    /** 需要断言 token 自愈的用例用这个夹具，额外暴露会话状态与自愈调用计数 */
-    private fun setupWithSession(): Triple<MockApi, FakeUserSession, CollectRepository> {
-        val mock = MockApi()
-        val session = FakeUserSession("utoken-test")
-        return Triple(mock, session, CollectRepository(mock.api(), mock.json, session))
-    }
 
     @Test
     fun cancelCollectBatch_postsJsonArrayOfOuterNodeIds() = runTest {
@@ -334,8 +326,9 @@ class CollectRepositoryTest {
     }
 
     @Test
-    fun getUserCollectHobbyList_onApiFailure_throwsApiExceptionAndSelfHealsSession() = runTest {
-        val (mock, session, repository) = setupWithSession()
+    fun getUserCollectHobbyList_onApiFailure_throwsApiExceptionAndNotifiesTokenExpiry() = runTest {
+        val mock = MockApi()
+        val repository = CollectRepository(mock.api(tokenProvider = { "utoken-test" }), mock.json)
         mock.enqueue(mock.failure(4001, "登录凭证已过期"))
 
         val result = repository.getUserCollectHobbyList(
@@ -349,8 +342,7 @@ class CollectRepositoryTest {
         val exception = result.exceptionOrNull()
         assertTrue(exception is ApiException)
         assertEquals(4001, exception.code)
-        assertEquals(1, session.tokenExpiredCalls)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
+        mock.assertTokenExpiredNotified("utoken-test")
     }
 
     @Test

@@ -1,9 +1,7 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.UserHistoryItem
-import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -17,7 +15,6 @@ import kotlinx.coroutines.CancellationException
  */
 class UserHistoryRepository(
     private val api: HpoiApi,
-    private val userSession: UserSession,
     private val coverFreshnessRepository: CoverFreshnessRepository
 ) {
     /**
@@ -29,17 +26,8 @@ class UserHistoryRepository(
         itemType: String,
         page: Int = 1
     ): Result<List<UserHistoryItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserHistoryList(itemType = itemType, page = page)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            val readList = response.data?.readList ?: emptyList()
-            rewriteCovers(readList, itemType)
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取浏览历史失败")
-        }
+        val readList = api.getUserHistoryList(itemType = itemType, page = page)?.readList ?: emptyList()
+        rewriteCovers(readList, itemType)
     }
 
     /**
@@ -99,14 +87,7 @@ class UserHistoryRepository(
      */
     suspend fun addUserHistory(itemNodeId: Long): Result<Unit> = runCatching {
         if (itemNodeId <= 0L) return@runCatching
-        val snapshotToken = userSession.currentToken
-        val response = api.addUserHistory(itemNodeId = itemNodeId)
-        if (!response.isSuccess && !response.success) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "添加浏览历史失败")
-        }
+        api.addUserHistory(itemNodeId = itemNodeId)
     }
 
     /**
@@ -115,14 +96,7 @@ class UserHistoryRepository(
      */
     suspend fun deleteUserHistory(historyIds: List<Long>): Result<Unit> = runCatching {
         if (historyIds.isEmpty()) return@runCatching
-        val snapshotToken = userSession.currentToken
         val idsJson = historyIds.joinToString(separator = ",", prefix = "[", postfix = "]")
-        val response = api.deleteUserHistory(ids = idsJson)
-        if (!response.isSuccess && !response.success) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "删除浏览历史失败")
-        }
+        api.deleteUserHistory(ids = idsJson)
     }
 }

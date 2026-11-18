@@ -5,7 +5,6 @@ import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.CollectCountData
 import com.nobody.repoi.data.remote.model.CollectData
-import com.nobody.repoi.data.remote.model.CommonResponse
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectCategory
@@ -13,7 +12,6 @@ import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.remote.model.WorksCollectData
-import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +58,6 @@ data class CreationPageResult<T>(
 class CollectRepository(
     private val api: HpoiApi,
     private val json: Json,
-    private val userSession: UserSession,
 ) {
     /** 条目状态池：nodeId → 该条目的收藏状态流（不可变 map 快照，写入走 CAS） */
     private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData?>>>(emptyMap())
@@ -104,26 +101,16 @@ class CollectRepository(
      * 成功才写池；失败不改写池内已有值，仅透传异常。
      */
     suspend fun refreshCollectState(nodeId: Long): Result<CollectData?> = runCatching {
-        val response = api.getCollectState(nodeId)
-        if (response.isSuccess) {
-            val collectData = response.data?.collect
-            mutableStateFlowOf(nodeId).value = collectData
-            collectData
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取收藏状态失败")
-        }
+        val collectData = api.getCollectState(nodeId)?.collect
+        mutableStateFlowOf(nodeId).value = collectData
+        collectData
     }
 
     /**
      * 获取指定条目的 5 种分类统计人数 (api/hobby/collectCount)。
      */
     suspend fun getCollectCount(nodeId: Long): Result<CollectCountData> = runCatching {
-        val response = api.getCollectCount(nodeId)
-        if (response.isSuccess) {
-            response.data?.collect ?: CollectCountData()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取收藏统计失败")
-        }
+        api.getCollectCount(nodeId)?.collect ?: CollectCountData()
     }
 
     /**
@@ -134,12 +121,7 @@ class CollectRepository(
         pageSize: Int = 20,
         categoryId: Int = 10000
     ): Result<List<String>> = runCatching {
-        val response = api.getCollectTags(page = page, pageSize = pageSize, categoryId = categoryId)
-        if (response.isSuccess) {
-            response.data?.favTags ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取推荐标签失败")
-        }
+        api.getCollectTags(page = page, pageSize = pageSize, categoryId = categoryId)?.favTags ?: emptyList()
     }
 
     /**
@@ -147,12 +129,8 @@ class CollectRepository(
      */
     suspend fun saveCollect(nodeId: Long, collectData: CollectData): Result<Unit> = runCatching {
         val jsonPayload = json.encodeToString(collectData)
-        val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
-        if (response.isSuccess) {
-            mutableStateFlowOf(nodeId).value = collectData
-        } else {
-            throw ApiException(response.code, response.msg ?: "保存收藏失败")
-        }
+        api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
+        mutableStateFlowOf(nodeId).value = collectData
     }
 
     /**
@@ -161,12 +139,8 @@ class CollectRepository(
     suspend fun deleteCollect(nodeId: Long, currentData: CollectData): Result<Unit> = runCatching {
         val deletedData = currentData.copy(state = CollectConstants.STATE_DELETE)
         val jsonPayload = json.encodeToString(deletedData)
-        val response = api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
-        if (response.isSuccess) {
-            mutableStateFlowOf(nodeId).value = null
-        } else {
-            throw ApiException(response.code, response.msg ?: "取消收藏失败")
-        }
+        api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
+        mutableStateFlowOf(nodeId).value = null
     }
 
     /**
@@ -177,10 +151,7 @@ class CollectRepository(
      * 不代表手办心愿档；其余字段沿用旧值，避免覆盖用户已填的评分/入手信息。
      */
     suspend fun collectItemAdd(nodeId: Long): Result<Unit> = runCatching {
-        val response = api.collectItemAdd(id = nodeId)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "收藏失败")
-        }
+        api.collectItemAdd(id = nodeId)
         val previous = mutableStateFlowOf(nodeId).value ?: CollectData()
         mutableStateFlowOf(nodeId).value = previous.copy(state = CollectConstants.STATE_CARE)
     }
@@ -189,10 +160,7 @@ class CollectRepository(
      * 取消通用条目/相册收藏 (api/collect/del)；成功后状态池 := null。
      */
     suspend fun collectItemDel(nodeId: Long): Result<Unit> = runCatching {
-        val response = api.collectItemDel(id = nodeId)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "取消收藏失败")
-        }
+        api.collectItemDel(id = nodeId)
         mutableStateFlowOf(nodeId).value = null
     }
 
@@ -210,35 +178,19 @@ class CollectRepository(
         if (ids.isEmpty()) return@runCatching Unit
         // 服务端要求 JSON 数组字符串，如 "[1,2,3]"
         val idArr = ids.joinToString(prefix = "[", postfix = "]", separator = ",")
-        val response = api.cancelCollectBatch(idArr = idArr)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "批量取消收藏失败")
-        }
+        api.cancelCollectBatch(idArr = idArr)
     }
 
     /**
-     * 收藏类列表请求的统一信封处理。
+     * 收藏类列表请求的统一载荷映射。
      *
-     * 四个收藏列表与两个创建列表接口的响应体差异只在载荷与错误文案，成功/失效判定完全一致，
-     * 故在此收口：成功（含 `success && data != null` 的历史返回）→ 由 [extract] 取出原始列表；
-     * 失败 → token 过期先触发会话自愈通知（用**请求前**的快照比对，避免误伤已刷新的会话），
-     * 再统一抛 [ApiException]。
+     * 四个收藏列表与两个创建列表接口的信封剥离、错误分流与 4001 令牌自愈均由底层 API 管道完成；
+     * 这里只把洁净载荷交给 [extract] 取出原始列表，空载荷回落空列表。
      */
-    private suspend fun <T, R> listWithSessionEnvelope(
-        fallbackMessage: String,
-        request: suspend () -> CommonResponse<T>,
+    private suspend fun <T, R> listWithEnvelope(
+        request: suspend () -> T?,
         extract: (T?) -> List<R>?
-    ): List<R> {
-        val snapshotToken = userSession.currentToken
-        val response = request()
-        if (response.isSuccess || (response.success && response.data != null)) {
-            return extract(response.data) ?: emptyList()
-        }
-        if (response.isTokenExpired) {
-            userSession.notifyTokenExpired(snapshotToken)
-        }
-        throw ApiException(response.code, response.msg ?: fallbackMessage)
-    }
+    ): List<R> = extract(request()) ?: emptyList()
 
     /**
      * 查询用户全量手办收藏列表 (api/collect/hobby-v2, GET)。
@@ -274,8 +226,7 @@ class CollectRepository(
                 put("tag", tag)
             }
         }
-        listWithSessionEnvelope(
-            fallbackMessage = "获取收藏列表失败",
+        listWithEnvelope(
             request = { api.getUserCollectHobby(params) },
             extract = { data -> data?.list }
         )
@@ -327,8 +278,7 @@ class CollectRepository(
                 }
             }
         }
-        listWithSessionEnvelope(
-            fallbackMessage = "获取通用实体收藏列表失败",
+        listWithEnvelope(
             request = { api.getUserCollectCommon(params) },
             extract = { data -> data?.list }
         )
@@ -356,8 +306,7 @@ class CollectRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
-        listWithSessionEnvelope(
-            fallbackMessage = "获取相册收藏列表失败",
+        listWithEnvelope(
             request = { api.getUserCollectAlbum(params) },
             extract = { data -> data?.list }
         )
@@ -386,8 +335,7 @@ class CollectRepository(
             put("limit", pageSize.toString())
             put("pageSize", pageSize.toString())
         }
-        listWithSessionEnvelope(
-            fallbackMessage = "获取图片收藏列表失败",
+        listWithEnvelope(
             request = { api.getUserCollectPic(params) },
             extract = { data -> data?.list }
         )
@@ -409,8 +357,7 @@ class CollectRepository(
         pageSize: Int = 20,
         order: String = CollectConstants.ORDER_ADD_TIME
     ): Result<CreationPageResult<UserCollectAlbumItem>> = runCatching {
-        val items = listWithSessionEnvelope(
-            fallbackMessage = "获取用户发布相册失败",
+        val items = listWithEnvelope(
             request = {
                 api.getUserAlbumList(
                     userNodeId = userId,
@@ -440,8 +387,7 @@ class CollectRepository(
         pageSize: Int = 20,
         order: String = CollectConstants.ORDER_ADD_TIME
     ): Result<CreationPageResult<UserCollectPicItem>> = runCatching {
-        val rawList = listWithSessionEnvelope(
-            fallbackMessage = "获取用户发布图片失败",
+        val rawList = listWithEnvelope(
             request = {
                 api.getUserPicList(
                     userNodeId = userId,
@@ -470,12 +416,7 @@ class CollectRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<String>> = runCatching {
-        val response = api.getWorksCollectTags(page = page, pageSize = pageSize)
-        if (response.isSuccess) {
-            parseWorksCollectTags(response.data)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取作品收藏标签失败")
-        }
+        parseWorksCollectTags(api.getWorksCollectTags(page = page, pageSize = pageSize))
     }
 
     /**
@@ -485,12 +426,7 @@ class CollectRepository(
      * 服务端未收藏时返回 null。
      */
     suspend fun getWorksCollect(worksId: Long): Result<WorksCollectData?> = runCatching {
-        val response = api.getWorksCollect(worksId = worksId)
-        if (response.isSuccess) {
-            parseWorksCollect(response.data)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取作品收藏信息失败")
-        }
+        parseWorksCollect(api.getWorksCollect(worksId = worksId))
     }
 
     /**
@@ -505,29 +441,23 @@ class CollectRepository(
         tagStr: String,
         comment: String
     ): Result<Unit> = runCatching {
-        val response = api.saveWorksCollect(
+        api.saveWorksCollect(
             itemType = CollectConstants.WORKS_ITEM_TYPE,
             itemId = worksId,
             tagStr = tagStr,
             comment = comment,
             state = state
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "保存作品收藏失败")
-        }
     }
 
     /**
      * 取消作品收藏 (api/works/glean/del)。
      */
     suspend fun deleteWorksCollect(worksId: Long): Result<Unit> = runCatching {
-        val response = api.deleteWorksCollect(
+        api.deleteWorksCollect(
             itemType = CollectConstants.WORKS_ITEM_TYPE,
             itemId = worksId
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "取消作品收藏失败")
-        }
     }
 
     /**
@@ -536,12 +466,7 @@ class CollectRepository(
      * 覆盖相册(album)、手办(hobby)、文章(article) 三类，逐项取 `relateItem`。
      */
     suspend fun getPictureRelate(picId: Long): Result<List<PictureRelateItem>> = runCatching {
-        val response = api.getPictureRelate(picId = picId)
-        if (response.isSuccess) {
-            response.data?.list?.mapNotNull { it.relateItem } ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取图片关联条目失败")
-        }
+        api.getPictureRelate(picId = picId)?.list?.mapNotNull { it.relateItem } ?: emptyList()
     }
 
     /**
@@ -571,14 +496,11 @@ class CollectRepository(
             // 对齐原版 f3$a.a() 的空理由守卫：不提交，并让调用方拿到明确失败原因
             throw ApiException(0, "请填写举报原因")
         }
-        val response = api.submitReport(
+        api.submitReport(
             objId = nodeId,
             userReason = content,
             type = type
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "举报提交失败")
-        }
     }
 
     /**

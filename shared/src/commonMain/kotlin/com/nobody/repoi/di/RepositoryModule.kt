@@ -57,23 +57,23 @@ val repositoryModule = module {
     single { AlbumRepository(get()) }
     singleOf(::AlbumDetailRepository)
     singleOf(::CharacterDetailRepository)
-    single { CommentRepository(get(), get()) }
+    single { CommentRepository(get()) }
     single { ExHobbyRepository(get()) }
-    single { FollowRepository(get(), get(), get()) }
-    single { ForumRepository(get(), get()) }
+    single { FollowRepository(get(), get()) }
+    single { ForumRepository(get()) }
     singleOf(::HobbyDetailRepository)
     single { HomeRepository(get()) }
     single { ItemRepository(get()) }
-    single { MessageRepository(get(), get()) }
+    single { MessageRepository(get()) }
     singleOf(::PersonDetailRepository)
     single { PictureListRepository(get()) }
-    single { PostRepository(get(), get()) }
+    single { PostRepository(get()) }
     single { ResaleRepository(get()) }
     single { SearchRepository(get(), get()) }
     singleOf(::SeriesDetailRepository)
-    single { SettingsRepository(get(), get()) }
+    single { SettingsRepository(get()) }
     single { StickerRepository(get()) }
-    single { UserHistoryRepository(get(), get(), get()) }
+    single { UserHistoryRepository(get(), get()) }
     // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
     // onClose 在 Koin 关闭时取消作用域，避免测试/重启场景泄漏常驻协程（Koin 传入的实例可空，按空安全处理）。
     single(named("cover_freshness_scope")) {

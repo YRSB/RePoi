@@ -3,13 +3,10 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentReplyPayload
 import com.nobody.repoi.data.remote.model.CommentThreadPage
-import com.nobody.repoi.data.remote.model.CommentUser
-import com.nobody.repoi.data.session.SessionState
-import com.nobody.repoi.data.session.UserSession
-import com.nobody.repoi.platform.nowMillis
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,10 +24,10 @@ data class DeletedComment(
  *
  * 6 个详情页的评论内联组件与评论详情页共用本仓储；跨页面的主楼更新经
  * [commentUpdates] 广播，各详情 ViewModel 按 id 合并到自己的热/最新两路列表。
+ * 令牌失效自愈由客户端网络管道统一处理，本仓储只负责领域映射与广播。
  */
 class CommentRepository(
     private val api: HpoiApi,
-    private val userSession: UserSession
 ) {
 
     private val _commentUpdates = MutableSharedFlow<CommentItem>(extraBufferCapacity = 16)
@@ -65,44 +62,40 @@ class CommentRepository(
         isDiscuss: Boolean = false,
         parentSnapshot: CommentItem? = null
     ): Result<CommentThreadPage> = runCatching {
-        val snapshotToken = userSession.currentToken
         if (isDiscuss) {
-            val discussResp = api.getDiscussReplies(discussNodeId = commentId, page = page)
-            if (discussResp.isSuccess) {
-                return@runCatching discussResp.data?.toCommentThreadPage(parentSnapshot)
-                    ?: CommentThreadPage(comment = parentSnapshot)
-            }
-            if (discussResp.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(discussResp.code, discussResp.msg ?: "获取回复失败")
+            val response = api.getDiscussReplies(discussNodeId = commentId, page = page)
+            return@runCatching response?.toCommentThreadPage(parentSnapshot)
+                ?: CommentThreadPage(comment = parentSnapshot)
         }
-        val response = api.getCommentReplies(
-            commentId = commentId,
-            page = page,
-            pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.toCommentThreadPage() ?: CommentThreadPage()
-        } else if (response.code == -900 || response.code == -9005 || response.code == 404 || response.msg?.contains("删除") == true) {
-            // 容错：个别讨论节点被上游当做普通评论传入或报删除时，自动回落 discuss/reply/get
-            val discussResp = runCatching {
+
+        val repliesResult = runCatching {
+            api.getCommentReplies(
+                commentId = commentId,
+                page = page,
+                pageSize = pageSize
+            )?.toCommentThreadPage() ?: CommentThreadPage()
+        }
+        repliesResult.getOrNull()?.let { return@runCatching it }
+        val error = repliesResult.exceptionOrNull() ?: ApiException(-9005, "找不到该评论")
+
+        // 评论未命中是领域正常态：映射为空回复页，不用字符串匹配
+        if (error is CommentNotFoundException) {
+            return@runCatching CommentThreadPage(comment = parentSnapshot)
+        }
+
+        // 个别讨论节点被上游当做普通评论传入或报删除时，自动回落 discuss/reply/get
+        val canFallback = error is ApiException &&
+            (error.code == -900 || error.code == -9005 || error.code == 404 ||
+                error.message?.contains("删除") == true)
+        if (canFallback) {
+            val fallback = runCatching {
                 api.getDiscussReplies(discussNodeId = commentId, page = page)
             }.getOrNull()
-            if (discussResp != null && discussResp.isSuccess && discussResp.data != null) {
-                discussResp.data.toCommentThreadPage(parentSnapshot)
-            } else {
-                if (discussResp?.isTokenExpired == true) {
-                    userSession.notifyTokenExpired(snapshotToken)
-                }
-                throw ApiException(response.code, response.msg ?: "找不到该评论")
+            if (fallback != null) {
+                return@runCatching fallback.toCommentThreadPage(parentSnapshot)
             }
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取回复失败")
         }
+        throw error
     }
 
     /**
@@ -117,20 +110,10 @@ class CommentRepository(
         relateNodeId: Long,
         praised: Boolean
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再点赞")
-        }
-        val response = if (praised) {
+        if (praised) {
             api.praiseCommentDel(commentId = commentId, relateNodeId = relateNodeId)
         } else {
             api.praiseCommentAdd(commentId = commentId, relateNodeId = relateNodeId)
-        }
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "点赞操作失败")
         }
     }
 
@@ -143,17 +126,7 @@ class CommentRepository(
         content: String,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再发表评论")
-        }
-        val response = api.addComment(nodeId = nodeId, content = content, emoticon = emoticon)
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "评论发表失败")
-        }
+        api.addComment(nodeId = nodeId, content = content, emoticon = emoticon)
     }
 
     /**
@@ -188,12 +161,8 @@ class CommentRepository(
         isDiscuss: Boolean = false,
         relateNodeId: Long = 0L
     ): Result<CommentReplyItem> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再回复")
-        }
         if (isDiscuss) {
-            val response = api.addDiscussReply(
+            api.addDiscussReply(
                 itemNodeId = relateNodeId,
                 discussNodeId = commentId,
                 content = content,
@@ -201,59 +170,34 @@ class CommentRepository(
                 toReplyNodeId = toReplyId,
                 emoticon = emoticon
             )
-            if (response.isSuccess) {
-                val threadResult = getReplies(commentId = commentId, page = 1, isDiscuss = true)
-                val candidates = threadResult.getOrNull()?.replies
-                    ?.filter { it.contentCleanText.trim() == content.trim() } ?: emptyList()
-                if (candidates.isNotEmpty()) {
-                    candidates.last()
-                } else {
-                    CommentReplyItem(
-                        id = nowMillis(),
-                        content = content,
-                        user = CommentUser(
-                            userId = userSession.currentUserId,
-                            nickname = (userSession.state.value as? SessionState.Authenticated)
-                                ?.profile
-                                ?.let { it.nickname?.ifBlank { null } ?: it.userName }
-                                .orEmpty()
-                        )
-                    )
-                }
+            val threadResult = getReplies(commentId = commentId, page = 1, isDiscuss = true)
+            val candidates = threadResult.getOrNull()?.replies
+                ?.filter { it.contentCleanText.trim() == content.trim() } ?: emptyList()
+            if (candidates.isNotEmpty()) {
+                candidates.last()
             } else {
-                if (response.isTokenExpired) {
-                    userSession.notifyTokenExpired(snapshotToken)
-                }
-                throw ApiException(response.code, response.msg ?: "回复发表失败")
+                throw ApiException(-1, "回复已发表，正在刷新列表，请稍后下拉重试")
             }
         } else {
-            val response = api.addCommentReply(
+            val reply = api.addCommentReply(
                 commentId = commentId,
                 content = content,
                 toUserId = toUserId,
                 toReplyId = toReplyId,
                 emoticon = emoticon
-            )
-            if (response.isSuccess) {
-                val reply = response.data?.reply
-                if (reply != null) {
-                    reply
-                } else {
-                    // 缺失 reply 时仅接受唯一内容匹配，避免误归因他人评论
-                    val threadResult = getReplies(commentId, page = 1)
-                    val candidates = threadResult.getOrNull()?.replies
-                        ?.filter { it.contentCleanText.trim() == content.trim() } ?: emptyList()
-                    if (candidates.size == 1) {
-                        candidates.first()
-                    } else {
-                        throw ApiException(response.code, "回复已发表，正在刷新列表，请稍后下拉重试")
-                    }
-                }
+            )?.reply
+            if (reply != null) {
+                reply
             } else {
-                if (response.isTokenExpired) {
-                    userSession.notifyTokenExpired(snapshotToken)
+                // 缺失 reply 时仅接受唯一内容匹配，避免误归因他人评论
+                val threadResult = getReplies(commentId, page = 1)
+                val candidates = threadResult.getOrNull()?.replies
+                    ?.filter { it.contentCleanText.trim() == content.trim() } ?: emptyList()
+                if (candidates.size == 1) {
+                    candidates.first()
+                } else {
+                    throw ApiException(-1, "回复已发表，正在刷新列表，请稍后下拉重试")
                 }
-                throw ApiException(response.code, response.msg ?: "回复发表失败")
             }
         }
     }
@@ -262,21 +206,10 @@ class CommentRepository(
         nodeId: Long,
         type: String
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再删除评论")
-        }
-        val response = if (type == "discuss" || type == "discuss_reply") {
+        if (type == "discuss" || type == "discuss_reply") {
             api.deleteDiscuss(nodeId = nodeId, type = type)
         } else {
             api.deleteComment(nodeId = nodeId, type = type)
         }
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "删除评论失败")
-        }
     }
-
 }

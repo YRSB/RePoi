@@ -8,7 +8,6 @@ import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.repository.testCoverFreshnessRepository
-import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,7 +55,6 @@ class UserHistoryViewModelCoverRepairTest {
         val historyMock = MockApi()
         val detailMock = MockApi()
         val albumMock = MockApi()
-        private val session = FakeUserSession("utoken-test")
 
         val coverFreshnessRepository = testCoverFreshnessRepository(
             scope = scope,
@@ -70,7 +68,7 @@ class UserHistoryViewModelCoverRepairTest {
         suspend fun warmUp() = coverFreshnessRepository.ensureWarmed()
 
         val viewModel = UserHistoryViewModel(
-            UserHistoryRepository(historyMock.api(dispatcher), session, coverFreshnessRepository),
+            UserHistoryRepository(historyMock.api(dispatcher), coverFreshnessRepository),
             coverFreshnessRepository,
         )
     }

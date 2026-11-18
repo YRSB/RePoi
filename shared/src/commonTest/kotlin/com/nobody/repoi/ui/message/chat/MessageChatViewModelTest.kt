@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.message.chat
 
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.ui.navigation.MessageChatNavParam
@@ -57,7 +56,7 @@ class MessageChatViewModelTest {
     }
 
     private fun viewModelOf(mock: MockApi): MessageChatViewModel {
-        val repository = MessageRepository(mock.api(), FakeUserSession("utoken-test"))
+        val repository = MessageRepository(mock.api())
         return MessageChatViewModel(repository)
     }
 

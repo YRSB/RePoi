@@ -93,9 +93,9 @@ class AlbumDetailViewModelCoverSinkTest {
         )
 
         fun viewModel(): AlbumDetailViewModel {
-            val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json, session)
+            val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json)
             val delegate = CommentInteractionDelegate(
-                CommentRepository(commentMock.api(dispatcher), session),
+                CommentRepository(commentMock.api(dispatcher)),
                 StickerRepository(albumMock.api(dispatcher)),
                 session,
             )
@@ -104,8 +104,8 @@ class AlbumDetailViewModelCoverSinkTest {
                 collectRepository,
                 ToggleItemCollectUseCase(collectRepository),
                 session,
-                FollowRepository(followMock.api(dispatcher), followMock.json, session),
-                UserHistoryRepository(userMock.api(dispatcher), session, coverFreshnessRepository),
+                FollowRepository(followMock.api(dispatcher), followMock.json),
+                UserHistoryRepository(userMock.api(dispatcher), coverFreshnessRepository),
                 delegate,
                 ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json)),
                 ViewPreferencesManager(TestDataStore.inMemory()),

@@ -336,7 +336,7 @@ class UserInfoViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccessMessage = null) }
 
-            val signResult = userRepository.updateUserBase("sign", sign, autoRefresh = false)
+            val signResult = userRepository.updateUserBase("sign", sign)
             if (signResult.isFailure) {
                 _uiState.update {
                     it.copy(
@@ -347,7 +347,7 @@ class UserInfoViewModel(
                 return@launch
             }
 
-            val introResult = userRepository.updateUserBase("intro", intro, autoRefresh = false)
+            val introResult = userRepository.updateUserBase("intro", intro)
             if (introResult.isFailure) {
                 _uiState.update {
                     it.copy(
@@ -387,7 +387,7 @@ class UserInfoViewModel(
             )
 
             for ((key, value) in fields) {
-                val res = userRepository.updateUserBase(key, value, autoRefresh = false)
+                val res = userRepository.updateUserBase(key, value)
                 if (res.isFailure) {
                     _uiState.update {
                         it.copy(
@@ -466,7 +466,7 @@ class UserInfoViewModel(
             }
 
             for ((key, value) in fields) {
-                val res = userRepository.updateUserBase(key, value, autoRefresh = false)
+                val res = userRepository.updateUserBase(key, value)
                 if (res.isFailure) {
                     _uiState.update {
                         it.copy(

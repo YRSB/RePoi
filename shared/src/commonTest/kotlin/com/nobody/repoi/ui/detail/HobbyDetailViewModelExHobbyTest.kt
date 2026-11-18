@@ -100,17 +100,17 @@ class HobbyDetailViewModelExHobbyTest {
         suspend fun build(): HobbyDetailViewModel {
             preferences.setExHobbyEnabled(enabled)
             val delegate = CommentInteractionDelegate(
-                CommentRepository(commentMock.api(), session),
+                CommentRepository(commentMock.api()),
                 StickerRepository(detailMock.api()),
                 session
             )
             return HobbyDetailViewModel(
                 HobbyDetailRepository(detailMock.api()),
-                CollectRepository(collectMock.api(), collectMock.json, session),
+                CollectRepository(collectMock.api(), collectMock.json),
                 delegate,
                 ExHobbyRepository(exhobby.api()),
                 preferences,
-                UserHistoryRepository(userMock.api(), session, coverFreshnessRepository),
+                UserHistoryRepository(userMock.api(), coverFreshnessRepository),
                 coverFreshnessRepository,
             )
         }

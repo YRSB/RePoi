@@ -36,8 +36,13 @@ class SettingsShieldListViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repositoryOf(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
+    private fun repositoryOf(
+        mock: MockApi,
+        token: String = "utoken-test"
+    ): Pair<SettingsRepository, FakeUserSession> {
+        val session = FakeUserSession(token)
+        return SettingsRepository(mock.api(testDispatcher)) to session
+    }
 
     private fun listBody(items: List<Pair<Long, String>>): String {
         val list = items.joinToString(",") { (id, name) ->
@@ -57,7 +62,8 @@ class SettingsShieldListViewModelTest {
                 }
             }
         )
-        return SettingsShieldListViewModel(repositoryOf(mock, token))
+        val (repository, session) = repositoryOf(mock, token)
+        return SettingsShieldListViewModel(repository, session)
     }
 
     @Test
@@ -89,12 +95,12 @@ class SettingsShieldListViewModelTest {
     fun tokenChanges_triggersReloadAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
         val session = FakeUserSession()
-        val repo = SettingsRepository(mock.api(testDispatcher), session)
+        val repo = SettingsRepository(mock.api(testDispatcher))
         mock.routeWhen(
             predicate = { path, _, _ -> path.contains("api/mask/list") },
             body = { _, _, _ -> listBody(listOf(1L to "用户1")) }
         )
-        val viewModel = SettingsShieldListViewModel(repo)
+        val viewModel = SettingsShieldListViewModel(repo, session)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
@@ -138,7 +144,8 @@ class SettingsShieldListViewModelTest {
     fun retry_reloadsCurrentTab() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/mask/list", mock.failure(500, "加载异常"))
-        val viewModel = SettingsShieldListViewModel(repositoryOf(mock))
+        val (repository, session) = repositoryOf(mock)
+        val viewModel = SettingsShieldListViewModel(repository, session)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.loadFailed)
@@ -211,7 +218,8 @@ class SettingsShieldListViewModelTest {
                 }
             }
         )
-        val viewModel = SettingsShieldListViewModel(repositoryOf(mock))
+        val (repository, session) = repositoryOf(mock)
+        val viewModel = SettingsShieldListViewModel(repository, session)
         advanceUntilIdle()
         mock.takeRequest()
 

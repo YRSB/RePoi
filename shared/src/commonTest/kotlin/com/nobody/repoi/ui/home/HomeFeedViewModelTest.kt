@@ -91,7 +91,7 @@ class HomeFeedViewModelTest {
         /** 讨论接口（`api/posts/search`）请求次数；由 [stubPosts] 的谓词计数。 */
         var postsRequests: Int = 0
         val userSession = FakeUserSession("utoken-test")
-        val messageRepository = MessageRepository(accountMock.api(dispatcher), userSession)
+        val messageRepository = MessageRepository(accountMock.api(dispatcher))
         val homeRepository = HomeRepository(feedMock.api(dispatcher))
         val albumRepository = AlbumRepository(albumMock.api(dispatcher))
         val resaleRepository = ResaleRepository(resaleMock.api(dispatcher))
@@ -767,7 +767,7 @@ class HomeFeedViewModelTest {
             zoneRepository = env.zoneRepository,
             viewPreferencesManager = env.preferences,
             userSession = session,
-            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher), session),
+            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher)),
             albumRepository = env.albumRepository
         )
         advanceUntilIdle()
@@ -789,7 +789,7 @@ class HomeFeedViewModelTest {
             zoneRepository = env.zoneRepository,
             viewPreferencesManager = env.preferences,
             userSession = session,
-            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher), session),
+            messageRepository = MessageRepository(env.accountMock.api(env.dispatcher)),
             albumRepository = env.albumRepository
         )
         advanceUntilIdle()
