@@ -54,19 +54,14 @@ class UserCollectViewModel(
     navInitialCollectState: String? = null,
     navInitialOrder: String? = null,
     navInitialCategory: Int? = null,
-    /**
-     * 进程重建时回填的恢复槽（[savedState] 的 SavedStateHandle 等价物）；默认空槽。
-     * 收藏变更代数游标等消费进度随此槽恢复，避免重建后重复刷新。
-     */
-    restoredState: Map<String, Any?> = emptyMap(),
 ) : ViewModel() {
 
     /**
-     * 进程恢复/深链透传状态槽（原 `SavedStateHandle` 的 NavKey 等价实现）。
-     * 构造入参即 NavKey 字段；运行时写入仅保活内存（附带 DataStore 持久化见 persist*）。
+     * 深链透传状态槽（NavKey 字段 + VM 存活期排序记忆）。
+     * 收藏变更代数的已消费游标**不在此槽**：它必须跨进程持久化，走 [ViewPreferencesManager]。
      * 构造参数以 nav 前缀命名，避免与下方同名成员属性产生遮蔽歧义。
      */
-    private val savedState: MutableMap<String, Any?> = restoredState.toMutableMap().also { map ->
+    private val savedState: MutableMap<String, Any?> = mutableMapOf<String, Any?>().also { map ->
         map["userId"] = navUserId
         navInitialCollectState?.let { map["initialCollectState"] = it }
         navInitialOrder?.let { map["initialOrder"] = it }
@@ -155,15 +150,23 @@ class UserCollectViewModel(
     }
 
     /**
-     * 已消费的**收藏变更代数**快照，随恢复槽持久化。
+     * 已消费的**收藏变更代数**游标，构造期从 DataStore 读回（生产路径，非测试注入）。
      *
-     * [CollectRepository.collectMutationGeneration] 单调递增且无订阅也不丢事件，
-     * 恢复时只需比对代数是否变大，即可判定任意二级页发生过收藏写操作。
-     * 快照必须写进 [savedState]：否则重建后会把已消费的代数当成新事件，白发一次刷新。
+     * 仓储代数随进程重建从 0 重启，旧游标若大于当前代数会阻塞新进程的刷新，
+     * 故恢复时按当前代数夹逼；同进程内 VM 重建时代数不回退，夹逼为恒等操作。
      */
-    private var consumedMutationGeneration: Long =
-        stateGet<Long>(KEY_CONSUMED_MUTATION_GENERATION)
-            ?: collectRepository.collectMutationGeneration.value
+    private var consumedMutationGeneration: Long = 0L
+
+    /** 构造期游标读取任务：OnResume 早于读回完成时延后比对，避免用默认 0 误判 */
+    private val consumedGenerationReady: Deferred<Long> = viewModelScope.async {
+        val restored = viewPreferencesManager.getConsumedCollectMutationGeneration()
+        val clamped = restored.coerceAtMost(collectRepository.collectMutationGeneration.value)
+        consumedMutationGeneration = clamped
+        clamped
+    }
+
+    /** 已有等待游标读回的 OnResume，避免重复排程造成重复刷新 */
+    private var resumeAwaitingCursor = false
 
     /** 代数已增长但尚未切入的分类：切入时原位刷新，未访问则零网络请求 */
     private val dirtyCategories: MutableSet<UserCollectCategory> = mutableSetOf()
@@ -926,9 +929,11 @@ class UserCollectViewModel(
         viewModelScope.launch {
             batchCancelCollectUseCase(ids.toList(), ownerUserId = userId)
                 .onSuccess {
-                    // 写操作的代数增长由自身触发，立即消费掉，避免返回页面时二次刷新
-                    consumedMutationGeneration = collectRepository.collectMutationGeneration.value
-                    stateSet(KEY_CONSUMED_MUTATION_GENERATION, consumedMutationGeneration)
+                    val generation = collectRepository.collectMutationGeneration.value
+                    consumedMutationGeneration = generation
+                    viewModelScope.launch {
+                        viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
+                    }
                     dirtyCategories.remove(category)
                     dispatchToLoader(category) { it.refresh() }
                     _uiState.update {
@@ -999,17 +1004,28 @@ class UserCollectViewModel(
      * 状态可重读、无订阅者也不丢；`refresh()` 保留旧条目，故不会出现骨架屏白屏闪烁。
      */
     private fun handleResume() {
+        if (!consumedGenerationReady.isCompleted) {
+            if (resumeAwaitingCursor) return
+            resumeAwaitingCursor = true
+            viewModelScope.launch {
+                consumedGenerationReady.await()
+                resumeAwaitingCursor = false
+                handleResume()
+            }
+            return
+        }
         val generation = collectRepository.collectMutationGeneration.value
         if (generation <= consumedMutationGeneration) return
         consumedMutationGeneration = generation
-        stateSet(KEY_CONSUMED_MUTATION_GENERATION, generation)
+        viewModelScope.launch {
+            viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
+        }
         if (userId <= 0L) return
         val active = _uiState.value.selectedCategory
         val staged = mutableSetOf<UserCollectCategory>()
         UserCollectCategory.entries.forEach { category ->
-            val listState = loaders.getValue(category).state.value
-            // 已有数据或正在装载才算已装载；闲置空列表不产生预测性请求
-            if (listState.items.isEmpty() && listState.stage == LoadStage.Idle) return@forEach
+            // 闲置空列表不产生预测性请求；判定统一走 isLoaderIdleAndEmpty
+            if (isLoaderIdleAndEmpty(category)) return@forEach
             if (category == active) {
                 dispatchToLoader(category) { it.refresh() }
             } else {
@@ -1179,9 +1195,6 @@ class UserCollectViewModel(
         private const val CONTENT_HIDDEN_KEYWORD = "隐藏"
         private const val KEY_HOBBY_ORDER_MEMORY = "collect_hobby_order_memory"
         private const val KEY_HOBBY_SORT_TYPE_MEMORY = "collect_hobby_sort_type_memory"
-
-        /** 已消费的收藏变更代数在恢复槽中的键 */
-        private const val KEY_CONSUMED_MUTATION_GENERATION = "consumedMutationGeneration"
 
         /** 通用 4 页：厂商/系列/角色/人物，共用 2 档排序白名单 */
         val COMMON_CATEGORIES = setOf(

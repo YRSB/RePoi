@@ -27,7 +27,7 @@
    ```
    调用方物理上无法再遗漏代数推进。
 3. **消费端游标持久化与幂等**：
-   `UserCollectViewModel` 继续通过 `SavedStateHandle` 维护 `consumedMutationGeneration`，天然抵抗 Android 进程销毁重建；在执行内部批量取消成功并刷新当前大类后，主动同步 `consumedMutationGeneration = collectRepository.collectMutationGeneration.value`，杜绝冗余重载。
+   `UserCollectViewModel` 通过 `ViewPreferencesManager`（DataStore）持久化 `consumedMutationGeneration`，覆盖配置变更与进程重建，不引入 KMP SavedStateHandle 依赖；构造期读回后按当前仓储代数夹逼（仓储代数随进程从 0 重启，旧游标不得阻塞新进程的刷新）。在执行内部批量取消成功并刷新当前大类后，主动同步 `consumedMutationGeneration = collectRepository.collectMutationGeneration.value` 并落盘，杜绝冗余重载。
 4. **跨 Tab 惰性刷新机制**：
    `UserCollectViewModel` 维护 `dirtyCategories: MutableSet<UserCollectCategory>`。在 `handleResume()` 检测到代数落后时，仅对当前激活 Tab 立即触发 `loader.refresh()`，其余已有数据的大类记入 `dirtyCategories`；当用户后续点击切入对应 Tab 时，就地平滑执行 `loader.refresh()`（保留现有条目原位刷新，新数据到达后原子替换），未切入的 Tab 零网络开销，且避免骨架屏白屏闪烁。
 5. **领域词汇表与实现规范同步**：

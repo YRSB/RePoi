@@ -112,7 +112,7 @@ ADR-0025 确立的链路：
 
 - **不要用共享流 / Channel 做这件事**。ADR-0011 明确拒绝事件总线；代数是**状态**，可重读、不丢、无订阅者也能观察。
 - **写侧严禁保留外部手动 mark 方法**。所有写操作成功后必须在仓储内部自动推进代数，调用端无法绕过。
-- `consumedMutationGeneration` 必须落 `savedState`，否则配置变更或进程重建后会重复刷新（或漏刷新）。批量取消成功后主动同步该游标以保证幂等。
+- `consumedMutationGeneration` 必须落 DataStore（`ViewPreferencesManager.get/setConsumedCollectMutationGeneration`），否则配置变更后 VM 重建会重复刷新；恢复时按仓储当前代数夹逼（进程重建后仓储代数从 0 重启）。批量取消成功后主动同步该游标并落盘以保证幂等。
 
 ---
 

@@ -36,7 +36,7 @@
 | [ADR-0022](0022-home-zone-three-level-and-selector.md) | 首页三级信息架构与专区切换器重构 | **首页/层级导航/自适应**：顶栏纯文本专区切换器（底部抽屉/宽屏下拉）、二级 `PrimaryScrollableTabRow` 子板块、板块自带三级筛选、复用专区详情板块实现、商品与社群不做、取代 ADR-0020 分类栏条款 | 已采纳 (Accepted) - 2026-11-15 |
 | [ADR-0023](0023-zone-board-session-deep-module.md) | 专区子板块会话控制器 (ZoneBoardSession) 深模块化与散装适配器清理 | **深模块/子板块状态机/解耦**：单一响应式快照流 activeSnapshot、封闭意图 ZoneBoardIntent、统合 10 类板块生命周期与不变性、物理清除 17 参数适配器 ZoneBoardActions 与 HomeBoardProjection、宿主 UIState 平铺字段彻底清理 | 已采纳 (Accepted) - 2026-11-18 |
 | [ADR-0024](0024-deep-client-network-pipeline-and-token-self-healing.md) | 客户端网络管道深模块化、响应解包与令牌失效自愈下沉 | **深模块/网络管道/鉴权自愈/仓储净化**：HpoiApi 升级深接缝并暴露洁净载荷、在途凭据快照 Attribute、4001 惰性自愈回调、ADR-0005 候选验权显式旁路、收敛 ApiException 与 CommentNotFoundException、彻底删除 ResponseUnwrap.kt 并剥离 6 仓储会话注入、MockApi 测试断言增强 | 已采纳 (Accepted) - 2026-11-18 |
-| [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 结合 SavedStateHandle 与 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳 (Accepted) - 2026-11-18 |
+| [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 通过 DataStore 持久化已消费代数游标并结合 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳 (Accepted) - 2026-11-18 |
 
 
 

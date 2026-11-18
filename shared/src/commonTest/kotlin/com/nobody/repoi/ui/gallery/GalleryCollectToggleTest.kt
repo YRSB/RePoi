@@ -48,7 +48,7 @@ class GalleryCollectToggleTest {
         val collectRepository = newRepository(collectMock)
         val viewModel = newViewModel(collectRepository)
         collectMock.route("collect/item/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
-        val ticksBefore = collectRepository.collectMutationGeneration.value
+        val generationBefore = collectRepository.collectMutationGeneration.value
 
         val nextCollected = viewModel.toggleCollect(UserCollectPicItem(id = 88L, collect = 5))
         advanceUntilIdle()
@@ -57,7 +57,7 @@ class GalleryCollectToggleTest {
         assertTrue(viewModel.uiState.value.isCollected)
         // 徽章在乐观更新时 +1（初始 0，列表项自带的 collect 由切页回填，不在本用例路径内）
         assertEquals(1, viewModel.uiState.value.collectCount)
-        assertEquals(ticksBefore + 1, collectRepository.collectMutationGeneration.value)
+        assertEquals(generationBefore + 1, collectRepository.collectMutationGeneration.value)
         val recorded = collectMock.takeRequest()
         assertEquals("/api/collect/item/add", recorded.encodedPath)
         assertEquals("88", recorded.formEntries()["id"])
@@ -69,7 +69,7 @@ class GalleryCollectToggleTest {
         val collectRepository = newRepository(collectMock)
         val viewModel = newViewModel(collectRepository)
         collectMock.route("collect/item/add", collectMock.failure(500, "收藏失败"))
-        val ticksBefore = collectRepository.collectMutationGeneration.value
+        val generationBefore = collectRepository.collectMutationGeneration.value
 
         viewModel.toggleCollect(UserCollectPicItem(id = 88L, collect = 5))
         advanceUntilIdle()
@@ -77,7 +77,7 @@ class GalleryCollectToggleTest {
         assertFalse(viewModel.uiState.value.isCollected)
         assertEquals(0, viewModel.uiState.value.collectCount)
         assertEquals("收藏失败", viewModel.uiState.value.toastMessage)
-        assertEquals(ticksBefore, collectRepository.collectMutationGeneration.value)
+        assertEquals(generationBefore, collectRepository.collectMutationGeneration.value)
     }
 
     private fun newRepository(collectMock: MockApi): CollectRepository =

@@ -6,7 +6,6 @@ import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.domain.usecase.collect.BatchCancelCollectUseCase
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +18,17 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.nobody.repoi.data.remote.api.HpoiApi
+import com.nobody.repoi.data.session.UserSession
+import com.nobody.repoi.di.repositoryModule
+import com.nobody.repoi.di.viewModelModule
+import kotlinx.serialization.json.Json
+import org.koin.core.KoinApplication
+import org.koin.core.qualifier.named
+import org.koin.dsl.koinApplication
+import org.koin.dsl.module
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -41,6 +51,7 @@ import kotlin.test.assertTrue
 class UserCollectViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+    private val koinApps = mutableListOf<KoinApplication>()
 
     @BeforeTest
     fun setUpMain() {
@@ -49,6 +60,8 @@ class UserCollectViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
+        koinApps.forEach { it.close() }
+        koinApps.clear()
         testDispatcher.cancelChildren()
         Dispatchers.resetMain()
     }
@@ -59,50 +72,63 @@ class UserCollectViewModelTest {
         val mock: MockApi,
         val session: FakeUserSession,
         val collectRepository: CollectRepository,
+        val viewPreferencesManager: ViewPreferencesManager,
+        val koin: KoinApplication,
         val viewModel: UserCollectViewModel,
     )
 
     /**
-     * 构造被测 ViewModel。
+     * 走生产 Koin 接线构造被测对象：`viewModelModule` / `repositoryModule` 原样装载，
+     * 只把网络出口换成 [MockApi]、DataStore 换成内存实例。这样游标持久化与恢复覆盖的是
+     * 真实生产路径，而不是测试里手工注入的恢复槽。
      *
      * 调度器三件套齐备：`setMain(testDispatcher)` + `runTest(testDispatcher)` +
      * `mock.api(testDispatcher)`，否则 MockEngine 跑真实线程，`advanceUntilIdle` 推不动。
-     *
-     * @param loginUserId 当前登录用户 id（决定 `isSelf` 与批量取消验权）
-     * @param targetUserId 列表归属用户 id（收藏页 navUserId）
      */
     private fun buildEnv(
         mock: MockApi = MockApi(),
         loginUserId: Long = 999L,
         targetUserId: Long = 999L,
-        restoredState: Map<String, Any?> = emptyMap(),
+        viewPrefs: DataStore<Preferences> = TestDataStore.inMemory(),
     ): Env {
         val session = FakeUserSession("utoken-test", loginUserId)
-        val collectRepository = CollectRepository(mock.api(testDispatcher), mock.json)
-        val batchCancel = BatchCancelCollectUseCase(collectRepository, session)
-        return Env(mock, session, collectRepository, buildViewModel(collectRepository, session, targetUserId, batchCancel, restoredState))
+        val app = koinApplication {
+            modules(
+                repositoryModule,
+                viewModelModule,
+                module {
+                    single<Json> { mock.json }
+                    single<HpoiApi> { mock.api(testDispatcher) }
+                    single<UserSession> { session }
+                    single { ViewPreferencesManager(get(named("view_prefs"))) }
+                    single(named("view_prefs")) { viewPrefs }
+                },
+            )
+        }
+        koinApps += app
+        val viewModel = app.koin.get<UserCollectViewModel>()
+        // Screen 的 LaunchedEffect(param) 在生产中下发 NavKey 字段
+        viewModel.initParam(UserCollectNavParam(userId = targetUserId))
+        return Env(
+            mock = mock,
+            session = session,
+            collectRepository = app.koin.get(),
+            viewPreferencesManager = app.koin.get(),
+            koin = app,
+            viewModel = viewModel,
+        )
     }
 
-    /** 模拟进程重建：用同一仓储与已保存的恢复槽构造新实例 */
-    private fun buildViewModel(
-        collectRepository: CollectRepository,
-        session: FakeUserSession,
-        targetUserId: Long,
-        batchCancel: BatchCancelCollectUseCase = BatchCancelCollectUseCase(collectRepository, session),
-        restoredState: Map<String, Any?> = emptyMap(),
-    ): UserCollectViewModel = UserCollectViewModel(
-        collectRepository = collectRepository,
-        batchCancelCollectUseCase = batchCancel,
-        viewPreferencesManager = ViewPreferencesManager(TestDataStore.inMemory()),
-        userSession = session,
-        navUserId = targetUserId,
-        restoredState = restoredState,
-    )
+    /** 模拟页面实例重建：从同一生产 Koin 容器再取一个 VM（仓储与 DataStore 保持不变） */
+    private fun recreateViewModel(env: Env, targetUserId: Long = 999L): UserCollectViewModel =
+        env.koin.koin.get<UserCollectViewModel>().also {
+            it.initParam(UserCollectNavParam(userId = targetUserId))
+        }
 
     /** 真实写操作替身：不再调用过渡标记方法，改由仓储写路径推进代数 */
     private fun MockApi.routeCollectWrite() = route("api/collect/item/add", ok("{}"))
 
-    private suspend fun TestScope.tickGeneration(collectRepository: CollectRepository) {
+    private suspend fun TestScope.advanceMutationGeneration(collectRepository: CollectRepository) {
         assertTrue(collectRepository.collectItemAdd(nodeId = 9000L).isSuccess)
         advanceUntilIdle()
     }
@@ -441,7 +467,7 @@ class UserCollectViewModelTest {
         env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.PICTURE))
         advanceUntilIdle()
         assertEquals(1, env.viewModel.uiState.value.picData.items.size)
-        tickGeneration(env.collectRepository)
+        advanceMutationGeneration(env.collectRepository)
         val requestsBeforeResume = mock.requestCount
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         // 立即进入原位刷新：旧条目仍在，不重置为空
@@ -474,7 +500,7 @@ class UserCollectViewModelTest {
         advanceUntilIdle()
         env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.HOBBY))
         advanceUntilIdle()
-        tickGeneration(env.collectRepository)
+        advanceMutationGeneration(env.collectRepository)
         val requestsBeforeResume = mock.requestCount
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
@@ -525,26 +551,24 @@ class UserCollectViewModelTest {
     }
 
     @Test
-    fun onResume_withRestoredCursor_refreshesOnlyUnconsumedGenerations() = runTest(testDispatcher) {
+    fun onResume_restoresConsumedCursorFromDataStore() = runTest(testDispatcher) {
         val mock = MockApi().apply {
-            enqueue(hobbies(1))                      // 首个实例首屏
+            enqueue(hobbies(1))                      // 首实例首屏
+            enqueue(hobbies(2, startId = 41))        // 首实例消费第 1 代的恢复刷新
             enqueue(hobbies(1))                      // 重建实例首屏
-            enqueue(hobbies(2, startId = 41))        // 重建后的恢复刷新
+            enqueue(hobbies(2, startId = 41))        // 重建实例仅补刷第 2 代
             routeCollectWrite()
         }
         val env = buildEnv(mock = mock)
         awaitInitialized(env.viewModel)
-        tickGeneration(env.collectRepository)
-        tickGeneration(env.collectRepository)
-        assertEquals(2L, env.collectRepository.collectMutationGeneration.value)
+        advanceMutationGeneration(env.collectRepository)
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+        advanceMutationGeneration(env.collectRepository)
+        assertEquals(1L, env.viewPreferencesManager.getConsumedCollectMutationGeneration())
 
-        // 进程重建：恢复槽里已消费到第 1 代，只应补刷尚未消费的第 2 代
-        val recreated = buildViewModel(
-            collectRepository = env.collectRepository,
-            session = env.session,
-            targetUserId = 999L,
-            restoredState = mapOf("consumedMutationGeneration" to 1L),
-        )
+        // 生产接线：新建页面实例，游标从 DataStore 读回而非测试注入
+        val recreated = recreateViewModel(env)
         awaitInitialized(recreated)
         val requestsBeforeResume = mock.requestCount
 
@@ -552,10 +576,33 @@ class UserCollectViewModelTest {
         advanceUntilIdle()
         assertEquals(requestsBeforeResume + 1, mock.requestCount)
         assertEquals(2, recreated.uiState.value.hobbyData.items.size)
+        assertEquals(2L, env.viewPreferencesManager.getConsumedCollectMutationGeneration())
 
-        // 新游标写回恢复槽后，同一次恢复不得重复刷新
+        // 游标已写回持久化层，同一次恢复不得重复刷新
         recreated.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
         assertEquals(requestsBeforeResume + 1, mock.requestCount)
+    }
+
+    @Test
+    fun onResume_afterProcessRestart_discardsStalePersistedCursor() = runTest(testDispatcher) {
+        val viewPrefs = TestDataStore.inMemory()
+        ViewPreferencesManager(viewPrefs).setConsumedCollectMutationGeneration(5L)
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            enqueue(hobbies(2, startId = 71))
+            routeCollectWrite()
+        }
+        // 新进程：仓储代数从 0 重启，旧进程的第 5 代游标不得阻塞新的写操作刷新
+        val env = buildEnv(mock = mock, viewPrefs = viewPrefs)
+        awaitInitialized(env.viewModel)
+        advanceMutationGeneration(env.collectRepository)
+        val requestsBeforeResume = mock.requestCount
+
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+
+        assertEquals(requestsBeforeResume + 1, mock.requestCount)
+        assertEquals(2, env.viewModel.uiState.value.hobbyData.items.size)
     }
 }
