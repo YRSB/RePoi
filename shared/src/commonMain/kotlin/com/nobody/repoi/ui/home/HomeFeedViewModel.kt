@@ -605,9 +605,26 @@ class HomeFeedViewModel(
         pendingSingleZoneFirstBoard = false
         // 刷新属于旧板块：切走后立即收起全局刷新指示器，避免把残留刷新态画到新板块上
         _uiState.update { it.copy(selectedBoard = board, isRefreshing = false) }
-        if (board == ZoneBoard.Posts) ensurePostsLoaded()
         viewModelScope.launch { persistBoardSelection() }
+        ensureBoardLoaded(board)
+    }
+
+    /**
+     * 按板块按需加载首屏（供 Pager 滑动露出或切板块时提前加载）。
+     *
+     * 已加载或正在加载中自动早退，不会重复请求；未在当前专区启用的板块安全短路。
+     */
+    fun ensureBoardLoaded(board: ZoneBoard) {
+        val state = _uiState.value
+        if (!ZoneBoardCapability.isAvailableOnHome(state.zoneScope, board)) return
+        if (board !in state.boards) return
         when {
+            board == ZoneBoard.Action -> {
+                if (!state.isInitialLoading && state.items.isEmpty() && state.errorMessage == null) {
+                    loadInitialFeed()
+                }
+            }
+            board == ZoneBoard.Posts -> ensurePostsLoaded()
             board == ZoneBoard.Album -> ensureAlbumLoaded()
             board == ZoneBoard.Resale -> ensureResaleLoaded()
             board == ZoneBoard.Hobby -> ensureHobbyLoaded()
@@ -825,10 +842,9 @@ class HomeFeedViewModel(
         }
     }
 
-    /** 懒加载哨兵：仅在讨论板块被选中、当前作用域允许且尚未请求过时触发首屏。 */
+    /** 懒加载哨兵：在当前作用域允许且尚未请求过时触发讨论板块首屏。 */
     private fun ensurePostsLoaded() {
         val state = _uiState.value
-        if (!state.isPostsBoard) return
         // 安全闸门：板块列表里没有讨论（如关注聚合按 homeBoardsFor 隐藏）时绝不发请求
         if (ZoneBoard.Posts !in state.boards) return
         if (state.zoneScope.isFollowEmpty) return
@@ -1423,10 +1439,9 @@ class HomeFeedViewModel(
         keyword = resale.keyword
     )
 
-    /** 二手板块懒加载入口：首次切到二手才拉首屏；已加载/加载中不重复请求。 */
+    /** 二手板块懒加载入口：在当前作用域允许且尚未请求过时触发首屏。 */
     private fun ensureResaleLoaded() {
         val state = _uiState.value
-        if (state.selectedBoard != ZoneBoard.Resale) return
         // 安全闸门：板块列表里没有二手（关注聚合按 homeBoardsFor 隐藏）时绝不发请求
         if (ZoneBoard.Resale !in state.boards) return
         if (state.resale.isLoaded || state.resale.isLoading) return

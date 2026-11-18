@@ -636,6 +636,12 @@ private fun HomeBoardPage(
     val contentEmpty = itemCount == 0 && errorMessage == null && !view.isLoading
     val errorEmpty = errorMessage != null && itemCount == 0
     var restoredKey by remember { mutableStateOf<String?>(null) }
+    // 预加载：只要本页被 HorizontalPager 组合挂载（无论是当前页还是滑动露出），立即触发首屏加载。
+    // 避免滑动露头期间一直展示转圈加载态，手势滑动途中数据即在后台提前拉取。
+    LaunchedEffect(board, uiState.zoneScope) {
+        viewModel.ensureBoardLoaded(board)
+    }
+
     // 本页折叠度（0 = 展开，1 = 收起）：由本板块记忆初始化，滚动时跟随共享 heightOffset 更新。
     // 渲染位移 = 本页折叠度 × 本页筛选行高度，因此拖动中滑回的页也保持自己的折叠形态，
     // 不会出现「滑回过程中是展开的、松手落定才折叠」。
