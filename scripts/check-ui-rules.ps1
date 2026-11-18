@@ -37,6 +37,18 @@
 #                                  → Kotlin 的 fun interface (SAM) 要求恰好包含一个无方法体的
 #                                    单抽象方法；若误带方法体（= 或 {）会导致抽象方法数为 0，
 #                                    触发「Fun interface must have exactly one abstract method」编译报错。
+#   [错误] API-PUBLIC-ENVELOPE    HpoiApi 公开签名返回 CommonResponse<T>
+#                                  → ADR-0024 深接缝契约：公开方法只交付洁净载荷，
+#                                    信封剥离与异常映射留在私有 unwrap* 模板内。
+#
+#   [错误] DATA-PIPELINE-BYPASS   仓储层自行处理传输信封、业务码或在途凭据
+#                                  → 命中 CommonResponse / isSuccess / isTokenExpired /
+#                                    isCommentNotFound / snapshotToken / notifyTokenExpired /
+#                                    msg?.contains( 任一形态，即为绕过深管道。
+#
+#   [错误] DATA-SILENT-RECOVERY   仓储层无条件用 recover / recoverCatching 把失败转成成功值
+#                                  → 4001 与网络失败被吞成空值，用户进入假登录空白态。
+#                                    块内保留 throw 做异常分流（如 -9007 → 空列表）属合法，不报。
 #
 # 用法：
 #   pwsh -File scripts/check-ui-rules.ps1           # 检查全库（有 warning 仍返回 0）
@@ -365,9 +377,66 @@ foreach ($file in $ktFiles) {
     }
 }
 
+# ---------------------------------------------------------------- 规则 9：数据层契约（ADR-0024 深接缝）
+# 背景：#173 的双轴审查花 22 分钟才抓到公开签名残留 CommonResponse、仓储手写状态码与
+#       recover 吞错——全是编译与单测都放行的固定语法模式，交给机械检查最便宜。
+# 判据：剥掉字符串字面量与行注释后逐行匹配，避免 URL 与说明文字造成假阳性。
+function Get-CleanCodeLine {
+    param([string]$Line)
+    $withoutStrings = [regex]::Replace($Line, '"[^"]*"', '""')
+    return ($withoutStrings -replace '//.*$', '')
+}
+
+$seamFile = 'shared/src/commonMain/kotlin/com/nobody/repoi/data/remote/api/HpoiApi.kt'
+if (Test-Path -LiteralPath $seamFile) {
+    $seamLines = Get-Content -LiteralPath $seamFile
+    for ($i = 0; $i -lt $seamLines.Count; $i++) {
+        $code = Get-CleanCodeLine -Line $seamLines[$i]
+        if ($code -cmatch '^\s{4}suspend\s+fun\s+\w+' -and $code -match ':\s*CommonResponse\s*<') {
+            $errors += [pscustomobject]@{
+                File = $seamFile; Line = $i + 1; Tag = 'API-PUBLIC-ENVELOPE'
+                Text = "$($seamLines[$i].Trim())  ── 公开签名泄露传输信封"
+                Hint = '返回洁净载荷 T / Unit / T?；信封剥离与异常映射留在私有 unwrap* 模板内'
+            }
+        }
+    }
+}
+
+$repoFiles = git ls-files --cached --others --exclude-standard 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/*.kt' 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/**/*.kt'
+$bypassPattern = '\bCommonResponse\s*<|\b(?:isSuccess|isTokenExpired|isCommentNotFound)\b|\b(?:snapshotToken|notifyTokenExpired)\b|\bmsg\s*\?\s*\.\s*contains\s*\('
+$recoveryPattern = '\.\s*recover(?:Catching)?\s*\{'
+foreach ($file in $repoFiles) {
+    $repoLines = Get-Content -LiteralPath $file
+    for ($i = 0; $i -lt $repoLines.Count; $i++) {
+        $code = Get-CleanCodeLine -Line $repoLines[$i]
+        if ($code -match $bypassPattern) {
+            $errors += [pscustomobject]@{
+                File = $file; Line = $i + 1; Tag = 'DATA-PIPELINE-BYPASS'
+                Text = "$($repoLines[$i].Trim())  ── 仓储层绕过深管道"
+                Hint = '信封/状态码/凭据快照/错误字符串匹配全部留在 HpoiApi；仓储只做 Result<T> 编排'
+            }
+        }
+        if ($code -match $recoveryPattern) {
+            # 块内保留 throw 表示做了异常分流（如 CommentNotFoundException → 空列表），属合法；
+            # 无条件把失败转成成功值才是静默吞错。
+            $end = [Math]::Min($i + 5, $repoLines.Count - 1)
+            $tail = ''
+            if ($i + 1 -le $end) { $tail = ($repoLines[($i + 1)..$end] -join "`n") }
+            if ($tail -notmatch '\bthrow\b') {
+                $errors += [pscustomobject]@{
+                    File = $file; Line = $i + 1; Tag = 'DATA-SILENT-RECOVERY'
+                    Text = "$($repoLines[$i].Trim())  ── 把失败转成成功值"
+                    Hint = '删除 recover / recoverCatching，让失败以 Result.failure 冒泡；需要异常分流时保留 throw'
+                }
+            }
+        }
+    }
+}
+
+
 # ---------------------------------------------------------------- 输出
 if ($Verbose) {
-    Write-Host "扫描 $($uiFiles.Count) 个 UI 源文件、$($codeFiles.Count) 个代码/配置文件、$($stateFiles.Count) 个状态源文件"
+    Write-Host "扫描 $($uiFiles.Count) 个 UI 源文件、$($codeFiles.Count) 个代码/配置文件、$($stateFiles.Count) 个状态源文件、$($repoFiles.Count) 个数据层仓储文件"
 }
 
 $warningGroups = $warnings | Group-Object { ($_.Text -split '──')[-1].Trim() }
@@ -397,8 +466,8 @@ if ($errors.Count -gt 0) {
     Write-Host ""
     Write-Host "发现 $($errors.Count) 处错误：" -ForegroundColor Red
     foreach ($e in $errors) {
-        $tag = if ($e.Text -like '*缺 key*') { 'LAZY-ITEM-KEY' }
-               elseif ($e.Text -like '*excludeTestsMatching*') { 'TEST-QUARANTINE' }
+        $tag = if ($e.PSObject.Properties['Tag']) { $e.Tag }
+               elseif ($e.Text -like '*缺 key*') { 'LAZY-ITEM-KEY' }
                elseif ($e.Text -like '*冲突标记*') { 'CONFLICT-MARKER' }
                elseif ($e.Text -like '*枚举字面量*') { 'ENUM-STATE-INFERENCE' }
                elseif ($e.Text -like '*找不到定义*') { 'ANDROID-RES-REF' }

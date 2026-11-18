@@ -3,6 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $repo = 'c:\Users\nobody\AndroidReverse\RePoi'
 $probeDir = Join-Path $repo 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe'
+$dataProbeDir = Join-Path $repo 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/zzprobe'
 $script = Join-Path $repo 'scripts/check-ui-rules.ps1'
 
 function Run-Case {
@@ -149,6 +150,105 @@ interface NormalFactory {
 }
 '@ 0
 
+
+Write-Host ""
+Write-Host "=== 数据层契约测试 ===" -ForegroundColor Cyan
+
+function Run-DataLayerCase {
+    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
+    if (Test-Path $dataProbeDir) { Remove-Item $dataProbeDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $dataProbeDir -Force | Out-Null
+    $f = Join-Path $dataProbeDir 'ProbeRepository.kt'
+    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
+    $out = & pwsh -File $script 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $errCount = ([regex]::Matches($out, '\[(?:DATA-PIPELINE-BYPASS|DATA-SILENT-RECOVERY|API-PUBLIC-ENVELOPE)\] [^:]*zzprobe')).Count
+    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
+    $status = if ($ok) { 'PASS' } else { 'FAIL' }
+    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
+    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+    if (-not $ok) { Write-Host $out }
+}
+
+Run-DataLayerCase '18 洁净载荷仓储（不应报）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        "ok"
+    }
+}
+'@ 0
+
+Run-DataLayerCase '19 仓储引用 CommonResponse（应报错误）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        val response: CommonResponse<String> = TODO()
+        response.data.orEmpty()
+    }
+}
+'@ 1
+
+Run-DataLayerCase '20 仓储手写 isSuccess（应报错误）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        val response = TODO()
+        if (!response.isSuccess) error("失败")
+        response.data
+    }
+}
+'@ 1
+
+Run-DataLayerCase '21 仓储捕获在途凭据（应报错误）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        val snapshotToken = "token"
+        snapshotToken
+    }
+}
+'@ 2
+
+Run-DataLayerCase '22 仓储无条件 recover（应报错误）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        "ok"
+    }.recover { "fallback" }
+}
+'@ 1
+
+Run-DataLayerCase '23 recoverCatching 保留 throw 分流（不应报）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        "ok"
+    }.recoverCatching { error ->
+        if (error is CommentNotFoundException) "" else throw error
+    }
+}
+'@ 0
+
+Run-DataLayerCase '24 注释与字符串中的违规词（不应报）' @'
+package com.nobody.repoi.data.repository.zzprobe
+
+class ProbeRepository {
+    suspend fun getFoo(): Result<String> = runCatching {
+        // CommonResponse<String> 与 isSuccess 只是说明文字
+        val text = "CommonResponse<String> isSuccess"
+        text
+    }
+}
+'@ 0
+
 if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
+if (Test-Path $dataProbeDir) { Remove-Item $dataProbeDir -Recurse -Force }
 Write-Host ""
 Write-Host "=== 清理完成 ===" -ForegroundColor Cyan
