@@ -264,6 +264,10 @@ fun HomeFeedScreen(
     // 可配置头部高度栈：顶栏 + 二级板块 Tab（常驻吸顶）+ 可折叠筛选行。
     // 所有依赖头部高度的地方（内容 padding / 下拉指示器 / 首屏各态卡片 / 折叠分母）只读该状态。
     val headerStack = rememberHomeHeaderStack(topBarHeight = topBarHeight)
+    // 各板块筛选行实测高度（px）：切页时直接取**目标板块**的高度折算 heightOffset，
+    // 而不是沿用头部栈里上一板块的实测值。旧实现用上一板块高度算折叠位移，
+    // 若它更矮，切回时只收起一部分、等本页测量回填后才收到底——观感就是「先露一截再折叠」。
+    val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
         state = rememberTopAppBarState(
@@ -311,10 +315,6 @@ fun HomeFeedScreen(
     }
     // 页内自持的瀑布流状态注册表：宿主只在「下拉刷新 / FAB」时借当前页回顶
     val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
-    // 各板块筛选行实测高度（px）：切页时直接取**目标板块**的高度折算 heightOffset，
-    // 而不是沿用头部栈里上一板块的实测值。旧实现用上一板块高度算折叠位移，
-    // 若它更矮，切回时只收起一部分、等本页测量回填后才收到底——观感就是「先露一截再折叠」。
-    val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
     val currentFilterHeightPx: Float = if (uiState.selectedBoard.isEntity) {
         0f
     } else {
