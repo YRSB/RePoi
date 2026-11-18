@@ -78,7 +78,7 @@ class FollowRepository(
         lastId: Long = 0L,
         pageSize: Int = 20
     ): Result<FollowPage> = runCatching {
-        val response = api.getFollowDynamics(
+        val payload = api.getFollowDynamics(
             page = if (type == "item") 1 else null,
             lastId = lastId,
             pageSize = pageSize,
@@ -87,8 +87,7 @@ class FollowRepository(
             type = type,
             isHome = if (type == "item") 0 else null
         )
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "数据加载失败")
-        val list = decodeList(response.data)
+        val list = decodeList(payload)
         FollowPage(
             items = list,
             lastId = parseFollowCursor(list.lastOrNull()?.actionDate),
