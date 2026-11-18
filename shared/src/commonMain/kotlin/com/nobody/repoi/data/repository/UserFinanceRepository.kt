@@ -1,7 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.CurrencyItem
 import com.nobody.repoi.data.remote.model.CurrencyType
@@ -31,12 +30,7 @@ class UserFinanceRepository(
      * 获取指定用户的订单统计原始数据 (api/user/orderStatic)。
      */
     suspend fun getOrderStaticData(userId: Long): Result<OrderStaticData> = runCatching {
-        val response = api.getOrderStatic(userId = userId)
-        if (response.isSuccess || (response.success && response.data?.data != null)) {
-            response.data?.data ?: OrderStaticData()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取订单统计失败")
-        }
+        api.getOrderStatic(userId = userId)
     }
 
     /**
