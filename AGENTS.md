@@ -30,10 +30,12 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 ## 交付完成门禁 (Completion Criteria)
 
 完成代码变更并在交付时，必须满足以下硬性判据：
-1. **CI 裁决权威**：验证统一交由 GitHub Actions 远端流水线执行，判定标准见
-   [CODING_STANDARDS.md#4-验证原则ci-裁决权威-ci-authority](CODING_STANDARDS.md#4-验证原则ci-裁决权威-ci-authority)。
-   提交前可本地跑 `pwsh -File scripts/check-ui-rules.ps1`（纯静态检查，**不需要 Gradle / JDK**），
-   它能抓住编译与单测都发现不了的机械错误。
+1. **CI 裁决权威与本地测试**：
+   - 允许在本地运行轻量单元测试（如 `./gradlew :shared:jvmTest --tests ...`）快速验证逻辑闭环；
+   - 全量构建与打包（Android APK、Desktop Package）严禁在本地执行，统一交由 GitHub Actions 远端流水线权威执行，判定标准见
+     [CODING_STANDARDS.md#4-验证原则本地单元测试放行与-ci-裁决权威-local-unit-tests--ci-authority](CODING_STANDARDS.md#4-验证原则本地单元测试放行与-ci-裁决权威-local-unit-tests--ci-authority)。
+   - 提交前可本地跑 `pwsh -File scripts/check-ui-rules.ps1`（纯静态检查，**不需要 Gradle / JDK**），
+     它能抓住编译与单测都发现不了的机械错误。
 2. **规范提交信息**：遵循 Conventional Commits 1.0.0，提交信息全中文、无末尾句号：
    `<type>(<scope>): <subject>`（例如 `feat(detail): 增加手办发售信息卡片`；scope 统一为小写特性名，如 `home`, `detail`, `search`, `network`, `nav` 等）。
 3. **渲染与性能规范**：Lazy 列表项必须显式配置稳定的 `key` 与 `contentType`（骨架屏占位项同样适用），细则见 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)。

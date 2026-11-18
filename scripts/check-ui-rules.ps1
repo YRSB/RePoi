@@ -1,4 +1,4 @@
-# 机械规则扫描器（无需 Gradle / 无需 JDK）
+﻿# 机械规则扫描器（无需 Gradle / 无需 JDK）
 #
 # 只机械校验「人类审查容易漏、CI 编译与单测都抓不到」的规则：
 #
@@ -32,6 +32,11 @@
 #                                  → .editorconfig 的 insert_final_newline 只约束新写入，
 #                                    历史文件靠 git diff --check 也兜不住；本规则只看**本次改动的文件**，
 #                                    避免一次性炸出存量问题。
+#
+#   [错误] KOTLIN-FUN-INTERFACE-BODY SAM 接口包含非抽象方法体
+#                                  → Kotlin 的 fun interface (SAM) 要求恰好包含一个无方法体的
+#                                    单抽象方法；若误带方法体（= 或 {）会导致抽象方法数为 0，
+#                                    触发「Fun interface must have exactly one abstract method」编译报错。
 #
 # 用法：
 #   pwsh -File scripts/check-ui-rules.ps1           # 检查全库（有 warning 仍返回 0）
@@ -311,6 +316,55 @@ if ($baseRef) {
     Write-Host '未能解析 main 分支，跳过 EOF-NEWLINE 检查' -ForegroundColor DarkGray
 }
 
+# ---------------------------------------------------------------- 规则 8：SAM 接口方法体检测
+# 背景：Kotlin 函数式接口 (fun interface) 要求恰好包含一个无方法体的单抽象方法 (SAM)。
+# 若误给该方法添加了默认实现（`= ...` 或 `{ ... }`），会导致 SAM 抽象方法数为 0，
+# 触发 `Fun interface must have exactly one abstract method` 编译报错。
+$ktFiles = git ls-files --cached --others --exclude-standard '*.kt'
+foreach ($file in $ktFiles) {
+    $text = Get-Content -LiteralPath $file -Raw
+    if ($text -notmatch '\bfun\s+interface\b') { continue }
+
+    $matches = [regex]::Matches($text, '(?m)^\s*(?:public|private|internal|protected)?\s*fun\s+interface\s+(\w+)\s*\{([\s\S]*?)\}')
+    foreach ($m in $matches) {
+        $ifaceName = $m.Groups[1].Value
+        $body = $m.Groups[2].Value
+        $cleanBody = [regex]::Replace($body, '/\*[\s\S]*?\*/|//.*$', '')
+        $funMatches = [regex]::Matches($cleanBody, '(?m)\bfun\s+(?:<[^>]+>\s+)?(\w+)\s*\(')
+        $abstractCount = 0
+        foreach ($fm in $funMatches) {
+            $fnStart = $fm.Index
+            $depth = 0
+            $idx = $cleanBody.IndexOf('(', $fnStart)
+            $closeParen = -1
+            for ($i = $idx; $i -lt $cleanBody.Length; $i++) {
+                if ($cleanBody[$i] -eq '(') { $depth++ }
+                elseif ($cleanBody[$i] -eq ')') {
+                    $depth--
+                    if ($depth -eq 0) { $closeParen = $i; break }
+                }
+            }
+            if ($closeParen -ge 0) {
+                $rest = $cleanBody.Substring($closeParen + 1).TrimStart()
+                if ($rest -match '^\s*:\s*([A-Za-z0-9_<>?,\s.]+?)(?=\s*(=|\{|\n|fun\b|val\b|var\b|$))') {
+                    $rest = $rest.Substring($Matches[0].Length).TrimStart()
+                }
+                if ($rest -notmatch '^[={]') {
+                    $abstractCount++
+                }
+            }
+        }
+        if ($abstractCount -ne 1) {
+            $lineNo = ($text.Substring(0, $m.Index) -split "`n").Count
+            $errors += [pscustomobject]@{
+                File = $file; Line = $lineNo
+                Text = "fun interface $ifaceName 拥有 $abstractCount 个抽象方法（期望恰好 1 个） ── SAM 接口规范"
+                Hint = 'fun interface 必须恰好包含 1 个无方法体的抽象方法；若需要提供默认实现，请使用普通 interface'
+            }
+        }
+    }
+}
+
 # ---------------------------------------------------------------- 输出
 if ($Verbose) {
     Write-Host "扫描 $($uiFiles.Count) 个 UI 源文件、$($codeFiles.Count) 个代码/配置文件、$($stateFiles.Count) 个状态源文件"
@@ -349,6 +403,7 @@ if ($errors.Count -gt 0) {
                elseif ($e.Text -like '*枚举字面量*') { 'ENUM-STATE-INFERENCE' }
                elseif ($e.Text -like '*找不到定义*') { 'ANDROID-RES-REF' }
                elseif ($e.Text -like '*末尾换行*') { 'EOF-NEWLINE' }
+               elseif ($e.Text -like '*SAM 接口规范*') { 'KOTLIN-FUN-INTERFACE-BODY' }
                else { 'CONFLICT-MARKER' }
         Write-Host "  [$tag] $($e.File):$($e.Line)" -ForegroundColor Red
         Write-Host "    $($e.Text)"

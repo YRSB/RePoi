@@ -159,3 +159,14 @@
   1. **请求层防御**：在 `HpoiApi.searchUsers` 发包时显式声明 `headers[HttpHeaders.Accept] = "*/*"`，对齐原版 OkHttp 默认行为；
   2. **解析层深层防御**：在 `RefAware.kt` 的 `decodeRefAware` 与 `decodePlain` 中统一接入 `unwrapDoubleEncodedJson`。通过识别外层双引号与 `JsonPrimitive` 内部 JSON 字符特征，自动解包被双重序列化的 JSON，兼顾各种网络代理与极端环境；
   3. **仓储层安全兜底**：在 `SearchRepository.searchUsers` 中，当 `response.success` 为 true 时，使用 `response.data ?: UserSearchPayload(userList = emptyList())` 承接空数据，确保返回空列表流转至界面的 `EmptyResultPlaceholder`。
+
+---
+
+## 12. 讨论置顶 (`PostItem.topTime`) 与专区分类 (`ZoneCategoriesPayload`) 包装形态
+
+- **涉及接口**：`POST api/posts/search`、`GET api/zone/categories`。
+- **踩坑现象**：
+  1. **讨论置顶并非布尔字段**：`PostItem` 响应中并无 `isPinned` 布尔键，置顶由服务端返回的时间戳 `topTime: Long` 判定（`val isPinned: Boolean get() = topTime > 0L`）。单元测试或外部调用若伪造 `"isPinned": true` 会被序列化器直接忽略；
+  2. **专区分类外层包装对象**：`api/zone/categories` 的 `data` 节点并非平铺数组，而是包含 `visible: Boolean` 标志的包装对象：`{ "visible": true, "categories": [...] }`。直接解构为 `List<Category>` 会导致反序列化失败。
+- **推荐解法**：
+  - 测试桩与业务代码统一遵循 DTO 真实声明；测试环境中使用 `MockApi.routeJson` 或强类型桩函数以获得编译期强约束。

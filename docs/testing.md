@@ -74,6 +74,13 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 调度器选型：默认 `StandardTestDispatcher`；仅当用例依赖 launch 体立即执行
 （构造即断言、连续状态机推进）才换 `UnconfinedTestDispatcher`（先例：`SettingsAccountViewModelTest`）。
 
+### 有界协程生命周期契约 (Bounded Coroutine Lifecycle)
+
+状态机、分页调度器与异步控制器内部，**严禁在 `init` 构造块中启动无界 `Flow.collect` 或无限常驻循环协程**。
+- **症状**：测试中调用 `advanceUntilIdle()` 时挂起超时，或工作线程被未终结的收集器持续占用导致任务饥饿；
+- **根治**：异步加载统一收敛为显式触发的挂起函数或受控单次 `Job`（例如 `currentJob?.cancel(); currentJob = scope.launch { ... }`）；
+- **验证判据**：在注入 `StandardTestDispatcher` 的环境下，任何动作派发后 `advanceUntilIdle()` 必须能在有限虚拟时间内平稳落定至 Idle 状态。
+
 ---
 
 ## DataStore 测试：文件实例与内存实例
@@ -116,11 +123,36 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 
 ---
 
-## 反馈回路
+## 反馈回路与本地测试
 
-本地严禁执行 Gradle 测试任务。诊断打印用 `println("DIAG-<tag> ...")` 输出，
+允许在本地运行 Gradle 单元测试（例如针对指定类或方法运行 `./gradlew :shared:jvmTest --tests ...` 或跑全量单测 `./gradlew :shared:jvmTest`），作为快速红绿迭代与定位逻辑回归的手段。但全量构建、Android APK 与桌面端安装包打包依然严禁在本地执行，统一由 CI 权威执行。
+
+诊断打印用 `println("DIAG-<tag> ...")` 输出，
 CI 失败后经 `test-reports` 产物下载 XML 提取（`gh run download <run-id> -n test-reports`），
 `system-out` 节点内即测试标准输出。诊断合入前必须删除打印。
+
+---
+
+## MockApi 测试桩与反序列化陷阱
+
+本项目单元测试中 `MockApi` 响应体走真实 `kotlinx.serialization` 反序列化（配置为 `ignoreUnknownKeys = true`）。
+当测试桩 JSON 数据与模型定义存在微小偏差时，序列化器不会抛出异常，而是**静默降级或赋空值**，造成难以排查的断言失败。测试编写与 Mock 维护必须遵守以下契约：
+
+1. **讨论置顶识别 (`PostItem`)**：
+   - `PostItem` 模型**没有 `isPinned` 序列化字段**，其置顶状态由计算属性 `val isPinned: Boolean get() = topTime > 0L` 动态判定；
+   - 在 Mock JSON 中书写 `"isPinned": true` 会被忽略；**必须显式提供非零 `topTime`**（如 `"topTime": 1000`）。
+2. **专区分类结构 (`ZoneCategoriesPayload`)**：
+   - `HpoiApi.getZoneCategories` 解码目标为 `CommonResponse<ZoneCategoriesPayload>`；
+   - Payload 为包装对象 `{ "visible": true, "categories": [{ "categoryId": 1, "name": "手办" }] }`；
+   - **严禁**将 `data` 直接 mock 为平铺数组 `[{ ... }]`，否则反序列化为空，导致分类标签无法挂载。
+3. **相册与列表分页根键 (`AlbumListItem` / `PagedListLoader`)**：
+   - 相册列表响应键名为 `"list"`（`{ "data": { "list": [...] } }`），而非 `"items"`。
+4. **板块筛选与排序键值有效性**：
+   - 排序与筛选参数有严格的领域白名单（见 `HobbyBoardOptions.ORDERS` 与 `ResaleBoardOptions`）：
+     - 手办排序合法键：`hits7Day`, `hitsDay`, `hits`, `add`, `release`, `rating`（**无** `"release_desc"`）；
+     - 二手成色合法键：`"10"`, `"99"`, `"95"`, `"9"`, `"8"`（9成新标准键为 `"9"`）。
+5. **强类型桩推荐**：
+   - 优先使用 `MockApi.routeJson` / `MockApi.replaceRouteJson` 辅助函数生成桩数据，利用编译器类型检查杜绝手写 JSON 偏差。
 
 ### 按需测试 CI（TDD 内环）
 

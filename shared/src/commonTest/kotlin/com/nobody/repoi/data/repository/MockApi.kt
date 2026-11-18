@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
@@ -75,6 +76,61 @@ class MockApi {
     fun replaceRoute(pathFragment: String, body: String, status: HttpStatusCode = HttpStatusCode.OK) {
         routes.removeAll { (fragment, _) -> fragment == pathFragment }
         routes.add(pathFragment to Queued(status, body))
+    }
+
+    /**
+     * 强类型路由注册：自动将 [data] 序列化为 JSON 字符串，避免手写原始字符串引入 schema 偏差。
+     */
+    inline fun <reified T> routeJson(
+        pathFragment: String,
+        data: T,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ) {
+        route(pathFragment, json.encodeToString(data), status)
+    }
+
+    /**
+     * 强类型路由替换：替换同路径片段路由为 [data] 的序列化结果。
+     */
+    inline fun <reified T> replaceRouteJson(
+        pathFragment: String,
+        data: T,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ) {
+        replaceRoute(pathFragment, json.encodeToString(data), status)
+    }
+
+    /**
+     * 包装为 Hpoi 标准 CommonResponse 结构并序列化为 JSON。
+     */
+    inline fun <reified T> okJson(data: T, msg: String = "ok", code: Int = 200): String {
+        return """{"success":true,"code":$code,"msg":"$msg","data":${json.encodeToString(data)}}"""
+    }
+
+    /**
+     * 注册标准 CommonResponse 强类型响应。
+     */
+    inline fun <reified T> routeCommonResponse(
+        pathFragment: String,
+        data: T,
+        msg: String = "ok",
+        code: Int = 200,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ) {
+        route(pathFragment, okJson(data, msg, code), status)
+    }
+
+    /**
+     * 替换标准 CommonResponse 强类型响应。
+     */
+    inline fun <reified T> replaceRouteCommonResponse(
+        pathFragment: String,
+        data: T,
+        msg: String = "ok",
+        code: Int = 200,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ) {
+        replaceRoute(pathFragment, okJson(data, msg, code), status)
     }
 
     /**

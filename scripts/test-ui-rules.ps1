@@ -1,4 +1,4 @@
-# 脚本边缘场景验证夹具
+﻿# 脚本边缘场景验证夹具
 # 每个用例在临时文件里构造，跑脚本后断言结果，不污染仓库。
 $ErrorActionPreference = 'Stop'
 $repo = 'c:\Users\nobody\AndroidReverse\RePoi'
@@ -21,8 +21,8 @@ $Body
     }
 }
 "@
-    [System.IO.File]::WriteAllText($f, $src)
-    $out = & pwsh -File $script 2>&1 | Out-String
+    [System.IO.File]::WriteAllText($f, "$src`n", [System.Text.Encoding]::UTF8)
+    $out = & pwsh -File $script -Verbose 2>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[LAZY-ITEM-KEY\] [^:]*zzprobe')).Count
     $warnCount = ([regex]::Matches($out, '\[LAZY-CONTENT-TYPE\] [^:]*zzprobe')).Count
@@ -105,6 +105,49 @@ Run-Case '14 key 用命名参数但写成 lambda 多行' @'
             contentType = { "a" }
         ) { }
 '@ 1 0
+
+Write-Host ""
+Write-Host "=== SAM 接口规范测试 ===" -ForegroundColor Cyan
+
+function Run-FunInterfaceCase {
+    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
+    if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+    $f = Join-Path $probeDir 'ProbeInterface.kt'
+    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
+    $out = & pwsh -File $script 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $errCount = ([regex]::Matches($out, '\[KOTLIN-FUN-INTERFACE-BODY\] [^:]*zzprobe')).Count
+    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
+    $status = if ($ok) { 'PASS' } else { 'FAIL' }
+    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
+    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+    if (-not $ok) { Write-Host $out }
+}
+
+Run-FunInterfaceCase '15 fun interface 带方法体（应报错误）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun interface BadFactory {
+    fun create(id: Int = 0): String = "bad"
+}
+'@ 1
+
+Run-FunInterfaceCase '16 fun interface 正常单抽象方法（不应报）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun interface GoodFactory {
+    fun create(id: Int = 0): String
+}
+'@ 0
+
+Run-FunInterfaceCase '17 普通 interface 带方法体（不应报）' @'
+package com.nobody.repoi.ui.zzprobe
+
+interface NormalFactory {
+    fun create(id: Int = 0): String = "ok"
+}
+'@ 0
 
 if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
 Write-Host ""
