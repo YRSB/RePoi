@@ -41,6 +41,7 @@ import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.user.history.UserHistoryViewModel
@@ -140,6 +141,9 @@ class KoinModuleVerificationTest {
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<SaveWorksCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<DeleteWorksCollectUseCase>().shouldNotBeNull()
+
+            // 5. 子板块会话控制器工厂
+            koin.getOrNull<ZoneBoardSession.Factory>().shouldNotBeNull()
         } finally {
             app.close()
         }

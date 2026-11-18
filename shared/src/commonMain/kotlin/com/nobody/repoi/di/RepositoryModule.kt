@@ -33,6 +33,8 @@ import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
+import com.nobody.repoi.ui.board.session.ZoneBoardSessionImpl
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -101,4 +103,16 @@ val repositoryModule = module {
     factoryOf(::BatchCancelCollectUseCase)
     factoryOf(::SaveWorksCollectUseCase)
     factoryOf(::DeleteWorksCollectUseCase)
+
+    // ── 子板块会话控制器工厂（深模块） ──
+    single<ZoneBoardSession.Factory> {
+        ZoneBoardSessionImpl.Factory(
+            homeRepository = get(),
+            albumRepository = get(),
+            zoneRepository = get(),
+            itemRepository = get(),
+            resaleRepository = get(),
+            viewPreferencesManager = get()
+        )
+    }
 }
