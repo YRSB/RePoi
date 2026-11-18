@@ -414,6 +414,8 @@ fun HomeFeedScreen(
                             onFilterHeightMeasured = { heightPx ->
                                 boardFilterHeights[board] = heightPx.toFloat()
                             },
+                            // 实时判断：页参数 uiState 是不可变快照，协程里读它永远拿到组合时的板块
+                            isCurrentProvider = { uiState.selectedBoard == board },
                             onNavigateToZoneBrowse = onNavigateToZoneBrowse,
                             onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state }
                         )
@@ -591,17 +593,22 @@ private fun HomeBoardPage(
     hobbyCategoryTree: Map<Int, List<CategoryItem>>,
     /** 本页筛选行实测高度（px）回填：宿主按板块缓存，供切页时立即按目标板块折算折叠度。 */
     onFilterHeightMeasured: (Int) -> Unit,
+    /**
+     * 本页是否为当前选中板块的**实时**判断。
+     *
+     * 必须由宿主持有（读 `uiState.selectedBoard` 的 State），不能在本页用 [uiState] 参数自行求值：
+     * `uiState` 是不可变快照，长生命周期协程捕获后永远是组合那一刻的板块，切页后仍判定为当前页。
+     */
+    isCurrentProvider: () -> Boolean,
     onNavigateToZoneBrowse: (() -> Unit)?,
     onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit
 ) {
     val gridState = rememberLazyStaggeredGridState()
     LaunchedEffect(gridState, board) { onGridStateReady(board, gridState) }
 
-    val isCurrent = board == uiState.selectedBoard
-    // 组合期的 [isCurrent] 会被长生命周期协程捕获后失效（effect 的 key 不含它，不会重启）。
-    // 切页瞬间旧页仍在跑 snapshotFlow，必须用实时判断立刻停写记忆，否则会把新板块的
-    // heightOffset（通常 0）当成旧板块的折叠度写回去——表现为「收起后切走再切回又展开了」。
-    val isCurrentNow: () -> Boolean = { uiState.selectedBoard == board }
+    // 组合期取值供 effect key / 点击守卫使用；协程内一律走 [isCurrentProvider] 实时判断，
+    // 否则切页瞬间旧页仍会写记忆（把新板块的 heightOffset 当成自己的折叠度存回去）。
+    val isCurrent = isCurrentProvider()
     val memoryKey = homeBoardMemoryKey(uiState.zoneScope, board)
     val itemCount = view.itemCount
     val errorMessage = view.errorMessage
@@ -672,7 +679,7 @@ private fun HomeBoardPage(
         }.collect { (index, offset, filterCollapseFraction) ->
             // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
             // 写回会污染本页记忆。滚动位置还需已按要求恢复过（A1）。
-            if (!isCurrentNow()) return@collect
+            if (!isCurrentProvider()) return@collect
             if (restoredKey == memoryKey) {
                 viewModel.saveBoardScrollPosition(memoryKey, index, offset)
             }
@@ -697,7 +704,7 @@ private fun HomeBoardPage(
     // 刷新途中滑到别的板块不会把新板块滚回顶部（本轮修复的跨板块副作用）。
     var wasRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(view.isRefreshing) {
-        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrentNow()) {
+        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrentProvider()) {
             gridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
@@ -822,7 +829,7 @@ private fun HomeBoardPage(
                     // 所以这里读到多少就是该板块应有的收起像素。非当前页（拖动中组合的相邻页）
                     // 按展开渲染，落定后由宿主按记忆恢复。
                     .offset {
-                        val offsetY = if (isCurrentNow()) scrollBehavior.state.heightOffset else 0f
+                        val offsetY = if (isCurrentProvider()) scrollBehavior.state.heightOffset else 0f
                         IntOffset(0, offsetY.roundToInt())
                     }
                     .onSizeChanged { filterBarHeightPx = it.height }
