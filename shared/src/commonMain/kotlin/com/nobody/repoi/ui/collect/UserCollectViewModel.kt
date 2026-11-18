@@ -54,6 +54,11 @@ class UserCollectViewModel(
     navInitialCollectState: String? = null,
     navInitialOrder: String? = null,
     navInitialCategory: Int? = null,
+    /**
+     * 进程重建时回填的恢复槽（[savedState] 的 SavedStateHandle 等价物）；默认空槽。
+     * 收藏变更代数游标等消费进度随此槽恢复，避免重建后重复刷新。
+     */
+    restoredState: Map<String, Any?> = emptyMap(),
 ) : ViewModel() {
 
     /**
@@ -61,7 +66,7 @@ class UserCollectViewModel(
      * 构造入参即 NavKey 字段；运行时写入仅保活内存（附带 DataStore 持久化见 persist*）。
      * 构造参数以 nav 前缀命名，避免与下方同名成员属性产生遮蔽歧义。
      */
-    private val savedState: MutableMap<String, Any?> = mutableMapOf<String, Any?>().also { map ->
+    private val savedState: MutableMap<String, Any?> = restoredState.toMutableMap().also { map ->
         map["userId"] = navUserId
         navInitialCollectState?.let { map["initialCollectState"] = it }
         navInitialOrder?.let { map["initialOrder"] = it }
@@ -150,15 +155,18 @@ class UserCollectViewModel(
     }
 
     /**
-     * 已消费的**画廊写操作计数**快照，随恢复槽持久化。
+     * 已消费的**收藏变更代数**快照，随恢复槽持久化。
      *
-     * [CollectRepository.galleryMutationCount] 单调递增且无订阅也不丢事件，
-     * 因此恢复时只需比对计数是否变大，即可判定「画廊里动过收藏」。
-     * 快照必须写进 [savedState]：否则配置变更重建后会把已消费的计数当成新事件，白发一次刷新。
+     * [CollectRepository.collectMutationGeneration] 单调递增且无订阅也不丢事件，
+     * 恢复时只需比对代数是否变大，即可判定任意二级页发生过收藏写操作。
+     * 快照必须写进 [savedState]：否则重建后会把已消费的代数当成新事件，白发一次刷新。
      */
-    private var consumedGalleryMutationCount: Long =
-        stateGet<Long>(KEY_CONSUMED_GALLERY_MUTATION_COUNT)
-            ?: collectRepository.galleryMutationCount.value
+    private var consumedMutationGeneration: Long =
+        stateGet<Long>(KEY_CONSUMED_MUTATION_GENERATION)
+            ?: collectRepository.collectMutationGeneration.value
+
+    /** 代数已增长但尚未切入的分类：切入时原位刷新，未访问则零网络请求 */
+    private val dirtyCategories: MutableSet<UserCollectCategory> = mutableSetOf()
 
     // ==================== 8 大类分页装载器 ====================
 
@@ -498,11 +506,15 @@ class UserCollectViewModel(
     // ==================== 大类 / 视图 ====================
 
     /**
-     * 切换大类（若目标大类尚未加载数据，自动触发首屏加载）。
+     * 切换大类：脏分类就地刷新（保留旧条目），否则空分类补首屏、已有数据原地复用。
      */
     private fun applyCategorySwitch(category: UserCollectCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
+        if (dirtyCategories.remove(category)) {
+            dispatchToLoader(category) { it.refresh() }
+            return
+        }
         if (isLoaderIdleAndEmpty(category)) {
             loadFirstPage(category)
         }
@@ -899,7 +911,7 @@ class UserCollectViewModel(
      * 批量取消收藏（`api/collect/batch/cancel`）。仅周边页与相册页具备该能力。
      *
      * 验权（非本人零请求）已上移到 [BatchCancelCollectUseCase]；
-     * 成功后就地 `removeItem` 剔除已取消条目，使后续 `loadMore` 不会重复拉取已删页。
+     * 成功后对当前大类原位 `refresh()` 对齐服务端，并同步消费游标以保证出栈幂等。
      */
     private fun confirmBatchCancel() {
         val snapshot = _uiState.value
@@ -914,20 +926,19 @@ class UserCollectViewModel(
         viewModelScope.launch {
             batchCancelCollectUseCase(ids.toList(), ownerUserId = userId)
                 .onSuccess {
-                    if (isHobby) {
-                        hobbyLoader.removeItem { it.id in ids }
-                        syncCategory(UserCollectCategory.HOBBY)
-                        _uiState.update {
+                    // 写操作的代数增长由自身触发，立即消费掉，避免返回页面时二次刷新
+                    consumedMutationGeneration = collectRepository.collectMutationGeneration.value
+                    stateSet(KEY_CONSUMED_MUTATION_GENERATION, consumedMutationGeneration)
+                    dirtyCategories.remove(category)
+                    dispatchToLoader(category) { it.refresh() }
+                    _uiState.update {
+                        if (isHobby) {
                             it.copy(
                                 isCancellingBatch = false,
                                 hobbySelectedIds = emptySet(),
                                 hobbySelectionMode = false
                             )
-                        }
-                    } else {
-                        albumLoader.removeItem { it.id in ids }
-                        syncCategory(UserCollectCategory.ALBUM)
-                        _uiState.update {
+                        } else {
                             it.copy(
                                 isCancellingBatch = false,
                                 albumSelectedIds = emptySet(),
@@ -981,25 +992,32 @@ class UserCollectViewModel(
     // ==================== 恢复感知 ====================
 
     /**
-     * 恢复感知：读画廊脏位，有变化则对**图片页**静默刷新。
+     * 恢复感知：比对收藏变更代数，只对激活分类立即静默刷新，
+     * 其余已装载分类进 [dirtyCategories] 等待切入时刷新（未访问零请求）。
      *
-     * 脏位方案来自 ADR-0011：`CollectRepository` 的写操作计数是状态而非事件，
-     * 出栈返回、进程内任意时刻都可比对，且无订阅者也不丢。
-     * 仅当当前正停在图片大类、或图片列表已开始装载过时才刷新，避免白发一次首屏请求。
+     * 代数来自 ADR-0025 的仓储自治写入链路：任意二级页收藏写操作成功后仓储内部自增，
+     * 状态可重读、无订阅者也不丢；`refresh()` 保留旧条目，故不会出现骨架屏白屏闪烁。
      */
     private fun handleResume() {
-        val count = collectRepository.galleryMutationCount.value
-        if (count <= consumedGalleryMutationCount) return
-        consumedGalleryMutationCount = count
-        stateSet(KEY_CONSUMED_GALLERY_MUTATION_COUNT, count)
+        val generation = collectRepository.collectMutationGeneration.value
+        if (generation <= consumedMutationGeneration) return
+        consumedMutationGeneration = generation
+        stateSet(KEY_CONSUMED_MUTATION_GENERATION, generation)
         if (userId <= 0L) return
-        val picState = picLoader.state.value
-        val shouldRefreshPic = _uiState.value.selectedCategory == UserCollectCategory.PICTURE ||
-            picState.items.isNotEmpty() ||
-            picState.stage != LoadStage.Idle
-        if (shouldRefreshPic) {
-            dispatchToLoader(UserCollectCategory.PICTURE) { it.refresh() }
+        val active = _uiState.value.selectedCategory
+        val staged = mutableSetOf<UserCollectCategory>()
+        UserCollectCategory.entries.forEach { category ->
+            val listState = loaders.getValue(category).state.value
+            // 已有数据或正在装载才算已装载；闲置空列表不产生预测性请求
+            if (listState.items.isEmpty() && listState.stage == LoadStage.Idle) return@forEach
+            if (category == active) {
+                dispatchToLoader(category) { it.refresh() }
+            } else {
+                staged.add(category)
+            }
         }
+        dirtyCategories.clear()
+        dirtyCategories.addAll(staged)
     }
 
     // ==================== 内部工具 ====================
@@ -1162,8 +1180,8 @@ class UserCollectViewModel(
         private const val KEY_HOBBY_ORDER_MEMORY = "collect_hobby_order_memory"
         private const val KEY_HOBBY_SORT_TYPE_MEMORY = "collect_hobby_sort_type_memory"
 
-        /** 已消费的画廊写操作计数在恢复槽中的键 */
-        private const val KEY_CONSUMED_GALLERY_MUTATION_COUNT = "consumedGalleryMutationCount"
+        /** 已消费的收藏变更代数在恢复槽中的键 */
+        private const val KEY_CONSUMED_MUTATION_GENERATION = "consumedMutationGeneration"
 
         /** 通用 4 页：厂商/系列/角色/人物，共用 2 档排序白名单 */
         val COMMON_CATEGORIES = setOf(

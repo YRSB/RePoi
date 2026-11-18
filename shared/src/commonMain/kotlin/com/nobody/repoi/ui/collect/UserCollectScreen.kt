@@ -88,8 +88,8 @@ fun UserCollectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 恢复感知：从图片画廊（独立 Nav3 路由）出栈回来时，若画廊内动过收藏，
-    // 由仓储脏位（galleryMutationCount）驱动图片大类静默刷新。
+    // 恢复感知：从任意二级页出栈回来时，若仓储收藏变更代数增长，
+    // 当前激活大类立即原位刷新，其余已装载大类在切入时惰性刷新。
     // resumeCount > 1 跳过首次组合，避免刚进入页面就多发一次请求。
     var resumeCount by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
