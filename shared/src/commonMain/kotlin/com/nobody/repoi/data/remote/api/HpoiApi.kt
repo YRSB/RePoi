@@ -94,6 +94,11 @@ import com.nobody.repoi.data.remote.model.ZoneInfoPayload
 import com.nobody.repoi.data.remote.model.ZoneItemPayload
 import com.nobody.repoi.data.remote.model.ZoneItemsPayload
 import com.nobody.repoi.data.remote.plugin.decodeRefAware
+import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
+import com.nobody.repoi.data.remote.plugin.BypassTokenSelfHealingAttributeKey
+import com.nobody.repoi.data.remote.plugin.PoiRequestTokenAttributeKey
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -124,7 +129,47 @@ import kotlinx.serialization.json.JsonObject
 class HpoiApi(
     private val client: HttpClient,
     private val json: Json,
+    private val onTokenExpired: suspend (triggeredToken: String) -> Unit = {},
 ) {
+
+    // ── 私有解包模板：信封剥离、异常分流与令牌失效自愈的唯一入口 ──
+
+    private suspend inline fun <reified T> HttpResponse.unwrapData(
+        json: Json,
+        fallbackMessage: String,
+    ): T {
+        val envelope = decodeRefAware<CommonResponse<T>>(json)
+        checkBusinessSuccess(envelope, fallbackMessage)
+        return envelope.data ?: throw ApiException(envelope.code, "服务端响应数据为空")
+    }
+
+    private suspend inline fun HttpResponse.unwrapUnit(json: Json, fallbackMessage: String) {
+        checkBusinessSuccess(decodeRefAware<CommonResponse<JsonElement>>(json), fallbackMessage)
+    }
+
+    private suspend inline fun <reified T> HttpResponse.unwrapDataOrNull(
+        json: Json,
+        fallbackMessage: String,
+    ): T? {
+        val envelope = decodeRefAware<CommonResponse<T>>(json)
+        checkBusinessSuccess(envelope, fallbackMessage)
+        return envelope.data
+    }
+
+    /** 复用 CommonResponse 的白名单与边缘码判定；4001 经在途快照回调惰性自愈。 */
+    private suspend fun HttpResponse.checkBusinessSuccess(
+        envelope: CommonResponse<*>,
+        fallbackMessage: String,
+    ) {
+        if (envelope.isSuccess) return
+        val bypass = call.request.attributes.getOrNull(BypassTokenSelfHealingAttributeKey) == true
+        if (envelope.isTokenExpired && !bypass) {
+            call.request.attributes.getOrNull(PoiRequestTokenAttributeKey)?.let { onTokenExpired(it) }
+        }
+        val message = envelope.msg ?: fallbackMessage
+        if (envelope.isCommentNotFound) throw CommentNotFoundException(envelope.code, message)
+        throw ApiException(envelope.code, message)
+    }
     // ── 首页动态/关注 ──────────────────────────────────────────────
 
     suspend fun getActionList(
@@ -581,10 +626,10 @@ class HpoiApi(
 
     // ── 用户/社交 ──────────────────────────────────────────────────
 
-    suspend fun getUserSelf(): CommonResponse<UserSelfPayload> =
+    suspend fun getUserSelf(): UserSelfPayload =
         client.post("api/user/self") {
             setBody(FormDataContent(Parameters.Empty))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "获取用户信息失败")
 
     /**
      * Token 登录验权直达通道：候选令牌经请求体 `utoken` 显式透传，不依赖全局注入。
@@ -592,11 +637,14 @@ class HpoiApi(
      * 背景：`CommonParamsPlugin` 按发包时内存镜像合并公共参数，候选令牌热切换存在竞态；
      * 此处按调用方传入值写入 `utoken` 字段（`merge` 保留调用方同名参数不覆盖），
      * 验权语义与批量并发隔离，行为与 `getUserSelf` 一致。
+     * 验权旁路：请求显式标记 [BypassTokenSelfHealingAttributeKey]，4001 只抛异常，
+     * 绝不触发当前设备活跃会话失效（ADR-0005）。
      */
-    suspend fun getUserSelfWithToken(candidateToken: String): CommonResponse<UserSelfPayload> =
+    suspend fun getUserSelfWithToken(candidateToken: String): UserSelfPayload =
         client.post("api/user/self") {
+            attributes.put(BypassTokenSelfHealingAttributeKey, true)
             setBody(formOf("utoken" to candidateToken))
-        }.decodeRefAware(json)
+        }.unwrapData(json, "Token 登录失败")
 
     suspend fun getFellowCount(userNodeId: Long): CommonResponse<FellowCountPayload> =
         client.post("api/user/fellow/count") {
@@ -1206,20 +1254,20 @@ class HpoiApi(
             setBody(formOf("type" to "privacy"))
         }.decodeRefAware(json)
 
-    suspend fun updateRiakSetting(key: String, value: Int): CommonResponse<JsonElement> =
+    suspend fun updateRiakSetting(key: String, value: Int): Unit =
         client.post("api/setting/riak/upd") {
             setBody(formOf("key" to key, "val" to value))
-        }.decodeRefAware(json)
+        }.unwrapUnit(json, "更新隐私设置失败")
 
     suspend fun checkAccount(): CommonResponse<AccountCheckPayload> =
         client.post("api/user/check/account") {
             setBody(FormDataContent(Parameters.Empty))
         }.decodeRefAware(json)
 
-    suspend fun getUserPrivacy(): CommonResponse<UserPrivacyPayload> =
+    suspend fun getUserPrivacy(): UserPrivacyPayload? =
         client.post("api/user/privacy") {
             setBody(formOf("type" to "all"))
-        }.decodeRefAware(json)
+        }.unwrapDataOrNull(json, "获取账号信息失败")
 
     suspend fun updateUserBlock(userId: Long, blockState: Int): CommonResponse<JsonElement> =
         client.post("api/block/upd") {

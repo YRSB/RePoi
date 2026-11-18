@@ -78,8 +78,7 @@ class SettingsRepository(
             val snapshotToken = userSession.currentToken
             api.updateMysqlSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
         } else {
-            val snapshotToken = userSession.currentToken
-            api.updateRiakSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+            api.updateRiakSetting(key = key, value = value)
         }
     }
 
@@ -89,8 +88,7 @@ class SettingsRepository(
     }
 
     suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        api.updateRiakSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+        api.updateRiakSetting(key = key, value = value)
     }
 
     suspend fun checkAccount(): Result<AccountCheckResult> = runCatching {
@@ -100,9 +98,7 @@ class SettingsRepository(
     }
 
     suspend fun getUserPrivacy(): Result<UserPrivacyPayload> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserPrivacy()
-        response.unwrapData(userSession, "获取账号信息失败", snapshotToken) ?: UserPrivacyPayload()
+        api.getUserPrivacy() ?: UserPrivacyPayload()
     }
 
     private fun JsonElement?.parseUserState(): Map<String, Int> {

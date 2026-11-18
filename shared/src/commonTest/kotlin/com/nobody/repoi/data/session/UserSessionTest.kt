@@ -42,7 +42,19 @@ class UserSessionTest {
     private fun sessionOf(
         mock: MockApi,
         tokenManager: FakeTokenManager = FakeTokenManager(),
-    ): UserSessionImpl = UserSessionImpl(mock.api(testDispatcher), tokenManager, testDispatcher)
+    ): UserSessionImpl {
+        var session: UserSessionImpl? = null
+        session = UserSessionImpl(
+            mock.api(
+                dispatcher = testDispatcher,
+                tokenProvider = { tokenManager.currentToken },
+                onTokenExpired = { token -> session?.notifyTokenExpired(token) },
+            ),
+            tokenManager,
+            testDispatcher,
+        )
+        return session
+    }
 
     @Test
     fun 冷启动恢复本地有效凭据_立即进入已认证且不阻塞网络刷新() = runTest(testDispatcher) {

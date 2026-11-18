@@ -20,7 +20,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
+import com.nobody.repoi.data.remote.plugin.installCommonParams
 import kotlinx.serialization.json.Json
+import kotlin.test.assertTrue
 
 /**
  * commonTest MockEngine 脚手架：等价替代 Retrofit `MockWebServer`。
@@ -38,6 +40,8 @@ class MockApi {
     private data class Queued(val status: HttpStatusCode, val body: String)
 
     private val bodies = ArrayDeque<Queued>()
+
+    private val expiredTokens = mutableListOf<String>()
     private val requests = MutableStateFlow<List<HttpRequestData>>(emptyList())
     private val routes = mutableListOf<Pair<String, Queued>>()
     private val predicateRoutes = mutableListOf<
@@ -183,7 +187,15 @@ class MockApi {
     fun failure(code: Int, msg: String): String =
         """{"success":false,"code":$code,"msg":"$msg","data":null}"""
 
-    fun api(dispatcher: CoroutineDispatcher? = null): HpoiApi {
+    /**
+     * 构造接入深接缝的 API 桩：默认收集 4001 在途令牌失效通知。
+     * [tokenProvider] 非空时安装公共参数插件以写入在途快照；[onTokenExpired] 供会话测试复用通知。
+     */
+    fun api(
+        dispatcher: CoroutineDispatcher? = null,
+        tokenProvider: (() -> String)? = null,
+        onTokenExpired: (suspend (String) -> Unit)? = null,
+    ): HpoiApi {
         val handler: MockRequestHandler = { request ->
             requests.update { it + request }
             val path = request.url.encodedPath
@@ -215,9 +227,24 @@ class MockApi {
                 requestHandlers.add(handler)
             })
         }
-        return HpoiApi(HttpClient(mock) {
+        val client = HttpClient(mock) {
             expectSuccess = false
-        }, json)
+        }
+        if (tokenProvider != null) client.installCommonParams(tokenProvider)
+        return HpoiApi(client, json) { token ->
+            expiredTokens.add(token)
+            onTokenExpired?.invoke(token)
+        }
+    }
+
+    /** 断言网络管道已用指定在途令牌驱动过失效自愈。 */
+    fun assertTokenExpiredNotified(expectedToken: String) {
+        assertTrue(expectedToken in expiredTokens, "期望收到令牌 $expectedToken 的失效通知，实际为 $expiredTokens")
+    }
+
+    /** 断言整个用例期间未触发任何令牌失效通知（用于候选验权旁路）。 */
+    fun assertNoTokenExpiredNotified() {
+        assertTrue(expiredTokens.isEmpty(), "不应触发令牌失效通知，实际为 $expiredTokens")
     }
 
     private fun formOf(request: HttpRequestData): Map<String, String> {
