@@ -121,9 +121,8 @@ class CategoryManager(
     fun refreshCategoriesAsync() {
         scope.launch {
             try {
-                val response = api.getAllCategories()
-                if (response.success && response.data?.list != null) {
-                    val nodes = response.data.list
+                val nodes = api.getAllCategories().list
+                if (!nodes.isNullOrEmpty()) {
                     val newMap = mutableMapOf<Int, MutableList<CategoryItem>>()
 
                     // 构建二级分类树（注意用业务 categoryId，不用数据库行 id）

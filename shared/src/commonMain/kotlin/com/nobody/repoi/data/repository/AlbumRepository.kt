@@ -4,7 +4,6 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.data.remote.model.AlbumZoneTab
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.ZoneCategoryItem
 
 data class AlbumPage(
@@ -16,9 +15,7 @@ class AlbumRepository(
     private val api: HpoiApi
 ) {
     suspend fun getZoneTabs(): Result<List<AlbumZoneTab>> = runCatching {
-        val response = api.getZoneHomeTabs()
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分区失败")
-        val data = response.data ?: return@runCatching listOf(AlbumZoneTab.ALL)
+        val data = api.getZoneHomeTabs()
         val tabs = mutableListOf<AlbumZoneTab>()
         if (data.settings?.showAll != false) tabs.add(AlbumZoneTab.ALL)
         val followIds = data.focusZones
@@ -34,9 +31,6 @@ class AlbumRepository(
                 tabs.add(AlbumZoneTab(key = "z${zone.nodeId}", name = name, zoneIds = zone.nodeId.toString()))
             }
         tabs
-    }.recoverCatching { error ->
-        if ((error as? ApiException)?.code == 4001) throw error
-        listOf(AlbumZoneTab.ALL)
     }
 
     /**
@@ -58,7 +52,7 @@ class AlbumRepository(
         orderString: String? = null
     ): Result<AlbumPage> = runCatching {
         val finalOrder = orderString?.ifBlank { null } ?: order.apiValue
-        val response = api.getAlbumList(
+        val rawList = api.getAlbumList(
             page = page,
             pageSize = pageSize,
             order = finalOrder,
@@ -66,14 +60,9 @@ class AlbumRepository(
             category = category,
             releaseStart = releaseStart,
             releaseEnd = releaseEnd
-        )
-        if (response.isSuccess) {
-            val rawList = response.data?.list ?: emptyList()
-            val items = rawList.filter { it.targetAlbumId > 0L }
-            AlbumPage(items = items, hasMore = rawList.size >= pageSize)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取相册列表失败")
-        }
+        ).list.orEmpty()
+        val items = rawList.filter { it.targetAlbumId > 0L }
+        AlbumPage(items = items, hasMore = rawList.size >= pageSize)
     }
 
     /**
@@ -85,10 +74,9 @@ class AlbumRepository(
      * 「全部」由 UI 自行追加，不在此返回。
      */
     suspend fun getAlbumCategories(nodeId: Long): Result<List<ZoneCategoryItem>> = runCatching {
-        val response = api.getZoneCategories(nodeId = nodeId, itemType = "album")
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分类失败")
-        if (response.data?.visible == false) return@runCatching emptyList()
-        response.data?.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
+        val data = api.getZoneCategories(nodeId = nodeId, itemType = "album")
+        if (data.visible == false) emptyList()
+        else data.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
     }
 
     suspend fun getRankingWindow(
@@ -110,13 +98,8 @@ class AlbumRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<AlbumPage> = runCatching {
-        val response = api.getPraiseTop(type = type, page = page, pageSize = pageSize)
-        if (response.isSuccess) {
-            val rawList = response.data?.list ?: emptyList()
-            val items = rawList.filter { it.targetAlbumId > 0L }
-            AlbumPage(items = items, hasMore = rawList.size >= pageSize)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取点赞榜失败")
-        }
+        val rawList = api.getPraiseTop(type = type, page = page, pageSize = pageSize).list.orEmpty()
+        val items = rawList.filter { it.targetAlbumId > 0L }
+        AlbumPage(items = items, hasMore = rawList.size >= pageSize)
     }
 }

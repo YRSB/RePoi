@@ -10,7 +10,6 @@ import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.session.ZoneBoardSessionImpl
@@ -68,7 +67,7 @@ class ZoneDetailViewModelTest {
         val zoneRepository = ZoneRepository(mockApi.api(dispatcher), preferences)
         val itemRepository = ItemRepository(mockApi.api(dispatcher))
         val resaleRepository = ResaleRepository(mockApi.api(dispatcher))
-        val collectRepository = CollectRepository(mockApi.api(dispatcher), mockApi.json, FakeUserSession("utoken-test"))
+        val collectRepository = CollectRepository(mockApi.api(dispatcher), mockApi.json)
         val categoryManager = CategoryManager(mockApi.api(dispatcher))
 
         val sessionFactory = ZoneBoardSessionImpl.Factory(

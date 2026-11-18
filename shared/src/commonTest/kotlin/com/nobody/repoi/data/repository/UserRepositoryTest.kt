@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.repository
 
+import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.AmazonMoneyData
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.repository.FollowRepository
@@ -11,8 +12,7 @@ import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserProfile
-import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.data.session.SessionState
+
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
@@ -29,7 +29,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
+
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -38,7 +38,7 @@ import kotlin.test.assertTrue
  *
  * 对齐 PoiShelf `UserRepositoryTest`（逐用例；Retrofit+MockWebServer →
  * [MockApi] MockEngine+真实 HpoiApi（含按体分发 `routeWhen`，等价 Dispatcher）；
- * 鉴权依赖 [FakeUserSession]（4001 断言改为会话未认证与 `tokenExpiredCalls` 计数）；
+ * 鉴权档案由持有会话的 ViewModel 传入，仓储自身不接触会话状态
  * JUnit4 → kotlin.test + `runTest`）。
  */
 class UserRepositoryTest {
@@ -49,25 +49,18 @@ class UserRepositoryTest {
         isLenient = true
     }
 
-    private fun setup(token: String = "utoken-test"): Triple<MockApi, FakeUserSession, UserRepository> {
+    private fun setup(): Pair<MockApi, UserRepository> {
         val mock = MockApi()
-        val session = FakeUserSession(token)
-        val followRepo = FollowRepository(mock.api(), json, session)
+        val followRepo = FollowRepository(mock.api(), json)
         val financeRepo = UserFinanceRepository(mock.api(), json)
-        return Triple(mock, session, UserRepository(mock.api(), session, followRepo, financeRepo))
+        return mock to UserRepository(mock.api(), followRepo, financeRepo)
     }
 
     @Test
     fun loadFullProfile_1Plus5Concurrency_aggregatesAllData() = runTest {
-        val (mock, session, repository) = setup()
-        // 会话中已有档案：loadFullProfile 直接复用，不再请求 /api/user/self
-        session.setState(
-            SessionState.Authenticated(
-                userId = 88888L,
-                token = "utoken-test",
-                profile = UserProfile(id = 88888L, nickname = "手办达人", userName = "master", level = 5),
-            )
-        )
+        val (mock, repository) = setup()
+        // 档案由调用方传入，仓储不再请求 /api/user/self
+        val profile = UserProfile(id = 88888L, nickname = "手办达人", userName = "master", level = 5)
         // 配置按路径 + 按体分发（等价 Dispatcher 1+5 并发拦截）
         mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":120,"friendCount":45,"praiseCount":666}}}""")
         mock.route(
@@ -87,7 +80,7 @@ class UserRepositoryTest {
             body = { _, _ -> """{"success":true,"code":200,"msg":"ok","data":{"list":[{"itemId":301,"nameCN":"想要手办C"}]}}""" }
         )
 
-        val result = repository.loadFullProfile()
+        val result = repository.loadFullProfile(profile)
         assertTrue(result.isSuccess)
         val data = result.getOrThrow()
 
@@ -117,24 +110,15 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun loadFullProfile_withForceRefresh_fetchesLatestSelfProfile() = runTest {
-        val (mock, session, repository) = setup()
-        session.setState(
-            SessionState.Authenticated(
-                userId = 88888L,
-                token = "utoken-test",
-                profile = UserProfile(id = 88888L, nickname = "旧昵称", userName = "master", level = 5),
-            )
-        )
-        val freshProfile = UserProfile(id = 88888L, nickname = "新昵称", userName = "master", level = 6)
-        session.refreshProfileResult = Result.success(freshProfile)
+    fun loadFullProfile_usesProvidedProfile() = runTest {
+        val (mock, repository) = setup()
+        val profile = UserProfile(id = 88888L, nickname = "新昵称", userName = "master", level = 6)
         mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":0,"friendCount":0,"praiseCount":0}}}""")
         mock.route("api/user/orderStatic", """{"success":true,"code":200,"msg":"ok","data":{"data":{"count":{"buy":0,"preorder":0,"care":0}}}}""")
 
-        val result = repository.loadFullProfile(forceRefresh = true)
+        val result = repository.loadFullProfile(profile)
         assertTrue(result.isSuccess)
         val data = result.getOrThrow()
-        assertEquals(1, session.refreshProfileCalls)
         assertEquals("新昵称", data.profile.displayName)
         assertEquals(6, data.profile.level)
     }
@@ -272,7 +256,7 @@ class UserRepositoryTest {
 
     @Test
     fun getUserPraiseList_success_parsesItemAndUser() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         mock.enqueue(
             """{"success": true,"code": 200,"msg": "ok","data": {"list": [{"user": {"level": 4,"header": "header/user_20001.jpg","nickname": "点赞达人","userName": "praiser_1","sign": "天天点赞"},"item": {"id": 50001,"itemId": 50001,"itemType": "hobby","name": "Hatsune Miku","nameCN": "初音未来","path": "hobby/50001","cover": "covers/miku.jpg","categoryId": 100,"commentCount": 30,"collect": 500}}]}}"""
         )
@@ -297,12 +281,8 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun updateUserBase_success_postsKeyAndValueAndRefreshesProfile() = runTest {
-        val (mock, session, repository) = setup()
-        session.refreshProfileResult = Result.success(
-            UserProfile(id = 88888L, nickname = "新昵称", sign = "新签名", level = 5)
-        )
-        // upd 请求响应成功；档案刷新由会话即刻返回，不再发 /api/user/self
+    fun updateUserBase_success_postsKeyAndValue() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
 
         val result = repository.updateUserBase(key = "sign", value = "新签名")
@@ -314,17 +294,11 @@ class UserRepositoryTest {
         val form = req.formEntries()
         assertEquals("sign", form["key"])
         assertEquals("新签名", form["val"])
-
-        // 验证会话档案镜像同步
-        val currentProfile = (session.state.value as? SessionState.Authenticated)?.profile
-        assertNotNull(currentProfile)
-        assertEquals("新签名", currentProfile.sign)
-        assertEquals("新昵称", currentProfile.nickname)
     }
 
     @Test
     fun getUserInfo_successWithId_parsesUserInfo() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         mock.enqueue(
             """{"success": true,"code": 200,"msg": "ok","data": {"user": {"id": 77777,"nickname": "其他用户","level": 2}}}"""
         )
@@ -342,7 +316,7 @@ class UserRepositoryTest {
 
     @Test
     fun getUserInfo_whenIdFails_fallsBackToUserId() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         // 第一次以 id 查询失败（未命中）
         mock.enqueue("""{"success": false, "code": -8, "msg": "未知错误！", "data": {}}""")
         // 第二次回退以 userId 查询成功
@@ -361,6 +335,28 @@ class UserRepositoryTest {
 
         val req2 = mock.takeRequest()
         assertEquals("77777", req2.formEntries()["userId"])
+    }
+
+    @Test
+    fun getCollectSimilarity_failureBubblesUp() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+
+        val result = repository.getCollectSimilarity(88888L)
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+    }
+
+    @Test
+    fun getUserActionList_failureBubblesUp() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.failure(500, "服务异常"))
+
+        val result = repository.getUserActionList(88888L)
+
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
 }

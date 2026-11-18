@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.profile
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ThemeManager
+import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
@@ -68,12 +69,12 @@ class ProfileViewModelTest {
         stubProfileRoutes(mock)
         val session = FakeUserSession(initialState)
         val api = mock.api(testDispatcher)
-        val followRepo = FollowRepository(api, mock.json, session)
+        val followRepo = FollowRepository(api, mock.json)
         val financeRepo = UserFinanceRepository(api)
-        val userRepo = UserRepository(api, session, followRepo, financeRepo)
+        val userRepo = UserRepository(api, followRepo, financeRepo)
         val viewModel = ProfileViewModel(
             userRepo,
-            MessageRepository(api, session),
+            MessageRepository(api),
             ThemeManager(TestDataStore.inMemory()),
             session,
             followRepo,
@@ -222,4 +223,24 @@ class ProfileViewModelTest {
         assertFalse(env.viewModel.uiState.value.isLoggedIn)
         assertNull(env.viewModel.uiState.value.profile)
     }
+
+    @Test
+    fun pullToRefresh_刷新失败时展示错误且不重复刷新() = runTest(testDispatcher) {
+        val env = env(
+            SessionState.Authenticated(userId = 88888L, token = "utoken-test", profile = profile)
+        )
+        advanceUntilIdle()
+        assertEquals(profile, env.viewModel.uiState.value.profile)
+
+        env.session.refreshProfileResult = Result.failure(ApiException(500, "刷新失败"))
+        env.viewModel.refresh()
+        advanceUntilIdle()
+
+        val state = env.viewModel.uiState.value
+        assertEquals(1, env.session.refreshProfileCalls)
+        assertEquals("刷新失败", state.errorMessage)
+        assertFalse(state.isRefreshing)
+        assertEquals(profile, state.profile)
+    }
+
 }

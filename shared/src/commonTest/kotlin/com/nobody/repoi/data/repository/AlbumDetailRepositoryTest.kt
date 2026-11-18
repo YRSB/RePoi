@@ -50,7 +50,7 @@ class AlbumDetailRepositoryTest {
     }
 
     @Test
-    fun getAlbumTags_mapsNonBlankTagsAndDegradesToEmpty() = runTest {
+    fun getAlbumTags_mapsNonBlankTagsAndPropagatesFailure() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(
             mock.ok("""{"tags":[{"count":2,"tag":{"tagValue":"标签A"}},{"count":0,"tag":{"tagValue":""}}]}""")
@@ -62,9 +62,9 @@ class AlbumDetailRepositoryTest {
         assertEquals("1", mock.takeRequest().formEntries()["id"])
 
         mock.enqueue(mock.failure(500, "error"))
-        val degraded = repository.getAlbumTags(1L)
-        assertTrue(degraded.isSuccess)
-        assertTrue(degraded.getOrThrow().isEmpty())
+        val failure = repository.getAlbumTags(1L)
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test

@@ -1,7 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.PicItem
 
 /**
@@ -31,7 +30,7 @@ class PictureListRepository(
         order: String? = null,
         nodeId: Long? = null
     ): Result<List<PicItem>> = runCatching {
-        val response = api.getPicList(
+        api.getPicList(
             itemId = itemId,
             itemType = itemType,
             picSubType = subType,
@@ -39,11 +38,6 @@ class PictureListRepository(
             pageSize = pageSize,
             order = order,
             nodeId = nodeId
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取图片列表失败")
-        }
+        ).list.orEmpty()
     }
 }

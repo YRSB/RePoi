@@ -43,7 +43,7 @@ class CommentDetailViewModelTest {
     private fun setup(): Triple<MockApi, CommentDetailViewModel, FakeUserSession> {
         val mockApi = MockApi()
         val session = FakeUserSession("test-token")
-        val commentRepo = CommentRepository(mockApi.api(), session)
+        val commentRepo = CommentRepository(mockApi.api())
         val stickerRepo = StickerRepository(mockApi.api())
         val viewModel = CommentDetailViewModel(
             repository = commentRepo,

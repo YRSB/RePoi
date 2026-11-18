@@ -1,8 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
-import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,21 +10,15 @@ import kotlin.test.assertTrue
  * 讨论贴仓储单测：帖子详情、回帖列表适配、发表回帖、楼中楼回复与删除（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `PostRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeUserSession]；
+ * [MockApi] MockEngine+真实 HpoiApi；
  * JUnit4 → kotlin.test）。
  * 移植说明：`addDiscuss` 的 URL 解码断言在 MockEngine 侧直接断言解码后 form 值，语义等价。
  */
 class PostRepositoryTest {
 
-    private fun setup(token: String = "utoken-test"): Pair<MockApi, PostRepository> {
+    private fun setup(): Pair<MockApi, PostRepository> {
         val mock = MockApi()
-        return mock to PostRepository(mock.api(), FakeUserSession(token))
-    }
-
-    private fun setupWithSession(token: String = "utoken-test"): Triple<MockApi, FakeUserSession, PostRepository> {
-        val mock = MockApi()
-        val session = FakeUserSession(token)
-        return Triple(mock, session, PostRepository(mock.api(), session))
+        return mock to PostRepository(mock.api())
     }
 
     @Test
@@ -262,16 +254,6 @@ class PostRepositoryTest {
     }
 
     @Test
-    fun addDiscuss_notLoggedIn_failsEarly() = runTest {
-        val (_, repository) = setup(token = "")
-        val result = repository.addDiscuss(12345L, "测试回帖")
-        assertTrue(result.isFailure)
-        val ex = result.exceptionOrNull()
-        assertTrue(ex is ApiException)
-        assertEquals(4001, ex.code)
-    }
-
-    @Test
     fun addDiscuss_success() = runTest {
         val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
@@ -368,45 +350,20 @@ class PostRepositoryTest {
         assertEquals(400, (deletePostResult.exceptionOrNull() as ApiException).code)
     }
     @Test
-    fun addDiscuss_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setupWithSession("tok-post")
+    fun addDiscuss_failure_throwsApiException() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
         val result = repository.addDiscuss(postId = 12345L, content = "回帖内容")
         assertTrue(result.isFailure)
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 
     @Test
-    fun deletePost_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setupWithSession("tok-post")
+    fun deletePost_failure_throwsApiException() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
         val result = repository.deletePost(postId = 12345L)
         assertTrue(result.isFailure)
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
-    }
-
-    @Test
-    fun api4001_withSwitchedSession_preservesNewSession() = runTest {
-        val (mock, session, repository) = setupWithSession("token-A")
-        mock.routeWhen(
-            predicate = { path, _ -> path.contains("api/discuss/add") },
-            body = { _, _ ->
-                // 模拟网络往返期间用户切换登录到了新账号 token-B
-                session.setState(SessionState.Authenticated(userId = 2L, token = "token-B"))
-                """{"success":false,"code":4001,"msg":"登录已失效","data":null}"""
-            }
-        )
-
-        val result = repository.addDiscuss(postId = 12345L, content = "在途凭据守卫")
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is ApiException)
-        assertEquals(4001, exception.code)
-        // 在途凭据守卫生效：旧请求快照 token-A 不匹配活跃 token-B，新会话未被误伤清理
-        assertTrue(session.isAuthenticated)
-        assertEquals("token-B", session.currentToken)
     }
 }

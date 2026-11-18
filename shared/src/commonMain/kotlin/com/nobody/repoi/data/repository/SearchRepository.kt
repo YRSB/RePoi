@@ -2,7 +2,6 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.SearchHistoryManager
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.AttributeItem
 import com.nobody.repoi.data.remote.model.HotwordItem
 import com.nobody.repoi.data.remote.model.SearchResponsePayload
@@ -64,21 +63,11 @@ class SearchRepository(
             params["attribute"] = attribute.toString()
         }
 
-        val response = api.search(params)
-        if (response.success && response.data != null) {
-            response.data
-        } else {
-            throw ApiException(response.code, response.msg ?: "搜索失败")
-        }
+        api.search(params)
     }
 
     suspend fun getElementAttributes(categoryId: Int): Result<List<AttributeItem>> = runCatching {
-        val response = api.getElementAttributes(categoryId)
-        if (response.success && response.data != null) {
-            response.data.attributeList.orEmpty()
-        } else {
-            throw ApiException(response.code, response.msg ?: "属性加载失败")
-        }
+        api.getElementAttributes(categoryId).attributeList.orEmpty()
     }
 
     /**
@@ -89,28 +78,18 @@ class SearchRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<UserSearchPayload> = runCatching {
-        val response = api.searchUsers(
+        api.searchUsers(
             keyword = keyword.trim(),
             page = page,
             pageSize = pageSize
-        )
-        if (response.success) {
-            response.data ?: UserSearchPayload(userList = emptyList())
-        } else {
-            throw ApiException(response.code, response.msg ?: "搜索用户失败")
-        }
+        ) ?: UserSearchPayload(userList = emptyList())
     }
 
     /**
      * 获取指定分类下的热词 (POST api/search/hotword)
      */
     suspend fun getHotwords(category: Int): Result<List<HotwordItem>> = runCatching {
-        val response = api.getHotwords(category)
-        if (response.success && response.data != null) {
-            response.data.list.orEmpty()
-        } else {
-            emptyList()
-        }
+        api.getHotwords(category).list.orEmpty()
     }
 
     /**
@@ -120,11 +99,6 @@ class SearchRepository(
         val trimmed = keyword.trim()
         if (trimmed.isBlank()) return@runCatching emptyList()
 
-        val response = api.getAutoFill(type = category, keywords = trimmed)
-        if (response.success && response.data != null) {
-            response.data.keywords.orEmpty()
-        } else {
-            emptyList()
-        }
+        api.getAutoFill(type = category, keywords = trimmed).keywords.orEmpty()
     }
 }

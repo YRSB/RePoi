@@ -4,8 +4,6 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.AccountCheckResult
 import com.nobody.repoi.data.remote.model.MaskItem
 import com.nobody.repoi.data.remote.model.UserPrivacyPayload
-import com.nobody.repoi.data.session.UserSession
-import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -23,24 +21,14 @@ object PrivacyChannels {
 
 class SettingsRepository(
     private val api: HpoiApi,
-    private val userSession: UserSession
 ) {
-    /** 兼容桥：由会话状态映射当前令牌；新代码应直接观察 [UserSession.state]。 */
-    val tokenFlow: Flow<String>
-        get() = userSession.tokenFlow
-
-    val isLoggedIn: Boolean get() = userSession.isAuthenticated
 
     suspend fun addMask(itemNodeId: Long): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.addMask(itemNodeId = itemNodeId)
-        response.unwrapUnit(userSession, "屏蔽失败", snapshotToken)
+        api.addMask(itemNodeId = itemNodeId)
     }
 
     suspend fun deleteMask(itemNodeId: Long): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.deleteMask(itemNodeId = itemNodeId)
-        response.unwrapUnit(userSession, "解除屏蔽失败", snapshotToken)
+        api.deleteMask(itemNodeId = itemNodeId)
     }
 
     suspend fun getMaskList(
@@ -48,19 +36,15 @@ class SettingsRepository(
         pageSize: Int = 20,
         itemType: String
     ): Result<List<MaskItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getMaskList(page = page, pageSize = pageSize, itemType = itemType)
-        response.unwrapData(userSession, "获取屏蔽列表失败", snapshotToken)?.blockList ?: emptyList()
+        api.getMaskList(page = page, pageSize = pageSize, itemType = itemType)?.blockList ?: emptyList()
     }
 
     suspend fun getMysqlSettings(): Result<Map<String, Int>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        api.getMysqlSettings().unwrapData(userSession, "获取隐私设置失败", snapshotToken).parseUserState()
+        api.getMysqlSettings().parseUserState()
     }
 
     suspend fun getRiakSettings(): Result<Map<String, Int>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        api.getRiakSettings().unwrapData(userSession, "获取隐私设置失败", snapshotToken).parseUserState()
+        api.getRiakSettings().parseUserState()
     }
 
     suspend fun getPrivacySettings(): Result<Map<String, Int>> {
@@ -75,34 +59,26 @@ class SettingsRepository(
 
     suspend fun updatePrivacySetting(key: String, value: Int): Result<Unit> = runCatching {
         if (key in PrivacyChannels.MYSQL_KEYS) {
-            val snapshotToken = userSession.currentToken
-            api.updateMysqlSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+            api.updateMysqlSetting(key = key, value = value)
         } else {
-            val snapshotToken = userSession.currentToken
-            api.updateRiakSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+            api.updateRiakSetting(key = key, value = value)
         }
     }
 
     suspend fun updateMysqlSetting(key: String, value: Int): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        api.updateMysqlSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+        api.updateMysqlSetting(key = key, value = value)
     }
 
     suspend fun updateRiakSetting(key: String, value: Int): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        api.updateRiakSetting(key = key, value = value).unwrapUnit(userSession, "更新隐私设置失败", snapshotToken)
+        api.updateRiakSetting(key = key, value = value)
     }
 
     suspend fun checkAccount(): Result<AccountCheckResult> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.checkAccount()
-        response.unwrapData(userSession, "获取账号状态失败", snapshotToken)?.result ?: AccountCheckResult()
+        api.checkAccount()?.result ?: AccountCheckResult()
     }
 
     suspend fun getUserPrivacy(): Result<UserPrivacyPayload> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserPrivacy()
-        response.unwrapData(userSession, "获取账号信息失败", snapshotToken) ?: UserPrivacyPayload()
+        api.getUserPrivacy() ?: UserPrivacyPayload()
     }
 
     private fun JsonElement?.parseUserState(): Map<String, Int> {

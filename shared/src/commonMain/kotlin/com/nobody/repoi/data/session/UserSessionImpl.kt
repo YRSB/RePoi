@@ -55,50 +55,41 @@ internal class UserSessionImpl(
     }
 
     override suspend fun login(account: String, password: String): Result<LoginData> = runCatching {
-        val response = api.login(account = account, password = password)
-        if (response.isSuccess || (response.success && response.data?.utoken?.isNotBlank() == true)) {
-            val data = response.data ?: throw ApiException(response.code, "服务器未返回登录数据")
-            val token = data.utoken?.takeIf { it.isNotBlank() }
-                ?: throw ApiException(response.code, "未获取到有效的登录令牌")
-            val userId = data.user?.actualUserId ?: 0L
-            val userName = data.user?.userName
-            mutex.withLock {
-                tokenManager.saveToken(token, userName)
-                if (userId > 0L) tokenManager.saveCurrentUser(userId, userName)
-                _state.value = SessionState.Authenticated(userId = userId, token = token)
-            }
-            launchProfileRefresh()
-            data
-        } else {
-            throw ApiException(response.code, response.msg ?: "登录失败")
+        val data = api.login(account = account, password = password)
+        val token = data.utoken?.takeIf { it.isNotBlank() }
+            ?: throw ApiException(200, "未获取到有效的登录令牌")
+        val userId = data.user?.actualUserId ?: 0L
+        val userName = data.user?.userName
+        mutex.withLock {
+            tokenManager.saveToken(token, userName)
+            if (userId > 0L) tokenManager.saveCurrentUser(userId, userName)
+            _state.value = SessionState.Authenticated(userId = userId, token = token)
         }
+        launchProfileRefresh()
+        data
     }
 
     override suspend fun loginWithToken(rawToken: String): Result<UserProfile> = runCatching {
         val candidate = rawToken.trim()
         if (candidate.isBlank()) throw ApiException(400, "请输入登录令牌")
-        val response = try {
-            api.getUserSelfWithToken(candidate)
+        val profile = try {
+            api.getUserSelfWithToken(candidate).user ?: throw ApiException(200, "用户信息为空")
+        } catch (e: ApiException) {
+            throw mapTokenLoginError(e)
         } catch (e: Exception) {
-            if (e is ApiException) throw mapTokenLoginError(e)
             throw ApiException(-1, "网络连接异常，请检查后重试")
         }
-        if (response.isSuccess || (response.success && response.data?.user != null)) {
-            val profile = response.data?.user ?: throw ApiException(response.code, "用户信息为空")
-            val userName = profile.nickname?.ifBlank { null } ?: profile.userName
-            mutex.withLock {
-                tokenManager.saveToken(candidate, userName)
-                runCatching { tokenManager.saveCurrentUser(profile.id, userName) }
-                _state.value = SessionState.Authenticated(
-                    userId = profile.id,
-                    token = candidate,
-                    profile = profile,
-                )
-            }
-            profile
-        } else {
-            throw mapTokenLoginError(ApiException(response.code, response.msg ?: "Token 登录失败"))
+        val userName = profile.nickname?.ifBlank { null } ?: profile.userName
+        mutex.withLock {
+            tokenManager.saveToken(candidate, userName)
+            runCatching { tokenManager.saveCurrentUser(profile.id, userName) }
+            _state.value = SessionState.Authenticated(
+                userId = profile.id,
+                token = candidate,
+                profile = profile,
+            )
         }
+        profile
     }
 
     override suspend fun logout() {
@@ -111,15 +102,9 @@ internal class UserSessionImpl(
     override suspend fun refreshProfile(): Result<UserProfile> = runCatching {
         val snapshot = currentToken
         if (snapshot.isBlank()) throw ApiException(401, "尚未登录")
-        val response = api.getUserSelf()
-        if (response.isSuccess || (response.success && response.data?.user != null)) {
-            val profile = response.data?.user ?: throw ApiException(response.code, "用户信息为空")
-            applyProfile(snapshot, profile)
-            profile
-        } else {
-            if (response.isTokenExpired) expireIfActive(snapshot)
-            throw ApiException(response.code, response.msg ?: "获取用户信息失败")
-        }
+        val profile = api.getUserSelf().user ?: throw ApiException(200, "用户信息为空")
+        applyProfile(snapshot, profile)
+        profile
     }
 
     override suspend fun notifyTokenExpired(triggeredToken: String?) {
@@ -180,11 +165,6 @@ internal class UserSessionImpl(
                 profile = profile,
             )
         }
-    }
-
-    /** 4001 自愈：仅当失效请求仍属于当前会话时才清理，避免误伤新登录会话。 */
-    private suspend fun expireIfActive(token: String) {
-        notifyTokenExpired(token)
     }
 
     private fun authenticatedOrNull(): SessionState.Authenticated? =

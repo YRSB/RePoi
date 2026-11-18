@@ -13,7 +13,7 @@ class FollowViewModelTest {
         val mock = MockApi()
         val session = FakeUserSession("token")
         val viewModel = FollowViewModel(
-            FollowRepository(mock.api(), mock.json, session),
+            FollowRepository(mock.api(), mock.json),
             session
         )
 

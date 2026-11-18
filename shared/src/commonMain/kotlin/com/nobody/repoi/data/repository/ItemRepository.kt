@@ -1,7 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.HOBBY_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.remote.model.HOBBY_R18_UNLIMITED
 import com.nobody.repoi.data.remote.model.HOBBY_SCALE_UNLIMITED
@@ -64,20 +63,8 @@ class ItemRepository(
             val preOrderDeferred = async { api.queryHobbyList(preOrderParams) }
             val shipDeferred = async { api.queryHobbyList(shipParams) }
 
-            val preOrderRes = preOrderDeferred.await()
-            val shipRes = shipDeferred.await()
-
-            val preOrderList = if (preOrderRes.isSuccess) {
-                preOrderRes.data?.list ?: emptyList()
-            } else {
-                emptyList()
-            }
-
-            val shipList = if (shipRes.isSuccess) {
-                shipRes.data?.list ?: emptyList()
-            } else {
-                emptyList()
-            }
+            val preOrderList = preOrderDeferred.await().list.orEmpty()
+            val shipList = shipDeferred.await().list.orEmpty()
 
             ItemHomePreviewData(
                 preOrderItems = preOrderList,
@@ -90,12 +77,7 @@ class ItemRepository(
      * 独立列表多维检索查询
      */
     suspend fun queryHobbyList(params: Map<String, String>): Result<List<HobbyItemSummary>> = runCatching {
-        val response = api.queryHobbyList(params)
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "查询列表失败")
-        }
+        api.queryHobbyList(params).list.orEmpty()
     }
 
     /**

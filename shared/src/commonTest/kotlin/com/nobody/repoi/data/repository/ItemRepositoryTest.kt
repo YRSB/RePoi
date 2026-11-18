@@ -74,7 +74,7 @@ class ItemRepositoryTest {
     }
 
     @Test
-    fun getItemHomePreview_partialFailureKeepsSuccessfulSection() = runTest {
+    fun getItemHomePreview_partialFailurePropagates() = runTest {
         val (mock, repository) = setup()
         mock.routeWhen(
             predicate = { path, form -> path.contains("api/hobby/query-v2") },
@@ -86,8 +86,8 @@ class ItemRepositoryTest {
 
         val result = repository.getItemHomePreview(10000)
 
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrThrow().preOrderItems.size + result.getOrThrow().releaseItems.size)
+        assertTrue(result.isFailure)
+        assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
     @Test

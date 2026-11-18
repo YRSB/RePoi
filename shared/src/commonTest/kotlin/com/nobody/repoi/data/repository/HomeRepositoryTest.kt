@@ -47,4 +47,18 @@ class HomeRepositoryTest {
         val error = result.exceptionOrNull() as ApiException
         assertEquals(500, error.code)
     }
+
+    @Test
+    fun getHomeFeed_tokenExpiredNotifiesSessionSelfHealing() = runTest {
+        val mock = MockApi()
+        // 深管道必须以在途快照驱动会话自愈：仓储不再自己做 4001 分支
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+        val repository = HomeRepository(mock.api(tokenProvider = { "tok-home" }))
+
+        val result = repository.getHomeFeed()
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        mock.assertTokenExpiredNotified("tok-home")
+    }
 }

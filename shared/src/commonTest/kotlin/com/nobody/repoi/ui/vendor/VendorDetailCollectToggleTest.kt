@@ -99,13 +99,13 @@ class VendorDetailCollectToggleTest {
 
     private fun newViewModel(detailMock: MockApi, collectMock: MockApi): VendorDetailViewModel {
         val session = FakeUserSession("utoken-test")
-        val collectRepository = CollectRepository(collectMock.api(testDispatcher), collectMock.json, session)
+        val collectRepository = CollectRepository(collectMock.api(testDispatcher), collectMock.json)
         return VendorDetailViewModel(
             VendorDetailRepository(detailMock.api(testDispatcher), collectRepository),
             session,
             ToggleItemCollectUseCase(collectRepository),
             CommentInteractionDelegate(
-                CommentRepository(detailMock.api(testDispatcher), session),
+                CommentRepository(detailMock.api(testDispatcher)),
                 StickerRepository(detailMock.api(testDispatcher)),
                 session
             )

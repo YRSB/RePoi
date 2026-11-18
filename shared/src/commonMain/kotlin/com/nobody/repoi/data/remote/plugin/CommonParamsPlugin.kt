@@ -14,6 +14,12 @@ import io.ktor.util.AttributeKey
 
 private val CommonParamsAttributeKey = AttributeKey<Boolean>("PoiShelfCommonParamsApplied")
 
+/** 在途登录令牌快照：发包前写入，供网络管道在 4001 时安全比对并驱动自愈。 */
+val PoiRequestTokenAttributeKey = AttributeKey<String>("PoiRequestToken")
+
+/** 候选令牌验权旁路：置位后 4001 只抛异常，不触发全局会话失效（ADR-0005）。 */
+val BypassTokenSelfHealingAttributeKey = AttributeKey<Boolean>("PoiBypassTokenSelfHealing")
+
 /**
  * 公共参数 Ktor 插件（`CommonParamsInterceptor` 的 Ktor 等价实现）。
  *
@@ -50,6 +56,7 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
         }
 
         val token = runCatching { tokenProvider() }.getOrDefault("")
+        request.attributes.put(PoiRequestTokenAttributeKey, token)
         val common = CommonParams.build(token)
         val method = request.method.value.uppercase()
 

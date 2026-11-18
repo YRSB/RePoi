@@ -5,8 +5,6 @@ import androidx.datastore.preferences.core.Preferences
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.awaitPendingWrites
 import com.nobody.repoi.data.remote.model.ApiException
-import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -22,12 +20,9 @@ class UserHistoryRepositoryTest {
     private val freshAlbumCover = "2026/11/fresh_album.jpg"
     private val staleCover = "2020/01/stale_cover.jpg"
 
-    private fun TestScope.setup(
-        token: String = "utoken-test"
-    ): Triple<MockApi, FakeUserSession, UserHistoryRepository> {
+    private fun TestScope.setup(): Pair<MockApi, UserHistoryRepository> {
         val mock = MockApi()
-        val session = FakeUserSession(token)
-        return Triple(mock, session, UserHistoryRepository(mock.api(), session, freshness(TestDataStore.coverFreshnessPrefs())))
+        return mock to UserHistoryRepository(mock.api(), freshness(TestDataStore.coverFreshnessPrefs()))
     }
 
     private fun TestScope.freshness(
@@ -58,7 +53,7 @@ class UserHistoryRepositoryTest {
 
     @Test
     fun getUserHistoryList_success_parsesItems() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         mock.enqueue(
             """{"success":true,"code":200,"data":{"readList":[{"id":123,"nodeId":456,"itemType":"hobby","title":"手办A"}]}}"""
         )
@@ -87,7 +82,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs, hobbyMock = detailMock, albumMock = albumMock),
         )
 
@@ -112,7 +106,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs, hobbyMock = detailMock),
         )
 
@@ -137,7 +130,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs, hobbyMock = detailMock),
         )
 
@@ -161,7 +153,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs),
         )
 
@@ -183,7 +174,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs),
         )
 
@@ -205,7 +195,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs),
         )
 
@@ -227,7 +216,6 @@ class UserHistoryRepositoryTest {
         )
         val repository = UserHistoryRepository(
             mock.api(),
-            FakeUserSession("utoken-test"),
             freshness(prefs),
         )
 
@@ -237,20 +225,19 @@ class UserHistoryRepositoryTest {
     }
 
     @Test
-    fun getUserHistoryList_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setup("expired-token")
+    fun getUserHistoryList_failure_throwsApiException() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录令牌已过期"}""")
 
         val result = repository.getUserHistoryList(itemType = "hobby", page = 1)
         assertTrue(result.isFailure)
         assertIs<ApiException>(result.exceptionOrNull())
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 
     @Test
     fun addUserHistory_success() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
 
         val result = repository.addUserHistory(itemNodeId = 789L)
@@ -260,19 +247,18 @@ class UserHistoryRepositoryTest {
     }
 
     @Test
-    fun addUserHistory_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setup("token-will-expire")
+    fun addUserHistory_failure_throwsApiException() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":false,"code":4001,"msg":"登录态失效"}""")
 
         val result = repository.addUserHistory(itemNodeId = 789L)
         assertTrue(result.isFailure)
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 
     @Test
     fun deleteUserHistory_emptyList_returnsImmediately() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         val result = repository.deleteUserHistory(emptyList())
         assertTrue(result.isSuccess)
         assertEquals(0, mock.requestCount)
@@ -280,7 +266,7 @@ class UserHistoryRepositoryTest {
 
     @Test
     fun deleteUserHistory_success() = runTest {
-        val (mock, _, repository) = setup()
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
 
         val result = repository.deleteUserHistory(listOf(101L, 102L))
@@ -290,13 +276,12 @@ class UserHistoryRepositoryTest {
     }
 
     @Test
-    fun deleteUserHistory_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setup("token-del")
+    fun deleteUserHistory_failure_throwsApiException() = runTest {
+        val (mock, repository) = setup()
         mock.enqueue("""{"success":false,"code":4001,"msg":"凭据过期"}""")
 
         val result = repository.deleteUserHistory(listOf(101L))
         assertTrue(result.isFailure)
         assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
     }
 }

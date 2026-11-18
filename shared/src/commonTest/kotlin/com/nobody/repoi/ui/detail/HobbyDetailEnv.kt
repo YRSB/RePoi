@@ -55,8 +55,8 @@ class HobbyDetailEnv(
     }
 
     val detailRepository = HobbyDetailRepository(detailMock.api(dispatcher))
-    val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json, session)
-    val commentRepository = CommentRepository(commentMock.api(dispatcher), session)
+    val collectRepository = CollectRepository(collectMock.api(dispatcher), collectMock.json)
+    val commentRepository = CommentRepository(commentMock.api(dispatcher))
     val stickerRepository = StickerRepository(detailMock.api(dispatcher))
     val exHobbyRepository = ExHobbyRepository(ExHobbyApi(HttpClient(exhobbyEngine), json))
     val preferences = ViewPreferencesManager(TestDataStore.inMemory())
@@ -69,7 +69,7 @@ class HobbyDetailEnv(
         preferences = coverFreshnessPreferences,
     )
     val userHistoryRepository = UserHistoryRepository(
-        userMock.api(dispatcher), session, coverFreshnessRepository
+        userMock.api(dispatcher), coverFreshnessRepository
     )
 
     val commentDelegate = CommentInteractionDelegate(

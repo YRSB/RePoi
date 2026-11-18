@@ -1,7 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
-import com.nobody.repoi.data.session.FakeUserSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +19,7 @@ class VendorDetailRepositoryTest {
     private fun setup(): Triple<MockApi, MockApi, VendorDetailRepository> {
         val mock = MockApi()
         val collectMock = MockApi()
-        val collectRepository = CollectRepository(collectMock.api(), collectMock.json, FakeUserSession("utoken-test"))
+        val collectRepository = CollectRepository(collectMock.api(), collectMock.json)
         return Triple(mock, collectMock, VendorDetailRepository(mock.api(), collectRepository))
     }
 
@@ -56,7 +55,7 @@ class VendorDetailRepositoryTest {
     }
 
     @Test
-    fun getCompanyActions_forwardsFiltersAndDegradesToEmpty() = runTest {
+    fun getCompanyActions_forwardsFiltersAndPropagatesFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
             mock.ok("""{"list":[{"id":1,"actionMessage":"开订时间","actionData":"preorder","actionType":1}]}""")
@@ -74,7 +73,9 @@ class VendorDetailRepositoryTest {
         assertEquals("33", recorded.queryParameter("lastId"))
 
         mock.enqueue(mock.failure(500, "error"))
-        assertTrue(repository.getCompanyActions(20L).getOrThrow().isEmpty())
+        val failure = repository.getCompanyActions(20L)
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test
@@ -93,7 +94,7 @@ class VendorDetailRepositoryTest {
         assertEquals("/api/company/tag/myVotes", recorded.encodedPath)
         assertEquals("100", recorded.queryParameter("companyId"))
 
-        mock.enqueue(mock.ok("null"))
+        mock.enqueue(mock.ok("{}"))
         val defaults = repository.getCompanyMyVotes(100L).getOrThrow()
         assertTrue(defaults.allTags.isEmpty())
         assertTrue(defaults.userVotes.isEmpty())
@@ -128,7 +129,7 @@ class VendorDetailRepositoryTest {
     }
 
     @Test
-    fun getCompanySeriesAndTags_mapListsAndDegradeToEmpty() = runTest {
+    fun getCompanySeriesAndTags_mapListsAndPropagateFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(mock.ok("""{"seriesList":[{"id":1,"nameCN":"系列A","hobbyCount":8}]}"""))
         mock.enqueue(mock.ok("""{"list":[{"id":2,"name":"品牌A","tagText":"品牌A"}]}"""))
@@ -151,8 +152,8 @@ class VendorDetailRepositoryTest {
 
         val failure = """{"success":false,"code":500,"msg":"error","data":null}"""
         repeat(2) { mock.enqueue(failure) }
-        assertTrue(repository.getCompanySeries(20L).getOrThrow().isEmpty())
-        assertTrue(repository.getCompanyTags(100L).getOrThrow().isEmpty())
+        assertTrue(repository.getCompanySeries(20L).isFailure)
+        assertTrue(repository.getCompanyTags(100L).isFailure)
     }
 
     @Test
@@ -208,7 +209,7 @@ class VendorDetailRepositoryTest {
     }
 
     @Test
-    fun getMaskState_readsStateFieldAndSwallowsFailures() = runTest {
+    fun getMaskState_readsStateFieldAndPropagatesFailures() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(mock.ok("""{"state":1}"""))
         assertTrue(repository.getMaskState(20L).getOrThrow())
@@ -219,10 +220,12 @@ class VendorDetailRepositoryTest {
         mock.enqueue(mock.ok("""{"state":0}"""))
         assertFalse(repository.getMaskState(20L).getOrThrow())
 
-        mock.enqueue(mock.ok("null"))
+        mock.enqueue(mock.ok("{}"))
         assertFalse(repository.getMaskState(20L).getOrThrow())
 
         mock.enqueue(mock.failure(401, "请先登录"))
-        assertEquals(false, repository.getMaskState(20L).getOrThrow())
+        val failure = repository.getMaskState(20L)
+        assertTrue(failure.isFailure)
+        assertEquals(401, (failure.exceptionOrNull() as ApiException).code)
     }
 }

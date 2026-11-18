@@ -7,6 +7,7 @@ import com.nobody.repoi.data.remote.model.CharacterData
 import com.nobody.repoi.data.remote.model.CharacterRelevantItem
 import com.nobody.repoi.data.remote.model.CharacterWorksItem
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 
@@ -23,12 +24,8 @@ class CharacterDetailRepository(
      * 获取角色主体详情 (api/charactar/get)
      */
     suspend fun getCharacterDetail(characterId: Long): Result<CharacterData> = runCatching {
-        val response = api.getCharacterDetail(characterId = characterId)
-        if (response.isSuccess) {
-            response.data?.data ?: throw ApiException(response.code, "未找到该角色数据")
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取角色详情失败")
-        }
+        api.getCharacterDetail(characterId = characterId).data
+            ?: throw ApiException(-1, "未找到该角色数据")
     }
 
     /**
@@ -39,23 +36,18 @@ class CharacterDetailRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<CharacterWorksItem>> = runCatching {
-        val response = api.getCharacterWorks(
+        api.getCharacterWorks(
             characterId = characterId,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.items ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取角色登场作品失败")
-        }
+        ).items
     }
 
     /**
      * 获取角色相关周边列表 (api/hobby/query-v2)
      */
     suspend fun getCharacterHobbys(nodeId: Long): Result<List<HobbyItemSummary>> = runCatching {
-        val response = api.queryHobbyList(
+        api.queryHobbyList(
             mapOf(
                 "charactar" to nodeId.toString(),
                 "character" to nodeId.toString(),
@@ -63,12 +55,7 @@ class CharacterDetailRepository(
                 "pageSize" to "9",
                 "order" to "hits7Day"
             )
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取角色相关周边失败")
-        }
+        ).list.orEmpty()
     }
 
     /**
@@ -79,40 +66,25 @@ class CharacterDetailRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<List<AlbumData>> = runCatching {
-        val response = api.getCharacterAlbums(
+        api.getCharacterAlbums(
             characterId = characterId,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.items ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取角色相关相册失败")
-        }
+        ).items
     }
 
     /**
      * 获取推荐要素/相关角色 (api/charactar/relevant/get)
      */
     suspend fun getCharacterRelevant(characterId: Long): Result<List<CharacterRelevantItem>> = runCatching {
-        val response = api.getCharacterRelevant(characterId = characterId, pageSize = 10)
-        if (response.isSuccess) {
-            response.data?.items ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取推荐要素失败")
-        }
+        api.getCharacterRelevant(characterId = characterId, pageSize = 10).items
     }
 
     /**
      * 获取条目关联的分区/属性标签 (api/zone/item)
      */
     suspend fun getItemZones(nodeId: Long): Result<List<ZoneItem>> = runCatching {
-        val response = api.getItemZones(nodeId = nodeId)
-        if (response.isSuccess) {
-            response.data?.items ?: emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取属性标签失败")
-        }
+        api.getItemZones(nodeId = nodeId).items
     }
 
     /**
@@ -124,18 +96,13 @@ class CharacterDetailRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<List<CommentItem>> = runCatching {
-        val response = api.getComments(
+        api.getComments(
             nodeId = nodeId,
             type = type,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else if (response.isCommentNotFound) {
-            emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取评论失败")
-        }
+        ).list.orEmpty()
+    }.recoverCatching { error ->
+        if (error is CommentNotFoundException) emptyList() else throw error
     }
 }
