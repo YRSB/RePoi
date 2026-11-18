@@ -6,7 +6,6 @@ import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionSubType
-import com.nobody.repoi.data.remote.model.ZoneBoardItem
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.remote.model.ZoneTabItem

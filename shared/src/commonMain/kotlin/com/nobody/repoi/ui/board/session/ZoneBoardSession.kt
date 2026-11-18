@@ -40,7 +40,7 @@ interface ZoneBoardSession {
     /**
      * 会话控制器创建工厂。
      */
-    fun interface Factory {
+    interface Factory {
         fun create(
             coroutineScope: CoroutineScope,
             initialScope: ZoneQueryScope = ZoneQueryScope.All,

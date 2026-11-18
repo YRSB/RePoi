@@ -383,7 +383,7 @@ private class ActionBoardPager(
 
         job = coroutineScope.launch {
             val result = homeRepository.getHomeFeed(
-                categoryId = 0L,
+                categoryId = 0,
                 subType = subType,
                 lastTime = 0L,
                 zoneNodeId = scope.zoneNodeId(),
@@ -412,7 +412,7 @@ private class ActionBoardPager(
 
         job = coroutineScope.launch {
             val result = homeRepository.getHomeFeed(
-                categoryId = 0L,
+                categoryId = 0,
                 subType = subType,
                 lastTime = lastTime,
                 zoneNodeId = scope.zoneNodeId(),
@@ -457,7 +457,7 @@ private class ActionBoardPager(
 
         job = coroutineScope.launch {
             val result = homeRepository.getHomeFeed(
-                categoryId = 0L,
+                categoryId = 0,
                 subType = subType,
                 lastTime = 0L,
                 zoneNodeId = scope.zoneNodeId(),

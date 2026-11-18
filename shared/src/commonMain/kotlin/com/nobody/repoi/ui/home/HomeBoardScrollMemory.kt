@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.home
 
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
+import com.nobody.repoi.ui.board.session.BoardScrollPosition
 
 /**
  * 单个「作用域 + 板块」的滚动记忆（仅内存，持久化见 #156）。
@@ -16,6 +17,14 @@ data class HomeBoardScrollMemory(
     val offset: Int = 0,
     val filterCollapseFraction: Float = 0f,
     val filterRowScrollX: Int = 0
+)
+
+/** 将深模块 [BoardScrollPosition] 转换为首页滚动记忆。 */
+fun BoardScrollPosition.toHomeScrollMemory(): HomeBoardScrollMemory = HomeBoardScrollMemory(
+    index = index,
+    offset = offset,
+    filterCollapseFraction = filterCollapseFraction,
+    filterRowScrollX = filterRowScrollX
 )
 
 /**
