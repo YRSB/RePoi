@@ -37,6 +37,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.nobody.repoi.data.remote.model.CollectData
 
 /**
  * 收藏中心 ViewModel 的 MVI 行为测试（只测公开接缝：`onIntent` + `uiState`）。
@@ -604,5 +605,28 @@ class UserCollectViewModelTest {
 
         assertEquals(requestsBeforeResume + 1, mock.requestCount)
         assertEquals(2, env.viewModel.uiState.value.hobbyData.items.size)
+    }
+
+    @Test
+    fun deleteCollectFromDetail_thenResume_dropsHobbyItem() = runTest(testDispatcher) {
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            enqueue(listJson(""))
+            route("api/collect/hobby/upd", ok("{}"))
+        }
+        val env = buildEnv(mock = mock)
+        awaitInitialized(env.viewModel)
+        assertEquals(1, env.viewModel.uiState.value.hobbyData.items.size)
+
+        val generationBefore = env.collectRepository.collectMutationGeneration.value
+        assertTrue(env.collectRepository.deleteCollect(1L, CollectData()).isSuccess)
+        assertEquals(generationBefore + 1, env.collectRepository.collectMutationGeneration.value)
+
+        val requestsBeforeResume = mock.requestCount
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+
+        assertEquals(requestsBeforeResume + 1, mock.requestCount)
+        assertEquals(0, env.viewModel.uiState.value.hobbyData.items.size)
     }
 }

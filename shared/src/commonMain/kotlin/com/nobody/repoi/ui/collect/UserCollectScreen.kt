@@ -28,7 +28,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -88,14 +87,9 @@ fun UserCollectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 恢复感知：从任意二级页出栈回来时，若仓储收藏变更代数增长，
-    // 当前激活大类立即原位刷新，其余已装载大类在切入时惰性刷新。
-    // resumeCount > 1 跳过首次组合，避免刚进入页面就多发一次请求。
-    var resumeCount by remember { mutableIntStateOf(0) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        resumeCount++
-        if (resumeCount > 1) viewModel.onIntent(UserCollectIntent.OnResume)
-    }
+    // 恢复感知：页面每次重新进入组合（含二级页出栈返回）派发 OnResume；
+    // 幂等由 ViewModel 的代数游标保证，不在 UI 侧用 resumeCount 跳过首次组合。
+    CollectResumeEffect { viewModel.onIntent(UserCollectIntent.OnResume) }
 
     val categories = remember { UserCollectCategory.entries }
     val initialIndex = remember(param.initialCategory) {
@@ -438,5 +432,18 @@ fun UserCollectScreen(
             onReset = { viewModel.onIntent(UserCollectIntent.ResetFilter) },
             onDismiss = { viewModel.onIntent(UserCollectIntent.SetFilterSheetVisible(false)) }
         )
+    }
+}
+
+/**
+ * 页面恢复感知触发器：每次进入组合都派发一次 [onResume]。
+ *
+ * 幂等由 ViewModel 的收藏变更代数游标保证；UI 侧若用 `resumeCount > 1` 跳过首次组合，
+ * 二级页覆盖导致页面退出组合后计数重置，返回时的 ON_RESUME 会被吞掉。
+ */
+@Composable
+internal fun CollectResumeEffect(onResume: () -> Unit) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        onResume()
     }
 }
