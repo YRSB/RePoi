@@ -3,6 +3,7 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.CommentNotFoundException
 import com.nobody.repoi.data.remote.model.CompanyActionItem
 import com.nobody.repoi.data.remote.model.CompanyData
 import com.nobody.repoi.data.remote.model.CompanyMyVotesData
@@ -34,12 +35,8 @@ class VendorDetailRepository(
      * 注意：必须传入 companyId (即 itemId)。
      */
     suspend fun getCompanyDetail(companyId: Long): Result<CompanyData> = runCatching {
-        val response = api.getCompanyDetail(companyId = companyId)
-        if (response.isSuccess) {
-            response.data?.company ?: throw ApiException(response.code, "未找到该厂商数据")
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取厂商详情失败")
-        }
+        api.getCompanyDetail(companyId = companyId).company
+            ?: throw ApiException(-1, "未找到该厂商数据")
     }
 
     /**
@@ -51,29 +48,19 @@ class VendorDetailRepository(
         category: Int = 0,
         lastId: Long = 0L
     ): Result<List<CompanyActionItem>> = runCatching {
-        val response = api.getCompanyActions(
+        api.getCompanyActions(
             companyNodeId = companyNodeId,
             subType = subType,
             category = category,
             lastId = lastId
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).list.orEmpty()
     }
 
     /**
      * 获取当前用户的厂商印象/投票状态及所有候选标签 (api/company/tag/myVotes)。
      */
     suspend fun getCompanyMyVotes(companyId: Long): Result<CompanyMyVotesData> = runCatching {
-        val response = api.getCompanyMyVotes(companyId = companyId)
-        if (response.isSuccess) {
-            response.data ?: CompanyMyVotesData()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取厂商印象数据失败")
-        }
+        api.getCompanyMyVotes(companyId = companyId)
     }
 
     /**
@@ -91,14 +78,11 @@ class VendorDetailRepository(
             CompanyTagScoreRequest(tagId = tagId, score = score)
         }
         val scoreTagJson = Json.encodeToString(scoreTagList)
-        val response = api.submitCompanyTagVote(
+        api.submitCompanyTagVote(
             companyId = companyId,
             normalTagIds = normalTagJson,
             scoreTagIds = scoreTagJson
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "提交印象投票失败")
-        }
     }
 
     /**
@@ -109,28 +93,18 @@ class VendorDetailRepository(
         page: Int = 1,
         pageSize: Int = 9
     ): Result<List<CompanySeriesItem>> = runCatching {
-        val response = api.getCompanySeries(
+        api.getCompanySeries(
             companyNodeId = companyNodeId,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.seriesList ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).seriesList.orEmpty()
     }
 
     /**
      * 获取厂商标签列表 (api/company/tag/display)。
      */
     suspend fun getCompanyTags(companyId: Long): Result<List<CompanyTagItem>> = runCatching {
-        val response = api.getCompanyTags(companyId = companyId)
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else {
-            emptyList()
-        }
+        api.getCompanyTags(companyId = companyId).list.orEmpty()
     }
 
     /**
@@ -141,16 +115,11 @@ class VendorDetailRepository(
         companyNodeId: Long,
         pageSize: Int = 9
     ): Result<List<RelatedHobbyItem>> = runCatching {
-        val response = api.getRelatedHobbies(
+        api.getRelatedHobbies(
             albumId = companyNodeId,
             itemType = "company",
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.hobbys ?: emptyList()
-        } else {
-            emptyList()
-        }
+        ).hobbys.orEmpty()
     }
 
     /**
@@ -163,19 +132,14 @@ class VendorDetailRepository(
         page: Int = 1,
         pageSize: Int = 10
     ): Result<List<CommentItem>> = runCatching {
-        val response = api.getComments(
+        api.getComments(
             nodeId = companyNodeId,
             type = type,
             page = page,
             pageSize = pageSize
-        )
-        if (response.isSuccess) {
-            response.data?.list ?: emptyList()
-        } else if (response.isCommentNotFound) {
-            emptyList()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取评论失败")
-        }
+        ).list.orEmpty()
+    }.recoverCatching { error ->
+        if (error is CommentNotFoundException) emptyList() else throw error
     }
 
     /**
@@ -190,13 +154,8 @@ class VendorDetailRepository(
      * state == 1 表示已屏蔽，若未登录或未屏蔽安全返回 false。
      */
     suspend fun getMaskState(companyNodeId: Long): Result<Boolean> = runCatching {
-        val response = api.getMaskState(companyNodeId)
-        if (response.isSuccess) {
-            val jsonObject = response.data as? JsonObject
-            val state = (jsonObject?.get("state") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
-            state == 1
-        } else {
-            false
-        }
+        val jsonObject = api.getMaskState(companyNodeId) as? JsonObject
+        val state = (jsonObject?.get("state") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        state == 1
     }
 }

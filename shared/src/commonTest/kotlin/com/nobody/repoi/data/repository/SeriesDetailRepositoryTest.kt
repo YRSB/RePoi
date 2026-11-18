@@ -59,7 +59,7 @@ class SeriesDetailRepositoryTest {
     }
 
     @Test
-    fun getSeriesHobbys_sendsNodeIdAndDegradesToEmpty() = runTest {
+    fun getSeriesHobbys_sendsNodeIdAndPropagatesFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(mock.ok("""{"hobbys":[{"id":10,"nameCN":"关联手办"}]}"""))
 
@@ -73,8 +73,8 @@ class SeriesDetailRepositoryTest {
 
         mock.enqueue(mock.failure(500, "error"))
         val degraded = repository.getSeriesHobbys(2L)
-        assertTrue(degraded.isSuccess)
-        assertTrue(degraded.getOrThrow().isEmpty())
+        assertTrue(degraded.isFailure)
+        assertEquals(500, (degraded.exceptionOrNull() as ApiException).code)
     }
 
     @Test
@@ -119,7 +119,7 @@ class SeriesDetailRepositoryTest {
     }
 
     @Test
-    fun getSeriesForum_mapsPayloadAndFailureReturnsNull() = runTest {
+    fun getSeriesForum_mapsPayloadAndFailureThrows() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(mock.ok("""{"forum":{"id":1,"name":"讨论区","postCount":3}}"""))
         val success = repository.getSeriesForum(1L)
@@ -129,12 +129,12 @@ class SeriesDetailRepositoryTest {
 
         mock.enqueue(mock.failure(500, "error"))
         val failure = repository.getSeriesForum(1L)
-        assertTrue(failure.isSuccess)
-        assertNull(failure.getOrThrow())
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test
-    fun getMaskState_readsStateFlagAndFallsBackToFalse() = runTest {
+    fun getMaskState_readsStateFlagAndPropagatesFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(mock.ok("""{"state":1}"""))
         mock.enqueue(mock.ok("""{"state":0}"""))
@@ -147,8 +147,8 @@ class SeriesDetailRepositoryTest {
 
         mock.enqueue(mock.failure(500, "error"))
         val failure = repository.getMaskState(2L)
-        assertTrue(failure.isSuccess)
-        assertFalse(failure.getOrThrow())
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test
