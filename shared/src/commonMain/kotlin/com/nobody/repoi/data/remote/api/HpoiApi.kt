@@ -84,6 +84,7 @@ import com.nobody.repoi.data.remote.model.UserSearchPayload
 import com.nobody.repoi.data.remote.model.UserSelfPayload
 import com.nobody.repoi.data.remote.model.CollectTopPayload
 import com.nobody.repoi.data.remote.model.OrderStaticPayload
+import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.WorksAlbumPayload
 import com.nobody.repoi.data.remote.model.WorksCharacterPayload
 import com.nobody.repoi.data.remote.model.WorksDetailPayload
@@ -618,11 +619,11 @@ class HpoiApi(
             setBody(formOf("nodeId" to nodeId, "type" to type))
         }.unwrapUnit(json, "删除评论失败")
 
-    suspend fun getStickerPacks(): CommonResponse<StickerPackPayload> =
-        client.get("api/sticker/pack/list").decodeRefAware(json)
+    suspend fun getStickerPacks(): StickerPackPayload =
+        client.get("api/sticker/pack/list").unwrapData(json, "表情包加载失败")
 
-    suspend fun getStickerBuyTime(): CommonResponse<StickerBuyTimePayload> =
-        client.get("api/sticker/pack/buyTime").decodeRefAware(json)
+    suspend fun getStickerBuyTime(): StickerBuyTimePayload? =
+        client.get("api/sticker/pack/buyTime").unwrapDataOrNull<StickerBuyTimePayload>(json, "获取表情包购买时间失败")
 
     // ── 用户/社交 ──────────────────────────────────────────────────
 
@@ -688,10 +689,10 @@ class HpoiApi(
             setBody(formOf("id" to id, "userId" to userId))
         }.unwrapDataOrNull<UserSelfPayload>(json, "获取用户信息失败")
 
-    suspend fun getOrderStatic(userId: Long): CommonResponse<OrderStaticPayload> =
+    suspend fun getOrderStatic(userId: Long): OrderStaticData =
         client.post("api/user/orderStatic") {
             setBody(formOf("id" to userId))
-        }.decodeRefAware(json)
+        }.unwrapDataOrNull<OrderStaticPayload>(json, "获取订单统计失败")?.data ?: OrderStaticData()
 
     suspend fun getCollectSimilarity(userNodeId: Long): CollectSimilarityPayload? =
         client.post("api/user/collect/similarity") {
