@@ -174,7 +174,7 @@ class SearchRepositoryTest {
     }
 
     @Test
-    fun getHotwords_mapsListAndDegradesToEmptyOnFailure() = runTest {
+    fun getHotwords_mapsListAndExposesFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"list":[{"word":"初音","count":3}]}}"""
@@ -183,10 +183,11 @@ class SearchRepositoryTest {
         assertTrue(success.isSuccess)
         assertEquals("初音", success.getOrThrow().first().word)
 
+        // 深管道不再把业务失败静默降级为空列表
         mock.enqueue(mock.failure(500, "error"))
-        val degraded = repository.getHotwords(10000)
-        assertTrue(degraded.isSuccess)
-        assertTrue(degraded.getOrThrow().isEmpty())
+        val failure = repository.getHotwords(10000)
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test
@@ -200,7 +201,7 @@ class SearchRepositoryTest {
     }
 
     @Test
-    fun getAutoFill_mapsSuggestionsAndDegradesToEmptyOnFailure() = runTest {
+    fun getAutoFill_mapsSuggestionsAndExposesFailure() = runTest {
         val (mock, _, repository) = setup()
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"keywords":["初音未来","初音手办"]}}"""
@@ -213,9 +214,9 @@ class SearchRepositoryTest {
         assertEquals("初音", form["keywords"])
 
         mock.enqueue(mock.failure(500, "error"))
-        val degraded = repository.getAutoFill(10000, "初音")
-        assertTrue(degraded.isSuccess)
-        assertTrue(degraded.getOrThrow().isEmpty())
+        val failure = repository.getAutoFill(10000, "初音")
+        assertTrue(failure.isFailure)
+        assertEquals(500, (failure.exceptionOrNull() as ApiException).code)
     }
 
     @Test
@@ -258,5 +259,20 @@ class SearchRepositoryTest {
         historyManager.addKeyword("手办")
 
         assertEquals(listOf("手办", "初音"), repository.searchHistoryFlow.first())
+    }
+
+    @Test
+    fun search_tokenExpiredNotifiesSessionSelfHealing() = runTest {
+        val mock = MockApi()
+        // 搜索业务失败码 4001 由深管道以在途快照驱动会话自愈
+        mock.enqueue(mock.failure(4001, "登录已过期"))
+        val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
+        val repository = SearchRepository(mock.api(tokenProvider = { "tok-search" }), historyManager)
+
+        val result = repository.search(10000, "hobby", "初音")
+
+        assertTrue(result.isFailure)
+        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        mock.assertTokenExpiredNotified("tok-search")
     }
 }

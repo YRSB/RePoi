@@ -2,7 +2,6 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.HpoiApi
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.POSTS_BOARD_PAGE_SIZE
 import com.nobody.repoi.data.remote.model.POSTS_DEFAULT_ORDER
 import com.nobody.repoi.data.remote.model.PostItem
@@ -82,12 +81,7 @@ class ZoneRepository(
      * 获取专区首页数据（包含关注专区、首页专区以及所有专区分组）。
      */
     suspend fun getZoneHomeTabs(forceRefresh: Boolean = false): Result<ZoneHomeTabsPayload> = runCatching {
-        val response = api.getZoneHomeTabs()
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取专区数据失败")
-        }
-
-        val payload = response.data ?: ZoneHomeTabsPayload()
+        val payload = api.getZoneHomeTabs()
 
         payload.focusZones?.let { focusList ->
             _focusZonesFlow.value = focusList
@@ -121,11 +115,7 @@ class ZoneRepository(
             }
         }
 
-        val response = api.getZoneInfo(nodeId = nodeId)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取专区详情失败")
-        }
-        response.data ?: throw ApiException(response.code, "专区详情为空")
+        api.getZoneInfo(nodeId = nodeId)
     }
 
     /**
@@ -137,12 +127,7 @@ class ZoneRepository(
         zoneName: String? = null,
         zoneIcon: String? = null
     ): Result<ZoneFocusPayload> = runCatching {
-        val response = api.toggleZoneFocus(nodeId = nodeId)
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "关注状态切换失败")
-        }
-
-        val payload = response.data ?: ZoneFocusPayload()
+        val payload = api.toggleZoneFocus(nodeId = nodeId)
         val currentList = _focusZonesFlow.value.toMutableList()
 
         if (payload.focus) {
@@ -178,16 +163,12 @@ class ZoneRepository(
         val hiddenStr = hiddenZoneIds.joinToString(",")
         val orderStr = customOrder.joinToString(",")
 
-        val response = api.updateZoneSettings(
+        api.updateZoneSettings(
             showAll = showAll,
             sort = sort,
             hiddenZoneIds = hiddenStr,
             customOrder = orderStr
         )
-
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "保存专区设置失败")
-        }
 
         val updatedSettings = ZoneTabsSettings(
             showAll = showAll,
@@ -217,16 +198,12 @@ class ZoneRepository(
         page: Int = 1,
         pageSize: Int = POSTS_BOARD_PAGE_SIZE
     ): Result<List<PostItem>> = runCatching {
-        val response = api.searchPosts(
+        api.searchPosts(
             zoneNodeId = zoneNodeId,
             order = order,
             page = page,
             pageSize = pageSize
-        )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取讨论列表失败")
-        }
-        response.data?.list ?: emptyList()
+        ).list
     }
 
     /**
@@ -251,17 +228,13 @@ class ZoneRepository(
         page: Int = 1,
         pageSize: Int = 20
     ): Result<ZoneItemsPayload> = runCatching {
-        val response = api.getZoneItems(
+        api.getZoneItems(
             itemType = itemType,
             zones = scope.zonesParam(),
             category = category,
             page = page,
             pageSize = pageSize
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取专区条目失败")
-        }
-        response.data ?: ZoneItemsPayload()
     }
 
     companion object {

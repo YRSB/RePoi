@@ -16,9 +16,7 @@ class AlbumRepository(
     private val api: HpoiApi
 ) {
     suspend fun getZoneTabs(): Result<List<AlbumZoneTab>> = runCatching {
-        val response = api.getZoneHomeTabs()
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分区失败")
-        val data = response.data ?: return@runCatching listOf(AlbumZoneTab.ALL)
+        val data = api.getZoneHomeTabs()
         val tabs = mutableListOf<AlbumZoneTab>()
         if (data.settings?.showAll != false) tabs.add(AlbumZoneTab.ALL)
         val followIds = data.focusZones
@@ -85,10 +83,9 @@ class AlbumRepository(
      * 「全部」由 UI 自行追加，不在此返回。
      */
     suspend fun getAlbumCategories(nodeId: Long): Result<List<ZoneCategoryItem>> = runCatching {
-        val response = api.getZoneCategories(nodeId = nodeId, itemType = "album")
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "获取相册分类失败")
-        if (response.data?.visible == false) return@runCatching emptyList()
-        response.data?.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
+        val data = api.getZoneCategories(nodeId = nodeId, itemType = "album")
+        if (!data.visible) return@runCatching emptyList()
+        data.categories.orEmpty().filter { it.categoryId > 0 && !it.name.isNullOrBlank() }
     }
 
     suspend fun getRankingWindow(

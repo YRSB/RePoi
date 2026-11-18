@@ -22,10 +22,9 @@ class MockApiExtensionsTest {
         mock.routeCommonResponse("api/zone/categories", payload1)
 
         val api = mock.api()
-        val resp1 = api.getZoneCategories(nodeId = 100L, itemType = "album")
-        assertTrue(resp1.isSuccess)
-        assertEquals(1, resp1.data?.categories?.size)
-        assertEquals("手办", resp1.data?.categories?.firstOrNull()?.name)
+        val result1 = api.getZoneCategories(nodeId = 100L, itemType = "album")
+        assertEquals(1, result1.categories?.size)
+        assertEquals("手办", result1.categories?.firstOrNull()?.name)
 
         val payload2 = ZoneCategoriesPayload(
             visible = true,
@@ -33,10 +32,9 @@ class MockApiExtensionsTest {
         )
         mock.replaceRouteCommonResponse("api/zone/categories", payload2)
 
-        val resp2 = api.getZoneCategories(nodeId = 100L, itemType = "album")
-        assertTrue(resp2.isSuccess)
-        assertEquals(1, resp2.data?.categories?.size)
-        assertEquals("周边", resp2.data?.categories?.firstOrNull()?.name)
+        val result2 = api.getZoneCategories(nodeId = 100L, itemType = "album")
+        assertEquals(1, result2.categories?.size)
+        assertEquals("周边", result2.categories?.firstOrNull()?.name)
     }
 
     @Test
