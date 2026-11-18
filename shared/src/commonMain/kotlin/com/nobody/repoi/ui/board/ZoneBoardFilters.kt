@@ -47,3 +47,25 @@ data class ZoneBoardFilters(
     /** 产品分类级联 sheet 显隐（同上，宿主渲染）。 */
     val showHobbyCategoryPickerSheet: Boolean = false
 )
+
+/** 板块筛选值 token 化（供滚动记忆与筛选重置不变性感知）。 */
+fun boardFilterToken(filters: ZoneBoardFilters, board: ZoneBoard): String = when (board) {
+    ZoneBoard.Album -> "${filters.albumOrder}|${filters.albumCategory ?: "all"}"
+    ZoneBoard.Posts -> filters.postsOrder
+    ZoneBoard.Resale -> "${filters.resaleType}|${filters.resalePurity ?: "all"}"
+    ZoneBoard.Hobby -> with(filters) {
+        listOf(
+            hobby.order,
+            hobby.categoryId,
+            hobby.subCategoryId ?: "all",
+            hobby.releaseYear ?: "all",
+            hobby.releaseMonth ?: "all",
+            hobby.keyword,
+            hobby.sex ?: "all",
+            hobby.specs ?: "all",
+            hobby.scale ?: "all",
+            hobby.r18 ?: "all"
+        ).joinToString("|")
+    }
+    else -> filters.subType
+}

@@ -5,11 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
-import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionSubType
-import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.ZoneBoardItem
-import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.remote.model.ZoneTabItem
@@ -22,7 +19,6 @@ import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.SessionState
 import com.nobody.repoi.data.session.UserSession
-import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.ui.board.AlbumBoardOptions
 import com.nobody.repoi.ui.board.AlbumCategoryOption
 import com.nobody.repoi.ui.board.PostsBoardOptions
@@ -95,115 +91,9 @@ data class HomeFeedUiState(
         pageView = ZoneBoardPageView(isLoading = true)
     )
 ) {
-    // ── 兼容现有投影与过渡属性（由 #169 最终删除） ──
-    val items: List<ActionItem>
-        get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items.orEmpty()
-    val lastTime: Long
-        get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items?.lastOrNull()?.actionDate?.let {
-            DateTimeFormats.parseServerDateTime(it)
-        } ?: 0L
-    val isInitialLoading: Boolean
-        get() = currentBoardSnapshot.pageView.isLoading && currentBoardSnapshot.content.itemCount == 0
-    val isRefreshing: Boolean
-        get() = currentBoardSnapshot.pageView.isLoading && currentBoardSnapshot.content.itemCount > 0
-    val isLoadingMore: Boolean
-        get() = currentBoardSnapshot.pageView.isLoadingMore
-    val hasMore: Boolean
-        get() = !currentBoardSnapshot.pageView.isEndReached
-    val errorMessage: String?
-        get() = currentBoardSnapshot.pageView.errorMessage
-    val loadMoreError: String?
-        get() = currentBoardSnapshot.pageView.loadMoreError
-    val selectedSubType: String
-        get() = currentBoardSnapshot.filters.subType ?: ActionSubType.DEFAULT.apiValue
-    val albumItems: List<AlbumListItem>
-        get() = (currentBoardSnapshot.content as? ZoneBoardContent.Album)?.items.orEmpty()
-    val albumPage: Int
-        get() = 1
-    val isAlbumLoading: Boolean
-        get() = currentBoardSnapshot.board == ZoneBoard.Album && currentBoardSnapshot.pageView.isLoading
-    val isLoadingMoreAlbum: Boolean
-        get() = currentBoardSnapshot.board == ZoneBoard.Album && currentBoardSnapshot.pageView.isLoadingMore
-    val albumHasMore: Boolean
-        get() = currentBoardSnapshot.board != ZoneBoard.Album || !currentBoardSnapshot.pageView.isEndReached
-    val albumErrorMessage: String?
-        get() = if (currentBoardSnapshot.board == ZoneBoard.Album) currentBoardSnapshot.pageView.errorMessage else null
-    val albumLoadMoreError: String?
-        get() = if (currentBoardSnapshot.board == ZoneBoard.Album) currentBoardSnapshot.pageView.loadMoreError else null
-    val albumSelectedOrder: String
-        get() = currentBoardSnapshot.filters.albumOrder ?: AlbumBoardOptions.DEFAULT_ORDER
-    val albumSelectedCategory: Int?
-        get() = currentBoardSnapshot.filters.albumCategory
-    val isAlbumLoaded: Boolean
-        get() = currentBoardSnapshot.board == ZoneBoard.Album && (!currentBoardSnapshot.pageView.isLoading || currentBoardSnapshot.content.itemCount > 0)
-    val posts: HomePostsState
-        get() {
-            val postsContent = currentBoardSnapshot.content as? ZoneBoardContent.Posts
-            return HomePostsState(
-                order = currentBoardSnapshot.filters.postsOrder ?: PostsBoardOptions.DEFAULT_ORDER,
-                items = postsContent?.items.orEmpty(),
-                pinnedPosts = postsContent?.pinnedPosts.orEmpty(),
-                page = 1,
-                isLoaded = currentBoardSnapshot.board == ZoneBoard.Posts && (!currentBoardSnapshot.pageView.isLoading || currentBoardSnapshot.content.itemCount > 0),
-                isInitialLoading = currentBoardSnapshot.board == ZoneBoard.Posts && currentBoardSnapshot.pageView.isLoading && currentBoardSnapshot.content.itemCount == 0,
-                isLoadingMore = currentBoardSnapshot.board == ZoneBoard.Posts && currentBoardSnapshot.pageView.isLoadingMore,
-                hasMore = currentBoardSnapshot.board != ZoneBoard.Posts || !currentBoardSnapshot.pageView.isEndReached,
-                errorMessage = if (currentBoardSnapshot.board == ZoneBoard.Posts) currentBoardSnapshot.pageView.errorMessage else null,
-                loadMoreError = if (currentBoardSnapshot.board == ZoneBoard.Posts) currentBoardSnapshot.pageView.loadMoreError else null
-            )
-        }
-    val resale: HomeResaleBoardState
-        get() {
-            val resaleContent = currentBoardSnapshot.content as? ZoneBoardContent.Resale
-            return HomeResaleBoardState(
-                type = currentBoardSnapshot.filters.resaleType ?: ResaleBoardOptions.DEFAULT_TYPE,
-                purity = currentBoardSnapshot.filters.resalePurity,
-                keyword = currentBoardSnapshot.filters.resaleKeyword.orEmpty(),
-                items = resaleContent?.items.orEmpty(),
-                hasMore = currentBoardSnapshot.board != ZoneBoard.Resale || !currentBoardSnapshot.pageView.isEndReached,
-                isLoading = currentBoardSnapshot.board == ZoneBoard.Resale && currentBoardSnapshot.pageView.isLoading,
-                isLoadingMore = currentBoardSnapshot.board == ZoneBoard.Resale && currentBoardSnapshot.pageView.isLoadingMore,
-                errorMessage = if (currentBoardSnapshot.board == ZoneBoard.Resale) currentBoardSnapshot.pageView.errorMessage else null,
-                loadMoreError = if (currentBoardSnapshot.board == ZoneBoard.Resale) currentBoardSnapshot.pageView.loadMoreError else null,
-                isLoaded = currentBoardSnapshot.board == ZoneBoard.Resale && (!currentBoardSnapshot.pageView.isLoading || currentBoardSnapshot.content.itemCount > 0)
-            )
-        }
-    val entityBoards: Map<ZoneBoard, EntityBoardState>
-        get() {
-            val entityContent = currentBoardSnapshot.content as? ZoneBoardContent.Entity
-            return if (currentBoardSnapshot.board.isEntity && entityContent != null) {
-                mapOf(
-                    currentBoardSnapshot.board to EntityBoardState(
-                        items = entityContent.items,
-                        isEndReached = currentBoardSnapshot.pageView.isEndReached,
-                        isLoading = currentBoardSnapshot.pageView.isLoading,
-                        isLoadingMore = currentBoardSnapshot.pageView.isLoadingMore,
-                        errorMessage = currentBoardSnapshot.pageView.errorMessage,
-                        loadMoreError = currentBoardSnapshot.pageView.loadMoreError
-                    )
-                )
-            } else {
-                emptyMap()
-            }
-        }
-    val hobbyBoard: HomeHobbyBoardState
-        get() {
-            val hobbyContent = currentBoardSnapshot.content as? ZoneBoardContent.Hobby
-            return HomeHobbyBoardState(
-                filter = currentBoardSnapshot.filters.hobby ?: ZoneHobbyFilter(),
-                isGridMode = hobbyContent?.isGridMode ?: true,
-                items = hobbyContent?.items.orEmpty(),
-                page = 1,
-                hasMore = currentBoardSnapshot.board == ZoneBoard.Hobby && !currentBoardSnapshot.pageView.isEndReached,
-                isLoading = currentBoardSnapshot.board == ZoneBoard.Hobby && currentBoardSnapshot.pageView.isLoading,
-                isLoadingMore = currentBoardSnapshot.board == ZoneBoard.Hobby && currentBoardSnapshot.pageView.isLoadingMore,
-                isLoaded = currentBoardSnapshot.board == ZoneBoard.Hobby && (!currentBoardSnapshot.pageView.isLoading || currentBoardSnapshot.content.itemCount > 0),
-                errorMessage = if (currentBoardSnapshot.board == ZoneBoard.Hobby) currentBoardSnapshot.pageView.errorMessage else null,
-                loadMoreError = if (currentBoardSnapshot.board == ZoneBoard.Hobby) currentBoardSnapshot.pageView.loadMoreError else null,
-                showFilterSheet = currentBoardSnapshot.filters.showHobbyFilterSheet,
-                showCategoryPickerSheet = currentBoardSnapshot.filters.showHobbyCategoryPickerSheet
-            )
-        }
+    /** 二级 Tab 文案：单专区优先服务端 `tabTitle`，空则回退枚举文案；聚合态无服务端 title。 */
+    fun boardTitle(board: ZoneBoard): String =
+        boardTitles[board]?.takeIf { it.isNotBlank() } ?: board.label
 }
 
 class HomeFeedViewModel(

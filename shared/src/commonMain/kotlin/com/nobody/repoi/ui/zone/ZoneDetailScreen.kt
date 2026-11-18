@@ -88,7 +88,6 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
-import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
@@ -397,36 +396,6 @@ fun ZoneDetailScreen(
         }
     }
 
-    val boardActions = remember(viewModel.session) {
-        ZoneBoardActions(
-            selectSubType = { subType -> viewModel.session.dispatch(ZoneBoardIntent.SelectSubType(subType)) },
-            selectPostsOrder = { order -> viewModel.session.dispatch(ZoneBoardIntent.SelectPostsOrder(order)) },
-            selectAlbumOrder = { order -> viewModel.session.dispatch(ZoneBoardIntent.SelectAlbumOrder(order)) },
-            selectAlbumCategory = { categoryId -> viewModel.session.dispatch(ZoneBoardIntent.SelectAlbumCategory(categoryId)) },
-            selectResaleType = { type -> viewModel.session.dispatch(ZoneBoardIntent.SelectResaleType(type)) },
-            selectResalePurity = { purity -> viewModel.session.dispatch(ZoneBoardIntent.SelectResalePurity(purity)) },
-            retryInitial = { viewModel.session.dispatch(ZoneBoardIntent.RetryInitial()) },
-            loadMore = { viewModel.session.dispatch(ZoneBoardIntent.LoadMore()) },
-            hobbyOrder = { order -> viewModel.session.dispatch(ZoneBoardIntent.SelectHobbyOrder(order)) },
-            hobbyYear = { year -> viewModel.session.dispatch(ZoneBoardIntent.SelectHobbyYear(year)) },
-            hobbyMonth = { month -> viewModel.session.dispatch(ZoneBoardIntent.SelectHobbyMonth(month)) },
-            hobbyCategory = { categoryId, subCategoryId ->
-                viewModel.session.dispatch(ZoneBoardIntent.SelectHobbyCategory(categoryId, subCategoryId))
-            },
-            hobbyAdvancedApply = { filterParam ->
-                viewModel.session.dispatch(ZoneBoardIntent.ApplyHobbyFilter(filterParam))
-            },
-            hobbyAdvancedReset = { viewModel.session.dispatch(ZoneBoardIntent.ResetHobbyFilter) },
-            hobbyViewMode = { viewModel.session.dispatch(ZoneBoardIntent.ToggleHobbyViewMode) },
-            hobbyFilterSheetVisible = { visible ->
-                viewModel.session.dispatch(ZoneBoardIntent.SetHobbyFilterSheetVisible(visible))
-            },
-            hobbyCategoryPickerVisible = { visible ->
-                viewModel.session.dispatch(ZoneBoardIntent.SetHobbyCategoryPickerVisible(visible))
-            }
-        )
-    }
-
     val boardItemActions = remember(
         onActionClick,
         onCardImageClick,
@@ -614,7 +583,7 @@ fun ZoneDetailScreen(
                                 top = totalHeaderHeightDp + 8.dp,
                                 bottom = bottomContentPadding
                             ),
-                            actions = boardActions,
+                            onIntent = viewModel.session::dispatch,
                             itemActions = boardItemActions,
                             columns = gridColumns,
                             showPinnedPosts = true,
@@ -640,7 +609,7 @@ fun ZoneDetailScreen(
                     board = activeSnapshot.board,
                     filters = activeSnapshot.filters,
                     subTypeOptions = viewModel.subTypes,
-                    actions = boardActions,
+                    onIntent = viewModel.session::dispatch,
                     albumCategoryOptions = uiState.albumCategoryOptions,
                     hobbyCategoryTree = categoryTree,
                     hobbyIsGridMode = (activeSnapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true,
@@ -874,7 +843,7 @@ fun ZoneDetailScreen(
         ZoneBoardHobbySheets(
             filters = activeSnapshot.filters,
             hobbyCategoryTree = categoryTree,
-            actions = boardActions
+            onIntent = viewModel.session::dispatch
         )
     }
 

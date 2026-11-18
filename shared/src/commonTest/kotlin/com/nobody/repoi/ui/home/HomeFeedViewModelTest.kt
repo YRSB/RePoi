@@ -3,7 +3,11 @@ package com.nobody.repoi.ui.home
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.AlbumListItem
+import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.itemCount
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -999,9 +1003,6 @@ class HomeFeedViewModelTest {
         viewModel.selectBoard(ZoneBoard.Posts)
         viewModel.selectBoard(ZoneBoard.Hobby)
         viewModel.selectBoard(ZoneBoard.Resale)
-        // 直接调用板块加载入口：同样必须短路（不能绕过 Tab 可见性发请求）
-        viewModel.loadInitialPosts()
-        viewModel.loadInitialResale()
         advanceUntilIdle()
 
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
@@ -1486,7 +1487,7 @@ class HomeFeedViewModelTest {
 
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
-        viewModel.loadNextPostsPage()
+        viewModel.loadNextPage()
         advanceUntilIdle()
 
         val recorded = env.zoneMock.lastRequest()

@@ -77,7 +77,6 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
-import com.nobody.repoi.ui.board.ZoneBoardActions
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
@@ -157,28 +156,6 @@ fun HomeFeedScreen(
         onNavigateToZoneSettings?.invoke()
     }
 
-    // 共享板块面板动作集合（分发至 session，过度保持兼容）
-    val boardActions = remember(session, viewModel) {
-        ZoneBoardActions(
-            selectSubType = viewModel::selectSubType,
-            selectPostsOrder = viewModel::selectPostsOrder,
-            selectAlbumOrder = viewModel::selectAlbumOrder,
-            selectAlbumCategory = viewModel::selectAlbumCategory,
-            selectResaleType = viewModel::selectResaleType,
-            selectResalePurity = viewModel::selectResalePurity,
-            retryInitial = viewModel::retrySelectedBoard,
-            loadMore = viewModel::loadMoreSelectedBoard,
-            hobbyOrder = viewModel::selectHobbyOrder,
-            hobbyYear = viewModel::selectHobbyYear,
-            hobbyMonth = viewModel::selectHobbyMonth,
-            hobbyCategory = viewModel::selectHobbyCategory,
-            hobbyAdvancedApply = viewModel::applyHobbyAdvancedFilters,
-            hobbyAdvancedReset = viewModel::resetHobbyAdvancedFilters,
-            hobbyViewMode = viewModel::toggleHobbyViewMode,
-            hobbyFilterSheetVisible = viewModel::setHobbyFilterSheetVisible,
-            hobbyCategoryPickerVisible = viewModel::setHobbyCategoryPickerVisible
-        )
-    }
     val onCardImageClick = remember(imageViewer) {
         { rawUrls: List<String>, initialIndex: Int ->
             imageViewer.show(rawUrls, initialIndex)
@@ -406,7 +383,6 @@ fun HomeFeedScreen(
                             scrollBehavior = scrollBehavior,
                             columns = if (board == ZoneBoard.Resale) resaleColumns else feedColumns,
                             bottomContentPadding = bottomContentPadding,
-                            boardActions = boardActions,
                             boardItemActions = boardItemActions,
                             hobbyCategoryTree = hobbyCategoryTree,
                             onFilterHeightMeasured = { heightPx ->
@@ -425,7 +401,7 @@ fun HomeFeedScreen(
             ZoneBoardHobbySheets(
                 filters = activeSnapshot.filters,
                 hobbyCategoryTree = hobbyCategoryTree,
-                actions = boardActions
+                onIntent = session::dispatch
             )
         }
 
@@ -568,7 +544,6 @@ private fun HomeBoardPage(
     scrollBehavior: TopAppBarScrollBehavior,
     columns: StaggeredGridCells,
     bottomContentPadding: Dp,
-    boardActions: ZoneBoardActions,
     boardItemActions: ZoneBoardItemActions,
     hobbyCategoryTree: Map<Int, List<CategoryItem>>,
     onFilterHeightMeasured: (Int) -> Unit,
@@ -762,7 +737,7 @@ private fun HomeBoardPage(
                         top = topInset + 6.dp,
                         bottom = bottomContentPadding
                     ),
-                    actions = boardActions,
+                    onIntent = session::dispatch,
                     itemActions = boardItemActions,
                     columns = columns,
                     showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
@@ -821,7 +796,7 @@ private fun HomeBoardPage(
                     board = board,
                     filters = snapshot.filters,
                     subTypeOptions = viewModel.subTypes,
-                    actions = boardActions,
+                    onIntent = session::dispatch,
                     albumCategoryOptions = uiState.albumCategoryOptions,
                     hobbyCategoryTree = hobbyCategoryTree,
                     hobbyIsGridMode = (snapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true,

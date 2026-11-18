@@ -20,6 +20,7 @@ import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.components.ZonePaginationFooter
+import com.nobody.repoi.ui.board.session.ZoneBoardIntent
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
 import com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet
@@ -44,7 +45,7 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
  *    内容边距只通过 [contentPadding] 由宿主注入（详情 = `totalHeaderHeightDp + 8dp` / 底部安全区；
  *    首页 = 顶栏 + 二级 TabRow + 筛选行 / 底部栏）。
- * 2. 本组件**不注入**仓储 / 偏好 / `LocalAppMessages`；一切交互经 [actions] 与 [itemActions]。
+ * 2. 本组件**不注入**仓储 / 偏好 / `LocalAppMessages`；一切交互经 [onIntent] 与 [itemActions]。
  * 3. 内部只允许存在**一个** `LazyVerticalStaggeredGrid`；[gridState] 由宿主持有并传入（切换板块时
  *    复用同一滚动状态），本组件不新建状态。
  * 4. 列表项 `key` / `contentType` 必须原样保留（动态为 `contentType = "feed_action"`、
@@ -53,7 +54,7 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  *    `contentType = "zone_entity_<type>"`），不得在 pane 内去重或重算游标，`hasMore` 由宿主
  *    投影进 [ZoneBoardPageView]。
  * 5. 内部用 `when(board)` 分派而不是泛型化，保留各板块类型安全；迁移新板块时在此加分支并在
- *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardActions] 补对应字段与方法。
+ *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardIntent] 补对应字段与分支。
  * 6. 产品板块的两个弹层（高级筛选 / 分类级联）**不在本面板内**：面板只在其「有内容」时存在，
  *    而首页在空/错/加载态用卡片或加载视图顶替面板，弹层若挂在面板内会让筛选入口在空结果时点击无响应
  *    （并因显隐标志残留导致后续自行弹出）。宿主须在四态之外无条件组合 [ZoneBoardHobbySheets]（见 #159）。
@@ -64,7 +65,7 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
  * @param content 当前板块内容快照
  * @param gridState 宿主持有的瀑布流滚动状态
  * @param contentPadding 宿主注入的内容边距
- * @param actions 筛选 / 分页动作
+ * @param onIntent 板块单向意图分发
  * @param itemActions 条目点击 / 图片浏览动作
  * @param columns 宿主算好的列数策略（产品与相册按各自规则在面板内计算，不使用该参数）
  * @param showPinnedPosts 讨论板块是否渲染置顶帖条：单专区 true、聚合态（全部）必须 false
@@ -77,7 +78,7 @@ fun ZoneBoardPane(
     content: ZoneBoardContent,
     gridState: LazyStaggeredGridState,
     contentPadding: PaddingValues,
-    actions: ZoneBoardActions,
+    onIntent: (ZoneBoardIntent) -> Unit,
     itemActions: ZoneBoardItemActions,
     columns: StaggeredGridCells,
     showPinnedPosts: Boolean = true,
@@ -98,7 +99,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions
+                    onIntent = onIntent
                 ) {
                     items(
                         items = actionContent.items,
@@ -130,7 +131,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions
+                    onIntent = onIntent
                 ) {
                     items(
                         items = albumContent.items,
@@ -166,7 +167,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions,
+                    onIntent = onIntent,
                     header = {
                         // 置顶帖条只在单专区渲染：聚合态（全部）无置顶语义，关注态已隐藏整个板块
                         if (showPinnedPosts && postsContent.pinnedPosts.isNotEmpty()) {
@@ -212,7 +213,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions
+                    onIntent = onIntent
                 ) {
                     items(
                         items = resaleContent.items,
@@ -253,7 +254,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions
+                    onIntent = onIntent
                 ) {
                     if (hobbyContent.isGridMode) {
                         items(
@@ -299,7 +300,7 @@ fun ZoneBoardPane(
                     gridState = gridState,
                     contentPadding = contentPadding,
                     modifier = modifier,
-                    actions = actions
+                    onIntent = onIntent
                 ) {
                     // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
                     // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
@@ -334,19 +335,19 @@ fun ZoneBoardPane(
 fun ZoneBoardHobbySheets(
     filters: ZoneBoardFilters,
     hobbyCategoryTree: Map<Int, List<CategoryItem>>,
-    actions: ZoneBoardActions
+    onIntent: (ZoneBoardIntent) -> Unit
 ) {
     if (filters.showHobbyFilterSheet) {
         HobbyFilterAdaptiveSheet(
             filterParam = filters.hobby.toAdvancedFilterParam(),
-            onDismiss = { actions.onHobbyFilterSheetVisible(false) },
+            onDismiss = { onIntent(ZoneBoardIntent.SetHobbyFilterSheetVisible(false)) },
             onApply = { filterParam ->
-                actions.onHobbyAdvancedApply(filterParam)
-                actions.onHobbyFilterSheetVisible(false)
+                onIntent(ZoneBoardIntent.ApplyHobbyFilter(filterParam))
+                onIntent(ZoneBoardIntent.SetHobbyFilterSheetVisible(false))
             },
             onReset = {
-                actions.onHobbyAdvancedReset()
-                actions.onHobbyFilterSheetVisible(false)
+                onIntent(ZoneBoardIntent.ResetHobbyFilter)
+                onIntent(ZoneBoardIntent.SetHobbyFilterSheetVisible(false))
             }
         )
     }
@@ -356,9 +357,9 @@ fun ZoneBoardHobbySheets(
             selectedSubCategoryId = filters.hobby.subCategoryId,
             getSubCategories = { parentId -> hobbyCategoryTree[parentId].orEmpty() },
             onCategorySelected = { categoryId, subCategoryId ->
-                actions.onHobbyCategory(categoryId, subCategoryId)
+                onIntent(ZoneBoardIntent.SelectHobbyCategory(categoryId, subCategoryId))
             },
-            onDismiss = { actions.onHobbyCategoryPickerVisible(false) }
+            onDismiss = { onIntent(ZoneBoardIntent.SetHobbyCategoryPickerVisible(false)) }
         )
     }
 }
@@ -385,7 +386,7 @@ private fun BoardGridContainer(
     gridState: LazyStaggeredGridState,
     contentPadding: PaddingValues,
     modifier: Modifier,
-    actions: ZoneBoardActions,
+    onIntent: (ZoneBoardIntent) -> Unit,
     header: (LazyStaggeredGridScope.() -> Unit)? = null,
     itemsContent: LazyStaggeredGridScope.() -> Unit
 ) {
@@ -407,7 +408,7 @@ private fun BoardGridContainer(
                 ) {
                     ZoneErrorPlaceholder(
                         message = errorMessage,
-                        onRetry = { actions.onRetryInitial() }
+                        onRetry = { onIntent(ZoneBoardIntent.RetryInitial()) }
                     )
                 }
             }
@@ -419,7 +420,7 @@ private fun BoardGridContainer(
                 ) {
                     ZoneEmptyPlaceholder(
                         text = emptyText,
-                        onRefresh = { actions.onRetryInitial() }
+                        onRefresh = { onIntent(ZoneBoardIntent.RetryInitial()) }
                     )
                 }
             }
@@ -435,7 +436,7 @@ private fun BoardGridContainer(
                         isLoadingMore = page.isLoadingMore,
                         loadMoreError = page.loadMoreError,
                         isEndReached = page.isEndReached,
-                        onRetry = { actions.onLoadMore() }
+                        onRetry = { onIntent(ZoneBoardIntent.LoadMore()) }
                     )
                 }
             }

@@ -4,6 +4,7 @@ import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.board.itemCount
 
 /**
  * 板块滚动位置记忆。
@@ -36,3 +37,7 @@ data class ZoneBoardSnapshot(
     val pageView: ZoneBoardPageView,
     val scrollPosition: BoardScrollPosition = BoardScrollPosition()
 )
+
+/** ZoneBoardSnapshot 条目数量扩展。 */
+val ZoneBoardSnapshot.itemCount: Int
+    get() = content.itemCount

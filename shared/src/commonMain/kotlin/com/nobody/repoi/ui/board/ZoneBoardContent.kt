@@ -76,3 +76,14 @@ sealed interface ZoneBoardContent {
         override val page: ZoneBoardPageView
     ) : ZoneBoardContent
 }
+
+/** ZoneBoardContent 条目数量计算扩展。 */
+val ZoneBoardContent.itemCount: Int
+    get() = when (this) {
+        is ZoneBoardContent.Action -> items.size
+        is ZoneBoardContent.Album -> items.size
+        is ZoneBoardContent.Posts -> items.size + pinnedPosts.size
+        is ZoneBoardContent.Hobby -> items.size
+        is ZoneBoardContent.Resale -> items.size
+        is ZoneBoardContent.Entity -> items.size
+    }
