@@ -16,15 +16,17 @@
 - **ViewModel 注入**：在 `ViewModelModule` 中通过 `viewModelOf(::XxxViewModel)` 声明，UI 层使用 `koinViewModel()` 获取实例。
 - **数据流转**：界面层通过 `StateFlow` 订阅单一不可变状态，用户意图通过事件向上单向流动。
 - **挂起契约**：数据层挂起函数操作统一返回 `Result<T>`；网络与数据异常统一映射并抛出 `ApiException(code, message)`。
+- **有界协程生命周期 (Bounded Coroutine Lifecycle)**：领域状态机、分页调度器与异步控制器内部不得在 `init` 构造块中启动无界 `Flow.collect` 或常驻循环协程；拉取任务必须基于显式调用的挂起函数或拥有明确生命周期的单次 `Job`（如 `loadJob?.cancel(); loadJob = scope.launch { ... }`），确保 `StandardTestDispatcher.advanceUntilIdle()` 能在单测中确定性落定。
 
 ### 3. 统一列表分页加载 (`PagedListLoader`)
 - 分页加载统一采用 `com.nobody.repoi.util.paging.PagedListLoader`，封装触底拉取、防重触发、游标递增与状态机切换。
 - ViewModel 暴露 `StateFlow<PagedListUiState<T>>`，禁止在 ViewModel 中手工维护孤立的 `isFetching` 标志位。
 - **例外（ADR-0017 / ADR-0019）**：搜索结果页 8 分类需要跨分类独立缓存、首屏懒加载与切页驻留，使用 `SearchResultUiState.tabStates: Map<SearchTab, TabSearchState>` 维护每 Tab 分页状态；该模式仅限该页面，其他列表仍须使用 `PagedListLoader`。
 
-### 4. 验证原则：CI 裁决权威 (CI Authority)
-- **严禁本地编译**：为消除开发环境差异并提升开发敏捷度，本项目**严禁在本地执行任何 Gradle 编译、打包或单元测试任务**。
-- **全量走 CI 验证**：代码变更通过 Git 提交并推送至分支/PR，全量交由 GitHub Actions CI 流水线权威执行与裁决。
+### 4. 验证原则：本地单元测试放行与 CI 裁决权威 (Local Unit Tests & CI Authority)
+- **允许本地运行单元测试**：为加速编码迭代与回归定位，开发者与 Agent **可以在本地运行轻量单元测试**（推荐按类或方法过滤运行，如 `./gradlew :shared:jvmTest --tests com.nobody.repoi.ui.board.session.ZoneBoardSessionTest`，或跑全量单测 `./gradlew :shared:jvmTest`）。提交前可借助本地单测快速验证逻辑闭环。
+- **严禁本地执行构建打包**：严禁在本地执行全量构建或安装包打包任务（如 `:androidApp:assembleRelease`、`:desktopApp:package*` 等重型任务），避免本地环境差异、签名与依赖污染；全量构建、安装包打包与跨端集成验证统一由 GitHub Actions 远端流水线权威裁决。
+- **静态快速自检**：提交前可本地运行 `pwsh -File scripts/check-ui-rules.ps1` 进行零开销静态机械检查。
 - **状态追踪**：统一使用 `gh pr checks` 或 `gh run list` 监控远端 CI 矩阵（Android APK、JVM 单测、Android-host 单测及桌面端打包）执行状态。
 
 ### 5. 跨平台依赖引入规范 (KMP Library Selection)
