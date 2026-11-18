@@ -74,13 +74,6 @@ class CollectRepository(
     val collectMutationGeneration: StateFlow<Long> = _collectMutationGeneration.asStateFlow()
 
     /**
-     * 画廊写操作计数（过渡代理，ADR-0025 终态移除）：旧链路
-     * `markGalleryMutation() + galleryMutationCount` 的兼容保留，与新代数同步推进。
-     */
-    private val _galleryMutationCount = MutableStateFlow(0L)
-    val galleryMutationCount: StateFlow<Long> = _galleryMutationCount.asStateFlow()
-
-    /**
      * 观察指定条目的收藏状态流；同 [nodeId] 恒返回同一实例（幂等），未拉取前值为 `null`。
      */
     fun observeCollectState(nodeId: Long): StateFlow<CollectData?> = mutableStateFlowOf(nodeId)
@@ -101,18 +94,6 @@ class CollectRepository(
             }
         }
         return stateFlows.value.getValue(nodeId)
-    }
-
-    /**
-     * 标记画廊发生过收藏写操作；计数只增不减，可随时重读、无订阅者也不丢。
-     *
-     * 过渡代理（ADR-0025 终态移除）：除推进旧计数 [galleryMutationCount] 外，
-     * 同步推进 [collectMutationGeneration]，保证过渡期内经旧链路标记的变更
-     * 不会被新代数消费端遗漏（旧计数与新代数保持对齐）。
-     */
-    fun markGalleryMutation() {
-        _galleryMutationCount.update { it + 1 }
-        advanceMutationGeneration()
     }
 
     /**

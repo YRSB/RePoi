@@ -13,7 +13,7 @@ import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.data.repository.VendorDetailRepository
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.util.AppLogger
 import kotlinx.coroutines.Job
@@ -131,7 +131,7 @@ data class VendorDetailUiState(
 class VendorDetailViewModel(
     private val repository: VendorDetailRepository,
     private val userSession: UserSession,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
+    private val collectRepository: CollectRepository,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -281,7 +281,7 @@ class VendorDetailViewModel(
      * 切换收藏厂商状态与计数（乐观更新 + 失败回滚）。
      *
      * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
-     * [ToggleItemCollectUseCase]，成功即写入收藏仓储状态池。
+     * [CollectRepository.toggleItemCollect]，成功即写入收藏仓储状态池并推进变更代数。
      */
     fun toggleCollect() {
         val state = _uiState.value
@@ -299,7 +299,7 @@ class VendorDetailViewModel(
         }
 
         viewModelScope.launch {
-            val result = toggleItemCollectUseCase(nodeId, previousCollected)
+            val result = collectRepository.toggleItemCollect(nodeId, previousCollected)
             if (result.isFailure) {
                 // 失败回滚
                 _uiState.update {

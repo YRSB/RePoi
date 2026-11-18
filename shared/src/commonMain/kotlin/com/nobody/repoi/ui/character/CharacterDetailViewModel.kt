@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.StickerPackData
 import com.nobody.repoi.data.repository.CharacterDetailRepository
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import com.nobody.repoi.ui.navigation.CharacterNavParam
@@ -19,7 +19,7 @@ import com.nobody.repoi.data.remote.model.CommentItem
 
 class CharacterDetailViewModel(
     private val repository: CharacterDetailRepository,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
+    private val collectRepository: CollectRepository,
     private val commentDelegate: CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -177,7 +177,7 @@ class CharacterDetailViewModel(
         _uiState.update { it.copy(isCollected = nextCollected, collectCountDelta = delta) }
 
         viewModelScope.launch {
-            val result = toggleItemCollectUseCase(nodeId, currentCollected)
+            val result = collectRepository.toggleItemCollect(nodeId, currentCollected)
             if (result.isFailure) {
                 // 失败回滚
                 _uiState.update {

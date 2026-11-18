@@ -40,7 +40,6 @@ import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.board.session.ZoneBoardSession
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.collect.UserCollectViewModel
@@ -135,8 +134,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<ZoneRepository>().shouldNotBeNull()
             koin.getOrNull<CommentInteractionDelegate>().shouldNotBeNull()
 
-            // 4. 收藏写侧 Domain UseCases（factory）
-            koin.getOrNull<ToggleItemCollectUseCase>().shouldNotBeNull()
+            // 4. 保留的收藏写侧 Domain UseCases（factory，共 5 个）
             koin.getOrNull<SaveHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<DeleteHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()

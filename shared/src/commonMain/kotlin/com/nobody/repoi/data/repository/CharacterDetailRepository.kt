@@ -14,8 +14,8 @@ import com.nobody.repoi.data.remote.model.ZoneItem
 /**
  * 角色/要素详情多端点聚合数据仓储。
  *
- * 本仓储只承载详情/作品/相册等只读聚合查询；收藏切换由 ViewModel 直接依赖
- * `ToggleItemCollectUseCase`（依赖倒置：仓储不再转手写操作）。
+ * 本仓储只承载详情/作品/相册等只读聚合查询；收藏切换由 ViewModel 直接调用
+ * `CollectRepository.toggleItemCollect`（依赖倒置：详情仓储不再转手写操作）。
  */
 class CharacterDetailRepository(
     private val api: HpoiApi,

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.PictureRelateItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.platform.saveImageBytesToGallery
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaPipeline
@@ -85,7 +84,6 @@ data class PictureGalleryListState(
  */
 class PictureGalleryViewModel(
     private val collectRepository: CollectRepository,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val downloadClient: HttpClient,
 ) : ViewModel() {
 
@@ -338,12 +336,8 @@ class PictureGalleryViewModel(
         }
 
         viewModelScope.launch {
-            // 写侧统一委托用例：成功后由 CollectRepository 原子更新状态池，无需任何手动广播
-            val result = toggleItemCollectUseCase(item.id, wasCollected)
-            result.onSuccess {
-                // 记录画廊脏位：收藏中心列表恢复时据此静默刷新
-                collectRepository.markGalleryMutation()
-            }
+            // 写侧直接交给自治仓储：成功后状态池与变更代数均由仓储内部原子推进
+            val result = collectRepository.toggleItemCollect(item.id, wasCollected)
             result.onFailure { error ->
                 // 回滚到请求前状态
                 _uiState.update {

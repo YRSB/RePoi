@@ -6,7 +6,6 @@ import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.data.repository.SeriesDetailRepository
 import com.nobody.repoi.data.repository.StickerRepository
 import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,7 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 系列详情收藏切换测试：验证爱心切换真的走 `ToggleItemCollectUseCase`（发网络），
+ * 系列详情收藏切换测试：验证爱心切换直接调用 CollectRepository.toggleItemCollect（发网络），
  * 不是旧实现的「纯本地翻转」。类名刻意不含 `ViewModel`，避免被既有测试过滤误伤。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,7 +41,7 @@ class SeriesDetailCollectToggleTest {
     }
 
     @Test
-    fun toggleCollect_callsUseCaseAndFlipsState() = runTest(testDispatcher) {
+    fun toggleCollect_callsRepositoryAndFlipsState() = runTest(testDispatcher) {
         val detailMock = MockApi()
         val collectMock = MockApi()
         val viewModel = newViewModel(detailMock, collectMock)
@@ -102,7 +101,7 @@ class SeriesDetailCollectToggleTest {
         val collectRepository = CollectRepository(collectMock.api(testDispatcher), collectMock.json)
         return SeriesDetailViewModel(
             SeriesDetailRepository(detailMock.api(testDispatcher), collectRepository),
-            ToggleItemCollectUseCase(collectRepository),
+            collectRepository,
             CommentInteractionDelegate(
                 CommentRepository(detailMock.api(testDispatcher)),
                 StickerRepository(detailMock.api(testDispatcher)),

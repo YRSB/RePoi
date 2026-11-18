@@ -414,10 +414,10 @@ class UserCollectViewModelTest {
         env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.PICTURE))
         advanceUntilIdle()
         assertEquals(1, env.viewModel.uiState.value.picData.items.size)
+        // 画廊里收藏过：真实写操作推进仓储变更代数
+        mock.route("collect/item/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+        env.collectRepository.collectItemAdd(1L).getOrThrow()
         val requestsBeforeResume = mock.requestCount
-
-        // 画廊里收藏/取消过：仓储脏位 +1
-        env.collectRepository.markGalleryMutation()
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
 
@@ -460,7 +460,8 @@ class UserCollectViewModelTest {
         env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.PICTURE))
         advanceUntilIdle()
 
-        env.collectRepository.markGalleryMutation()
+        mock.route("collect/item/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+        env.collectRepository.collectItemAdd(1L).getOrThrow()
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
         val requestsAfterFirstResume = mock.requestCount

@@ -150,15 +150,15 @@ class UserCollectViewModel(
     }
 
     /**
-     * 已消费的**画廊写操作计数**快照，随恢复槽持久化。
+     * 已消费的**收藏变更代数**快照，随恢复槽持久化。
      *
-     * [CollectRepository.galleryMutationCount] 单调递增且无订阅也不丢事件，
-     * 因此恢复时只需比对计数是否变大，即可判定「画廊里动过收藏」。
-     * 快照必须写进 [savedState]：否则配置变更重建后会把已消费的计数当成新事件，白发一次刷新。
+     * [CollectRepository.collectMutationGeneration] 单调递增且无订阅也不丢事件，
+     * 因此恢复时只需比对代数是否变大，即可判定「别处动过收藏」。
+     * 快照必须写进 [savedState]：否则配置变更重建后会把已消费的代数当成新事件，白发一次刷新。
      */
     private var consumedGalleryMutationCount: Long =
         stateGet<Long>(KEY_CONSUMED_GALLERY_MUTATION_COUNT)
-            ?: collectRepository.galleryMutationCount.value
+            ?: collectRepository.collectMutationGeneration.value
 
     // ==================== 8 大类分页装载器 ====================
 
@@ -981,14 +981,14 @@ class UserCollectViewModel(
     // ==================== 恢复感知 ====================
 
     /**
-     * 恢复感知：读画廊脏位，有变化则对**图片页**静默刷新。
+     * 恢复感知：读收藏变更代数，有变化则对**图片页**静默刷新。
      *
      * 脏位方案来自 ADR-0011：`CollectRepository` 的写操作计数是状态而非事件，
      * 出栈返回、进程内任意时刻都可比对，且无订阅者也不丢。
      * 仅当当前正停在图片大类、或图片列表已开始装载过时才刷新，避免白发一次首屏请求。
      */
     private fun handleResume() {
-        val count = collectRepository.galleryMutationCount.value
+        val count = collectRepository.collectMutationGeneration.value
         if (count <= consumedGalleryMutationCount) return
         consumedGalleryMutationCount = count
         stateSet(KEY_CONSUMED_GALLERY_MUTATION_COUNT, count)

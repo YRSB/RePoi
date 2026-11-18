@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  */
 class CharacterDetailRepositoryTest {
 
-    /** 仓储只做只读聚合查询；收藏切换已上移到 `ToggleItemCollectUseCase`（见 `CollectUseCasesTest`）。 */
+    /** 仓储只做只读聚合查询；收藏切换由 ViewModel 直接调用 `CollectRepository.toggleItemCollect`。 */
     private fun setup(): Pair<MockApi, CharacterDetailRepository> {
         val mock = MockApi()
         return mock to CharacterDetailRepository(mock.api())
