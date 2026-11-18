@@ -142,9 +142,6 @@ class KoinModuleVerificationTest {
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<SaveWorksCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<DeleteWorksCollectUseCase>().shouldNotBeNull()
-
-            // 5. 子板块会话控制器工厂
-            koin.getOrNull<ZoneBoardSession.Factory>().shouldNotBeNull()
         } finally {
             app.close()
         }
@@ -178,6 +175,8 @@ class KoinModuleVerificationTest {
             koin.getOrNull<UserCollectViewModel>().shouldNotBeNull()
             koin.getOrNull<PictureGalleryViewModel>().shouldNotBeNull()
             koin.getOrNull<ZoneDetailViewModel>().shouldNotBeNull()
+            // 子板块会话控制器工厂（深模块）
+            koin.getOrNull<ZoneBoardSession.Factory>().shouldNotBeNull()
         } finally {
             app.close()
         }

@@ -395,4 +395,87 @@ class ZoneBoardSessionTest {
         val toggledContent = session.activeSnapshot.value.content as ZoneBoardContent.Hobby
         assertFalse(toggledContent.isGridMode)
     }
+
+    @Test
+    fun testResaleLoadMoreDeduplicationReachesEnd() = runTest(testDispatcher) {
+        val mockApi = MockApi()
+        val firstPageItems = (1..24).joinToString(",") { id ->
+            """{"id":$id,"title":"二手$id","addDate":"2026-11-18 10:00:00"}"""
+        }
+        mockApi.route(
+            "api/resale/search",
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[$firstPageItems]}}"""
+        )
+        setupDefaultRoutes(mockApi)
+        val env = TestEnv(this, mockApi)
+
+        val session = env.createSession(initialBoard = ZoneBoard.Resale)
+        advanceUntilIdle()
+
+        val initialSnapshot = session.activeSnapshot.value
+        assertEquals(ZoneBoard.Resale, initialSnapshot.board)
+        val initialContent = initialSnapshot.content as ZoneBoardContent.Resale
+        assertEquals(24, initialContent.items.size)
+        assertFalse(initialSnapshot.pageView.isEndReached)
+
+        // 模拟第二页返回满 24 条但全部为第一页已存在的重复项（去重后无新条目）
+        session.dispatch(ZoneBoardIntent.LoadMore(ZoneBoard.Resale))
+        advanceUntilIdle()
+
+        val secondSnapshot = session.activeSnapshot.value
+        val secondContent = secondSnapshot.content as ZoneBoardContent.Resale
+        assertEquals(24, secondContent.items.size)
+        // 去重后没有新条目，必须判定到底置 isEndReached 为 true，防止无限翻页
+        assertTrue(secondSnapshot.pageView.isEndReached)
+    }
+
+    @Test
+    fun testPostsLoadMoreDeduplicatesAgainstPinnedPosts() = runTest(testDispatcher) {
+        val mockApi = MockApi()
+        // 首屏返回 1 个置顶帖 (id=999) 与 19 个普通帖 (id=1..19)，共 20 条（满一页）
+        val pinnedPost = """{"id":999,"title":"置顶讨论","isPinned":true}"""
+        val normalPosts = (1..19).joinToString(",") { id ->
+            """{"id":$id,"title":"讨论$id","isPinned":false}"""
+        }
+        mockApi.route(
+            "api/posts/search",
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[$pinnedPost,$normalPosts]}}"""
+        )
+        setupDefaultRoutes(mockApi)
+        val env = TestEnv(this, mockApi)
+
+        val session = env.createSession(
+            initialScope = ZoneQueryScope.Single(100L),
+            initialBoard = ZoneBoard.Posts
+        )
+        advanceUntilIdle()
+
+        val initialSnapshot = session.activeSnapshot.value
+        assertEquals(ZoneBoard.Posts, initialSnapshot.board)
+        val initialContent = initialSnapshot.content as ZoneBoardContent.Posts
+        assertEquals(1, initialContent.pinnedPosts.size)
+        assertEquals(999L, initialContent.pinnedPosts[0].id)
+        assertEquals(19, initialContent.items.size)
+        assertFalse(initialSnapshot.pageView.isEndReached)
+
+        // 第二页返回满 20 条，其中包含置顶帖 id=999 和已有普通帖 id=1..19（去重基准必须包含置顶帖）
+        val duplicatePage = """{"id":999,"title":"置顶讨论","isPinned":false},""" +
+            (1..19).joinToString(",") { id ->
+                """{"id":$id,"title":"讨论$id","isPinned":false}"""
+            }
+        mockApi.replaceRoute(
+            "api/posts/search",
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[$duplicatePage]}}"""
+        )
+
+        session.dispatch(ZoneBoardIntent.LoadMore(ZoneBoard.Posts))
+        advanceUntilIdle()
+
+        val secondSnapshot = session.activeSnapshot.value
+        val secondContent = secondSnapshot.content as ZoneBoardContent.Posts
+        // 没有新条目加入普通帖列表
+        assertEquals(19, secondContent.items.size)
+        // 对比基准包含置顶帖后，判定到底，isEndReached 为 true
+        assertTrue(secondSnapshot.pageView.isEndReached)
+    }
 }

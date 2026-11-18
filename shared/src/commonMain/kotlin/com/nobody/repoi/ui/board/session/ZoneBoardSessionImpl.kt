@@ -719,9 +719,10 @@ private class PostsBoardPager(
             )
             result.onSuccess { rawList ->
                 if (order != reqOrder) return@onSuccess
-                val existingIds = (pinnedPosts + items).map { it.id }.toSet()
+                val existingPosts = pinnedPosts + items
+                val existingIds = existingPosts.map { it.id }.toSet()
                 val uniqueNewItems = rawList.filterNot { it.id in existingIds }
-                val hasNewItems = rawList.hasNewKeysAfterDedup(items) { it.id }
+                val hasNewItems = rawList.hasNewKeysAfterDedup(existingPosts) { it.id }
                 val more = rawList.size >= PostsBoardOptions.PAGE_SIZE && hasNewItems
                 items = items + uniqueNewItems
                 page = nextPage
@@ -1022,6 +1023,7 @@ private class ResaleBoardPager(
     private var keyword: String = ""
     private var items: List<ResaleSearchItem> = emptyList()
     private var pageView: ZoneBoardPageView = ZoneBoardPageView()
+    private var existingItems: List<ResaleSearchItem> = emptyList()
     private var currentScope: ZoneQueryScope = ZoneQueryScope.All
 
     private val loader = KeyedListLoader<ResaleSearchItem, String?>(
@@ -1039,10 +1041,12 @@ private class ResaleBoardPager(
                 pageSize = ResaleBoardOptions.PAGE_SIZE
             ).map { payload ->
                 val list = payload.list
+                val hasMore = list.size >= ResaleBoardOptions.PAGE_SIZE &&
+                    !list.lastOrNull()?.addDate.isNullOrBlank() &&
+                    (cursor == null || list.hasNewKeysAfterDedup(existingItems) { it.id })
                 PageChunk(
                     items = list,
-                    hasMore = list.size >= ResaleBoardOptions.PAGE_SIZE &&
-                        !list.lastOrNull()?.addDate.isNullOrBlank()
+                    hasMore = hasMore
                 )
             }
         }
@@ -1075,16 +1079,19 @@ private class ResaleBoardPager(
         if (scope.isFollowEmpty) {
             loader.reset(clearItems = true)
             items = emptyList()
+            existingItems = emptyList()
             pageView = ZoneBoardPageView(isEndReached = true)
             onChanged()
             return
         }
+        existingItems = emptyList()
         loader.loadInitial()
     }
 
     override fun loadMore(scope: ZoneQueryScope) {
         currentScope = scope
         if (!isLoaded || pageView.isLoading || pageView.isLoadingMore || pageView.isEndReached || scope.isFollowEmpty) return
+        existingItems = loader.state.value.items
         loader.loadMore()
     }
 
@@ -1093,10 +1100,12 @@ private class ResaleBoardPager(
         if (scope.isFollowEmpty) {
             loader.reset(clearItems = true)
             items = emptyList()
+            existingItems = emptyList()
             pageView = ZoneBoardPageView(isEndReached = true)
             onChanged()
             return
         }
+        existingItems = emptyList()
         loader.refresh()
     }
 
@@ -1126,6 +1135,7 @@ private class ResaleBoardPager(
         currentScope = newScope
         loader.reset(clearItems = true)
         items = emptyList()
+        existingItems = emptyList()
         isLoaded = false
         pageView = ZoneBoardPageView()
         onChanged()
