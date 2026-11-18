@@ -121,7 +121,7 @@ sealed interface UserCollectIntent {
     data object DismissBatchCancelError : UserCollectIntent
 
     /**
-     * 页面恢复感知：比对画廊写操作计数（脏位），有变化则静默刷新图片大类。
+     * 页面恢复感知：比对收藏变更代数，激活大类立即原位刷新，其余已装载大类惰性刷新。
      *
      * 由 `UserCollectScreen` 的 `LifecycleEventEffect(ON_RESUME)` 驱动（跳过首次进入）。
      */
