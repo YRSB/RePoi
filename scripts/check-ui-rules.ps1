@@ -56,6 +56,46 @@
 #   pwsh -File scripts/check-ui-rules.ps1 -Verbose  # 打印扫描规模与 warning 明细
 #
 # 退出码：0 = 无错误（可能有警告）；1 = 有错误（或 -Strict 下有警告）。
+#   [错误] KOIN-VIEWMODEL-OF       DI 模块新增无 named 的显式 get() ViewModel 注册
+#                                  → CODING_STANDARDS.md §2 要求统一 viewModelOf(::XxxViewModel)；
+#                                    仅相对 main 新增的注册报错，基线存量豁免
+# ---------------------------------------------------------------- 规则 10：Koin ViewModel 注册形状
+# 背景：#181 实现中两个 ViewModel 从 viewModelOf(::Xxx) 退化为显式 get() 注册，
+#       违反 CODING_STANDARDS.md §2；编译与单测都放行，只有 diff 审查才抓到。
+# 判据：只拦相对 main 新增的「实参全是裸 get()」注册，存量注册作为基线豁免。
+$diFiles = git ls-files --cached --others --exclude-standard 'shared/src/commonMain/kotlin/com/nobody/repoi/di/*Module.kt' 'shared/src/commonMain/kotlin/com/nobody/repoi/di/**/*Module.kt'
+function Get-BareViewModelRegistrations {
+    param([string[]]$Lines)
+    $found = @()
+    for ($i = 0; $i -lt $Lines.Count; $i++) {
+        if ($Lines[$i] -cnotmatch '\bviewModel\s*\{') { continue }
+        $call = Get-CallArguments -Lines $Lines -Start $i
+        $compact = $call.Args -replace '\s+', ''
+        $m = [regex]::Match($compact, '^viewModel\{(\w+ViewModel)\(get\(\)(?:,get\(\))*\)\}')
+        if ($m.Success) {
+            $found += [pscustomobject]@{ Body = $m.Value; Name = $m.Groups[1].Value; Line = $i + 1 }
+        }
+    }
+    return $found
+}
+foreach ($diFile in $diFiles) {
+    if (-not (Test-Path -LiteralPath $diFile)) { continue }
+    $baselineBodies = @()
+    if ($baseRef) {
+        $baseText = @(git show "${baseRef}:${diFile}" 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $baseText.Count -gt 0) {
+            $baselineBodies = @(Get-BareViewModelRegistrations -Lines $baseText | ForEach-Object { $_.Body })
+        }
+    }
+    foreach ($reg in (Get-BareViewModelRegistrations -Lines (Get-Content -LiteralPath $diFile))) {
+        if ($reg.Body -in $baselineBodies) { continue }
+        $errors += [pscustomobject]@{
+            File = $diFile; Line = $reg.Line; Tag = 'KOIN-VIEWMODEL-OF'
+            Text = "viewModel { $($reg.Name)(get(), ...) }  ── 新增显式 get() 注册"
+            Hint = "改用 viewModelOf(::$($reg.Name))；仅当需要 named 限定符或显式参数顺序时保留显式注册"
+        }
+    }
+}
 
 param(
     [switch]$Verbose,
