@@ -93,7 +93,17 @@ val viewModelModule = module {
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
-    viewModelOf(::HomeFeedViewModel)
+    viewModel {
+        HomeFeedViewModel(
+            sessionFactory = get(),
+            zoneRepository = get(),
+            viewPreferencesManager = get(),
+            userSession = get(),
+            messageRepository = getOrNull(),
+            categoryManager = getOrNull(),
+            albumRepository = getOrNull()
+        )
+    }
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }

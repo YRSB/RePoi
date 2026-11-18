@@ -78,6 +78,7 @@ import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardActions
+import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
@@ -86,6 +87,9 @@ import com.nobody.repoi.ui.board.components.ZoneBoardStatusCard
 import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
 import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
 import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
+import com.nobody.repoi.ui.board.session.ZoneBoardIntent
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
+import com.nobody.repoi.ui.board.session.ZoneBoardSnapshot
 import com.nobody.repoi.ui.common.EmptyState
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -112,9 +116,6 @@ fun HomeFeedScreen(
     onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
     /**
      * 实体卡片点击（厂商/系列/作品/角色/人物）。
-     *
-     * 首页不感知详情路由类型：由 `TopLevelEntries` 按板块类型分发到对应详情页导航，
-     * 与共享面板「导航经 itemActions 注入」的约束一致。
      */
     onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
@@ -129,6 +130,8 @@ fun HomeFeedScreen(
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val session = viewModel.session
+    val activeSnapshot by session.activeSnapshot.collectAsStateWithLifecycle()
     val hobbyCategoryTree by viewModel.hobbyCategoryTree.collectAsStateWithLifecycle()
     val imageViewer = LocalImageViewer.current
     val messages = LocalAppMessages.current
@@ -137,7 +140,6 @@ fun HomeFeedScreen(
     val useZoneSwitcherDropdown =
         windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
     var zoneSwitcherExpanded by remember { mutableStateOf(false) }
-    // 两种呈现共享同一展开标志：跨 840dp 断点时收起，避免另一套呈现首次组合即自动弹出
     LaunchedEffect(useZoneSwitcherDropdown) {
         zoneSwitcherExpanded = false
     }
@@ -155,9 +157,8 @@ fun HomeFeedScreen(
         onNavigateToZoneSettings?.invoke()
     }
 
-    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 现有入口，请求与分页语义不变。
-    // 重试 / 翻页按「当前板块」分派（讨论板块有独立请求链路），筛选值仍由 ViewModel 持有。
-    val boardActions = remember(viewModel) {
+    // 共享板块面板动作集合（分发至 session，过度保持兼容）
+    val boardActions = remember(session, viewModel) {
         ZoneBoardActions(
             selectSubType = viewModel::selectSubType,
             selectPostsOrder = viewModel::selectPostsOrder,
@@ -252,39 +253,30 @@ fun HomeFeedScreen(
         )
     }
 
-    // 当前板块条目数：折叠可滚动性（顶栏 canScroll）与下拉刷新指示器高度共用的边界值
-    val boardItemCount = uiState.currentBoardItemCount
+    // 活跃板块条目数与刷新态：仅由 activeSnapshot 驱动
+    val boardItemCount = activeSnapshot.content.itemCount
+    val isRefreshing = activeSnapshot.itemCount > 0 && activeSnapshot.pageView.isLoading
     val boardHasFilterBar = uiState.boards.isNotEmpty()
 
-    // 滚动记忆键：作用域 + 板块，跨「专区 ↔ 板块」切换互不覆盖
     val currentBoardKey = homeBoardMemoryKey(uiState.zoneScope, uiState.selectedBoard)
 
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topBarHeight = statusBarTopPadding + 64.dp
-    // 可配置头部高度栈：顶栏 + 二级板块 Tab（常驻吸顶）+ 可折叠筛选行。
-    // 所有依赖头部高度的地方（内容 padding / 下拉指示器 / 首屏各态卡片 / 折叠分母）只读该状态。
     val headerStack = rememberHomeHeaderStack(topBarHeight = topBarHeight)
-    // 各板块筛选行实测高度（px）：切页时直接取**目标板块**的高度折算 heightOffset，
-    // 而不是沿用头部栈里上一板块的实测值。旧实现用上一板块高度算折叠位移，
-    // 若它更矮，切回时只收起一部分、等本页测量回填后才收到底——观感就是「先露一截再折叠」。
     val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
         state = rememberTopAppBarState(
             initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
-            initialHeightOffset = -viewModel.scrollMemoryFor(currentBoardKey)
-                .filterCollapseFraction * headerStack.collapsibleHeightPx
+            initialHeightOffset = -activeSnapshot.scrollPosition.filterCollapseFraction * headerStack.collapsibleHeightPx
         ),
         canScroll = { boardItemCount > 0 }
     )
 
-    // 没有可用板块时二级 Tab 与筛选行都不渲染：把两层实测高度归零，避免内容被空档顶开。
     LaunchedEffect(uiState.boards.isEmpty()) {
         if (uiState.boards.isEmpty()) headerStack.clearMeasuredRows()
     }
 
-    // 实体 5 类没有筛选行：筛选项不再测量，显式清零；
-    // 从实体板块切回非实体板块时，立即用缓存的高度恢复，避免高度栈踩空为 0。
     LaunchedEffect(uiState.selectedBoard) {
         val board = uiState.selectedBoard
         if (board.isEntity) {
@@ -301,19 +293,13 @@ fun HomeFeedScreen(
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
     val feedColumns = rememberFeedStaggeredGridColumns()
-    // 二手列表沿用专区详情的列数策略（竖屏 1 列 / 横屏 2-3 列），与动态瀑布流不同
     val resaleColumns = rememberResaleStaggeredGridColumns()
 
-    // ---- 二级板块横向分页 ----
-    // 页数与顺序完全由 UiState.boards 决定（能力矩阵 ∩ 服务端 tabs）；页面以板块为 key，
-    // 各页的瀑布流状态因此按板块保存，滑动来回不丢滚动位置。
     val boards = uiState.boards
     val selectedBoardIndex = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
-    // 页数下限 1：无可用板块时宿主不组合分页器（只渲染卡片式空态），避免 0 页状态被 Pager 拒绝
     val pagerState = rememberPagerState(initialPage = selectedBoardIndex) {
         boards.size.coerceAtLeast(1)
     }
-    // 页内自持的瀑布流状态注册表：宿主只在「下拉刷新 / FAB」时借当前页回顶
     val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
     val currentFilterHeightPx: Float = if (uiState.selectedBoard.isEntity) {
         0f
@@ -326,16 +312,13 @@ fun HomeFeedScreen(
             }
     }
 
-    // 折叠度恢复：heightOffset 仍是滚动机制的唯一真源（nestedScroll 直接改它，渲染零延迟）。
-    // 只有在数据真正加载完毕且确认为空态（或错误）时才强制展开，避免懒加载或刷新期间抹平记忆。
-    val currentView = uiState.currentBoardView
     val isConfirmedEmptyOrError =
-        (boardItemCount == 0 && !currentView.isLoading) || currentView.errorMessage != null
-    LaunchedEffect(currentBoardKey, currentFilterHeightPx, isConfirmedEmptyOrError) {
+        (boardItemCount == 0 && !activeSnapshot.pageView.isLoading) || activeSnapshot.pageView.errorMessage != null
+    LaunchedEffect(activeSnapshot.board, currentFilterHeightPx, isConfirmedEmptyOrError) {
         val fraction = if (isConfirmedEmptyOrError) {
             0f
         } else {
-            viewModel.scrollMemoryOrNull(currentBoardKey)?.filterCollapseFraction ?: 0f
+            activeSnapshot.scrollPosition.filterCollapseFraction
         }
         scrollBehavior.state.heightOffsetLimit = -currentFilterHeightPx
         scrollBehavior.state.contentOffset = 0f
@@ -343,9 +326,6 @@ fun HomeFeedScreen(
             (-fraction * currentFilterHeightPx).coerceIn(-currentFilterHeightPx, 0f)
     }
 
-    // 翻页手势落定 → 同步 ViewModel 的当前板块（筛选行 / 刷新 / 翻页分派都以 selectedBoard 为准）。
-    // 作用域切换会整体替换 boards：先把分页器对齐到新选中板块再开始监听，
-    // 否则旧页码会被映射成新作用域的某个板块，切专区后落在错误的二级页。
     LaunchedEffect(pagerState, boards) {
         if (boards.isNotEmpty()) {
             val target = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
@@ -358,7 +338,6 @@ fun HomeFeedScreen(
         }
     }
 
-    // 板块变更（Tab 点击 / 专区切换 / 冷启动恢复）反向驱动分页器位置
     LaunchedEffect(selectedBoardIndex, boards.size) {
         if (boards.isNotEmpty() && pagerState.currentPage != selectedBoardIndex) {
             pagerState.scrollToPage(selectedBoardIndex)
@@ -377,7 +356,7 @@ fun HomeFeedScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         PullToRefreshBox(
-            isRefreshing = uiState.currentBoardIsRefreshing,
+            isRefreshing = isRefreshing,
             onRefresh = {
                 scope.launch { scrollCurrentBoardToTop() }
                 viewModel.refreshFeed()
@@ -387,7 +366,7 @@ fun HomeFeedScreen(
             indicator = {
                 PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
-                    isRefreshing = uiState.currentBoardIsRefreshing,
+                    isRefreshing = isRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = headerStack.totalHeaderHeight)
@@ -399,7 +378,6 @@ fun HomeFeedScreen(
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
-                // 该专区没有任何已接入板块：不渲染空 Tab 条与分页器，只给卡片式空态与刷新入口（§3.6）
                 if (boards.isEmpty()) {
                     ZoneEmptyPlaceholder(
                         text = "该专区暂无可用板块",
@@ -410,8 +388,6 @@ fun HomeFeedScreen(
                             .padding(24.dp)
                     )
                 } else {
-                    // 二级板块左右滑分页：每页自持瀑布流状态与四态，页面以板块为 key。
-                    // 相邻页不预取：落定后由 selectBoard 发起该板块首屏请求，未请求过的页先给加载态。
                     HorizontalPager(
                         state = pagerState,
                         key = { index -> boards[index] },
@@ -419,10 +395,12 @@ fun HomeFeedScreen(
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val board = boards[page]
+                        val snapshot = if (board == activeSnapshot.board) activeSnapshot else session.snapshotFor(board)
                         HomeBoardPage(
                             board = board,
+                            snapshot = snapshot,
+                            session = session,
                             uiState = uiState,
-                            view = uiState.boardView(board),
                             viewModel = viewModel,
                             headerStack = headerStack,
                             scrollBehavior = scrollBehavior,
@@ -434,7 +412,6 @@ fun HomeFeedScreen(
                             onFilterHeightMeasured = { heightPx ->
                                 boardFilterHeights[board] = heightPx.toFloat()
                             },
-                            // 实时判断：页参数 uiState 是不可变快照，协程里读它永远拿到组合时的板块
                             isCurrentProvider = { uiState.selectedBoard == board },
                             onNavigateToZoneBrowse = onNavigateToZoneBrowse,
                             onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state }
@@ -444,22 +421,14 @@ fun HomeFeedScreen(
             }
         }
 
-        // 产品两个弹层挂在四态之外（见 `ZoneBoardPane` 约束 6）：空/错/加载态下筛选入口仍可用，
-        // 也不会因面板重新挂载而残留弹层。
         if (uiState.selectedBoard == ZoneBoard.Hobby) {
             ZoneBoardHobbySheets(
-                filters = uiState.currentBoardFilters,
+                filters = activeSnapshot.filters,
                 hobbyCategoryTree = hobbyCategoryTree,
                 actions = boardActions
             )
         }
 
-        // 三级筛选行已移入各板块页（`HomeBoardPage`）：随分页器横向滑动，
-        // 折叠位移仍由共享的 `scrollBehavior` 驱动，高度回填只认当前页。
-
-        // 二级板块 Tab（常驻吸顶，不随滚动折叠）：渲染于筛选行之后，折叠时遮盖筛选行。
-        // 点击走 ViewModel（立即切板块、立即发请求），指示器跟随分页器当前页实时移动；
-        // 左右滑手势由分页器处理，落定后再回写 ViewModel。
         if (boardHasFilterBar) {
             val currentPage = pagerState.currentPage.coerceIn(0, boards.lastIndex)
             PrimaryScrollableTabRow(
@@ -480,7 +449,6 @@ fun HomeFeedScreen(
                         onClick = { viewModel.selectBoard(board) },
                         text = {
                             Text(
-                                // 单专区优先服务端 title、空则回退枚举文案；聚合态无服务端 title（A8）
                                 text = uiState.boardTitle(board),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
@@ -504,7 +472,6 @@ fun HomeFeedScreen(
                         onOpenHomeSettings = onOpenHomeSettingsFromSwitcher
                     )
                 } else {
-                    // 紧凑屏只放锚点；底部抽屉挂在页面根部（见下方 ZoneSwitcherSheet）。
                     ZoneSwitcherAnchor(
                         currentTitle = uiState.selectedCategory.name,
                         expanded = zoneSwitcherExpanded,
@@ -513,7 +480,6 @@ fun HomeFeedScreen(
                 }
             },
             actions = {
-                // 搜索仍携带当前专区的初始分类（nodeId 0 → 10000 全部）。
                 IconButton(
                     onClick = {
                         val categoryId = uiState.selectedCategory.id
@@ -574,7 +540,6 @@ fun HomeFeedScreen(
             )
         }
 
-        // 紧凑屏专区切换器：底部抽屉挂在页面根部，与顶栏锚点共享同一份分组/选中态。
         if (!useZoneSwitcherDropdown && zoneSwitcherExpanded) {
             ZoneSwitcherSheet(
                 groups = uiState.switcherGroups,
@@ -590,35 +555,23 @@ fun HomeFeedScreen(
 
 /**
  * 单个板块页：四态 + 瀑布流内容 + 该板块自己的滚动状态与触底翻页。
- *
- * 分页器会同时组合相邻页，因此这里只读传入的 [view]（按 [board] 投影），不读宿主选中的板块：
- * - 滚动位置、筛选变化回顶、刷新收尾只作用于本页；
- * - 触底翻页只在 `board == selectedBoard` 时发起（ViewModel 按选中板块派发请求）；
- * - 未请求过首屏的板块由投影给 `isLoading`，滑动到该页不会先闪一帧空态卡片。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeBoardPage(
     board: ZoneBoard,
+    snapshot: ZoneBoardSnapshot,
+    session: ZoneBoardSession,
     uiState: HomeFeedUiState,
-    view: HomeBoardView,
     viewModel: HomeFeedViewModel,
     headerStack: HomeHeaderStackState,
     scrollBehavior: TopAppBarScrollBehavior,
     columns: StaggeredGridCells,
-    /** 内容底部留白（底部悬浮栏高度，Dp；与面板 contentPadding 的 bottom 同源）。 */
     bottomContentPadding: Dp,
     boardActions: ZoneBoardActions,
     boardItemActions: ZoneBoardItemActions,
     hobbyCategoryTree: Map<Int, List<CategoryItem>>,
-    /** 本页筛选行实测高度（px）回填：宿主按板块缓存，供切页时立即按目标板块折算折叠度。 */
     onFilterHeightMeasured: (Int) -> Unit,
-    /**
-     * 本页是否为当前选中板块的**实时**判断。
-     *
-     * 必须由宿主持有（读 `uiState.selectedBoard` 的 State），不能在本页用 [uiState] 参数自行求值：
-     * `uiState` 是不可变快照，长生命周期协程捕获后永远是组合那一刻的板块，切页后仍判定为当前页。
-     */
     isCurrentProvider: () -> Boolean,
     onNavigateToZoneBrowse: (() -> Unit)?,
     onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit
@@ -626,46 +579,35 @@ private fun HomeBoardPage(
     val gridState = rememberLazyStaggeredGridState()
     LaunchedEffect(gridState, board) { onGridStateReady(board, gridState) }
 
-    // 组合期取值供 effect key / 点击守卫使用；协程内一律走 [isCurrentProvider] 实时判断，
-    // 否则切页瞬间旧页仍会写记忆（把新板块的 heightOffset 当成自己的折叠度存回去）。
     val isCurrent = isCurrentProvider()
     val memoryKey = homeBoardMemoryKey(uiState.zoneScope, board)
-    val itemCount = view.itemCount
-    val errorMessage = view.errorMessage
-    // 卡片式空态：既不是加载也不是错误时才成立（未请求过的板块已由投影计入加载态）
-    val contentEmpty = itemCount == 0 && errorMessage == null && !view.isLoading
+    val itemCount = snapshot.content.itemCount
+    val errorMessage = snapshot.pageView.errorMessage
+    val contentEmpty = itemCount == 0 && errorMessage == null && !snapshot.pageView.isLoading
     val errorEmpty = errorMessage != null && itemCount == 0
     var restoredKey by remember { mutableStateOf<String?>(null) }
-    // 预加载：只要本页被 HorizontalPager 组合挂载（无论是当前页还是滑动露出），立即触发首屏加载。
-    // 避免滑动露头期间一直展示转圈加载态，手势滑动途中数据即在后台提前拉取。
+
     LaunchedEffect(board, uiState.zoneScope) {
         viewModel.ensureBoardLoaded(board)
     }
 
-    // 本页折叠度（0 = 展开，1 = 收起）：由本板块记忆初始化，滚动时跟随共享 heightOffset 更新。
-    // 渲染位移 = 本页折叠度 × 本页筛选行高度，因此拖动中滑回的页也保持自己的折叠形态，
-    // 不会出现「滑回过程中是展开的、松手落定才折叠」。
     var collapseFraction by remember(memoryKey) {
-        mutableFloatStateOf(viewModel.scrollMemoryOrNull(memoryKey)?.filterCollapseFraction ?: 0f)
+        mutableFloatStateOf(snapshot.scrollPosition.filterCollapseFraction)
     }
-    // 仅在真实空态（已加载完毕且条目为 0）且非加载中时强制展开；正在加载时保留记忆，避免首屏抹平
-    LaunchedEffect(itemCount, isCurrent, view.isLoading) {
-        if (isCurrent && itemCount == 0 && !view.isLoading) collapseFraction = 0f
+    LaunchedEffect(itemCount, isCurrent, snapshot.pageView.isLoading) {
+        if (isCurrent && itemCount == 0 && !snapshot.pageView.isLoading) collapseFraction = 0f
     }
-    // 折叠状态恢复门禁：切到本板块时，必须等宿主将共享 heightOffset 更新为本板块记忆值后，
-    // 才允许开始写回 ViewModel，避免上一板块的残余 heightOffset 反向污染本板块记忆。
     var filterRestored by remember(memoryKey) { mutableStateOf(false) }
     LaunchedEffect(memoryKey, isCurrent) {
         if (!isCurrent) {
             filterRestored = false
             return@LaunchedEffect
         }
-        val targetFraction = viewModel.scrollMemoryOrNull(memoryKey)?.filterCollapseFraction ?: 0f
+        val targetFraction = snapshot.scrollPosition.filterCollapseFraction
         collapseFraction = targetFraction
         filterRestored = true
     }
-    // 本页筛选行实测高度：内容顶部留白按「本页」算，滑动中两页各自对齐，不会互相遮挡。
-    // 用 saveable 保存：页被分页器回收后重建时不至于先套用别的板块的留白。
+
     var filterBarHeightPx by rememberSaveable { mutableStateOf(0) }
     val density = LocalDensity.current
     val ownFilterHeight = if (board.isEntity) {
@@ -677,7 +619,6 @@ private fun HomeBoardPage(
     }
     val topInset = headerStack.pinnedHeight + ownFilterHeight
 
-    // 上拉触底翻页判断（本页自己的瀑布流状态）
     val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val totalCount = gridState.layoutInfo.totalItemsCount
@@ -685,33 +626,28 @@ private fun HomeBoardPage(
             totalCount > 0 && lastVisibleIndex >= totalCount - 3
         }
     }
-    LaunchedEffect(shouldLoadMore, isCurrent, view.hasMore, view.isLoadingMore, view.loadMoreError) {
-        if (isCurrent && shouldLoadMore && view.hasMore &&
-            !view.isLoadingMore && view.loadMoreError == null
+    LaunchedEffect(shouldLoadMore, isCurrent, snapshot.pageView.isEndReached, snapshot.pageView.isLoadingMore, snapshot.pageView.loadMoreError) {
+        if (isCurrent && shouldLoadMore && !snapshot.pageView.isEndReached &&
+            !snapshot.pageView.isLoadingMore && snapshot.pageView.loadMoreError == null
         ) {
-            boardActions.onLoadMore()
+            session.dispatch(ZoneBoardIntent.LoadMore(board))
         }
     }
 
-    // 按「作用域 + 板块」键恢复滚动位置：首屏、切专区、滑回本页都走这里。
-    // 记忆跨专区保留，但切专区后只重新加载第一页：下标可能超出当前已加载条目数，
-    // 越界时按「无记忆」处理并清掉脏数据，否则 Lazy 网格会停在已加载页末尾。
     LaunchedEffect(memoryKey, itemCount > 0) {
         if (itemCount <= 0) return@LaunchedEffect
         if (restoredKey == memoryKey) return@LaunchedEffect
-        val memory = viewModel.scrollMemoryFor(memoryKey)
+        val memory = snapshot.scrollPosition
         val inRange = memory.index in 0 until itemCount
         if (inRange && (memory.index != 0 || memory.offset != 0)) {
             gridState.scrollToItem(memory.index, memory.offset)
         } else {
-            if (!inRange) viewModel.resetBoardScrollMemory(memoryKey)
+            if (!inRange) session.dispatch(ZoneBoardIntent.ResetScrollMemory(board))
             gridState.scrollToItem(0)
         }
         restoredKey = memoryKey
     }
 
-    // 滚动位置 / 折叠比例按本板块键保存（仅内存；持久化为 #156）。
-    // 只写回「已完成恢复」的键：切换瞬间旧板块的首帧不会把新键的位置写坏（A1）。
     LaunchedEffect(gridState, scrollBehavior.state, memoryKey) {
         snapshotFlow {
             val driverHeight = if (board.isEntity) {
@@ -731,47 +667,43 @@ private fun HomeBoardPage(
                 }
             )
         }.collect { (index, offset, filterCollapseFraction) ->
-            // 只写当前页：拖动中相邻页也在组合，它算出的比例属于共享的 heightOffset（另一个板块），
-            // 写回会污染本页记忆。折叠比例与滚动位置必须已对齐恢复完成，避免残余偏移污染。
             if (!isCurrentProvider()) return@collect
             if (filterRestored) {
                 collapseFraction = filterCollapseFraction
-                viewModel.saveBoardFilterCollapseFraction(memoryKey, filterCollapseFraction)
+                session.dispatch(ZoneBoardIntent.SaveFilterCollapseFraction(board, filterCollapseFraction))
             }
             if (restoredKey == memoryKey) {
-                viewModel.saveBoardScrollPosition(memoryKey, index, offset)
+                session.dispatch(ZoneBoardIntent.SaveScrollPosition(board, index, offset))
             }
         }
     }
 
-    // 同一板块内筛选变化：回顶 + 展开筛选层 + 清空本板块记忆（换板块不算筛选变化）
-    val filterToken = uiState.boardFilterToken(board)
+    val filterToken = boardFilterToken(snapshot.filters, board)
     var lastFilterToken by remember(memoryKey) { mutableStateOf(filterToken) }
     LaunchedEffect(filterToken, memoryKey) {
         if (filterToken == lastFilterToken) return@LaunchedEffect
         lastFilterToken = filterToken
-        viewModel.resetBoardScrollMemory(memoryKey)
+        session.dispatch(ZoneBoardIntent.ResetScrollMemory(board))
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
         gridState.scrollToItem(0)
         restoredKey = memoryKey
     }
 
-    // 刷新收尾：完成且无错误时回顶。只在本页仍是选中板块时动手，
-    // 刷新途中滑到别的板块不会把新板块滚回顶部（本轮修复的跨板块副作用）。
+    val isRefreshing = snapshot.content.itemCount > 0 && snapshot.pageView.isLoading
     var wasRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(view.isRefreshing) {
-        if (wasRefreshing && !view.isRefreshing && errorMessage == null && isCurrentProvider()) {
+    LaunchedEffect(isRefreshing) {
+        if (wasRefreshing && !isRefreshing && errorMessage == null && isCurrentProvider()) {
             gridState.scrollToItem(0)
             scrollBehavior.state.heightOffset = 0f
             scrollBehavior.state.contentOffset = 0f
         }
-        wasRefreshing = view.isRefreshing
+        wasRefreshing = isRefreshing
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            view.isLoading -> {
+            snapshot.pageView.isLoading && itemCount == 0 -> {
                 PoiLoadingView(
                     modifier = Modifier
                         .fillMaxSize()
@@ -779,11 +711,10 @@ private fun HomeBoardPage(
                 )
             }
 
-            // 卡片式错误态：与专区详情共用同一基元；产品板块同样纳入四态（A5 / Spec c5）
             errorEmpty -> {
                 ZoneErrorPlaceholder(
                     message = errorMessage ?: "数据加载失败",
-                    onRetry = { if (isCurrent) boardActions.onRetryInitial() },
+                    onRetry = { if (isCurrent) session.dispatch(ZoneBoardIntent.RetryInitial(board)) },
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(top = topInset)
@@ -791,10 +722,8 @@ private fun HomeBoardPage(
                 )
             }
 
-            // 卡片式空态：与专区详情共用同一基元；关注为空时换成引导页（不发起请求）
             contentEmpty -> {
                 if (uiState.zoneScope.isFollowEmpty && board != ZoneBoard.Posts) {
-                    // 未关注任何专区：「关注」仍可选中，但只引导去专区广场，不发起请求。
                     ZoneBoardStatusCard(
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier
@@ -812,9 +741,8 @@ private fun HomeBoardPage(
                     }
                 } else {
                     ZoneEmptyPlaceholder(
-                        // 文案与共享面板同源（ZoneBoard.emptyText），避免产品板块落到动态措辞
                         text = board.emptyText,
-                        onRefresh = { if (isCurrent) viewModel.refreshFeed() },
+                        onRefresh = { if (isCurrent) session.dispatch(ZoneBoardIntent.Refresh(board)) },
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(top = topInset)
@@ -824,11 +752,9 @@ private fun HomeBoardPage(
             }
 
             else -> {
-                // 有内容：走共享板块面板（与专区详情同一内容渲染入口）；
-                // 加载 / 错误 / 空三态由上方卡片式分支接管，pane 只负责列表与页脚。
                 ZoneBoardPane(
                     board = board,
-                    content = view.content,
+                    content = snapshot.content,
                     gridState = gridState,
                     contentPadding = PaddingValues(
                         start = 8.dp,
@@ -839,17 +765,12 @@ private fun HomeBoardPage(
                     actions = boardActions,
                     itemActions = boardItemActions,
                     columns = columns,
-                    // 置顶帖条是单专区语义：聚合态（全部）不渲染
                     showPinnedPosts = uiState.zoneScope is ZoneQueryScope.Single,
                     modifier = Modifier.fillMaxSize()
                 )
             }
         }
 
-        // 三级筛选行属于本页：随分页器一起横向滑动（滑动中能同时看到相邻页的筛选条），
-        // 折叠位移仍由共享 `scrollBehavior` 驱动。高度只由当前页回填：
-        // 拖动中相邻页同时组合，两页都写会把头部高度栈来回覆盖；
-        // 且相邻页先测量、落定后才成为当前页，所以回填走 `LaunchedEffect` 而不是直接写在 onSizeChanged 里。
         if (!board.isEntity) {
             LaunchedEffect(filterBarHeightPx) {
                 if (filterBarHeightPx > 0) onFilterHeightMeasured(filterBarHeightPx)
@@ -859,22 +780,19 @@ private fun HomeBoardPage(
                     headerStack.onCollapsibleMeasured(filterBarHeightPx)
                 }
             }
-            // 筛选条横向滚动位置按「作用域 + 板块」记忆：Chip 条滚到一半，切走再切回仍在原处。
-            // 恢复要等内容测量完（maxValue 就绪）再对齐，并先置位 restored 再开始写回，
-            // 否则恢复过程中的 0 会把记忆清掉。
+
             val filterRowScroll = remember { ScrollState(0) }
             var filterRowRestored by remember(memoryKey) { mutableStateOf(false) }
             LaunchedEffect(memoryKey, filterRowScroll.maxValue) {
                 if (filterRowRestored) return@LaunchedEffect
-                val savedX = viewModel.scrollMemoryFor(memoryKey).filterRowScrollX
-                // 没有横向溢出时不需要等测量；有记忆值则等 maxValue 就绪再对齐
+                val savedX = snapshot.scrollPosition.filterRowScrollX
                 if (savedX > 0 && filterRowScroll.maxValue <= 0) return@LaunchedEffect
                 if (savedX > 0) filterRowScroll.scrollTo(savedX)
                 filterRowRestored = true
             }
             LaunchedEffect(memoryKey, filterRowScroll) {
                 snapshotFlow { filterRowScroll.value }.collect { scrollX ->
-                    if (filterRowRestored) viewModel.saveBoardFilterRowScroll(memoryKey, scrollX)
+                    if (filterRowRestored) session.dispatch(ZoneBoardIntent.SaveFilterRowScroll(board, scrollX))
                 }
             }
             Box(
@@ -882,9 +800,6 @@ private fun HomeBoardPage(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .padding(top = headerStack.pinnedHeight)
-                    // 位移 = 本页折叠度 × 本页筛选行高度：
-                    // - 当前页用共享 heightOffset（滚动零延迟，且与列表位移一致）；
-                    // - 非当前页（拖动中组合的相邻页）用自己的折叠度，滑回时看到的就是它原本的形态。
                     .offset {
                         val heightPx = if (filterBarHeightPx > 0) {
                             filterBarHeightPx
@@ -904,12 +819,12 @@ private fun HomeBoardPage(
             ) {
                 ZoneBoardFilterBar(
                     board = board,
-                    filters = view.filters,
+                    filters = snapshot.filters,
                     subTypeOptions = viewModel.subTypes,
                     actions = boardActions,
                     albumCategoryOptions = uiState.albumCategoryOptions,
                     hobbyCategoryTree = hobbyCategoryTree,
-                    hobbyIsGridMode = uiState.hobbyBoard.isGridMode,
+                    hobbyIsGridMode = (snapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true,
                     rowScrollState = filterRowScroll
                 )
             }
@@ -921,12 +836,11 @@ private fun HomeBoardPage(
  * 动态瀑布流自适应列数：
  * - 横屏桌面端 / 超宽大屏 (≥ 1400dp)：3 列；
  * - 横屏平板 / 折叠屏展开 (≥ 600dp MEDIUM)：2 列；
- * - 竖屏状态（含手机竖屏、平板竖屏、折叠屏竖屏）及超窄横屏：统一 1 列，避免图文混排卡片内容被挤压。
+ * - 竖屏状态（含手机竖屏、平板竖屏、折叠屏竖屏）及超窄横屏：统一 1 列。
  */
 @Composable
 fun rememberFeedStaggeredGridColumns(): StaggeredGridCells {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    // KMP：横屏判定经 expect/actual 垫片（Android 读 Configuration，桌面恒竖屏 + 宽度断点兜底）。
     val isLandscape = isLandscapeOrientation()
     val windowSizeClass = adaptiveInfo.windowSizeClass
     return remember(windowSizeClass, isLandscape) {
