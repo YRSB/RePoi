@@ -4,58 +4,8 @@ $ErrorActionPreference = 'Stop'
 $repo = 'c:\Users\nobody\AndroidReverse\RePoi'
 $probeDir = Join-Path $repo 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe'
 $dataProbeDir = Join-Path $repo 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/zzprobe'
-$script = Join-Path $repo 'scripts/check-ui-rules.ps1'
 $diProbeDir = Join-Path $repo 'shared/src/commonMain/kotlin/com/nobody/repoi/di/zzprobe'
-
-Write-Host ""
-Write-Host "=== Koin ViewModel 注册测试 ===" -ForegroundColor Cyan
-
-function Run-DiCase {
-    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
-    if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }
-    New-Item -ItemType Directory -Path $diProbeDir -Force | Out-Null
-    $f = Join-Path $diProbeDir 'ProbeModule.kt'
-    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script 2>&1 | Out-String
-    $code = $LASTEXITCODE
-    $errCount = ([regex]::Matches($out, '\[KOIN-VIEWMODEL-OF\] [^:]*zzprobe')).Count
-    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
-    $status = if ($ok) { 'PASS' } else { 'FAIL' }
-    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
-    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
-    if (-not $ok) { Write-Host $out }
-}
-
-Run-DiCase '25 新增裸 get() 注册（应报错误）' @'
-package com.nobody.repoi.di.zzprobe
-
-import org.koin.dsl.module
-
-val probeModule = module {
-    viewModel { ProbeViewModel(get(), get()) }
-}
-'@ 1
-
-Run-DiCase '26 viewModelOf 注册（不应报）' @'
-package com.nobody.repoi.di.zzprobe
-
-import org.koin.dsl.module
-
-val probeModule = module {
-    viewModelOf(::ProbeViewModel)
-}
-'@ 0
-
-Run-DiCase '27 带 named 的显式注册（不应报）' @'
-package com.nobody.repoi.di.zzprobe
-
-import org.koin.dsl.module
-
-val probeModule = module {
-    viewModel { ProbeViewModel(get(), get(named("download"))) }
-}
-'@ 0
-if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }
+$script = Join-Path $repo 'scripts/check-ui-rules.ps1'
 
 function Run-Case {
     param([string]$Name, [string]$Body, [int]$ExpectErrors, [int]$ExpectWarnings)
@@ -299,7 +249,57 @@ class ProbeRepository {
 }
 '@ 0
 
+
+Write-Host ""
+Write-Host "=== Koin ViewModel 注册测试 ===" -ForegroundColor Cyan
+
+function Run-DiCase {
+    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
+    if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $diProbeDir -Force | Out-Null
+    $f = Join-Path $diProbeDir 'ProbeModule.kt'
+    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
+    $out = & pwsh -File $script 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $errCount = ([regex]::Matches($out, '\[KOIN-VIEWMODEL-OF\] [^:]*zzprobe')).Count
+    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
+    $status = if ($ok) { 'PASS' } else { 'FAIL' }
+    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
+    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+    if (-not $ok) { Write-Host $out }
+}
+
+Run-DiCase '25 新增裸 get() 注册（应报错误）' @'
+package com.nobody.repoi.di.zzprobe
+
+import org.koin.dsl.module
+
+val probeModule = module {
+    viewModel { ProbeViewModel(get(), get()) }
+}
+'@ 1
+
+Run-DiCase '26 viewModelOf 注册（不应报）' @'
+package com.nobody.repoi.di.zzprobe
+
+import org.koin.dsl.module
+
+val probeModule = module {
+    viewModelOf(::ProbeViewModel)
+}
+'@ 0
+
+Run-DiCase '27 带 named 的显式注册（不应报）' @'
+package com.nobody.repoi.di.zzprobe
+
+import org.koin.dsl.module
+
+val probeModule = module {
+    viewModel { ProbeViewModel(get(), get(named("download"))) }
+}
+'@ 0
 if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
 if (Test-Path $dataProbeDir) { Remove-Item $dataProbeDir -Recurse -Force }
+if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }
 Write-Host ""
 Write-Host "=== 清理完成 ===" -ForegroundColor Cyan
