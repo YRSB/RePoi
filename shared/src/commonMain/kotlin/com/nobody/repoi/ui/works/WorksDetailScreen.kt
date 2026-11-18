@@ -241,6 +241,7 @@ fun WorksDetailScreen(
                             item(key = "section_header") {
                                 WorksHeaderSection(
                                     works = works,
+                                    collectCountBase = uiState.collectCountBase,
                                     ratingAvg = uiState.ratingAvg,
                                     initialName = navParam.initialName,
                                     initialCover = navParam.initialCover,
@@ -395,6 +396,7 @@ internal fun WorksFloatingActionBar(
 internal fun WorksHeaderSection(
     works: WorksData,
     ratingAvg: Float,
+    collectCountBase: Long?,
     initialName: String?,
     initialCover: String?,
     isIntroExpanded: Boolean,
@@ -469,7 +471,7 @@ internal fun WorksHeaderSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "收藏 ${works.collect}",
+                            text = "收藏 ${collectCountBase ?: works.collect.toLong()}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

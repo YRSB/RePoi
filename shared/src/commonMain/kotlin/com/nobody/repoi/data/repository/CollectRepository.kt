@@ -37,6 +37,12 @@ data class CreationPageResult<T>(
 )
 
 /**
+ * 服务端收藏计数快照。[total] 为五分类总人数，[revision] 每次写后刷新单调递增：
+ * 即使人数未变也让详情页订阅收到新值，从而把乐观 delta 归零。
+ */
+data class CollectCountSnapshot(val total: Long, val revision: Long)
+
+/**
  * 收藏模块聚合数据仓储（收藏数据唯一真相源 SSOT）：
  * 管理条目收藏状态的获取、分类人数统计、备选标签以及收藏的保存与删除。
  * 同时承载收藏页的两条写侧链路——批量取消收藏 (`api/collect/batch/cancel`)
@@ -72,6 +78,39 @@ class CollectRepository(
      */
     private val _collectMutationGeneration = MutableStateFlow(0L)
     val collectMutationGeneration: StateFlow<Long> = _collectMutationGeneration.asStateFlow()
+
+    /**
+     * 服务端计数快照池：nodeId → 写后由服务端 `collectCount` 刷新的快照（`null` 表示尚未刷新）。
+     * 与收藏状态池同构，按 nodeId 隔离且同 id 恒返回同一只读流，详情页直接观察即可重置基线。
+     * 快照带单调递增 revision：人数未变时 StateFlow 仍会发射，delta 才能可靠归零。
+     */
+    private val _countSnapshotRevision = MutableStateFlow(0L)
+    private val countSnapshotFlows =
+        MutableStateFlow<Map<Long, MutableStateFlow<CollectCountSnapshot?>>>(emptyMap())
+
+    /** 观察指定 [nodeId] 的服务端收藏计数快照；未刷新前值为 `null`。 */
+    fun observeCollectCountSnapshot(nodeId: Long): StateFlow<CollectCountSnapshot?> =
+        mutableCountSnapshotFlowOf(nodeId)
+
+    /**
+     * 写入服务端计数快照；仅由写侧页面在网络成功后调用（先拉取 `getCollectCount`），
+     * 失败时不调用即保留旧快照与乐观 delta。
+     */
+    fun updateCollectCountSnapshot(nodeId: Long, count: Long) {
+        var revision = 0L
+        _countSnapshotRevision.update { (it + 1).also { next -> revision = next } }
+        mutableCountSnapshotFlowOf(nodeId).value = CollectCountSnapshot(count, revision)
+    }
+
+    /** 取（必要时创建）快照流句柄；CAS 合并保证并发首访同 id 只落一个实例。 */
+    private fun mutableCountSnapshotFlowOf(nodeId: Long): MutableStateFlow<CollectCountSnapshot?> {
+        countSnapshotFlows.value[nodeId]?.let { return it }
+        countSnapshotFlows.update { current ->
+            if (current.containsKey(nodeId)) current
+            else current + (nodeId to MutableStateFlow<CollectCountSnapshot?>(null))
+        }
+        return countSnapshotFlows.value.getValue(nodeId)
+    }
 
     /**
      * 观察指定条目的收藏状态流；同 [nodeId] 恒返回同一实例（幂等），未拉取前值为 `null`。

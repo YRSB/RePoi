@@ -149,11 +149,11 @@ class HobbyDetailViewModelCollectTest {
     }
 
     /**
-     * 编辑页「未收藏 → 添加收藏」经同一状态池推送详情页：爱心亮起、计数由 0 变 +1，
-     * 代数只在保存成功后推进 1 代（加载时的 refresh 不推进）。
+     * 编辑页「未收藏 → 添加收藏」经同一状态池推送详情页：爱心亮起，计数基线改由服务端快照提供、
+     * 本地 delta 归零，代数只在保存成功后推进 1 代（加载时的 refresh 不推进）。
      */
     @Test
-    fun collectEditAddFromEmpty_thenDetailReadsFavoriteAndPositiveDelta() = runTest(testDispatcher) {
+    fun collectEditAddFromEmpty_thenDetailReadsFavoriteAndServerCountBase() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.route("collectCount", env.collectMock.ok("""{"collect":{}}"""))
@@ -185,15 +185,17 @@ class HobbyDetailViewModelCollectTest {
         assertEquals(CollectConstants.STATE_CARE, env.collectRepository.observeCollectState(100L).value?.state)
         assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
         assertTrue(detail.uiState.value.isFavorite)
-        assertEquals(1, detail.uiState.value.collectCountDelta)
+        // 写后基线来自服务端 collectCount 总和（此处桩返回空统计，总和 0），delta 归零
+        assertEquals(0L, detail.uiState.value.collectCountBase)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
     }
 
     /**
      * 编辑页「已收藏 care → 改档 buy → 取消收藏」的全过程：
-     * 详情读数跟随新档位，增量基线保持在已收藏态（改档 0，取消 -1），代数累计 +2。
+     * 详情档位跟随状态池，每次写后计数基线都改由服务端快照提供、delta 归零，代数累计 +2。
      */
     @Test
-    fun collectEditTierChangeThenDelete_thenDetailReadsNewTierAndNegativeDelta() = runTest(testDispatcher) {
+    fun collectEditTierChangeThenDelete_thenDetailReadsNewTierAndServerCountBase() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
         env.stubBasics(nodeId = 100L)
         env.collectMock.route("collectCount", env.collectMock.ok("""{"collect":{}}"""))
@@ -226,6 +228,7 @@ class HobbyDetailViewModelCollectTest {
         assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
         assertTrue(detail.uiState.value.isFavorite)
         assertEquals(CollectConstants.STATE_BUY, detail.uiState.value.currentCollectData?.state)
+        assertEquals(0L, detail.uiState.value.collectCountBase)
         assertEquals(0, detail.uiState.value.collectCountDelta)
 
         edit.deleteCollect()
@@ -235,6 +238,91 @@ class HobbyDetailViewModelCollectTest {
         assertEquals(2L, env.collectRepository.collectMutationGeneration.value)
         assertFalse(detail.uiState.value.isFavorite)
         assertNull(detail.uiState.value.currentCollectData)
-        assertEquals(-1, detail.uiState.value.collectCountDelta)
+        assertEquals(0L, detail.uiState.value.collectCountBase)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
+    }
+
+    /**
+     * 写后服务端基线：编辑页保存成功后拉取 `hobby/collectCount`，五分类总和作为详情页展示基数，
+     * 本地乐观 delta 归零；详情页 ViewModel 未重建也能立即看到更新。
+     */
+    @Test
+    fun collectEditSave_refreshesDetailCountBaseFromServerAndZeroesDelta() = runTest(testDispatcher) {
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
+        env.stubBasics(nodeId = 100L)
+        env.collectMock.route(
+            "collectCount",
+            env.collectMock.ok("""{"collect":{"care":10,"want":2,"preorder":0,"buy":3,"resell":0}}""")
+        )
+        env.collectMock.route("collect/tag", env.collectMock.ok("""{"favTags":[]}"""))
+        env.collectMock.route("collect/state", env.collectMock.ok("""{}"""))
+        env.collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val detail = env.viewModel()
+        detail.loadDetail(DetailNavParam(itemId = 59570L))
+        advanceUntilIdle()
+        assertEquals(100, detail.uiState.value.detail?.collect)
+        assertNull(detail.uiState.value.collectCountBase)
+
+        val edit = CollectEditViewModel(
+            env.collectRepository,
+            SaveHobbyCollectUseCase(env.collectRepository),
+            DeleteHobbyCollectUseCase(env.collectRepository)
+        )
+        edit.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+
+        // 写后服务端人数 35+3+0+3+0=41，作为详情页新基线
+        env.collectMock.replaceRoute(
+            "collectCount",
+            env.collectMock.ok("""{"collect":{"care":35,"want":3,"preorder":0,"buy":3,"resell":0}}""")
+        )
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(edit.uiState.value.saveSuccess)
+        assertEquals(41L, detail.uiState.value.collectCountBase)
+        assertEquals(0, detail.uiState.value.collectCountDelta)
+        assertTrue(detail.uiState.value.isFavorite)
+        val paths = buildList {
+            repeat(env.collectMock.requestCount) { add(env.collectMock.takeRequest().encodedPath) }
+        }
+        assertTrue(paths.any { it?.contains("hobby/collectCount") == true })
+    }
+
+    /** 计数请求失败：不刷新基线，详情页保留写后的乐观 delta（旧行为）。 */
+    @Test
+    fun collectEditSave_whenCountRequestFails_keepsOptimisticDelta() = runTest(testDispatcher) {
+        val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
+        env.stubBasics(nodeId = 100L)
+        env.collectMock.route(
+            "collectCount",
+            env.collectMock.ok("""{"collect":{"care":10,"want":2,"preorder":0,"buy":3,"resell":0}}""")
+        )
+        env.collectMock.route("collect/tag", env.collectMock.ok("""{"favTags":[]}"""))
+        env.collectMock.route("collect/state", env.collectMock.ok("""{}"""))
+        env.collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val detail = env.viewModel()
+        detail.loadDetail(DetailNavParam(itemId = 59570L))
+        advanceUntilIdle()
+
+        val edit = CollectEditViewModel(
+            env.collectRepository,
+            SaveHobbyCollectUseCase(env.collectRepository),
+            DeleteHobbyCollectUseCase(env.collectRepository)
+        )
+        edit.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+
+        env.collectMock.replaceRoute("collectCount", env.collectMock.failure(500, "计数失败"))
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        // 保存本身成功；计数请求失败不覆盖快照，详情仍按乐观 delta 展示
+        assertTrue(edit.uiState.value.saveSuccess)
+        assertTrue(detail.uiState.value.isFavorite)
+        assertNull(detail.uiState.value.collectCountBase)
+        assertEquals(1, detail.uiState.value.collectCountDelta)
     }
 }

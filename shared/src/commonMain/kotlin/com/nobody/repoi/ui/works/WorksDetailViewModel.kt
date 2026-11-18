@@ -8,13 +8,19 @@ import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.WorksCharacterItem
 import com.nobody.repoi.data.remote.model.WorksData
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.remote.model.WorksSeriesRef
 import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -51,6 +57,8 @@ data class WorksDetailUiState(
     override val commentsError: String? = null,
     override val pendingPraiseIds: Set<Long> = emptySet(),
     override val commentActionMessage: String? = null,
+    /** 写成功后由服务端 `collectCount` 刷新的收藏人数基线；null 时回落作品详情接口的 collect 字段 */
+    val collectCountBase: Long? = null,
     val isIntroExpanded: Boolean = false
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     override fun copyWithComments(
@@ -89,6 +97,7 @@ data class WorksDetailUiState(
 
 class WorksDetailViewModel(
     private val repository: WorksDetailRepository,
+    private val collectRepository: CollectRepository,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -101,6 +110,35 @@ class WorksDetailViewModel(
     init {
         // 合并评论详情页回写的主楼更新（点赞/回复）
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
+        // 作品收藏编辑页写成功后刷新服务端计数，详情页按 worksId 观察同一快照
+        observeCollectCountSnapshot()
+    }
+
+    /**
+     * 作品详情只展示 `works.collect`，无本地 delta；编辑页写成功后以 worksId 为键
+     * 写入服务端计数快照，本页直接展示快照，无需依赖返回时重新拉详情接口。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeCollectCountSnapshot() {
+        viewModelScope.launch {
+            uiState
+                .map { it.worksId }
+                .distinctUntilChanged()
+                .flatMapLatest { id ->
+                    if (id > 0L) {
+                        collectRepository.observeCollectCountSnapshot(id).map { id to it }
+                    } else {
+                        flowOf(id to null)
+                    }
+                }
+                .collect { (worksId, snapshot) ->
+                    if (snapshot == null || _uiState.value.worksId != worksId) return@collect
+                    _uiState.update { current ->
+                        if (current.worksId != worksId) return@update current
+                        current.copy(collectCountBase = snapshot.total)
+                    }
+                }
+        }
     }
 
     fun loadDetail(param: WorksNavParam) {

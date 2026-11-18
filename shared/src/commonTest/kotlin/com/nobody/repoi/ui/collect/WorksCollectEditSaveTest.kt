@@ -2,8 +2,16 @@ package com.nobody.repoi.ui.collect
 
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
+import com.nobody.repoi.data.repository.CommentRepository
+import com.nobody.repoi.data.repository.RecordedHttpRequest
+import com.nobody.repoi.data.repository.StickerRepository
+import com.nobody.repoi.data.repository.WorksDetailRepository
 import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
+import com.nobody.repoi.data.session.FakeUserSession
+import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
+import com.nobody.repoi.ui.works.WorksNavParam
+import com.nobody.repoi.ui.works.WorksDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -126,8 +134,8 @@ class WorksCollectEditSaveTest {
                 viewModel.saveCollect()
                 advanceUntilIdle()
 
-                val recorded = collectMock.takeRequest()
-                assertEquals("/api/works/glean/add", recorded.encodedPath)
+                // 写后还会拉一次 collectCount；按路径挑出写请求，不能依赖 FIFO 顺序
+                val recorded = collectMock.drainRequests().first { it.encodedPath == "/api/works/glean/add" }
                 val form = recorded.formEntries()
                 assertEquals("Works", form["itemType"])
                 assertEquals("66", form["itemId"])
@@ -167,15 +175,13 @@ class WorksCollectEditSaveTest {
         viewModel.selectState(WorksStateOption.WATCHED)
         viewModel.saveCollect()
         advanceUntilIdle()
-        val add = collectMock.takeRequest()
-        assertEquals("/api/works/glean/add", add.encodedPath)
+        val add = collectMock.drainRequests().first { it.encodedPath == "/api/works/glean/add" }
         assertEquals("3", add.formEntries()["state"])
         assertEquals(1L, collectRepository.collectMutationGeneration.value)
 
         viewModel.deleteCollect()
         advanceUntilIdle()
-        val del = collectMock.takeRequest()
-        assertEquals("/api/works/glean/del", del.encodedPath)
+        val del = collectMock.drainRequests().first { it.encodedPath == "/api/works/glean/del" }
         assertEquals("Works", del.formEntries()["itemType"])
         assertEquals("66", del.formEntries()["itemId"])
         assertTrue(viewModel.uiState.value.deleteSuccess)
@@ -250,9 +256,119 @@ class WorksCollectEditSaveTest {
         assertNull(collectRepository.observeCollectState(66L).value)
     }
 
+
+    /**
+     * 作品写后服务端基线：编辑页保存成功后刷新 `hobby/collectCount`，作品详情页按 worksId
+     * 读取同一快照；作品详情无本地 delta，展示人数直接由服务端快照替换详情接口 collect 字段。
+     */
+    @Test
+    fun saveCollect_refreshesWorksDetailCountBaseFromServer() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val (detail, _) = newWorksDetailViewModel(collectRepository)
+        val edit = WorksCollectEditViewModel(
+            collectRepository,
+            SaveWorksCollectUseCase(collectRepository),
+            DeleteWorksCollectUseCase(collectRepository)
+        )
+        collectMock.route("user/glean/textTag/get", collectMock.ok("""[]"""))
+        collectMock.route("works/glean/get", collectMock.ok("{}"))
+        collectMock.route("works/glean/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectMock.route(
+            "collectCount",
+            collectMock.ok("""{"collect":{"care":8,"want":1,"preorder":0,"buy":0,"resell":0}}""")
+        )
+
+        detail.loadDetail(WorksNavParam(worksId = 66L))
+        advanceUntilIdle()
+        assertEquals(5, detail.uiState.value.works?.collect)
+        assertNull(detail.uiState.value.collectCountBase)
+
+        edit.initData(WorksCollectEditNavParam(worksId = 66L))
+        advanceUntilIdle()
+        collectMock.drainPaths()
+
+        // 写后服务端人数 12+2+0+1+0=15，作品详情展示基数改由服务端提供
+        collectMock.replaceRoute(
+            "collectCount",
+            collectMock.ok("""{"collect":{"care":12,"want":2,"preorder":0,"buy":1,"resell":0}}""")
+        )
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(edit.uiState.value.saveSuccess)
+        assertEquals(15L, collectRepository.observeCollectCountSnapshot(66L).value?.total)
+        assertEquals(15L, detail.uiState.value.collectCountBase)
+        assertTrue(collectMock.drainPaths().any { it?.contains("hobby/collectCount") == true })
+    }
+
+    /** 计数请求失败：作品详情保留详情接口 collect 字段作为展示基数，写成功语义不变。 */
+    @Test
+    fun saveCollect_whenCountRequestFails_keepsWorksDetailFallback() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val (detail, _) = newWorksDetailViewModel(collectRepository)
+        val edit = WorksCollectEditViewModel(
+            collectRepository,
+            SaveWorksCollectUseCase(collectRepository),
+            DeleteWorksCollectUseCase(collectRepository)
+        )
+        collectMock.route("user/glean/textTag/get", collectMock.ok("""[]"""))
+        collectMock.route("works/glean/get", collectMock.ok("{}"))
+        collectMock.route("works/glean/add", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+        collectMock.route(
+            "collectCount",
+            collectMock.ok("""{"collect":{"care":8,"want":1,"preorder":0,"buy":0,"resell":0}}""")
+        )
+
+        detail.loadDetail(WorksNavParam(worksId = 66L))
+        advanceUntilIdle()
+
+        edit.initData(WorksCollectEditNavParam(worksId = 66L))
+        advanceUntilIdle()
+        collectMock.drainPaths()
+
+        collectMock.replaceRoute("collectCount", collectMock.failure(500, "计数失败"))
+        edit.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(edit.uiState.value.saveSuccess)
+        assertNull(collectRepository.observeCollectCountSnapshot(66L).value)
+        assertNull(detail.uiState.value.collectCountBase)
+        assertEquals(5, detail.uiState.value.works?.collect)
+    }
+
+    /** 作品详情测试替身：worksId 与 works.id 一致，便于快照按同一键观察。 */
+    private fun newWorksDetailViewModel(collectRepository: CollectRepository): Pair<WorksDetailViewModel, MockApi> {
+        val detailMock = MockApi()
+        detailMock.route(
+            "works/get",
+            detailMock.ok("""{"result":{"works":{"id":66,"itemId":28,"nameCN":"作品A","collect":5},"worksSeries":null,"worksRatingAvg":0}}""")
+        )
+        detailMock.route("hobby/query-v2", detailMock.ok("""{"list":[]}"""))
+        detailMock.route("works/album/get", detailMock.ok("""{"items":[]}"""))
+        detailMock.route("works/character/home/get", detailMock.ok("""{"worksLinkCharacter":[]}"""))
+        detailMock.route("comment/get", detailMock.ok("""{"list":[]}"""))
+        val commentDelegate = CommentInteractionDelegate(
+            CommentRepository(MockApi().api(testDispatcher)),
+            StickerRepository(MockApi().api(testDispatcher)),
+            FakeUserSession("utoken-test")
+        )
+        val viewModel = WorksDetailViewModel(
+            WorksDetailRepository(detailMock.api(testDispatcher)),
+            collectRepository,
+            commentDelegate
+        )
+        return viewModel to detailMock
+    }
     /** 消费并丢弃已排队的请求记录。 */
     private fun MockApi.drainPaths(): List<String?> = buildList {
         repeat(requestCount) { add(takeRequest().encodedPath) }
+    }
+
+    /** 消费全部排队请求并保留完整记录，供读后计数请求与写请求交错时按路径筛选。 */
+    private fun MockApi.drainRequests(): List<RecordedHttpRequest> = buildList {
+        repeat(requestCount) { add(takeRequest()) }
     }
 
     private fun newRepository(collectMock: MockApi): CollectRepository =
