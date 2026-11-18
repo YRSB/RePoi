@@ -105,9 +105,10 @@
 
 ## 网络契约与 DTO 体系 (Network & DTO)
 
-- **统一响应封包**：由 `CommonResponse<T>` 封装。
+- **统一响应封包**：`CommonResponse<T>` 仅作 `HpoiApi` 内部反序列化信封；公开签名只交付洁净载荷（`T` / `Unit` / `T?`），解包、异常映射与令牌失效自愈统合在私有 `unwrap*` 模板内。
   - 成功判定：`code == 200 || code == 0 || code == -1`。
-  - 认证失效：`code == 4001`（触发全局会话失效与重登流程）。
+  - 认证失效：`code == 4001`（深管道经在途令牌快照回调 `UserSession.notifyTokenExpired`）。
+  - **机械校验**：`scripts/check-ui-rules.ps1` 的 `API-PUBLIC-ENVELOPE` / `DATA-PIPELINE-BYPASS` / `DATA-SILENT-RECOVERY` 规则在 CI `ui-rules` job 执行，拦截公开签名泄露信封、仓储自行判码或捕获凭据，以及无条件 `recover` 吞错。
 - **DTO 三层命名规范**：
   - 外层报文：`[Feature]Payload`
   - 数据主体：`[Feature]Data`
