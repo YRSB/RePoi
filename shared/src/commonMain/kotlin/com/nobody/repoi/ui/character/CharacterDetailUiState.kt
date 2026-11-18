@@ -28,6 +28,8 @@ data class CharacterDetailUiState(
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
+    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+    val collectCountBase: Int? = null,
 
     // 分区/属性标签
     val isZonesLoading: Boolean = false,
@@ -63,7 +65,7 @@ data class CharacterDetailUiState(
 
     /** 计算展示的收藏数量（基准数 + 本地乐观增量） */
     val displayCollectCount: Int
-        get() = ((character?.collect ?: 0) + collectCountDelta).coerceAtLeast(0)
+        get() = ((collectCountBase ?: (character?.collect ?: 0)) + collectCountDelta).coerceAtLeast(0)
 
     override fun copyWithComments(
         hotComments: List<CommentItem>,

@@ -160,7 +160,7 @@ fun CharacterDetailScreen(
                 },
                 floatingToolbar = {
                     if (character != null) {
-                        val baseCollect = character?.collect?.toLong() ?: 0L
+                        val baseCollect = (uiState.collectCountBase ?: (character?.collect ?: 0)).toLong()
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         CharacterFloatingActionBar(
                             collectCount = displayCollect,

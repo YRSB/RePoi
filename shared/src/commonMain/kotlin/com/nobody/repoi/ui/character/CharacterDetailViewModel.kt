@@ -189,6 +189,18 @@ class CharacterDetailViewModel(
                     )
                 }
             }
+            else {
+                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+                collectRepository.getCollectCount(nodeId).onSuccess { count ->
+                    _uiState.update { current ->
+                        current.copy(
+                            collectCountBase = count.total,
+                            collectCountDelta = 0,
+                            originalCollected = nextCollected
+                        )
+                    }
+                }
+            }
         }
     }
 
