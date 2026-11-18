@@ -133,7 +133,7 @@ val viewModelModule = module {
     viewModel { UserHistoryViewModel(get(), get()) }
     viewModel { VendorDetailViewModel(get(), get(), get(), get()) }
     viewModel { VendorActionsViewModel(get()) }
-    viewModel { WorksDetailViewModel(get(), get()) }
+    viewModelOf(::WorksDetailViewModel)
     viewModel { ZoneBrowseViewModel(get()) }
     viewModelOf(::ZoneDetailViewModel)
     viewModel { ZoneSettingsViewModel(get()) }

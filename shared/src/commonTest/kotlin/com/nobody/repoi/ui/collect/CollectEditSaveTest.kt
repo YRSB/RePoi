@@ -211,4 +211,59 @@ class CollectEditSaveTest {
             SaveHobbyCollectUseCase(collectRepository),
             DeleteHobbyCollectUseCase(collectRepository)
         )
+
+    /** 写成功后由服务端 `collectCount` 五分类总和写入计数快照，供详情页重置基线。 */
+    @Test
+    fun saveCollect_writesServerCountSnapshot() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(collectRepository)
+        collectMock.route(
+            "collectCount",
+            collectMock.ok("""{"collect":{"care":10,"want":2,"preorder":0,"buy":3,"resell":0}}""")
+        )
+        collectMock.route("collect/tag", collectMock.ok("""{"favTags":[]}"""))
+        collectMock.route("collect/state", collectMock.ok("""{}"""))
+        collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        viewModel.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+        assertNull(collectRepository.observeCollectCountSnapshot(100L).value)
+        collectMock.drainPaths()
+
+        collectMock.replaceRoute(
+            "collectCount",
+            collectMock.ok("""{"collect":{"care":35,"want":3,"preorder":0,"buy":3,"resell":0}}""")
+        )
+        viewModel.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveSuccess)
+        assertEquals(41L, collectRepository.observeCollectCountSnapshot(100L).value?.total)
+        assertTrue(collectMock.drainPaths().any { it?.contains("hobby/collectCount") == true })
+    }
+
+    /** 计数请求失败：快照保持未刷新，写成功、状态池与代数语义不受影响。 */
+    @Test
+    fun saveCollect_whenCountRequestFails_keepsSnapshotUnchanged() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(collectRepository)
+        collectMock.route("collectCount", collectMock.ok("""{"collect":{"care":10,"want":2,"preorder":0,"buy":3,"resell":0}}"""))
+        collectMock.route("collect/tag", collectMock.ok("""{"favTags":[]}"""))
+        collectMock.route("collect/state", collectMock.ok("""{}"""))
+        collectMock.route("collect/hobby/upd", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        viewModel.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
+        advanceUntilIdle()
+        collectMock.drainPaths()
+
+        collectMock.replaceRoute("collectCount", collectMock.failure(500, "计数失败"))
+        viewModel.saveCollect()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveSuccess)
+        assertNull(collectRepository.observeCollectCountSnapshot(100L).value)
+        assertEquals(1L, collectRepository.collectMutationGeneration.value)
+    }
 }

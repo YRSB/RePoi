@@ -98,7 +98,9 @@ data class HobbyDetailUiState(
     val isFavorite: Boolean = false,
     val currentCollectData: CollectData? = null,
     /** 收藏数增量：语义为「当前值 - 最近一次网络基线」，取值仅 -1/0/1，非累加计数 */
-    val collectCountDelta: Int = 0
+    val collectCountDelta: Int = 0,
+    /** 写成功后由服务端 `collectCount` 刷新的总人数基线；null 时回落详情接口的 collect 字段 */
+    val collectCountBase: Long? = null
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     override fun copyWithComments(
         hotComments: List<CommentItem>,
@@ -209,6 +211,36 @@ class HobbyDetailViewModel(
         }
     }
 
+    /**
+     * 观察服务端计数快照：编辑页写成功后写入的总人数即为新基线，本地 delta 归零。
+     * 与收藏状态流按同一节点 id 订阅，因此从编辑页返回（ViewModel 存活）也能立即看到服务端计数。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeCollectCountSnapshot() {
+        viewModelScope.launch {
+            uiState
+                .map { currentNodeIdOf(it) }
+                .distinctUntilChanged()
+                .flatMapLatest { id ->
+                    if (id > 0L) {
+                        collectRepository.observeCollectCountSnapshot(id).map { id to it }
+                    } else {
+                        flowOf(id to null)
+                    }
+                }
+                .collect { (nodeId, snapshot) ->
+                    if (snapshot == null || currentNodeIdOf(_uiState.value) != nodeId) return@collect
+                    // 状态池此时已是写后值：同步收藏基线，避免随后的状态流重放再冒出乐观 delta
+                    collectBaselineCollected =
+                        collectRepository.observeCollectState(nodeId).value?.isCollected == true
+                    _uiState.update { current ->
+                        if (currentNodeIdOf(current) != nodeId) return@update current
+                        current.copy(collectCountBase = snapshot.total, collectCountDelta = 0)
+                    }
+                }
+        }
+    }
+
     /** 把状态池值映射进 UI 状态：爱心与计数只看状态池，不做任何本地推断。 */
     private fun applyCollectState(
         current: HobbyDetailUiState,
@@ -233,6 +265,8 @@ class HobbyDetailViewModel(
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
         // 状态驱动：订阅当前条目的收藏状态流，原子更新爱心高亮与计数值
         observeCollectState()
+        // 服务端计数快照驱动：写后基线以服务端为准，delta 归零
+        observeCollectCountSnapshot()
         // 监听全局 ExHobby 扩展图库开关，动态同步状态并按需触发补录
         viewModelScope.launch {
             viewPreferencesManager.isExHobbyEnabledFlow.collect { enabled ->

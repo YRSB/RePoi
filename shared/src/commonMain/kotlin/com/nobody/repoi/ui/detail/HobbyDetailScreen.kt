@@ -272,6 +272,7 @@ fun HobbyDetailScreen(
                         detail = uiState.detail,
                         isFavorite = uiState.isFavorite,
                         collectDelta = uiState.collectCountDelta,
+                        collectCountBase = uiState.collectCountBase,
                         commentCount = uiState.detail?.commentCount ?: 0,
                         showCommentButton = !isWidePane,
                         onToggleFavorite = {
@@ -1627,14 +1628,16 @@ private fun HobbyFloatingActionBar(
     detail: HobbyDetailData?,
     isFavorite: Boolean,
     collectDelta: Int,
+    collectCountBase: Long?,
     commentCount: Int,
     showCommentButton: Boolean,
     onToggleFavorite: () -> Unit,
     onCommentListClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val baseCollect = detail?.collect ?: 0
-    val displayCollect = (baseCollect + collectDelta).coerceAtLeast(0)
+    // 写后以服务端计数快照为基线；未刷新过时回落详情接口 collect 字段
+    val baseCollect = collectCountBase ?: (detail?.collect ?: 0).toLong()
+    val displayCollect = (baseCollect + collectDelta).coerceAtLeast(0L)
     val displayComment = commentCount.coerceAtLeast(0)
 
     ExpressiveFloatingToolbar(modifier = modifier) {
