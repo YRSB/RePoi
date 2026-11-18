@@ -60,11 +60,15 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ViewModel 模块：50 个 ViewModel 注册（M3 起按 NavKey 传参）。
+ * ViewModel 模块：50+ ViewModel 注册（M3 起按 NavKey 传参）。
  *
- * 构造签名不含可选参数、也不依赖限定符时统一走 `viewModelOf(::Xxx)`；
- * 带 Kotlin 默认参数（如 `UserCollectViewModel`、`UserCreationViewModel`）或需 `named` 限定符者
- * 保留 `viewModel { }` 显式写法，否则 Koin 会尝试从容器解析缺省值类型导致启动失败。
+ * 构造签名不含 `/named` 限定符时统一走 `viewModelOf(::Xxx)`；需要限定符（如 `named("download")`）
+ * 或显式控制解析顺序时保留 `viewModel { }` 写法。
+ *
+ * 关键契约：`viewModelOf` 对应的 Koin `new()` **逐个 `get()` 形参，不使用 Kotlin 默认值**，
+ * 因此带默认值的可空参数同样必须已在容器中注册（`HomeFeedViewModel` 的 `categoryManager` /
+ * `messageRepository` 即依赖 `ManagerModule` / `RepositoryModule` 注册）；未注册会启动即解析失败，
+ * 而不是得到 null。
  *
  * SavedStateHandle 已删除（见各 VM 注释）：NavKey 字段经 `koinViewModel(parameters = ...)`
  * 或 `loadInitial/initParam` 传入；plain `koinViewModel()` 保持条目作用域。
@@ -89,7 +93,7 @@ val viewModelModule = module {
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
-    viewModel { HomeFeedViewModel(get(), get(), get(), get(), get()) }
+    viewModelOf(::HomeFeedViewModel)
     viewModel { ItemHomeViewModel(get(), get()) }
     viewModel { HobbyListViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }

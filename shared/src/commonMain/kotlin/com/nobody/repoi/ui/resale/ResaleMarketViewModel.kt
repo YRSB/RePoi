@@ -1,8 +1,9 @@
-﻿package com.nobody.repoi.ui.resale
+package com.nobody.repoi.ui.resale
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.util.paging.KeyedListLoader
@@ -62,6 +63,8 @@ class ResaleMarketViewModel(
         fetcher = { cursor ->
             val cur = _uiState.value
             resaleRepository.searchResale(
+                // 同款二手市场是跨专区的全站检索：显式使用「全部」作用域（省略 zones，行为与旧版一致）
+                scope = ZoneQueryScope.All,
                 itemId = cur.hobbyId.takeIf { it > 0L },
                 type = cur.type,
                 keyword = cur.keyword.takeIf { it.isNotBlank() },

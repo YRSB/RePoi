@@ -216,6 +216,9 @@ data class ZoneEntityItem(
         }
 }
 
+/** 实体板块（`api/zone/items`）单页条目数：首页与专区详情共用的协议常量。 */
+const val ENTITY_BOARD_PAGE_SIZE: Int = 20
+
 /**
  * api/zone/items 响应 Payload。
  */

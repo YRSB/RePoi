@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.CategoryItem
+import com.nobody.repoi.ui.board.HobbyBoardOptions
 import androidx.compose.foundation.shape.CircleShape
 
 /**
@@ -67,16 +68,9 @@ fun CategoryPickerSheet(
     // 左侧选中的大类，默认定位到当前激活的大类
     var previewPrimaryId by remember { mutableIntStateOf(selectedCategoryId) }
 
+    // 一级分类候选项与产品板块筛选共享同一份定义（顺序与文案唯一来源，避免两处漂移）
     val primaryCategories = remember {
-        listOf(
-            CategoryItem(10000, "全部周边"),
-            CategoryItem(100, "手办"),
-            CategoryItem(200, "动漫模型"),
-            CategoryItem(500, "真实模型"),
-            CategoryItem(300, "娃娃人偶"),
-            CategoryItem(400, "毛绒布偶"),
-            CategoryItem(900, "动漫周边")
-        )
+        HobbyBoardOptions.PRIMARY_CATEGORIES.map { (id, name) -> CategoryItem(id, name) }
     }
 
     // 选中的大类名称

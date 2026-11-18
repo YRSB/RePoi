@@ -6,6 +6,7 @@ import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.local.CategoryManager
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.model.ActionItem
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.CollectConstants
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
@@ -22,7 +23,24 @@ import com.nobody.repoi.data.repository.ItemRepository
 import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.platform.DateTimeFormats
+import com.nobody.repoi.ui.board.AlbumBoardLoader
+import com.nobody.repoi.ui.board.AlbumBoardOptions
+import com.nobody.repoi.ui.board.AlbumBoardQuery
+import com.nobody.repoi.ui.board.AlbumCategoryOption
+import com.nobody.repoi.ui.board.HobbyBoardOptions
+import com.nobody.repoi.ui.board.PostsBoardOptions
+import com.nobody.repoi.ui.board.ResaleBoardOptions
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.data.remote.model.ENTITY_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.ZoneHobbyFilter
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
+import com.nobody.repoi.data.remote.model.isHobbyAdvancedFilterActive
 import com.nobody.repoi.util.paging.KeyedListLoader
+import com.nobody.repoi.util.paging.hasNewKeysAfterDedup
+import com.nobody.repoi.util.paging.LoadStage
 import com.nobody.repoi.util.paging.PageChunk
 import com.nobody.repoi.util.paging.PagedListLoader
 import com.nobody.repoi.util.paging.pagedChunkLoader
@@ -38,9 +56,9 @@ import com.nobody.repoi.data.remote.model.ZoneItem
  * 专区产品 (hobby) 分类状态
  */
 data class ZoneHobbyTabState(
-    val categoryId: Int = 10000,
+    val categoryId: Int = HobbyBoardOptions.DEFAULT_CATEGORY_ID,
     val subCategoryId: Int? = null,
-    val order: String = "hits7Day",
+    val order: String = HobbyBoardOptions.DEFAULT_ORDER,
     val releaseYear: Int? = null,
     val releaseMonth: Int? = null,
     val keyword: String = "",
@@ -61,9 +79,47 @@ data class ZoneHobbyTabState(
     val showCategoryPickerSheet: Boolean = false,
     val isSearchActive: Boolean = false
 ) {
+    /** 高级筛选是否实际生效（与 `queryHobbyBoard` 拼参同一套哨兵语义，见 `isHobbyAdvancedFilterActive`）。 */
     val hasAdvancedFilters: Boolean
-        get() = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
+        get() = isHobbyAdvancedFilterActive(sex = sex, specs = specs, scale = scale, r18 = r18)
 }
+
+/**
+ * 产品状态 → 共享筛选快照（pane / 筛选条只读）。
+ *
+ * 两处弹层显隐也来自 ViewModel（专区详情顶栏控制栏打开），由共享 pane 渲染。
+ */
+fun ZoneHobbyTabState.toZoneBoardFilters(): ZoneBoardFilters = ZoneBoardFilters(
+    hobby = ZoneHobbyFilter(
+        categoryId = categoryId,
+        subCategoryId = subCategoryId,
+        order = order,
+        releaseYear = releaseYear,
+        releaseMonth = releaseMonth,
+        keyword = keyword,
+        sex = sex,
+        specs = specs,
+        scale = scale,
+        r18 = r18
+    ),
+    showHobbyFilterSheet = showFilterSheet,
+    showHobbyCategoryPickerSheet = showCategoryPickerSheet
+)
+
+/**
+ * 产品状态 → 共享内容快照（专区详情产品分支改由 `ZoneBoardPane` 渲染）。
+ */
+fun ZoneHobbyTabState.toZoneBoardContent(): ZoneBoardContent.Hobby = ZoneBoardContent.Hobby(
+    items = items,
+    isGridMode = isGridMode,
+    page = ZoneBoardPageView(
+        isLoading = isLoading,
+        isLoadingMore = isLoadingMore,
+        errorMessage = errorMessage,
+        loadMoreError = loadMoreError,
+        isEndReached = isEndReached
+    )
+)
 
 /**
  * 专区二手 (resale_item) 分类状态
@@ -106,8 +162,8 @@ data class ZoneDetailUiState(
     val availableTabs: List<Pair<String, String>> = listOf("action" to "动态"),
     val selectedTab: String = "action",
 
-    // 动态 Tab 状态
-    val selectedSubType: String = "recommend",
+    // 动态 Tab 状态（默认筛选值取共享定义的默认项，旧键 all 不再出现）
+    val selectedSubType: String = ActionSubType.DEFAULT.apiValue,
     val items: List<ActionItem> = emptyList(),
     val lastTime: Long = 0L,
     val isFeedLoading: Boolean = true,
@@ -118,7 +174,11 @@ data class ZoneDetailUiState(
     val loadMoreError: String? = null,
 
     // 分享/相册 Tab 状态
-    val albumSelectedOrder: String = "top",
+    val albumSelectedOrder: String = AlbumBoardOptions.DEFAULT_ORDER,
+    /** 相册分类；`null` = 全部分类（原版仅单专区展示分类入口）。 */
+    val albumSelectedCategory: Int? = null,
+    /** 相册分类候选（服务端 `api/zone/categories?itemType=album`；少于 2 个有效项时为空）。 */
+    val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     val albumItems: List<AlbumListItem> = emptyList(),
     val albumPage: Int = 1,
     val isAlbumLoading: Boolean = false,
@@ -128,7 +188,7 @@ data class ZoneDetailUiState(
     val albumLoadMoreError: String? = null,
 
     // 讨论/帖子 Tab 状态
-    val postsSelectedOrder: String = "upd",
+    val postsSelectedOrder: String = PostsBoardOptions.DEFAULT_ORDER,
     val postsItems: List<PostItem> = emptyList(),
     val pinnedPosts: List<PostItem> = emptyList(),
     val postsPage: Int = 1,
@@ -167,6 +227,36 @@ data class ZoneDetailUiState(
     val currentEntityState: ZoneEntityTabState
         get() = entityTabs[selectedTab] ?: ZoneEntityTabState()
 
+    /**
+     * 讨论板块 → 共享面板内容快照（宿主投影，`ZoneBoardPane` 只读）。
+     *
+     * 置顶帖始终投影：专区详情固定单专区，不涉及聚合态的「无置顶语义」问题。
+     */
+    val postsBoardContent: ZoneBoardContent.Posts
+        get() = ZoneBoardContent.Posts(
+            pinnedPosts = pinnedPosts,
+            items = postsItems,
+            page = ZoneBoardPageView(
+                isLoading = isPostsLoading && postsItems.isEmpty() && pinnedPosts.isEmpty(),
+                isLoadingMore = isPostsLoadingMore,
+                errorMessage = postsErrorMessage,
+                loadMoreError = postsLoadMoreError,
+                isEndReached = !hasMorePosts
+            )
+        )
+
+    /** 讨论板块筛选值快照（3 档排序；讨论没有分类字段，见 `PostsBoardOptions` KDoc）。 */
+    val postsBoardFilters: ZoneBoardFilters
+        get() = ZoneBoardFilters(postsOrder = postsSelectedOrder)
+
+    /** 产品板块内容快照（喂给共享面板 `ZoneBoardPane`，#159）。 */
+    val hobbyBoardContent: ZoneBoardContent.Hobby
+        get() = hobbyState.toZoneBoardContent()
+
+    /** 产品板块筛选快照（喂给共享筛选条 / 面板，含两个弹层显隐）。 */
+    val hobbyBoardFilters: ZoneBoardFilters
+        get() = hobbyState.toZoneBoardFilters()
+
     companion object {
         val ENTITY_TAB_TYPES = setOf("company", "series", "works", "charactar", "person")
     }
@@ -186,51 +276,25 @@ class ZoneDetailViewModel(
     var nodeId: Long = 0L
         private set
 
-    val subTypes = listOf(
-        Pair("recommend", "推荐"),
-        Pair("all", "全部"),
-        Pair("comment", "讨论"),
-        Pair("confirm", "制作"),
-        Pair("official_pic", "官图"),
-        Pair("preorder", "预定"),
-        Pair("delay", "延期"),
-        Pair("release", "出荷"),
-        Pair("reorder", "再版")
-    )
+    /**
+     * 当前专区查询作用域：专区详情固定单专区。
+     *
+     * 必须写成 getter——[nodeId] 在 [setNodeId] 中变化，构造期缓存会一直停留在 0。
+     */
+    val zoneScope: ZoneQueryScope
+        get() = ZoneQueryScope.Single(nodeId)
 
-    val albumOrders = listOf(
-        Pair("top", "推荐"),
-        Pair("add", "最新创建"),
-        Pair("update", "最近更新"),
-        Pair("picCount", "图片数量"),
-        Pair("hits", "总热度"),
-        Pair("hitsDay", "一天热度")
-    )
-
-    val postsOrders = listOf(
-        Pair("upd", "回复"),
-        Pair("add", "新贴"),
-        Pair("top", "推荐")
-    )
-
-    val resaleTypes = listOf(
-        Pair(1, "出售"),
-        Pair(2, "求购")
-    )
-
-    val resalePurities = listOf(
-        Pair(null, "全部成色"),
-        Pair("11", "全新未拆"),
-        Pair("9", "仅拆封"),
-        Pair("8", "二手好相"),
-        Pair("7", "瑕疵品")
-    )
+    /**
+     * 动态筛选项（key = 协议键值 `subType`，value = 2.43 中文文案）。
+     *
+     * 与首页共用唯一共享定义 [ActionSubType]，界面仍按有序 `(key, label)` 列表渲染。
+     * 其余板块的选项列表（分享排序 / 二手类型与成色）已由 `ZoneBoardFilterBar` 直接读共享定义，
+     * 这里不再保留第二份。
+     */
+    val subTypes: List<Pair<String, String>> =
+        ActionSubType.ordered.map { it.apiValue to it.label }
 
     val categoryTree: StateFlow<Map<Int, List<CategoryItem>>> = categoryManager.categoryMap
-
-    fun getSubCategories(parentId: Int): List<CategoryItem> {
-        return categoryManager.getSubCategories(parentId)
-    }
 
     private val _uiState = MutableStateFlow(
         ZoneDetailUiState(
@@ -240,36 +304,48 @@ class ZoneDetailViewModel(
     val uiState: StateFlow<ZoneDetailUiState> = _uiState.asStateFlow()
 
     private var feedJob: Job? = null
-    private var albumJob: Job? = null
+    private var albumCategoriesJob: Job? = null
     private var postsJob: Job? = null
 
     // 实体分类加载控制器缓存
     private val entityLoaders = mutableMapOf<String, PagedListLoader<ZoneEntityItem>>()
 
+    // 分享（相册）分页控制器：与首页共用 AlbumBoardLoader，避免两屏各写一份首屏/翻页循环。
+    private val albumBoardLoader = AlbumBoardLoader(
+        scope = viewModelScope,
+        repository = albumRepository
+    )
+
+    /** 分享刷新是否在途：完成时无条件收起刷新指示器，避免刷新途中切 Tab 后永久卡住。 */
+    private var albumRefreshInFlight = false
+
     // 产品 (hobby) 分页加载控制器
+    // 请求参数统一由 ItemRepository.queryHobbyBoard 拼装（单专区 zones=nodeId、无 homeScope），
+    // 与首页产品板块共用同一构造，保证三作用域参数不会漂移（#159）。
     private val hobbyLoader: PagedListLoader<HobbyItemSummary> = PagedListLoader.fromList(
         scope = viewModelScope,
         initialPage = 1,
-        pageSize = 24,
+        pageSize = HobbyBoardOptions.PAGE_SIZE,
         keySelector = { if (it.id > 0) it.id else it.itemId }
     ) { page, size ->
         val curHobby = _uiState.value.hobbyState
-        val params = mutableMapOf<String, String>()
-        params["page"] = page.toString()
-        params["pageSize"] = size.toString()
-        params["category"] = (curHobby.subCategoryId ?: curHobby.categoryId).toString()
-        params["order"] = curHobby.order
-        params["zones"] = nodeId.toString()
-
-        curHobby.releaseYear?.let { if (it > 0) params["releaseYear"] = it.toString() }
-        curHobby.releaseMonth?.let { if (it > 0) params["releaseMonth"] = it.toString() }
-        if (curHobby.keyword.isNotBlank()) params["keyword"] = curHobby.keyword.trim()
-        curHobby.sex?.let { if (it != -1) params["sex"] = it.toString() }
-        curHobby.specs?.let { if (it.isNotBlank()) params["specs"] = it }
-        curHobby.scale?.let { if (it.isNotBlank() && it != "0") params["scale"] = it }
-        curHobby.r18?.let { if (it != -1) params["r18"] = it.toString() }
-
-        itemRepository.queryHobbyList(params)
+        itemRepository.queryHobbyBoard(
+            scope = zoneScope,
+            page = page,
+            pageSize = size,
+            filters = ZoneHobbyFilter(
+                categoryId = curHobby.categoryId,
+                subCategoryId = curHobby.subCategoryId,
+                order = curHobby.order,
+                releaseYear = curHobby.releaseYear,
+                releaseMonth = curHobby.releaseMonth,
+                keyword = curHobby.keyword,
+                sex = curHobby.sex,
+                specs = curHobby.specs,
+                scale = curHobby.scale,
+                r18 = curHobby.r18
+            )
+        )
     }
 
     // 二手 (resale_item) 游标加载控制器
@@ -281,17 +357,18 @@ class ZoneDetailViewModel(
         fetcher = { cursor ->
             val curResale = _uiState.value.resaleState
             resaleRepository.searchResale(
-                zones = nodeId,
+                // #150 审查 A4：专区参数统一收 ZoneQueryScope，禁止调用点散拼
+                scope = ZoneQueryScope.Single(nodeId),
                 type = curResale.type,
                 keyword = curResale.keyword.takeIf { it.isNotBlank() },
                 puritys = curResale.purity,
                 lastTime = cursor,
-                pageSize = 24
+                pageSize = ResaleBoardOptions.PAGE_SIZE
             ).map { payload ->
                 val list = payload.list
                 PageChunk(
                     items = list,
-                    hasMore = list.size >= 24 && !list.lastOrNull()?.addDate.isNullOrBlank()
+                    hasMore = list.size >= ResaleBoardOptions.PAGE_SIZE && !list.lastOrNull()?.addDate.isNullOrBlank()
                 )
             }
         }
@@ -301,6 +378,25 @@ class ZoneDetailViewModel(
         viewModelScope.launch {
             viewPreferencesManager.isHobbyListGridModeFlow.collect { isGrid ->
                 _uiState.update { it.copy(hobbyState = it.hobbyState.copy(isGridMode = isGrid)) }
+            }
+        }
+        // 分享板块状态投影：分页状态机由 AlbumBoardLoader 承担（与首页共用同一实现）
+        viewModelScope.launch {
+            albumBoardLoader.state.collect { listState ->
+                val refreshDone = albumRefreshInFlight && listState.stage == LoadStage.Idle
+                if (refreshDone) albumRefreshInFlight = false
+                _uiState.update { state ->
+                    state.copy(
+                        albumItems = listState.items,
+                        albumPage = listState.page,
+                        isAlbumLoading = listState.isLoading,
+                        isAlbumLoadingMore = listState.isLoadingMore,
+                        hasMoreAlbum = listState.hasMore,
+                        albumErrorMessage = listState.initialError,
+                        albumLoadMoreError = listState.appendError,
+                        isRefreshing = if (refreshDone) false else state.isRefreshing
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -346,10 +442,10 @@ class ZoneDetailViewModel(
             val loader = pagedChunkLoader<ZoneEntityItem>(
                 scope = viewModelScope,
                 initialPage = 1,
-                pageSize = 20,
+                pageSize = ENTITY_BOARD_PAGE_SIZE,
                 keySelector = { it.targetId }
             ) { page, size ->
-                zoneRepository.getZoneItems(nodeId = nodeId, itemType = tabType, page = page, pageSize = size)
+                zoneRepository.getZoneItems(scope = zoneScope, itemType = tabType, page = page, pageSize = size)
                     .map { PageChunk(items = it.list, hasMore = it.hasMore) }
             }
             viewModelScope.launch {
@@ -397,6 +493,8 @@ class ZoneDetailViewModel(
         nodeId = id
         tabScrollPositions.clear()
         entityLoaders.clear()
+        albumBoardLoader.reset()
+        albumCategoriesJob?.cancel()
         hobbyLoader.reset(clearItems = true)
         resaleLoader.reset(clearItems = true)
         _uiState.update {
@@ -423,7 +521,9 @@ class ZoneDetailViewModel(
                 hasMoreAlbum = true,
                 albumErrorMessage = null,
                 albumLoadMoreError = null,
-                postsSelectedOrder = "upd",
+                albumSelectedCategory = null,
+                albumCategoryOptions = emptyList(),
+                postsSelectedOrder = PostsBoardOptions.DEFAULT_ORDER,
                 postsItems = emptyList(),
                 pinnedPosts = emptyList(),
                 postsPage = 1,
@@ -465,48 +565,23 @@ class ZoneDetailViewModel(
     }
 
     private fun parseTabs(serverTabs: List<ZoneTabItem>?): List<Pair<String, String>> {
-        val tabTitleMap = mapOf(
-            "action" to "动态",
-            "album" to "分享",
-            "share" to "分享",
-            "posts" to "讨论",
-            "hobby" to "产品",
-            "resale_item" to "二手",
-            "company" to "厂商",
-            "series" to "系列",
-            "works" to "作品",
-            "charactar" to "角色",
-            "person" to "人物",
-            "community" to "社区"
-        )
+        val rawTabs = serverTabs.orEmpty().filter { it.type.isNotBlank() }
 
-        val rawTabs = serverTabs?.filter { it.type.isNotBlank() && it.type != "shop_item" }
-            ?.takeIf { it.isNotEmpty() }
-            ?: listOf(
-                ZoneTabItem("action", "动态"),
-                ZoneTabItem("album", "分享"),
-                ZoneTabItem("posts", "讨论"),
-                ZoneTabItem("hobby", "产品"),
-                ZoneTabItem("resale_item", "二手"),
-                ZoneTabItem("company", "厂商"),
-                ZoneTabItem("series", "系列"),
-                ZoneTabItem("works", "作品"),
-                ZoneTabItem("charactar", "角色"),
-                ZoneTabItem("person", "人物")
-            )
-        val result = rawTabs.filter { it.type != "shop_item" }.map { tab ->
-            val label = if (tab.type == "hobby") {
-                "产品"
-            } else {
-                tab.title.takeIf { it.isNotBlank() } ?: (tabTitleMap[tab.type] ?: tab.type)
-            }
-            tab.type to label
+        // 服务端未下发任何板块时，回退客户端固定 10 项（现状兜底行为，保持）
+        if (rawTabs.isEmpty()) {
+            return ZoneBoard.HOME_ORDER.map { it.type to it.label }
         }
-        // 确保动态 tab 始终在首位
-        return if (result.any { it.first == "action" }) {
-            result
-        } else {
-            listOf("action" to "动态") + result
+
+        // 能力矩阵：服务端顺序 ∩ 客户端白名单，未知/未实现（shop_item、community）丢弃
+        val boards = ZoneBoard.tabsFor(rawTabs, ZoneBoard.CLIENT_WHITELIST)
+        if (boards.isEmpty()) {
+            return ZoneBoard.HOME_ORDER.map { it.type to it.label }
+        }
+
+        // Tab 文案来自服务端 title，为空才回退枚举文案（产品板块恒为「产品」，与现状一致）
+        return boards.map { board ->
+            val serverTitle = rawTabs.firstOrNull { ZoneBoard.fromType(it.type) == board }?.title
+            board.type to board.tabTitle(serverTitle)
         }
     }
 
@@ -515,6 +590,10 @@ class ZoneDetailViewModel(
         _uiState.update { it.copy(selectedTab = tabType) }
         val isAlbum = tabType == "album" || tabType == "share"
         val isPosts = tabType == "posts"
+        if (isAlbum) {
+            // 分类候选懒加载：仅单专区接口可用，切到分享时同步一次（已加载则复用）
+            syncAlbumCategories()
+        }
         if (isAlbum && _uiState.value.albumItems.isEmpty() && !_uiState.value.isAlbumLoading) {
             loadInitialAlbum()
         } else if (isPosts && _uiState.value.postsItems.isEmpty() && !_uiState.value.isPostsLoading) {
@@ -558,10 +637,12 @@ class ZoneDetailViewModel(
     }
 
     fun selectSubType(subType: String) {
-        if (_uiState.value.selectedSubType == subType) return
+        // 边界归一：与首页同口径，旧键 all 一律转成协议键值 allInfo
+        val normalized = ActionSubType.fromPersisted(subType).apiValue
+        if (_uiState.value.selectedSubType == normalized) return
         _uiState.update {
             it.copy(
-                selectedSubType = subType,
+                selectedSubType = normalized,
                 items = emptyList(),
                 lastTime = 0L,
                 hasMore = true,
@@ -574,6 +655,7 @@ class ZoneDetailViewModel(
     }
 
     fun selectAlbumOrder(order: String) {
+        if (order !in AlbumBoardOptions.ORDER_KEYS) return
         if (_uiState.value.albumSelectedOrder == order) return
         _uiState.update {
             it.copy(
@@ -587,6 +669,51 @@ class ZoneDetailViewModel(
             )
         }
         loadInitialAlbum()
+    }
+
+    /** 切换相册分类（`null` = 全部分类）：清列表 + 回第一页 + 重新请求。 */
+    fun selectAlbumCategory(categoryId: Int?) {
+        if (_uiState.value.albumSelectedCategory == categoryId) return
+        _uiState.update {
+            it.copy(
+                albumSelectedCategory = categoryId,
+                albumItems = emptyList(),
+                albumPage = 1,
+                hasMoreAlbum = true,
+                isAlbumLoading = true,
+                albumErrorMessage = null,
+                albumLoadMoreError = null
+            )
+        }
+        loadInitialAlbum()
+    }
+
+    /**
+     * 相册分类候选：`GET api/zone/categories?nodeId=&itemType=album`（反编译原版分类菜单来源）。
+     *
+     * 有效候选少于 2 个时原版不展示分类入口，此处同样置空；请求完成后校验专区未切换，避免串区。
+     */
+    private fun syncAlbumCategories() {
+        val requestNodeId = nodeId
+        if (requestNodeId <= 0L) return
+        if (_uiState.value.albumCategoryOptions.isNotEmpty()) return
+        albumCategoriesJob?.cancel()
+        albumCategoriesJob = viewModelScope.launch {
+            val result = albumRepository.getAlbumCategories(requestNodeId)
+            if (nodeId != requestNodeId) return@launch
+            val options = result.getOrNull().orEmpty()
+                .map { AlbumCategoryOption(it.categoryId, it.name.orEmpty()) }
+                .filter { it.id > 0 && it.name.isNotBlank() }
+                .takeIf { it.size > 1 }
+                .orEmpty()
+            _uiState.update {
+                it.copy(
+                    albumCategoryOptions = options,
+                    albumSelectedCategory = it.albumSelectedCategory
+                        .takeIf { selected -> options.any { option -> option.id == selected } }
+                )
+            }
+        }
     }
 
     fun selectPostsOrder(order: String) {
@@ -623,36 +750,17 @@ class ZoneDetailViewModel(
 
         when {
             _uiState.value.isAlbumTab -> {
-                viewModelScope.launch {
-                    val currentOrder = _uiState.value.albumSelectedOrder
-                    val result = albumRepository.getAlbums(
-                        page = 1,
-                        pageSize = 24,
-                        orderString = currentOrder,
-                        zones = nodeId.toString()
+                // 分类候选懒加载兜底：切到分享前请求失败/未触发时再补一次
+                if (_uiState.value.albumCategoryOptions.isEmpty()) syncAlbumCategories()
+                val state = _uiState.value
+                albumRefreshInFlight = true
+                albumBoardLoader.refresh(
+                    AlbumBoardQuery(
+                        scope = ZoneQueryScope.Single(nodeId),
+                        order = state.albumSelectedOrder,
+                        category = state.albumSelectedCategory
                     )
-                    result.onSuccess { page ->
-                        val distinctList = page.items.distinctBy { it.targetAlbumId }
-                        _uiState.update {
-                            it.copy(
-                                albumItems = distinctList,
-                                albumPage = 1,
-                                isRefreshing = false,
-                                isAlbumLoading = false,
-                                hasMoreAlbum = page.hasMore,
-                                albumLoadMoreError = null
-                            )
-                        }
-                    }.onFailure { error ->
-                        _uiState.update {
-                            it.copy(
-                                isRefreshing = false,
-                                isAlbumLoading = false,
-                                albumErrorMessage = error.message ?: "刷新失败"
-                            )
-                        }
-                    }
-                }
+                )
             }
             _uiState.value.isPostsTab -> {
                 viewModelScope.launch {
@@ -661,10 +769,10 @@ class ZoneDetailViewModel(
                         zoneNodeId = nodeId,
                         order = currentOrder,
                         page = 1,
-                        pageSize = 20
+                        pageSize = PostsBoardOptions.PAGE_SIZE
                     )
                     result.onSuccess { rawList ->
-                        val (pinned, unpinned) = partitionPosts(rawList)
+                        val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
                         val distinctItems = unpinned.distinctBy { it.id }
                         _uiState.update {
                             it.copy(
@@ -673,7 +781,7 @@ class ZoneDetailViewModel(
                                 postsPage = 1,
                                 isRefreshing = false,
                                 isPostsLoading = false,
-                                hasMorePosts = rawList.size >= 20,
+                                hasMorePosts = rawList.size >= PostsBoardOptions.PAGE_SIZE,
                                 postsLoadMoreError = null
                             )
                         }
@@ -822,75 +930,22 @@ class ZoneDetailViewModel(
 
     fun loadInitialAlbum() {
         if (nodeId <= 0L) return
-        albumJob?.cancel()
-        albumJob = viewModelScope.launch {
-            _uiState.update { it.copy(isAlbumLoading = true, albumErrorMessage = null) }
-            val currentOrder = _uiState.value.albumSelectedOrder
-            val result = albumRepository.getAlbums(
-                page = 1,
-                pageSize = 24,
-                orderString = currentOrder,
-                zones = nodeId.toString()
+        _uiState.update { it.copy(isAlbumLoading = true, albumErrorMessage = null) }
+        val state = _uiState.value
+        albumBoardLoader.loadInitial(
+            AlbumBoardQuery(
+                scope = ZoneQueryScope.Single(nodeId),
+                order = state.albumSelectedOrder,
+                category = state.albumSelectedCategory
             )
-            result.onSuccess { page ->
-                val distinctList = page.items.distinctBy { it.targetAlbumId }
-                _uiState.update {
-                    it.copy(
-                        albumItems = distinctList,
-                        albumPage = 1,
-                        isAlbumLoading = false,
-                        hasMoreAlbum = page.hasMore,
-                        albumErrorMessage = null,
-                        albumLoadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isAlbumLoading = false,
-                        albumErrorMessage = error.message ?: "加载分享失败"
-                    )
-                }
-            }
-        }
+        )
     }
 
     fun loadNextAlbumPage() {
-        val currentState = _uiState.value
-        if (currentState.isAlbumLoadingMore || !currentState.hasMoreAlbum || currentState.isAlbumLoading || currentState.isRefreshing || nodeId <= 0L) return
-
-        val nextPage = currentState.albumPage + 1
-        _uiState.update { it.copy(isAlbumLoadingMore = true, albumLoadMoreError = null) }
-
-        viewModelScope.launch {
-            val result = albumRepository.getAlbums(
-                page = nextPage,
-                pageSize = 24,
-                orderString = currentState.albumSelectedOrder,
-                zones = nodeId.toString()
-            )
-            result.onSuccess { page ->
-                _uiState.update { state ->
-                    val existingIds = state.albumItems.map { it.targetAlbumId }.toSet()
-                    val uniqueNewItems = page.items.filterNot { it.targetAlbumId in existingIds }
-                    val hasMore = page.hasMore && uniqueNewItems.isNotEmpty()
-                    state.copy(
-                        albumItems = state.albumItems + uniqueNewItems,
-                        albumPage = nextPage,
-                        isAlbumLoadingMore = false,
-                        hasMoreAlbum = hasMore,
-                        albumLoadMoreError = null
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isAlbumLoadingMore = false,
-                        albumLoadMoreError = error.message ?: "加载更多失败"
-                    )
-                }
-            }
-        }
+        val state = _uiState.value
+        if (state.isAlbumLoadingMore || !state.hasMoreAlbum || state.isAlbumLoading || state.isRefreshing) return
+        if (nodeId <= 0L) return
+        albumBoardLoader.loadMore()
     }
 
     fun loadInitialPosts() {
@@ -903,10 +958,10 @@ class ZoneDetailViewModel(
                 zoneNodeId = nodeId,
                 order = currentOrder,
                 page = 1,
-                pageSize = 20
+                pageSize = PostsBoardOptions.PAGE_SIZE
             )
             result.onSuccess { rawList ->
-                val (pinned, unpinned) = partitionPosts(rawList)
+                val (pinned, unpinned) = PostsBoardOptions.partition(rawList)
                 val distinctItems = unpinned.distinctBy { it.id }
                 _uiState.update {
                     it.copy(
@@ -914,7 +969,7 @@ class ZoneDetailViewModel(
                         pinnedPosts = pinned,
                         postsPage = 1,
                         isPostsLoading = false,
-                        hasMorePosts = rawList.size >= 20,
+                        hasMorePosts = rawList.size >= PostsBoardOptions.PAGE_SIZE,
                         postsErrorMessage = null,
                         postsLoadMoreError = null
                     )
@@ -930,24 +985,6 @@ class ZoneDetailViewModel(
         }
     }
 
-    private fun partitionPosts(rawList: List<PostItem>): Pair<List<PostItem>, List<PostItem>> {
-        return if (rawList.any { it.isPinned }) {
-            val pinned = rawList.filter { it.isPinned }.take(5)
-            val unpinned = rawList.filterNot { it.isPinned }
-            pinned to unpinned
-        } else if (rawList.size > 5) {
-            val pinned = rawList.take(5)
-            val unpinned = rawList.drop(5)
-            pinned to unpinned
-        } else if (rawList.size > 2) {
-            val pinned = rawList.take(2)
-            val unpinned = rawList.drop(2)
-            pinned to unpinned
-        } else {
-            emptyList<PostItem>() to rawList
-        }
-    }
-
     fun loadNextPostsPage() {
         val currentState = _uiState.value
         if (currentState.isPostsLoadingMore || !currentState.hasMorePosts || currentState.isPostsLoading || currentState.isRefreshing || nodeId <= 0L) return
@@ -960,13 +997,15 @@ class ZoneDetailViewModel(
                 zoneNodeId = nodeId,
                 order = currentState.postsSelectedOrder,
                 page = nextPage,
-                pageSize = 20
+                pageSize = PostsBoardOptions.PAGE_SIZE
             )
             result.onSuccess { newItems ->
                 _uiState.update { state ->
-                    val existingIds = (state.pinnedPosts.map { it.id } + state.postsItems.map { it.id }).toSet()
+                    val existingPosts = state.pinnedPosts + state.postsItems
+                    val existingIds = existingPosts.mapTo(HashSet()) { it.id }
                     val uniqueNewItems = newItems.filterNot { it.id in existingIds }
-                    val hasMore = newItems.size >= 20 && uniqueNewItems.isNotEmpty()
+                    val hasMore = newItems.size >= PostsBoardOptions.PAGE_SIZE &&
+                        newItems.hasNewKeysAfterDedup(existingPosts) { it.id }
                     state.copy(
                         postsItems = state.postsItems + uniqueNewItems,
                         postsPage = nextPage,

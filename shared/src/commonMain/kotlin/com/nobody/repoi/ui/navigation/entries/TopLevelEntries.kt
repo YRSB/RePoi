@@ -33,10 +33,19 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
         val messages = LocalAppMessages.current
         HomeFeedScreen(
             onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
+            onNavigateToAlbum = { param -> navigator.navigateToAlbum(param) },
+            onNavigateToResaleDetail = { resaleId -> navigator.navigateToResaleDetail(resaleId) },
+            onNavigateToHobby = { param -> navigator.navigateToDetail(param) },
+            onEntityClick = { board, item -> navigator.navigateToEntityDetail(board, item) },
             onNavigateToSearch = { param -> navigator.navigateToSearch(param) },
             onNavigateToZoneBrowse = { navigator.navigateToZoneBrowse() },
+            onNavigateToZoneSettings = { navigator.navigateToZoneSettings() },
             onNavigateToForumHome = { navigator.navigateToForumHome() },
-            onNavigateToMessage = { navigator.navigateToMessageCenter() }
+            onNavigateToMessage = { navigator.navigateToMessageCenter() },
+            onNavigateToPost = { postId, nodeId, title ->
+                navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
+            },
+            onNavigateToUser = { userId -> navigator.navigateToUser(userId) }
         )
     }
 

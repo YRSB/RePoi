@@ -1,5 +1,6 @@
 package com.nobody.repoi.data.repository
 
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -45,7 +46,7 @@ class ResaleRepositoryTest {
         mock.enqueue(mockJson)
 
         val result = repository.searchResale(
-            zones = 33476094L,
+            scope = ZoneQueryScope.Single(33476094L),
             type = 1,
             keyword = "测试"
         )
@@ -65,6 +66,44 @@ class ResaleRepositoryTest {
     }
 
     @Test
+    fun searchResaleWithoutZones_omitsZoneParamForAggregateScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
+        )
+
+        // 「全部」聚合：zones 省略即等价全站（issue #160 验收标准「聚合态以专区集合取数成功」）
+        val result = repository.searchResale(scope = ZoneQueryScope.All, type = 1, lastTime = null)
+
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertFalse(form.containsKey("zones"), "聚合作用域不得下发 zones 参数：$form")
+        assertEquals("1", form["type"])
+        assertEquals("1", form["state"])
+    }
+
+    @Test
+    fun searchResaleKeepsCommaSeparatedZonesVerbatim() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
+        )
+
+        // 关注作用域：逗号串原样透传（二手多专区是「交集」语义，关注聚合由上层隐藏板块规避）
+        val result = repository.searchResale(
+            scope = ZoneQueryScope.Follow(listOf(100L, 200L)),
+            type = 2,
+            puritys = "11"
+        )
+
+        assertTrue(result.isSuccess)
+        val form = mock.takeRequest().formEntries()
+        assertEquals("100,200", form["zones"], "zones 必须原样透传（含逗号）")
+        assertEquals("2", form["type"])
+        assertEquals("11", form["puritys"])
+    }
+
+    @Test
     fun searchResaleWithItemId() = runTest {
         val (mock, repository) = setup()
         val mockJson = """
@@ -81,6 +120,7 @@ class ResaleRepositoryTest {
         mock.enqueue(mockJson)
 
         val result = repository.searchResale(
+            scope = ZoneQueryScope.All,
             hobbyId = 125698L,
             type = 1
         )

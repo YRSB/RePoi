@@ -3,6 +3,8 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
+import com.nobody.repoi.data.remote.model.POSTS_BOARD_PAGE_SIZE
+import com.nobody.repoi.data.remote.model.POSTS_DEFAULT_ORDER
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ZoneFocusPayload
 import com.nobody.repoi.data.remote.model.ZoneHomeTabsPayload
@@ -13,6 +15,7 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ZoneTabsSettings
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -26,10 +29,14 @@ import kotlinx.serialization.json.Json
 
 /**
  * 专区数据仓储，负责管理专区首页标签、专区分组、关注专区状态及专区设置。
+ *
+ * @param visitReportScope 访问上报（`zone/home-tabs/visited`）专用作用域。默认独立 IO scope；
+ *   测试可注入虚拟调度器作用域，从而确定性地断言「首页未上报访问」而不依赖真实线程时序。
  */
 class ZoneRepository(
     private val api: HpoiApi,
-    private val viewPreferencesManager: ViewPreferencesManager
+    private val viewPreferencesManager: ViewPreferencesManager,
+    private val visitReportScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -101,10 +108,15 @@ class ZoneRepository(
 
     /**
      * 获取单个专区的详细资料，并在后台异步上报访问记录（用于最近访问排序）。
+     *
+     * @param nodeId 专区节点 ID
+     * @param reportVisit 是否上报访问记录。专区详情页保持默认 `true`（进入详情即算访问）；
+     *   首页只需 `zone/info.tabs` 来装配二级板块，必须传 `false`——否则每次切专区都会污染
+     *   「最近访问」排序（首页不是「进入专区」这一用户意图）。
      */
-    suspend fun getZoneInfo(nodeId: Long): Result<ZoneInfoPayload> = runCatching {
-        if (nodeId > 0L) {
-            repositoryScope.launch {
+    suspend fun getZoneInfo(nodeId: Long, reportVisit: Boolean = true): Result<ZoneInfoPayload> = runCatching {
+        if (reportVisit && nodeId > 0L) {
+            visitReportScope.launch {
                 runCatching { api.reportZoneVisited(nodeId = nodeId) }
             }
         }
@@ -191,16 +203,19 @@ class ZoneRepository(
 
     /**
      * 查询专区讨论贴列表。
-     * @param zoneNodeId 专区节点 ID
+     * @param zoneNodeId 专区节点 ID；**null 表示聚合·全部（省略 `zoneNodeId`，服务端返回全站）**。
+     *   讨论接口的专区过滤只认单值 `zoneNodeId`（String/Long 均可），`zones` 与逗号串会被
+     *   服务端静默忽略并退化为全站，因此**不要**为关注聚合传逗号串；关注态没有多专区通道，
+     *   首页已按 `homeBoardsFor(Follow)` 隐藏该板块（见 `docs/research/aggregate-api-verification.md` §4.3）。
      * @param order 排序类型: upd(回复) / add(新贴) / top(推荐)
      * @param page 页码 (1 起始)
      * @param pageSize 每页条数 (默认 20)
      */
     suspend fun getZonePosts(
-        zoneNodeId: Long,
-        order: String = "upd",
+        zoneNodeId: Long?,
+        order: String = POSTS_DEFAULT_ORDER,
         page: Int = 1,
-        pageSize: Int = 20
+        pageSize: Int = POSTS_BOARD_PAGE_SIZE
     ): Result<List<PostItem>> = runCatching {
         val response = api.searchPosts(
             zoneNodeId = zoneNodeId,
@@ -216,21 +231,29 @@ class ZoneRepository(
 
     /**
      * 查询专区关联实体分类条目列表（厂商/系列/作品/角色/人物）。
-     * @param nodeId 专区节点 ID
+     *
+     * 作用域由 [ZoneQueryScope] 统一派生，只下发 `zones`：
+     * - 单专区 → `zones=<nodeId>`；
+     * - 关注聚合 → `zones=<关注专区逗号串>`（实测并集）；
+     * - 全部聚合 → 省略 `zones`（等价全站）。
+     *
+     * **禁止下发 `homeScope`**：实测非空 `homeScope` 会让服务端忽略 `zones`、退化为全站。
+     *
+     * @param scope 查询作用域（全站 / 关注 / 单专区）
      * @param itemType 条目类型: company(厂商) / series(系列) / works(作品) / charactar(角色) / person(人物)
      * @param page 页码 (1 起始)
      * @param pageSize 每页条数 (默认 20)
      */
     suspend fun getZoneItems(
-        nodeId: Long,
+        scope: ZoneQueryScope,
         itemType: String,
         category: Int = 0,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<ZoneItemsPayload> = runCatching {
         val response = api.getZoneItems(
-            nodeId = nodeId,
             itemType = itemType,
+            zones = scope.zonesParam(),
             category = category,
             page = page,
             pageSize = pageSize

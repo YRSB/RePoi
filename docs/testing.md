@@ -95,6 +95,25 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
   并在 `@AfterTest` 取消它。
 - 封面新鲜度仓储统一用 `testCoverFreshnessRepository(...)` 构造；构造签名变化只改该工厂。
 
+### `ViewPreferencesManager` 预热竞态：已修复的 flake 根因
+
+`ViewPreferencesManager` 用「DataStore 单一真相源 + atomics 内存镜像」：构造时启动一次性
+`preheatJob` 把 DataStore 快照写进内存镜像，其余读写入口都是同步镜像。历史上预热协程可能与
+用户写入并发——预热后落定会用**旧快照覆盖刚写入的内存镜像**，表现为 `feed_sub_type` 偶发
+从 `recommend` 变回 `allInfo`、`ViewPreferencesManagerTest` 在慢机上偶发失败。
+
+修复动机与做法（#150 审查 D3 记录，属有意修复而非 scope creep）：
+
+1. 预热仍是**一次性** job（不做持续 collect）——这一点改动前即已成立；本次真正修根因的是把
+   `preheatJob` 提升为可 join 的 `val`，并在**所有会改写镜像的入口**前置 `awaitPreheat()`，
+   从根上消除「写入被预热协程的旧快照覆盖」的竞态；
+2. 读取侧同样需要屏障：首页 ViewModel 的冷启动偏好（一级/二级/三级）改为在 `awaitPreheat()`
+   之后读取，避免镜像尚未填充时读到默认值并静默丢弃上次选择；
+3. `awaitPreheat()` 公开为**有界等待点**，测试用它替代 `delay(10)` + 2s 真实时间轮询
+   （`feedZoneBoard_preheatsFromDataStoreOnColdStart`），不引入重试/睡眠式 flake 掩盖。
+
+判定口径：这类失败是真实时序竞态，不能用「CI 重跑通过」掩盖；修根因后同用例不再依赖真实时钟。
+
 ---
 
 ## 反馈回路
@@ -146,7 +165,8 @@ CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-ru
 规则会机械校验「构建脚本里出现的每个 pattern 都能在本表找到」。
 
 > 新增排除前先问：能不能用调度器三件套把它修好？本项目历史上正是靠「先修再摘除」把
-> `UserCollectViewModelTest` 与 `HobbyDetailViewModelCollectTest` 从空绿拉回了真实执行。
+> `UserCollectViewModelTest`、`HobbyDetailViewModelCollectTest` 与 `HomeFeedViewModelTest`
+> 从空绿拉回了真实执行（`HomeFeedViewModelTest` 注入内存 DataStore 后已回归）。
 
 | pattern | 原因 | 恢复条件 |
 |---|---|---|
@@ -156,7 +176,6 @@ CI 依然全绿。因此每条排除必须在下方登记，`scripts/check-ui-ru
 | `*HobbyDetailViewModelRelatedTest*` | 关联条目并发加载时序不稳 | 用虚拟调度器固定并发顺序后 |
 | `*HobbyDetailViewModelTimelineTest*` | 时间轴多阶段加载时序不稳 | 同上 |
 | `*HobbyDetailViewModelExHobbyTest*` | ExHobby 图库按需补录时序不稳 | 同上 |
-| `*HomeFeedViewModelTest*` | 首页多源聚合 + 真实 DataStore IO | 注入内存 DataStore 后 |
 | `*LoginViewModelTest*` | 登录链路含真实会话预热 | 会话层改为 Fake 后 |
 | `*MessageBlockViewModelTest*` | 消息拉黑列表时序不稳 | 调度器三件套改造后 |
 | `*MessageCenterViewModelTest*` | 消息中心多 Tab 并发时序不稳 | 同上 |

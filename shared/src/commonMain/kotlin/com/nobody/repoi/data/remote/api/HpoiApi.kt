@@ -2,6 +2,7 @@ package com.nobody.repoi.data.remote.api
 
 import com.nobody.repoi.data.remote.model.AccountCheckPayload
 import com.nobody.repoi.data.remote.model.ActionListData
+import com.nobody.repoi.data.remote.model.ActionSubType
 import com.nobody.repoi.data.remote.model.AlbumDetailPayload
 import com.nobody.repoi.data.remote.model.AlbumListPayload
 import com.nobody.repoi.data.remote.model.AttributeListPayload
@@ -86,6 +87,7 @@ import com.nobody.repoi.data.remote.model.OrderStaticPayload
 import com.nobody.repoi.data.remote.model.WorksAlbumPayload
 import com.nobody.repoi.data.remote.model.WorksCharacterPayload
 import com.nobody.repoi.data.remote.model.WorksDetailPayload
+import com.nobody.repoi.data.remote.model.ZoneCategoriesPayload
 import com.nobody.repoi.data.remote.model.ZoneFocusPayload
 import com.nobody.repoi.data.remote.model.ZoneHomeTabsPayload
 import com.nobody.repoi.data.remote.model.ZoneInfoPayload
@@ -129,7 +131,7 @@ class HpoiApi(
         categoryId: Int = 0,
         lastTime: Long = 0L,
         pageSize: Int = 20,
-        subType: String? = "recommend",
+        subType: String? = ActionSubType.DEFAULT.apiValue,
         zoneNodeId: Long? = null,
         zoneIds: String? = null,
     ): CommonResponse<ActionListData> = client.get("api/user-action/list-v3") {
@@ -268,14 +270,40 @@ class HpoiApi(
             parameter("nodeId", nodeId)
         }.decodeRefAware(json)
 
-    suspend fun getZoneItems(
+    /**
+     * 专区板块分类选项（相册板块传 `itemType = "album"`）。
+     *
+     * 证据：反编译 `ZoneDetailSortablePageFragment.m()`（原版分类菜单来源）。单专区专用；
+     * 分类 id 与手办分类树不同域，禁止与 `CategoryManager` 混用。
+     */
+    suspend fun getZoneCategories(
         nodeId: Long,
         itemType: String,
+    ): CommonResponse<ZoneCategoriesPayload> =
+        client.get("api/zone/categories") {
+            parameter("nodeId", nodeId)
+            parameter("itemType", itemType)
+        }.decodeRefAware(json)
+
+    /**
+     * 专区关联实体条目（厂商/系列/作品/角色/人物）。
+     *
+     * 作用域只通过 `zones` 表达：单专区传 `zones=<nodeId>`；全部聚合省略（服务端等价全站）；
+     * 关注聚合传 `zones=<逗号串>`（实测为并集）。**不得下发 `homeScope`**——实测只要 `homeScope`
+     * 非空，服务端就会忽略 `zones` 退化为全站（`docs/research/aggregate-api-verification.md` §4.3/§5）。
+     *
+     * @param itemType 实体类型：`company`/`series`/`works`/`charactar`/`person`
+     *   （`charactar` 是服务端历史拼写，勿写 `character`）
+     * @param zones 专区集合参数；`null` 时省略（全部聚合）
+     */
+    suspend fun getZoneItems(
+        itemType: String,
+        zones: String? = null,
         category: Int = 0,
         page: Int = 1,
         pageSize: Int = 20,
     ): CommonResponse<ZoneItemsPayload> = client.get("api/zone/items") {
-        parameter("nodeId", nodeId)
+        if (zones != null) parameter("zones", zones)
         parameter("itemType", itemType)
         parameter("category", category)
         parameter("page", page)

@@ -1,5 +1,8 @@
 package com.nobody.repoi.data.local
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -35,17 +38,72 @@ class ViewPreferencesManagerTest {
 
     @Test
     fun feedFilters_persistToDataStoreAndSharedPreferences() = runTest {
-        val manager = manager()
+        // 必须断言落盘内容：读侧（镜像 / getFeedPreferences / *_Flow）都会把旧值 all 归一成 allInfo，
+        // 只断言读取侧无法区分「写侧归一后落盘」和「落盘仍是 all」。
+        val store = TestDataStore.inMemory()
+        val manager = ViewPreferencesManager(store)
         manager.setFeedCategory(100)
+        // 旧键 all 写入时即归一为 allInfo，落盘不再出现 all
         manager.setFeedSubType("all")
 
         assertEquals(100, manager.feedCategoryId)
-        assertEquals("all", manager.feedSubType)
+        assertEquals("allInfo", manager.feedSubType)
         assertEquals(100, manager.getInitialFeedCategoryId())
-        assertEquals("all", manager.getInitialFeedSubType())
+        assertEquals("allInfo", manager.getInitialFeedSubType())
         assertEquals(100, manager.feedCategoryIdFlow.first())
-        assertEquals("all", manager.feedSubTypeFlow.first())
-        assertEquals(Pair(100, "all"), manager.getFeedPreferences())
+        assertEquals("allInfo", manager.feedSubTypeFlow.first())
+        assertEquals(Pair(100, "allInfo"), manager.getFeedPreferences())
+
+        val persisted = store.data.first()
+        assertEquals("allInfo", persisted[stringPreferencesKey("feed_sub_type")])
+        assertEquals(100, persisted[intPreferencesKey("feed_category_id")])
+    }
+
+    @Test
+    fun feedSubType_normalizesLegacyAndInvalidValues() = runTest {
+        // 直接向 DataStore 写入老版本可能留下的旧值 all，模拟老用户升级
+        val store = TestDataStore.inMemory()
+        val key = stringPreferencesKey("feed_sub_type")
+        store.edit { prefs -> prefs[key] = "all" }
+        val manager = ViewPreferencesManager(store)
+
+        // 读侧：旧值 all 归一为 allInfo，不会把服务端不识别的键发出去
+        // （先走 getFeedPreferences 同步内存镜像，避免与构造时的异步预热抢时序）
+        assertEquals(Pair(0, "allInfo"), manager.getFeedPreferences())
+        assertEquals("allInfo", manager.getInitialFeedSubType())
+        assertEquals("allInfo", manager.feedSubTypeFlow.first())
+
+        // 写侧：非法值回落默认项 recommend，且落盘值同步归一
+        manager.setFeedSubType("zzz_bogus")
+        assertEquals("recommend", manager.getInitialFeedSubType())
+        assertEquals("recommend", manager.feedSubTypeFlow.first())
+        assertEquals("recommend", store.data.first()[key])
+    }
+
+    @Test
+    fun feedZoneBoard_persistsAndMirrorsSelection() = runTest {
+        val manager = manager()
+        // 值格式 {tabKey}|{type}
+        manager.setFeedZoneBoard("z100|album")
+
+        assertEquals("z100|album", manager.feedZoneBoard)
+        assertEquals("z100|album", manager.getInitialFeedZoneBoardKey())
+        assertEquals("z100|album", manager.feedZoneBoardFlow.first())
+    }
+
+    @Test
+    fun feedZoneBoard_preheatsFromDataStoreOnColdStart() = runTest {
+        // 模拟上次会话已落盘：先写 DataStore 再重建管理器，验证 init 预热回填内存镜像
+        val store = TestDataStore.inMemory()
+        val key = stringPreferencesKey("feed_zone_board")
+        store.edit { prefs -> prefs[key] = "follow|action" }
+        val manager = ViewPreferencesManager(store)
+
+        // 有界屏障：awaitPreheat 是预热协程的 join 等待点，替代「真实时间轮询」，
+        // 在慢速 CI 上也不会因等待不足而偶发失败（#150 审查 B3）
+        manager.awaitPreheat()
+
+        assertEquals("follow|action", manager.getInitialFeedZoneBoardKey())
     }
 
     @Test

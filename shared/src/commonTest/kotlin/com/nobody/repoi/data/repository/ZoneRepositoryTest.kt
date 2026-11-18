@@ -2,6 +2,9 @@ package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.local.TestDataStore
 import com.nobody.repoi.data.local.ViewPreferencesManager
+import com.nobody.repoi.data.remote.model.ZoneQueryScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -163,6 +166,88 @@ class ZoneRepositoryTest {
     }
 
     @Test
+    fun getZoneInfo_withReportVisitDisabled_skipsVisitedRequest() = runTest {
+        // 访问上报是 fire-and-forget：必须把上报作用域与请求引擎都放到虚拟调度器上，
+        // 否则「未上报」断言取决于真实线程时序（可能永远为真，回归时也检测不到）。
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val mock = MockApi()
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        val repository = ZoneRepository(
+            api = mock.api(dispatcher),
+            viewPreferencesManager = preferences,
+            visitReportScope = CoroutineScope(dispatcher)
+        )
+        mock.route("api/zone/home-tabs/visited", """{"success":true,"code":200,"msg":"ok"}""")
+        mock.route(
+            "api/zone/info",
+            """
+            {
+                "success": true,
+                "code": 200,
+                "msg": "ok",
+                "data": {
+                    "zone": { "nodeId": 100, "name": "figure", "nameCN": "手办" },
+                    "focusState": false,
+                    "followCount": 1728,
+                    "tabs": ["action", "album"]
+                }
+            }
+            """.trimIndent()
+        )
+
+        // 首页只借用 tabs 装配二级板块，不是「进入专区」：不得上报访问记录
+        val result = repository.getZoneInfo(100L, reportVisit = false)
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().tabs.size)
+
+        // 只应发出一次 api/zone/info；若误上报访问会多出一次请求
+        assertEquals(1, mock.requestCount)
+        val recorded = mock.takeRequest()
+        assertTrue(recorded.path!!.contains("api/zone/info"))
+        assertTrue(recorded.path!!.contains("nodeId=100"))
+    }
+
+    @Test
+    fun getZoneInfo_defaultReportsVisitExactlyOnce() = runTest {
+        // 正例：专区详情走默认 reportVisit = true，删除上报分支或把默认值改成 false 必须让本用例失败
+        // （否则「最近访问」排序会静默失效且无回归网）。
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val mock = MockApi()
+        val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
+        val repository = ZoneRepository(
+            api = mock.api(dispatcher),
+            viewPreferencesManager = preferences,
+            visitReportScope = CoroutineScope(dispatcher)
+        )
+        mock.route("api/zone/home-tabs/visited", """{"success":true,"code":200,"msg":"ok"}""")
+        mock.route(
+            "api/zone/info",
+            """
+            {
+                "success": true,
+                "code": 200,
+                "msg": "ok",
+                "data": {
+                    "zone": { "nodeId": 100, "name": "figure", "nameCN": "手办" },
+                    "focusState": false,
+                    "followCount": 1728,
+                    "tabs": ["action", "album"]
+                }
+            }
+            """.trimIndent()
+        )
+
+        val result = repository.getZoneInfo(100L)
+        assertTrue(result.isSuccess)
+
+        assertEquals(2, mock.requestCount)
+        val visited = mock.takeRequest()
+        assertTrue(visited.path!!.contains("api/zone/home-tabs/visited"))
+        val info = mock.takeRequest()
+        assertTrue(info.path!!.contains("api/zone/info"))
+    }
+
+    @Test
     fun toggleFocus_follow_and_unfollow_updatesFlow() = runTest {
         val (mock, repository) = setup()
         // 1. 模拟关注成功
@@ -281,7 +366,11 @@ class ZoneRepositoryTest {
         """.trimIndent()
         mock.enqueue(mockJson)
 
-        val result = repository.getZoneItems(nodeId = 100L, itemType = "company", page = 1)
+        val result = repository.getZoneItems(
+            scope = ZoneQueryScope.Single(100L),
+            itemType = "company",
+            page = 1
+        )
         assertTrue(result.isSuccess)
         val payload = result.getOrThrow()
         assertEquals(427, payload.total)
@@ -292,7 +381,60 @@ class ZoneRepositoryTest {
 
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)
-        assertTrue(recorded.path!!.contains("nodeId=100"))
-        assertTrue(recorded.path!!.contains("itemType=company"))
+        assertEquals("/api/zone/items", recorded.encodedPath)
+        // 单专区：作用域只通过 zones 表达，不再发旧 nodeId 参数
+        assertEquals("100", recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("nodeId"))
+        assertEquals("company", recorded.queryParameter("itemType"))
+        assertNull(recorded.queryParameter("homeScope"))
+    }
+
+    @Test
+    fun getZoneItems_allScope_omitsZonesAndNeverSendsHomeScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+
+        val result = repository.getZoneItems(scope = ZoneQueryScope.All, itemType = "works")
+
+        assertTrue(result.isSuccess)
+        val recorded = mock.takeRequest()
+        assertEquals("/api/zone/items", recorded.encodedPath)
+        // 全部聚合：省略 zones 即等价全站；纪律要求绝不携 homeScope（非空会覆盖 zones）
+        assertNull(recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("homeScope"))
+        assertEquals("works", recorded.queryParameter("itemType"))
+    }
+
+    @Test
+    fun getZoneItems_followScope_sendsCommaSeparatedZonesWithoutHomeScope() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+
+        val result = repository.getZoneItems(
+            scope = ZoneQueryScope.Follow(listOf(11L, 22L)),
+            itemType = "series"
+        )
+
+        assertTrue(result.isSuccess)
+        val recorded = mock.takeRequest()
+        // 关注聚合实测为并集：zones=逗号串可用
+        assertEquals("11,22", recorded.queryParameter("zones"))
+        assertNull(recorded.queryParameter("homeScope"))
+        assertEquals("series", recorded.queryParameter("itemType"))
+    }
+
+    @Test
+    fun getZoneItems_passesThroughAllFiveEntityTypes() = runTest {
+        val (mock, repository) = setup()
+        val types = listOf("company", "series", "works", "charactar", "person")
+        types.forEach { type ->
+            mock.enqueue(mock.ok("""{"total":0,"hasMore":false,"list":[]}"""))
+            val result = repository.getZoneItems(
+                scope = ZoneQueryScope.Single(100L),
+                itemType = type
+            )
+            assertTrue(result.isSuccess, "itemType=$type 应请求成功")
+            assertEquals(type, mock.takeRequest().queryParameter("itemType"))
+        }
     }
 }

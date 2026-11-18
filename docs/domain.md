@@ -14,7 +14,9 @@
 | **角色/人物** | `Character` / `Person` | 条目登场人物原型（`Character`）或声优/原型师（`Person`）。 | `CharacterData`, `PersonDetailData` |
 | **厂商/品牌** | `Vendor` | 手办制作商、发行商（支持厂商屏蔽过滤）。 | `VendorDetailData`, `VendorItem` |
 | **相册广场** | `Album` | 用户摄影晒单、官方开箱图集。大屏端支持主内容与评论双栏。 | `AlbumItem`, `AlbumDetailData` |
-| **专区/圈子** | `Zone` | 特定 IP 或主题聚合专区（如初音未来、东方 Project 专区）。 | `ZoneItem`, `ZoneDetailData` |
+| **专区** | `Zone` | 特定 IP 或主题聚合专区（如初音未来、东方 Project 专区）；术语见 GLOSSARY（避免「圈子/频道」）。 | `ZoneItem`, `ZoneDetailData` |
+| **子板块** | `ZoneBoard` | 专区内部按内容形态划分的一级内容分区（动态/分享/讨论/产品/二手/厂商/系列/作品/角色/人物），由服务端下发并按客户端白名单裁剪。 | `ZoneTabItem` |
+| **板块筛选** | `BoardFilter` | 子板块自带的过滤与排序层（筛选 Chip、排序菜单、高级筛选抽屉），按板块分别定义。 | 各板块筛选状态 |
 | **讨论板/帖子** | `Forum` / `Post` | 社区发帖、问答与二级回帖交流。 | `PostItem`, `PostDetailData` |
 | **二手交易** | `Resale` | 用户手办二手转让行情、发帖求购与地域筛选。 | `ResaleItem`, `ResaleDetailData` |
 | **收藏管理** | `Collect` | 用户收藏资产（心愿想买、预定在途、已入柜、已出转）。 | `CollectItem`, `CollectState` |

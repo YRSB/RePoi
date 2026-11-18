@@ -5,14 +5,8 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,13 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,7 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
@@ -52,15 +41,10 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -94,7 +78,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -116,20 +99,22 @@ import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.data.remote.model.ZoneEntityItem
 import com.nobody.repoi.ui.album.AlbumNavParam
-import com.nobody.repoi.ui.album.components.AlbumFeedCard
-import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
+import com.nobody.repoi.ui.board.ZoneBoard
+import com.nobody.repoi.ui.board.ZoneBoardActions
+import com.nobody.repoi.ui.board.ZoneBoardContent
+import com.nobody.repoi.ui.board.ZoneBoardFilters
+import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
+import com.nobody.repoi.ui.board.ZoneBoardItemActions
+import com.nobody.repoi.ui.board.ZoneBoardPageView
+import com.nobody.repoi.ui.board.ZoneBoardPane
+import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
-import com.nobody.repoi.ui.item.list.components.CategoryPickerSheet
-import com.nobody.repoi.ui.item.list.components.HobbyAdvancedFilterParam
-import com.nobody.repoi.ui.item.list.components.HobbyFilterAdaptiveSheet
-import com.nobody.repoi.ui.item.list.components.HobbyGridCard
-import com.nobody.repoi.ui.item.list.components.HobbyListCard
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
@@ -137,17 +122,9 @@ import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
-import com.nobody.repoi.ui.zone.components.ZoneEntityCard
-import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
-import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
-import com.nobody.repoi.ui.zone.components.ZoneResaleCard
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
-@OptIn(ExperimentalMaterial3Api::class, kotlin.time.ExperimentalTime::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZoneDetailScreen(
     nodeId: Long,
@@ -175,6 +152,8 @@ fun ZoneDetailScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 产品分类树：筛选条子分类回显 + 共享面板分类级联弹层（与首页同一数据源 CategoryManager）
+    val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
     val staggeredGridState = rememberLazyStaggeredGridState()
     val pullRefreshState = rememberPullToRefreshState()
     val messages = LocalAppMessages.current
@@ -228,9 +207,8 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 列数自适应
+    // 列数自适应（相册列数由共享面板内部按相册规则计算，此处只处理其余板块）
     val feedColumns = rememberFeedStaggeredGridColumns()
-    val albumColumns = rememberAlbumStaggeredGridColumns()
 
     val entityColumns = remember(windowSizeClass, isLandscape) {
         when {
@@ -240,28 +218,14 @@ fun ZoneDetailScreen(
         }
     }
 
-    val resaleColumns = remember(windowSizeClass, isLandscape) {
-        when {
-            !isLandscape -> StaggeredGridCells.Fixed(1)
-            windowSizeClass.isWidthAtLeastBreakpoint(1200) -> StaggeredGridCells.Fixed(3)
-            else -> StaggeredGridCells.Fixed(2)
-        }
-    }
+    // 二手沿用共享列数策略（与首页同一实现，避免两屏视觉漂移）
+    val resaleColumns = rememberResaleStaggeredGridColumns()
 
-    val hobbyColumns = remember(uiState.hobbyState.isGridMode) {
-        if (uiState.hobbyState.isGridMode) {
-            StaggeredGridCells.Adaptive(minSize = 120.dp)
-        } else {
-            StaggeredGridCells.Adaptive(minSize = 420.dp)
-        }
-    }
-
+    // 列数自适应（实体 5 类走 pane，列数由 entityColumns 直接注入；相册与产品列数由 pane 内部按各自规则计算）
     val gridColumns = when {
-        uiState.isAlbumTab -> albumColumns
-        uiState.isPostsTab -> feedColumns
-        uiState.isHobbyTab -> hobbyColumns
-        uiState.isResaleTab -> resaleColumns
         uiState.isEntityTab -> entityColumns
+        uiState.isResaleTab -> resaleColumns
+        uiState.isPostsTab -> feedColumns
         else -> feedColumns
     }
 
@@ -338,6 +302,7 @@ fun ZoneDetailScreen(
     var lastSelectedTab by rememberSaveable { mutableStateOf<String?>(null) }
     var lastSelectedSubType by rememberSaveable { mutableStateOf<String?>(null) }
     var lastAlbumOrder by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastAlbumCategory by rememberSaveable { mutableStateOf<Int?>(null) }
     var lastPostsOrder by rememberSaveable { mutableStateOf<String?>(null) }
     var lastHobbyOrder by rememberSaveable { mutableStateOf<String?>(null) }
     var lastHobbyCategoryId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -350,6 +315,7 @@ fun ZoneDetailScreen(
         uiState.selectedTab,
         uiState.selectedSubType,
         uiState.albumSelectedOrder,
+        uiState.albumSelectedCategory,
         uiState.postsSelectedOrder,
         uiState.hobbyState.order,
         uiState.hobbyState.categoryId,
@@ -362,6 +328,7 @@ fun ZoneDetailScreen(
         val isFilterChanged = !isInitial && !isTabChanged && (
             lastSelectedSubType != uiState.selectedSubType ||
             lastAlbumOrder != uiState.albumSelectedOrder ||
+            lastAlbumCategory != uiState.albumSelectedCategory ||
             lastPostsOrder != uiState.postsSelectedOrder ||
             lastHobbyOrder != uiState.hobbyState.order ||
             lastHobbyCategoryId != uiState.hobbyState.categoryId ||
@@ -385,6 +352,7 @@ fun ZoneDetailScreen(
         lastSelectedTab = uiState.selectedTab
         lastSelectedSubType = uiState.selectedSubType
         lastAlbumOrder = uiState.albumSelectedOrder
+        lastAlbumCategory = uiState.albumSelectedCategory
         lastPostsOrder = uiState.postsSelectedOrder
         lastHobbyOrder = uiState.hobbyState.order
         lastHobbyCategoryId = uiState.hobbyState.categoryId
@@ -555,6 +523,115 @@ fun ZoneDetailScreen(
         }
     }
 
+    // 共享板块面板的宿主机适配：动作仍落到本页 ViewModel 的现有入口，不改变请求与分页语义。
+    // 触底翻页按当前 Tab 分派（讨论板块有独立分页入口）；重试走 `refresh()`（内部按 Tab 分派）。
+    val boardActions = remember(viewModel) {
+        ZoneBoardActions(
+            selectSubType = viewModel::selectSubType,
+            selectPostsOrder = viewModel::selectPostsOrder,
+            selectAlbumOrder = viewModel::selectAlbumOrder,
+            selectAlbumCategory = viewModel::selectAlbumCategory,
+            selectResaleType = viewModel::setResaleType,
+            selectResalePurity = viewModel::setResalePurity,
+            retryInitial = {
+                // 按 Tab 分派到各板块的首屏入口：只有 loadInitial* 会进入初始加载态，
+                // 直接用 refresh() 会让错误重试期间渲染「暂无内容」空态（分享/讨论/产品/二手）。
+                val state = viewModel.uiState.value
+                val tab = state.selectedTab
+                when {
+                    state.isResaleTab -> viewModel.loadInitialResale()
+                    tab in ZoneDetailUiState.ENTITY_TAB_TYPES -> viewModel.loadInitialEntity(tab)
+                    state.isPostsTab -> viewModel.loadInitialPosts()
+                    state.isAlbumTab -> viewModel.loadInitialAlbum()
+                    state.isHobbyTab -> viewModel.loadInitialHobby()
+                    // 动态板块沿既有行为：refresh() 走游标首屏
+                    else -> viewModel.refresh()
+                }
+            },
+            loadMore = {
+                val tab = viewModel.uiState.value.selectedTab
+                when {
+                    // 页脚「加载更多失败，点击重试」按当前 Tab 分派（面板不感知板块专属 loader）
+                    viewModel.uiState.value.isResaleTab -> viewModel.loadNextResalePage()
+                    // 实体 5 类仍在原实体 loader 上翻页
+                    tab in ZoneDetailUiState.ENTITY_TAB_TYPES -> viewModel.loadNextEntityPage(tab)
+                    viewModel.uiState.value.isPostsTab -> viewModel.loadNextPostsPage()
+                    viewModel.uiState.value.isAlbumTab -> viewModel.loadNextAlbumPage()
+                    viewModel.uiState.value.isHobbyTab -> viewModel.loadNextHobbyPage()
+                    else -> viewModel.loadNextPage()
+                }
+            },
+            hobbyOrder = viewModel::setHobbyOrder,
+            hobbyYear = viewModel::setHobbyYear,
+            hobbyMonth = viewModel::setHobbyMonth,
+            hobbyCategory = { categoryId, subCategoryId ->
+                viewModel.selectHobbyCategory(categoryId, subCategoryId)
+            },
+            hobbyAdvancedApply = { filterParam ->
+                viewModel.applyHobbyAdvancedFilters(
+                    sex = filterParam.sex,
+                    specs = filterParam.specs,
+                    scale = filterParam.scale,
+                    r18 = filterParam.r18
+                )
+            },
+            hobbyAdvancedReset = viewModel::resetHobbyAdvancedFilters,
+            hobbyViewMode = viewModel::toggleHobbyViewMode,
+            hobbyFilterSheetVisible = viewModel::openHobbyFilterSheet,
+            hobbyCategoryPickerVisible = viewModel::openHobbyCategoryPicker
+        )
+    }
+    val boardItemActions = remember(
+        onActionClick,
+        onCardImageClick,
+        handlePostClick,
+        handleAlbumClick,
+        handleResaleClick,
+        handleResaleContactClick,
+        onNavigateToUser,
+        handleEntityClick,
+        handleHobbyClick
+    ) {
+        ZoneBoardItemActions(
+            onActionClick = onActionClick,
+            onActionImageClick = onCardImageClick,
+            onPostClick = handlePostClick,
+            onPostImageClick = onCardImageClick,
+            onPostUserClick = onNavigateToUser,
+            onAlbumClick = handleAlbumClick,
+            onResaleClick = handleResaleClick,
+            onResaleContactClick = handleResaleContactClick,
+            onResaleUserClick = onNavigateToUser,
+            onResaleMoreClick = { item -> activeMoreResaleItem = item },
+            onHobbyClick = handleHobbyClick,
+            // pane 以 (board, item) 回调；本页跳转逻辑仍按 selectedTab 区分（行为不变）
+            onEntityClick = { _, item -> handleEntityClick(item) }
+        )
+    }
+
+    // 各板块筛选快照只构造一次：内容区（ZoneBoardPane）与筛选条（ZoneBoardFilterBar）读同一份，
+    // 避免同一板块两处各构造一次导致漂移（#150 审查 B5）。
+    val actionBoardFilters = remember(uiState.selectedSubType) {
+        ZoneBoardFilters(subType = uiState.selectedSubType)
+    }
+    val albumBoardFilters = remember(uiState.albumSelectedOrder, uiState.albumSelectedCategory) {
+        ZoneBoardFilters(
+            albumOrder = uiState.albumSelectedOrder,
+            albumCategory = uiState.albumSelectedCategory
+        )
+    }
+    val resaleBoardFilters = remember(
+        uiState.resaleState.type,
+        uiState.resaleState.purity,
+        uiState.resaleState.keyword
+    ) {
+        ZoneBoardFilters(
+            resaleType = uiState.resaleState.type,
+            resalePurity = uiState.resaleState.purity,
+            resaleKeyword = uiState.resaleState.keyword
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -711,269 +788,154 @@ fun ZoneDetailScreen(
                                     bottom = bottomContentPadding
                                 )
                         )
-                    } else {
-                        LazyVerticalStaggeredGrid(
-                            columns = gridColumns,
-                            state = staggeredGridState,
-                            modifier = Modifier.fillMaxSize(),
+                    } else if (uiState.selectedTab == "action") {
+                        // 动态板块：走共享面板（唯一内容渲染入口），其余板块本阶段仍用下方内联分支
+                        ZoneBoardPane(
+                            board = ZoneBoard.Action,
+                            content = ZoneBoardContent.Action(
+                                items = uiState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.isFeedLoading,
+                                    isLoadingMore = uiState.isLoadingMore,
+                                    errorMessage = uiState.errorMessage,
+                                    loadMoreError = uiState.loadMoreError,
+                                    isEndReached = !uiState.hasMore
+                                )
+                            ),
+                            gridState = staggeredGridState,
                             contentPadding = PaddingValues(
                                 start = 8.dp,
                                 end = 8.dp,
                                 top = totalHeaderHeightDp + 8.dp,
                                 bottom = bottomContentPadding
                             ),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalItemSpacing = 8.dp
-                        ) {
-                    // 3. 内容流渲染列表
-                    when {
-                        uiState.isAlbumTab -> {
-                            if (uiState.albumErrorMessage != null && uiState.albumItems.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.albumErrorMessage ?: "加载分享失败",
-                                        onRetry = { viewModel.loadInitialAlbum() }
-                                    )
-                                }
-                            } else if (uiState.albumItems.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关分享")
-                                }
-                            } else {
-                                items(
-                                    items = uiState.albumItems,
-                                    key = { item -> "zone_album_${item.targetAlbumId}" },
-                                    contentType = { "album_feed" }
-                                ) { item ->
-                                    AlbumFeedCard(
-                                        item = item,
-                                        showTime = true,
-                                        onClick = handleAlbumClick
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isAlbumLoadingMore,
-                                        loadMoreError = uiState.albumLoadMoreError,
-                                        isEndReached = !uiState.hasMoreAlbum,
-                                        onRetry = { viewModel.loadNextAlbumPage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isPostsTab -> {
-                            if (uiState.postsErrorMessage != null && uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.postsErrorMessage ?: "加载讨论失败",
-                                        onRetry = { viewModel.loadInitialPosts() }
-                                    )
-                                }
-                            } else if (uiState.postsItems.isEmpty() && uiState.pinnedPosts.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关讨论")
-                                }
-                            } else {
-                                if (uiState.pinnedPosts.isNotEmpty()) {
-                                    item(span = StaggeredGridItemSpan.FullLine) {
-                                        ZonePinnedPostsBar(
-                                            pinnedPosts = uiState.pinnedPosts,
-                                            onPostClick = handlePostClick
-                                        )
-                                    }
-                                }
-
-                                items(
-                                    items = uiState.postsItems,
-                                    key = { item -> "zone_post_${item.id}" },
-                                    contentType = { "zone_post" }
-                                ) { post ->
-                                    ZonePostCard(
-                                        post = post,
-                                        onPostClick = handlePostClick,
-                                        onImageClick = onCardImageClick,
-                                        onUserClick = onNavigateToUser
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isPostsLoadingMore,
-                                        loadMoreError = uiState.postsLoadMoreError,
-                                        isEndReached = !uiState.hasMorePosts,
-                                        onRetry = { viewModel.loadNextPostsPage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isHobbyTab -> {
-                            val hobbyState = uiState.hobbyState
-                            if (hobbyState.errorMessage != null && hobbyState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = hobbyState.errorMessage,
-                                        onRetry = { viewModel.loadInitialHobby() }
-                                    )
-                                }
-                            } else if (hobbyState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关产品")
-                                }
-                            } else {
-                                if (hobbyState.isGridMode) {
-                                    items(
-                                        items = hobbyState.items,
-                                        key = { item -> "zone_hobby_grid_${item.actualItemId}" },
-                                        contentType = { "hobby_grid" }
-                                    ) { item ->
-                                        HobbyGridCard(
-                                            item = item,
-                                            onClick = { handleHobbyClick(item) }
-                                        )
-                                    }
-                                } else {
-                                    items(
-                                        items = hobbyState.items,
-                                        key = { item -> "zone_hobby_list_${item.actualItemId}" },
-                                        contentType = { "hobby_list" }
-                                    ) { item ->
-                                        HobbyListCard(
-                                            item = item,
-                                            onClick = { handleHobbyClick(item) }
-                                        )
-                                    }
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = hobbyState.isLoadingMore,
-                                        loadMoreError = hobbyState.loadMoreError,
-                                        isEndReached = hobbyState.isEndReached,
-                                        onRetry = { viewModel.loadNextHobbyPage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isResaleTab -> {
-                            val resaleState = uiState.resaleState
-                            if (resaleState.errorMessage != null && resaleState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = resaleState.errorMessage,
-                                        onRetry = { viewModel.loadInitialResale() }
-                                    )
-                                }
-                            } else if (resaleState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关二手条目")
-                                }
-                            } else {
-                                items(
-                                    items = resaleState.items,
-                                    key = { item -> "zone_resale_${item.id}" },
-                                    contentType = { "zone_resale" }
-                                ) { item ->
-                                    ZoneResaleCard(
-                                        item = item,
-                                        onClick = { handleResaleClick(item) },
-                                        onUserClick = onNavigateToUser,
-                                        onContactClick = { handleResaleContactClick(item) },
-                                        onMoreClick = { activeMoreResaleItem = item }
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = resaleState.isLoadingMore,
-                                        loadMoreError = resaleState.loadMoreError,
-                                        isEndReached = resaleState.isEndReached,
-                                        onRetry = { viewModel.loadNextResalePage() }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.isEntityTab -> {
-                            val entityState = uiState.currentEntityState
-                            if (entityState.errorMessage != null && entityState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = entityState.errorMessage,
-                                        onRetry = { viewModel.loadInitialEntity(uiState.selectedTab) }
-                                    )
-                                }
-                            } else if (entityState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关条目")
-                                }
-                            } else {
-                                items(
-                                    items = entityState.items,
-                                    key = { item -> "zone_entity_${uiState.selectedTab}_${item.targetId}" },
-                                    contentType = { "zone_entity" }
-                                ) { item ->
-                                    ZoneEntityCard(
-                                        item = item,
-                                        onClick = { handleEntityClick(item) }
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = entityState.isLoadingMore,
-                                        loadMoreError = entityState.loadMoreError,
-                                        isEndReached = entityState.isEndReached,
-                                        onRetry = { viewModel.loadNextEntityPage(uiState.selectedTab) }
-                                    )
-                                }
-                            }
-                        }
-                        uiState.selectedTab == "action" -> {
-                            if (uiState.errorMessage != null && uiState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneErrorPlaceholder(
-                                        message = uiState.errorMessage ?: "加载动态失败",
-                                        onRetry = { viewModel.refresh() }
-                                    )
-                                }
-                            } else if (uiState.items.isEmpty()) {
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZoneEmptyPlaceholder("暂无相关动态")
-                                }
-                            } else {
-                                items(
-                                    items = uiState.items,
-                                    key = { item -> "zone_feed_${item.id}_${item.actionDate}" },
-                                    contentType = { "feed_action" }
-                                ) { item ->
-                                    ActionCard(
-                                        actionItem = item,
-                                        onActionClick = onActionClick,
-                                        onImageClick = onCardImageClick
-                                    )
-                                }
-
-                                item(span = StaggeredGridItemSpan.FullLine) {
-                                    ZonePaginationFooter(
-                                        isLoadingMore = uiState.isLoadingMore,
-                                        loadMoreError = uiState.loadMoreError,
-                                        isEndReached = !uiState.hasMore,
-                                        onRetry = { viewModel.loadNextPage() }
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
-                            // 其他未开放分类占位
-                            item(span = StaggeredGridItemSpan.FullLine) {
-                                ZoneEmptyPlaceholder("该分类正在建设中...")
-                            }
-                        }
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = feedColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (uiState.isAlbumTab) {
+                        // 分享板块：走共享面板（#157），与首页同一内容渲染入口；
+                        // 列数由面板内部按相册策略计算，筛选值来自 ViewModel 投影。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Album,
+                            content = ZoneBoardContent.Album(
+                                items = uiState.albumItems,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.isAlbumLoading,
+                                    isLoadingMore = uiState.isAlbumLoadingMore,
+                                    errorMessage = uiState.albumErrorMessage,
+                                    loadMoreError = uiState.albumLoadMoreError,
+                                    isEndReached = !uiState.hasMoreAlbum
+                                )
+                            ),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = gridColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (uiState.isPostsTab) {
+                        // 讨论板块：走共享面板（与首页同一渲染入口），单专区恒展示置顶帖条
+                        ZoneBoardPane(
+                            board = ZoneBoard.Posts,
+                            content = uiState.postsBoardContent,
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = feedColumns,
+                            showPinnedPosts = true,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (uiState.isResaleTab) {
+                        // 二手板块：走共享面板（#160），与首页同一内容渲染入口；
+                        // 搜索栏 / 更多操作 / 举报弹窗仍属专区详情 chrome，留在宿主渲染。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Resale,
+                            content = ZoneBoardContent.Resale(
+                                items = uiState.resaleState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = uiState.resaleState.isLoading,
+                                    isLoadingMore = uiState.resaleState.isLoadingMore,
+                                    errorMessage = uiState.resaleState.errorMessage,
+                                    loadMoreError = uiState.resaleState.loadMoreError,
+                                    isEndReached = uiState.resaleState.isEndReached
+                                )
+                            ),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = resaleColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (uiState.isHobbyTab) {
+                        // 产品板块：走共享面板（#159），与首页同一内容渲染入口；
+                        // 列数由面板按网格 / 列表模式计算，筛选值与两个弹层显隐来自 ViewModel 投影。
+                        ZoneBoardPane(
+                            board = ZoneBoard.Hobby,
+                            content = uiState.hobbyBoardContent,
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = gridColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (uiState.isEntityTab) {
+                        // 实体 5 类（#161）：走共享面板，与首页同一内容渲染入口；
+                        // 点击回调仍由本页 handleEntityClick 按 selectedTab 分发（行为不变）。
+                        val entityState = uiState.currentEntityState
+                        val entityBoard = ZoneBoard.fromType(uiState.selectedTab) ?: ZoneBoard.Company
+                        ZoneBoardPane(
+                            board = entityBoard,
+                            content = ZoneBoardContent.Entity(
+                                items = entityState.items,
+                                page = ZoneBoardPageView(
+                                    isLoading = entityState.isLoading,
+                                    isLoadingMore = entityState.isLoadingMore,
+                                    errorMessage = entityState.errorMessage,
+                                    loadMoreError = entityState.loadMoreError,
+                                    isEndReached = entityState.isEndReached
+                                )
+                            ),
+                            gridState = staggeredGridState,
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                end = 8.dp,
+                                top = totalHeaderHeightDp + 8.dp,
+                                bottom = bottomContentPadding
+                            ),
+                            actions = boardActions,
+                            itemActions = boardItemActions,
+                            columns = entityColumns,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
-        }
-    }
 
             // 2. 中层随动折叠筛选栏（吸附于常驻栏正下方，随列表滚动平滑折叠）
             Box(
@@ -990,225 +952,54 @@ fun ZoneDetailScreen(
             ) {
                 when {
                     uiState.isAlbumTab -> {
-                        // 分享/相册排序胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.albumOrders.forEach { (key, label) ->
-                                val isSelected = uiState.albumSelectedOrder == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectAlbumOrder(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 分享/相册：6 档排序 Chip + 分类入口，统一走共享筛选条（与首页同一实现）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Album,
+                            filters = albumBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions,
+                            albumCategoryOptions = uiState.albumCategoryOptions
+                        )
                     }
                     uiState.isPostsTab -> {
-                        // 讨论排序胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.postsOrders.forEach { (key, label) ->
-                                val isSelected = uiState.postsSelectedOrder == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectPostsOrder(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 讨论排序胶囊：共享筛选条（回复/新贴/推荐；讨论无分类入口，见 PostsBoardOptions KDoc）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Posts,
+                            filters = uiState.postsBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                     uiState.isHobbyTab -> {
-                        val hobbyState = uiState.hobbyState
-                        val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
-                        val subCategories = remember(hobbyState.categoryId, categoryTree) {
-                            viewModel.getSubCategories(hobbyState.categoryId)
-                        }
-
-                        // 下拉过滤胶囊行 (排序, 分类, 年份, 月份)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val orderOptions = listOf(
-                                "hits7Day" to "7天热度",
-                                "hitsDay" to "1天热度",
-                                "hits" to "总热度",
-                                "add" to "最新入库",
-                                "release" to "发售时间",
-                                "rating" to "综合评分"
-                            )
-                            var showOrderMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val currentOrderLabel = orderOptions.find { it.first == hobbyState.order }?.second ?: "7天热度"
-                                FilterDropdownChip(
-                                    label = currentOrderLabel,
-                                    isSelected = hobbyState.order != "hits7Day",
-                                    isExpanded = showOrderMenu,
-                                    onClick = { showOrderMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showOrderMenu,
-                                    onDismissRequest = { showOrderMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    orderOptions.forEach { (orderKey, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyOrder(orderKey)
-                                                showOrderMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            val categoryChipLabel = when {
-                                hobbyState.subCategoryId != null -> {
-                                    subCategories.find { it.id == hobbyState.subCategoryId }?.name ?: "子分类"
-                                }
-                                hobbyState.categoryId != 10000 -> {
-                                    val catMap = mapOf(100 to "手办", 200 to "动漫模型", 500 to "真实模型", 300 to "娃娃人偶", 400 to "毛绒布偶", 900 to "动漫周边")
-                                    catMap[hobbyState.categoryId] ?: "分类"
-                                }
-                                else -> "分类"
-                            }
-                            val isCategoryActive = hobbyState.categoryId != 10000 || hobbyState.subCategoryId != null
-                            FilterDropdownChip(
-                                label = categoryChipLabel,
-                                isSelected = isCategoryActive,
-                                isExpanded = hobbyState.showCategoryPickerSheet,
-                                onClick = { viewModel.openHobbyCategoryPicker(true) }
-                            )
-
-                            val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
-                            val yearOptions = listOf(null to "不限年") + ((currentYear + 2 downTo currentYear - 8).map { it to "${it}年" })
-                            var showYearMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val hasYear = (hobbyState.releaseYear ?: 0) > 0
-                                FilterDropdownChip(
-                                    label = if (hasYear) "${hobbyState.releaseYear}年" else "不限年",
-                                    isSelected = hasYear,
-                                    isExpanded = showYearMenu,
-                                    onClick = { showYearMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showYearMenu,
-                                    onDismissRequest = { showYearMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    yearOptions.forEach { (year, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyYear(year)
-                                                showYearMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            val monthOptions = listOf(null to "不限月") + ((1..12).map { it to "${it}月" })
-                            var showMonthMenu by remember { mutableStateOf(false) }
-                            Box {
-                                val hasMonth = (hobbyState.releaseMonth ?: 0) > 0
-                                FilterDropdownChip(
-                                    label = if (hasMonth) "${hobbyState.releaseMonth}月" else "不限月",
-                                    isSelected = hasMonth,
-                                    isExpanded = showMonthMenu,
-                                    onClick = { showMonthMenu = true }
-                                )
-                                DropdownMenu(
-                                    expanded = showMonthMenu,
-                                    onDismissRequest = { showMonthMenu = false },
-                                    shape = MaterialTheme.shapes.medium,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                                ) {
-                                    monthOptions.forEach { (month, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                                            onClick = {
-                                                viewModel.setHobbyMonth(month)
-                                                showMonthMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        // 产品：排序 / 分类级联 / 年份 / 月份，统一走共享筛选条（与首页同一实现）；
+                        // 高级筛选与网格切换入口保留在顶栏常驻控制栏（见下方「常驻搜索与控制栏」）。
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Hobby,
+                            filters = uiState.hobbyBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions,
+                            hobbyCategoryTree = categoryTree,
+                            hobbyIsGridMode = uiState.hobbyState.isGridMode,
+                            showHobbyControlActions = false
+                        )
                     }
                     uiState.isResaleTab -> {
-                        val resaleState = uiState.resaleState
-                        // 出售/求购 & 成色选择胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.resaleTypes.forEach { (typeKey, label) ->
-                                val isSelected = resaleState.type == typeKey
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.setResaleType(typeKey) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            viewModel.resalePurities.forEach { (purityKey, label) ->
-                                val isSelected = resaleState.purity == purityKey
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.setResalePurity(purityKey) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 二手：出售/求购分段 + 成色 Chip，统一走共享筛选条（与首页同一实现）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Resale,
+                            filters = resaleBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                     uiState.selectedTab == "action" -> {
-                        // 动态二级子分类胶囊
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.subTypes.forEach { (key, label) ->
-                                val isSelected = uiState.selectedSubType == key
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectSubType(key) },
-                                    label = { Text(label) },
-                                    shape = MaterialTheme.shapes.small
-                                )
-                            }
-                        }
+                        // 动态二级子分类胶囊：共享筛选条（选项仍由本页 ViewModel 提供，#153 合入后切共享定义）
+                        ZoneBoardFilterBar(
+                            board = ZoneBoard.Action,
+                            filters = actionBoardFilters,
+                            subTypeOptions = viewModel.subTypes,
+                            actions = boardActions
+                        )
                     }
                 }
             }
@@ -1430,41 +1221,13 @@ fun ZoneDetailScreen(
         }
     }
 
-    // 4. 高级筛选底板 (Hobby)
-    if (uiState.hobbyState.showFilterSheet) {
-        val hobbyState = uiState.hobbyState
-        HobbyFilterAdaptiveSheet(
-            filterParam = HobbyAdvancedFilterParam(
-                sex = hobbyState.sex,
-                specs = hobbyState.specs,
-                scale = hobbyState.scale,
-                r18 = hobbyState.r18
-            ),
-            onDismiss = { viewModel.openHobbyFilterSheet(false) },
-            onApply = { filterParam ->
-                viewModel.applyHobbyAdvancedFilters(
-                    sex = filterParam.sex,
-                    specs = filterParam.specs,
-                    scale = filterParam.scale,
-                    r18 = filterParam.r18
-                )
-            },
-            onReset = {
-                viewModel.resetHobbyAdvancedFilters()
-            }
-        )
-    }
-
-    // 5. 分类级联选择底板 (Hobby)
-    if (uiState.hobbyState.showCategoryPickerSheet) {
-        CategoryPickerSheet(
-            selectedCategoryId = uiState.hobbyState.categoryId,
-            selectedSubCategoryId = uiState.hobbyState.subCategoryId,
-            getSubCategories = { viewModel.getSubCategories(it) },
-            onCategorySelected = { catId, subId ->
-                viewModel.selectHobbyCategory(catId, subId)
-            },
-            onDismiss = { viewModel.openHobbyCategoryPicker(false) }
+    // 4. 产品高级筛选 / 分类级联两个底板由**宿主**在内容四态之外组合（与首页同一实现）：
+    //    面板在首屏加载/空/错时不挂载，若弹层随面板渲染，「高级筛选」入口在空结果时会点击无响应。
+    if (uiState.isHobbyTab) {
+        ZoneBoardHobbySheets(
+            filters = uiState.hobbyBoardFilters,
+            hobbyCategoryTree = categoryTree,
+            actions = boardActions
         )
     }
 
@@ -1521,126 +1284,5 @@ fun ZoneDetailScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun FilterDropdownChip(
-    label: String,
-    isSelected: Boolean,
-    isExpanded: Boolean,
-    onClick: () -> Unit
-) {
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (isExpanded) 180f else 0f,
-        label = "DropdownArrowRotation"
-    )
-
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
-        },
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = arrowRotation },
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        shape = MaterialTheme.shapes.small,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ),
-        border = null
-    )
-}
-
-@Composable
-private fun ZoneEmptyPlaceholder(text: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ZoneErrorPlaceholder(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp, horizontal = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(onClick = onRetry) {
-                Text("重试")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ZonePaginationFooter(
-    isLoadingMore: Boolean,
-    loadMoreError: String?,
-    isEndReached: Boolean,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            isLoadingMore -> {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            loadMoreError != null -> {
-                OutlinedButton(onClick = onRetry) {
-                    Text("加载更多失败，点击重试")
-                }
-            }
-            isEndReached -> {
-                Text(
-                    text = "已经到底啦",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-        }
     }
 }
