@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.message.notice
 
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.repository.MessageRepository
 import com.nobody.repoi.data.repository.MockApi
 import com.nobody.repoi.ui.navigation.MessageNoticeNavParam
@@ -41,7 +40,7 @@ class MessageNoticeViewModelTest {
     }
 
     private fun viewModelOf(mock: MockApi): MessageNoticeViewModel {
-        val repository = MessageRepository(mock.api(), FakeUserSession("utoken-test"))
+        val repository = MessageRepository(mock.api())
         return MessageNoticeViewModel(repository)
     }
 

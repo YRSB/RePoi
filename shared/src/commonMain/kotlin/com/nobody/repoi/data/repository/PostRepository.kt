@@ -4,15 +4,13 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.PostDetailData
-import com.nobody.repoi.data.session.UserSession
 
 /**
  * 讨论贴与回帖数据仓储。
  * 提供帖子详情查询、回帖列表分页、发表主楼回帖、发表楼中楼回复及删除等能力。
  */
 class PostRepository(
-    private val api: HpoiApi,
-    private val userSession: UserSession
+    private val api: HpoiApi
 ) {
 
     /**
@@ -25,8 +23,6 @@ class PostRepository(
             throw ApiException(400, "帖子ID无效")
         }
 
-        val snapshotToken = userSession.currentToken
-
         // 1. 判断入参特征：若明确传入了 nodeId 或 postId 属于大号 node id (>= 10,000,000)
         val isLikelyNodeId = postId >= 10_000_000L
         val effectiveItemId = if (!isLikelyNodeId && postId > 0L) postId else null
@@ -34,43 +30,27 @@ class PostRepository(
 
         // 2. 优先策略：若有 itemId，直接调用 info-v2 (可携带关联手办 relateItem)
         if (effectiveItemId != null) {
-            val responseV2 = api.getPostInfo(nodeId = effectiveNodeId, itemId = effectiveItemId)
-            if (responseV2.isSuccess && responseV2.data?.posts != null) {
-                return@runCatching responseV2.data.posts
-            } else if (responseV2.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
+            val postV2 = runCatching {
+                api.getPostInfo(nodeId = effectiveNodeId, itemId = effectiveItemId)
+            }.getOrNull()?.posts
+            if (postV2 != null) return@runCatching postV2
         }
 
         // 3. 容错策略：若仅有 nodeId 或 info-v2 失败，调用 api/posts/info (v1) 反解真实 itemId
-        val responseV1 = api.getPostInfoV1(
+        val postV1 = api.getPostInfoV1(
             nodeId = effectiveNodeId,
             itemId = effectiveItemId ?: postId.takeIf { it > 0L }
-        )
-        if (!responseV1.isSuccess || responseV1.data?.posts == null) {
-            if (responseV1.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(
-                responseV1.code.takeIf { it != 0 } ?: -9005,
-                responseV1.msg ?: "找不到该帖子，可能已被删除"
-            )
-        }
+        )?.posts ?: throw ApiException(-9005, "找不到该帖子，可能已被删除")
 
-        val postV1 = responseV1.data.posts
         val resolvedItemId = postV1.itemId.takeIf { it > 0L }
         val resolvedNodeId = postV1.id.takeIf { it > 0L } ?: effectiveNodeId
 
         // 4. 若成功反解出 itemId，尝试调用 info-v2 补齐 relateItem 关联手办数据
         if (resolvedItemId != null) {
-            val enrichV2 = runCatching {
+            val enriched = runCatching {
                 api.getPostInfo(nodeId = resolvedNodeId, itemId = resolvedItemId)
-            }.getOrNull()
-            if (enrichV2?.isSuccess == true && enrichV2.data?.posts != null) {
-                return@runCatching enrichV2.data.posts
-            } else if (enrichV2?.isTokenExpired == true) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
+            }.getOrNull()?.posts
+            if (enriched != null) return@runCatching enriched
         }
 
         postV1
@@ -90,20 +70,13 @@ class PostRepository(
         pageSize: Int = 20
     ): Result<List<CommentItem>> = runCatching {
         if (postId <= 0L) throw ApiException(400, "帖子ID无效")
-        val snapshotToken = userSession.currentToken
         val response = api.getDiscussList(
             itemNodeId = postId,
             order = order.ifBlank { null },
             page = page,
             pageSize = pageSize
         )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取讨论回帖列表失败")
-        }
-        val discussList = response.data?.discussList ?: emptyList()
+        val discussList = response?.discussList ?: emptyList()
         discussList.map { it.toCommentItem() }
     }
 
@@ -118,22 +91,12 @@ class PostRepository(
         content: String,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再发表回帖")
-        }
         if (postId <= 0L) throw ApiException(400, "帖子ID无效")
-        val response = api.addDiscuss(
+        api.addDiscuss(
             itemNodeId = postId,
             content = content,
             emoticon = emoticon
         )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "发表回帖失败")
-        }
     }
 
     /**
@@ -153,12 +116,8 @@ class PostRepository(
         toReplyId: Long? = null,
         emoticon: String? = null
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再回复")
-        }
         if (postId <= 0L || discussId <= 0L) throw ApiException(400, "参数无效")
-        val response = api.addDiscussReply(
+        api.addDiscussReply(
             itemNodeId = postId,
             discussNodeId = discussId,
             content = content,
@@ -166,12 +125,6 @@ class PostRepository(
             toReplyNodeId = toReplyId,
             emoticon = emoticon
         )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "回复失败")
-        }
     }
 
     /**
@@ -183,22 +136,12 @@ class PostRepository(
         id: Long,
         isSubReply: Boolean
     ): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再进行删除操作")
-        }
         if (id <= 0L) throw ApiException(400, "参数无效")
         val type = if (isSubReply) "discuss_reply" else "discuss"
-        val response = api.deleteDiscuss(
+        api.deleteDiscuss(
             nodeId = id,
             type = type
         )
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "删除失败")
-        }
     }
 
     /**
@@ -206,17 +149,7 @@ class PostRepository(
      * @param postId 帖子节点 ID
      */
     suspend fun deletePost(postId: Long): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        if (snapshotToken.isBlank()) {
-            throw ApiException(4001, "请先登录后再删除帖子")
-        }
         if (postId <= 0L) throw ApiException(400, "帖子ID无效")
-        val response = api.deletePost(nodeId = postId)
-        if (!response.isSuccess) {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "删除帖子失败")
-        }
+        api.deletePost(nodeId = postId)
     }
 }

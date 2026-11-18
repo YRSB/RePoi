@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.settings.shield
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.repository.SettingsRepository
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,17 +18,18 @@ data class SettingsShieldUiState(
 )
 
 class SettingsShieldViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val userSession: UserSession,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        SettingsShieldUiState(isLoading = settingsRepository.isLoggedIn)
+        SettingsShieldUiState(isLoading = userSession.isAuthenticated)
     )
     val uiState: StateFlow<SettingsShieldUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            settingsRepository.tokenFlow.collect { token ->
+            userSession.tokenFlow.collect { token ->
                 if (token.isNotBlank()) {
                     reload()
                 } else {
@@ -38,7 +40,7 @@ class SettingsShieldViewModel(
     }
 
     fun reload() {
-        if (!settingsRepository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(isLoading = false, errorMessage = null) }
             return
         }
@@ -65,7 +67,7 @@ class SettingsShieldViewModel(
     }
 
     fun setNsfwVisible(visible: Boolean) {
-        if (!settingsRepository.isLoggedIn) return
+        if (!userSession.isAuthenticated) return
         val previous = _uiState.value.nsfwVisible
         var started = false
         _uiState.update {

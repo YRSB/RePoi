@@ -3,11 +3,9 @@ package com.nobody.repoi.data.repository
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.ActionListData
-import com.nobody.repoi.data.remote.model.ApiException
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.JsonRefResolver
 import com.nobody.repoi.data.remote.model.UserFellowItem
-import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.platform.DateTimeFormats
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -63,7 +61,6 @@ data class FollowPage(
 class FollowRepository(
     private val api: HpoiApi,
     private val json: Json,
-    private val userSession: UserSession
 ) {
     private val _friendChangeEvent = MutableSharedFlow<FriendChangeEvent>(extraBufferCapacity = 64)
     val friendChangeEvent: SharedFlow<FriendChangeEvent> = _friendChangeEvent.asSharedFlow()
@@ -87,8 +84,7 @@ class FollowRepository(
             type = type,
             isHome = if (type == "item") 0 else null
         )
-        if (!response.isSuccess) throw ApiException(response.code, response.msg ?: "数据加载失败")
-        val list = decodeList(response.data)
+        val list = decodeList(response)
         FollowPage(
             items = list,
             lastId = parseFollowCursor(list.lastOrNull()?.actionDate),
@@ -100,47 +96,28 @@ class FollowRepository(
      * 获取指定用户的关注数与粉丝数 (api/user/fellow/count)。
      */
     suspend fun getFellowCount(userId: Long): Result<FellowCountData> = runCatching {
-        val response = api.getFellowCount(userNodeId = userId)
-        if (response.isSuccess || (response.success && response.data?.data != null)) {
-            response.data?.data ?: FellowCountData()
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取关注粉丝数失败")
-        }
+        api.getFellowCount(userNodeId = userId)?.data ?: FellowCountData()
     }
 
     /**
      * 查询指定用户的关注状态 (api/user/fellow/type)。
      */
     suspend fun getFellowType(userId: Long): Result<FriendState> = runCatching {
-        val response = api.getFellowType(userNId = userId)
-        if (response.isSuccess) {
-            val stateCode = response.data?.friendState ?: -1
-            FriendState.fromCode(stateCode)
-        } else {
-            throw ApiException(response.code, response.msg ?: "获取用户关注状态失败")
-        }
+        FriendState.fromCode(api.getFellowType(userNId = userId)?.friendState ?: -1)
     }
 
     /**
      * 更新用户关注/好友状态 (api/user/friend/upd)。
      */
     suspend fun updateFriend(userId: Long, state: FriendState): Result<Unit> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.updateFriend(userId = userId, state = state.code)
-        if (response.isSuccess) {
-            _friendChangeEvent.emit(
-                FriendChangeEvent(
-                    userId = userId,
-                    isFollow = state.isFollowed,
-                    state = state
-                )
+        api.updateFriend(userId = userId, state = state.code)
+        _friendChangeEvent.emit(
+            FriendChangeEvent(
+                userId = userId,
+                isFollow = state.isFollowed,
+                state = state
             )
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "更新用户关注状态失败")
-        }
+        )
     }
 
     /**
@@ -164,16 +141,7 @@ class FollowRepository(
         page: Int,
         pageSize: Int = 20
     ): Result<List<UserFellowItem>> = runCatching {
-        val snapshotToken = userSession.currentToken
-        val response = api.getUserFellow(userId = userId, type = type, page = page, pageSize = pageSize)
-        if (response.isSuccess || (response.success && response.data != null)) {
-            response.data?.list ?: emptyList()
-        } else {
-            if (response.isTokenExpired) {
-                userSession.notifyTokenExpired(snapshotToken)
-            }
-            throw ApiException(response.code, response.msg ?: "获取好友列表失败")
-        }
+        api.getUserFellow(userId = userId, type = type, page = page, pageSize = pageSize)?.list ?: emptyList()
     }
 
     /**

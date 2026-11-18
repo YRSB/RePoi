@@ -68,12 +68,12 @@ class ProfileViewModelTest {
         stubProfileRoutes(mock)
         val session = FakeUserSession(initialState)
         val api = mock.api(testDispatcher)
-        val followRepo = FollowRepository(api, mock.json, session)
+        val followRepo = FollowRepository(api, mock.json)
         val financeRepo = UserFinanceRepository(api)
-        val userRepo = UserRepository(api, session, followRepo, financeRepo)
+        val userRepo = UserRepository(api, followRepo, financeRepo)
         val viewModel = ProfileViewModel(
             userRepo,
-            MessageRepository(api, session),
+            MessageRepository(api),
             ThemeManager(TestDataStore.inMemory()),
             session,
             followRepo,

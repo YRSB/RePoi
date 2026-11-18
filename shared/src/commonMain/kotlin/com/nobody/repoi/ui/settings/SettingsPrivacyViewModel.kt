@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobody.repoi.data.repository.SettingsRepository
+import com.nobody.repoi.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,17 +37,18 @@ data class SettingsPrivacyUiState(
 )
 
 class SettingsPrivacyViewModel(
-    private val repository: SettingsRepository
+    private val repository: SettingsRepository,
+    private val userSession: UserSession,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        SettingsPrivacyUiState(isLoading = repository.isLoggedIn)
+        SettingsPrivacyUiState(isLoading = userSession.isAuthenticated)
     )
     val uiState: StateFlow<SettingsPrivacyUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            repository.tokenFlow.collect { token ->
+            userSession.tokenFlow.collect { token ->
                 if (token.isNotBlank()) {
                     refresh()
                 } else {
@@ -57,7 +59,7 @@ class SettingsPrivacyViewModel(
     }
 
     fun refresh() {
-        if (!repository.isLoggedIn) {
+        if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(isLoading = false, errorMessage = null) }
             return
         }
@@ -80,7 +82,7 @@ class SettingsPrivacyViewModel(
     }
 
     fun setOption(key: String, value: Int) {
-        if (!repository.isLoggedIn) return
+        if (!userSession.isAuthenticated) return
         val previous = _uiState.value.values[key]
         var started = false
         _uiState.update {

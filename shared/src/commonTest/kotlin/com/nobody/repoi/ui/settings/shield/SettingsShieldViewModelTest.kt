@@ -36,15 +36,25 @@ class SettingsShieldViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repositoryOf(mock: MockApi, token: String = "utoken-test"): SettingsRepository =
-        SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
+    private fun repositoryOf(
+        mock: MockApi,
+        token: String = "utoken-test"
+    ): Pair<SettingsRepository, FakeUserSession> {
+        val session = FakeUserSession(token)
+        return SettingsRepository(mock.api(testDispatcher)) to session
+    }
+
+    private fun viewModelOf(mock: MockApi, token: String = "utoken-test"): SettingsShieldViewModel {
+        val (repository, session) = repositoryOf(mock, token)
+        return SettingsShieldViewModel(repository, session)
+    }
 
     @Test
     fun initialLoad_r18Shown_mapsVisibleTrue() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -56,7 +66,7 @@ class SettingsShieldViewModelTest {
     @Test
     fun unauthenticated_skipsNetworkAndDefaultsHidden() = runTest(testDispatcher) {
         val mock = MockApi()
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock, token = ""))
+        val viewModel = viewModelOf(mock, token = "")
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -71,8 +81,8 @@ class SettingsShieldViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
         val session = FakeUserSession()
-        val repo = SettingsRepository(mock.api(testDispatcher), session)
-        val viewModel = SettingsShieldViewModel(repo)
+        val repo = SettingsRepository(mock.api(testDispatcher))
+        val viewModel = SettingsShieldViewModel(repo, session)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
@@ -91,7 +101,7 @@ class SettingsShieldViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":1}}"""))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.nsfwVisible)
@@ -102,7 +112,7 @@ class SettingsShieldViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{}}"""))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -115,7 +125,7 @@ class SettingsShieldViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.failure(500, "网络异常"))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -129,7 +139,7 @@ class SettingsShieldViewModelTest {
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
         mock.route("api/setting/mysql/upd", mock.ok("{}"))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         mock.takeRequest()
 
@@ -151,7 +161,7 @@ class SettingsShieldViewModelTest {
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_r18":2}}"""))
         mock.route("api/setting/mysql/upd", mock.failure(500, "保存失败"))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         mock.takeRequest()
 
@@ -168,7 +178,7 @@ class SettingsShieldViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.failure(500, "网络异常"))
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         assertNotNull(viewModel.uiState.value.errorMessage)
 
@@ -186,7 +196,7 @@ class SettingsShieldViewModelTest {
             body = { _, _, _ -> gate.await(); mock.ok("{}") }
         )
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         mock.takeRequest()
 
@@ -210,7 +220,7 @@ class SettingsShieldViewModelTest {
             body = { _, _, _ -> gate.await(); mock.ok("{}") }
         )
 
-        val viewModel = SettingsShieldViewModel(repositoryOf(mock))
+        val viewModel = viewModelOf(mock)
         advanceUntilIdle()
         mock.takeRequest()
 

@@ -30,7 +30,7 @@ class CollectUseCasesTest {
     private fun env(userId: Long = 999L): Env {
         val mock = MockApi()
         val session = FakeUserSession(token = "utoken-test", userId = userId)
-        return Env(mock, session, CollectRepository(mock.api(), mock.json, session))
+        return Env(mock, session, CollectRepository(mock.api(), mock.json))
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.nobody.repoi.ui.gallery
 import com.nobody.repoi.data.remote.model.UserCollectPicItem
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -83,7 +82,7 @@ class GalleryCollectToggleTest {
     }
 
     private fun newRepository(collectMock: MockApi): CollectRepository =
-        CollectRepository(collectMock.api(testDispatcher), collectMock.json, FakeUserSession("utoken-test"))
+        CollectRepository(collectMock.api(testDispatcher), collectMock.json)
 
     private fun newViewModel(collectRepository: CollectRepository): PictureGalleryViewModel {
         // 本用例不触发原图下载，下载 HttpClient 用空响应 MockEngine 占位

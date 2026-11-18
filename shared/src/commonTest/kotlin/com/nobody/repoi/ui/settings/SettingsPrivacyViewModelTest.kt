@@ -43,8 +43,9 @@ class SettingsPrivacyViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok(mysqlBody))
         mock.route("api/setting/riak/get", mock.ok(riakBody))
-        val repository = SettingsRepository(mock.api(testDispatcher), FakeUserSession(token))
-        return Triple(mock, repository, SettingsPrivacyViewModel(repository))
+        val session = FakeUserSession(token)
+        val repository = SettingsRepository(mock.api(testDispatcher))
+        return Triple(mock, repository, SettingsPrivacyViewModel(repository, session))
     }
 
     @Test
@@ -83,8 +84,8 @@ class SettingsPrivacyViewModelTest {
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
         mock.route("api/setting/riak/get", mock.ok("""{"userState":{"setting_own_action":2}}"""))
         val session = FakeUserSession()
-        val repo = SettingsRepository(mock.api(testDispatcher), session)
-        val vm = SettingsPrivacyViewModel(repo)
+        val repo = SettingsRepository(mock.api(testDispatcher))
+        val vm = SettingsPrivacyViewModel(repo, session)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)
 
@@ -158,8 +159,9 @@ class SettingsPrivacyViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
         mock.route("api/setting/riak/get", mock.failure(500, "读取失败"))
-        val repository = SettingsRepository(mock.api(testDispatcher), FakeUserSession("utoken-test"))
-        val vm = SettingsPrivacyViewModel(repository)
+        val session = FakeUserSession("utoken-test")
+        val repository = SettingsRepository(mock.api(testDispatcher))
+        val vm = SettingsPrivacyViewModel(repository, session)
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -173,8 +175,9 @@ class SettingsPrivacyViewModelTest {
         val mock = MockApi()
         mock.route("api/setting/mysql/get", mock.ok("""{"userState":{"setting_collect_hobby":1}}"""))
         mock.route("api/setting/riak/get", mock.ok("""{"userState":{"setting_own_action":2}}"""))
-        val repository = SettingsRepository(mock.api(testDispatcher), FakeUserSession("utoken-test"))
-        val vm = SettingsPrivacyViewModel(repository)
+        val session = FakeUserSession("utoken-test")
+        val repository = SettingsRepository(mock.api(testDispatcher))
+        val vm = SettingsPrivacyViewModel(repository, session)
         advanceUntilIdle()
         assertEquals(2, vm.uiState.value.values["setting_own_action"])
 

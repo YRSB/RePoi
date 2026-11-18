@@ -2,7 +2,6 @@ package com.nobody.repoi.ui.collect
 
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
 import kotlinx.coroutines.Dispatchers
@@ -104,5 +103,5 @@ class WorksCollectEditSaveTest {
     }
 
     private fun newRepository(collectMock: MockApi): CollectRepository =
-        CollectRepository(collectMock.api(testDispatcher), collectMock.json, FakeUserSession("utoken-test"))
+        CollectRepository(collectMock.api(testDispatcher), collectMock.json)
 }

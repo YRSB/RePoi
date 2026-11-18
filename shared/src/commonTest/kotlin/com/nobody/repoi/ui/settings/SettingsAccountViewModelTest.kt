@@ -39,7 +39,7 @@ class SettingsAccountViewModelTest {
         token: String = "utoken-test"
     ): Pair<FakeUserSession, SettingsAccountViewModel> {
         val session = FakeUserSession(token)
-        val repository = SettingsRepository(mock.api(testDispatcher), session)
+        val repository = SettingsRepository(mock.api(testDispatcher))
         return session to SettingsAccountViewModel(repository, session)
     }
 
@@ -85,7 +85,7 @@ class SettingsAccountViewModelTest {
     fun tokenChanges_triggersRefreshAndReset() = runTest(testDispatcher) {
         val mock = MockApi()
         val session = FakeUserSession()
-        val repo = SettingsRepository(mock.api(testDispatcher), session)
+        val repo = SettingsRepository(mock.api(testDispatcher))
         val viewModel = SettingsAccountViewModel(repo, session)
         advanceUntilIdle()
         assertEquals(0, mock.requestCount)

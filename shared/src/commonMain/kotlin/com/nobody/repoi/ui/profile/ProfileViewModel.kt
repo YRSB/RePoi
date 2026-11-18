@@ -149,11 +149,18 @@ class ProfileViewModel(
                 )
             }
 
-            // 下拉刷新显式刷新会话档案；全量聚合内部优先复用会话中最新档案
+            // 档案解析收敛到持有会话的 ViewModel，仓储只消费传入档案
             if (isRefresh) {
                 userSession.refreshProfile()
             }
-
+            val profile = (userSession.state.value as? SessionState.Authenticated)?.profile
+                ?: userSession.refreshProfile().getOrNull()
+            if (profile == null) {
+                _uiState.update {
+                    it.copy(isLoading = false, isRefreshing = false, errorMessage = "获取用户信息失败")
+                }
+                return@launch
+            }
             // 异步获取未读通知数
             launch {
                 messageRepository.getUnreadPushCount()
@@ -163,7 +170,7 @@ class ProfileViewModel(
                     }
             }
 
-            val result = userRepository.loadFullProfile()
+            val result = userRepository.loadFullProfile(profile)
             result.onSuccess { data ->
                 _uiState.update {
                     it.copy(

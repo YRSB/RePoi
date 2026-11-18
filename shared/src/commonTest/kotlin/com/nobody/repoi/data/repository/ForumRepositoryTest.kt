@@ -1,8 +1,6 @@
 package com.nobody.repoi.data.repository
 
 import com.nobody.repoi.data.remote.model.ApiException
-import com.nobody.repoi.data.session.FakeUserSession
-import com.nobody.repoi.data.session.SessionState
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,22 +11,15 @@ import kotlin.test.assertTrue
  * 讨论板版块仓储单测：关注列表解析、关注取关、排序保存、版块详情与帖子流查询（KMP commonTest 移植）。
  *
  * 对齐 PoiShelf `ForumRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito → [FakeUserSession]；
- * JUnit4 → kotlin.test）。
+ * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
  * 移植说明：`updateFocusOrder` 的 `order=3%2C1%2C2` 为 OkHttp 线上百分号编码形态；
  * MockEngine 侧捕获的是解码后 form 值，断言改为 `formEntries()["order"] == "3,1,2"`，语义等价。
  */
 class ForumRepositoryTest {
 
-    private fun setup(token: String = "utoken-test"): Pair<MockApi, ForumRepository> {
+    private fun setup(): Pair<MockApi, ForumRepository> {
         val mock = MockApi()
-        return mock to ForumRepository(mock.api(), FakeUserSession(token))
-    }
-
-    private fun setupWithSession(token: String = "utoken-test"): Triple<MockApi, FakeUserSession, ForumRepository> {
-        val mock = MockApi()
-        val session = FakeUserSession(token)
-        return Triple(mock, session, ForumRepository(mock.api(), session))
+        return mock to ForumRepository(mock.api())
     }
 
     @Test
@@ -91,13 +82,13 @@ class ForumRepositoryTest {
     }
 
     @Test
-    fun toggleFocus_withoutLogin_throws4001() = runTest {
-        val (mock, repository) = setup(token = "")
+    fun toggleFocus_withInvalidForumId_throws400() = runTest {
+        val (mock, repository) = setup()
 
-        val result = repository.toggleFocus(forumNodeId = 11L, follow = true)
+        val result = repository.toggleFocus(forumNodeId = 0L, follow = true)
 
         assertTrue(result.isFailure)
-        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
+        assertEquals(400, (result.exceptionOrNull() as ApiException).code)
         assertEquals(0, mock.requestCount)
     }
 
@@ -171,37 +162,5 @@ class ForumRepositoryTest {
         assertTrue(recorded.path!!.contains("forumNodeId=0"))
         assertTrue(recorded.path!!.contains("order=hits"))
         assertTrue(recorded.path!!.contains("page=2"))
-    }
-    @Test
-    fun toggleFocus_tokenExpired_selfHealsSessionAndThrows() = runTest {
-        val (mock, session, repository) = setupWithSession("tok-forum")
-        mock.enqueue("""{"success":false,"code":4001,"msg":"登录已失效"}""")
-        val result = repository.toggleFocus(forumNodeId = 11L, follow = true)
-        assertTrue(result.isFailure)
-        assertEquals(4001, (result.exceptionOrNull() as ApiException).code)
-        assertEquals(SessionState.Unauthenticated, session.state.value)
-    }
-
-    @Test
-    fun api4001_withSwitchedSession_preservesNewSession() = runTest {
-        val (mock, session, repository) = setupWithSession("token-A")
-        mock.routeWhen(
-            predicate = { path, _ -> path.contains("api/forum/focus") },
-            body = { _, _ ->
-                // 模拟网络往返期间用户切换登录到了新账号 token-B
-                session.setState(SessionState.Authenticated(userId = 2L, token = "token-B"))
-                """{"success":false,"code":4001,"msg":"登录已失效","data":null}"""
-            }
-        )
-
-        val result = repository.toggleFocus(forumNodeId = 11L, follow = true)
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is ApiException)
-        assertEquals(4001, exception.code)
-        // 在途凭据守卫生效：旧请求快照 token-A 不匹配活跃 token-B，新会话未被误伤清理
-        assertTrue(session.isAuthenticated)
-        assertEquals("token-B", session.currentToken)
     }
 }

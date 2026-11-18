@@ -77,7 +77,7 @@ class UserCollectViewModelTest {
         targetUserId: Long = 999L,
     ): Env {
         val session = FakeUserSession("utoken-test", loginUserId)
-        val collectRepository = CollectRepository(mock.api(testDispatcher), mock.json, session)
+        val collectRepository = CollectRepository(mock.api(testDispatcher), mock.json)
         val batchCancel = BatchCancelCollectUseCase(collectRepository, session)
         val viewModel = UserCollectViewModel(
             collectRepository = collectRepository,

@@ -2,7 +2,6 @@ package com.nobody.repoi.ui.collect
 
 import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.data.repository.MockApi
-import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.ui.navigation.CollectEditNavParam
@@ -98,7 +97,7 @@ class CollectEditSaveTest {
     }
 
     private fun newRepository(collectMock: MockApi): CollectRepository =
-        CollectRepository(collectMock.api(testDispatcher), collectMock.json, FakeUserSession("utoken-test"))
+        CollectRepository(collectMock.api(testDispatcher), collectMock.json)
 
     private fun newViewModel(collectRepository: CollectRepository): CollectEditViewModel =
         CollectEditViewModel(

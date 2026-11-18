@@ -223,10 +223,7 @@ class ZoneRepository(
             page = page,
             pageSize = pageSize
         )
-        if (!response.isSuccess) {
-            throw ApiException(response.code, response.msg ?: "获取讨论列表失败")
-        }
-        response.data?.list ?: emptyList()
+        response.list
     }
 
     /**
