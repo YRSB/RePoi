@@ -10,8 +10,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RePoi">
         <activity
-            android:exported="true"
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true"
             android:theme="@style/Theme.RePoi.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

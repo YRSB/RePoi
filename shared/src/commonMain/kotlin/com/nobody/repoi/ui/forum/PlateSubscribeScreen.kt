@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.forum
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
@@ -136,10 +138,13 @@ fun PlateSubscribeScreen(
             )
         }
     ) { innerPadding ->
+        val bottomInset = innerPadding.calculateBottomPadding()
+        val bottomContentPadding = 88.dp + bottomInset
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             PrimaryTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -212,7 +217,9 @@ fun PlateSubscribeScreen(
                         onRetry = { viewModel.retry(PlateSubscribeViewModel.TAB_FOCUS) },
                         onLogin = if (!uiState.isLoggedIn) onNavigateToLogin else null,
                         onToggleFocus = viewModel::toggleFocus,
-                        onMove = viewModel::movePlate
+                        onMove = viewModel::movePlate,
+                        bottomContentPadding = bottomContentPadding,
+                        bottomInset = bottomInset
                     )
                 } else {
                     PlateTabPage(
@@ -233,7 +240,9 @@ fun PlateSubscribeScreen(
                         onRetry = { viewModel.retry(PlateSubscribeViewModel.TAB_UNFOCUS) },
                         onLogin = if (!uiState.isLoggedIn) onNavigateToLogin else null,
                         onToggleFocus = viewModel::toggleFocus,
-                        onMove = { _, _ -> }
+                        onMove = { _, _ -> },
+                        bottomContentPadding = bottomContentPadding,
+                        bottomInset = bottomInset
                     )
                 }
             }
@@ -280,7 +289,9 @@ private fun PlateTabPage(
     onLogin: (() -> Unit)?,
     onToggleFocus: (ForumItem) -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 88.dp,
+    bottomInset: Dp = 0.dp
 ) {
     val gridState = rememberLazyStaggeredGridState()
     val shouldLoadMore by remember {
@@ -307,10 +318,12 @@ private fun PlateTabPage(
             LazyVerticalStaggeredGrid(
                 columns = rememberPlateGridColumns(),
                 state = gridState,
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottomContentPadding),
                 verticalItemSpacing = 12.dp,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .consumeWindowInsets(PaddingValues(bottom = bottomInset))
             ) {
                 if (errorMessage != null && plates.isEmpty()) {
                     item(

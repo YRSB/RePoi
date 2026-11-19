@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -185,7 +186,8 @@ fun ResaleMarketScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             // ── 1. 四级下拉筛选工具栏（出售/求购 ▾、区域 ▾、分类 ▾、成色 ▾）──
             ResaleDropdownFilterBar(
@@ -254,10 +256,17 @@ fun ResaleMarketScreen(
                         LazyVerticalStaggeredGrid(
                             columns = columns,
                             state = gridState,
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                top = 16.dp,
+                                end = 16.dp,
+                                bottom = 88.dp + innerPadding.calculateBottomPadding()
+                            ),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalItemSpacing = 12.dp,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
                         ) {
                             items(
                                 items = uiState.items,

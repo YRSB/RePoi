@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.common.comment
 
+import com.nobody.repoi.platform.FullscreenDialogEdgeToEdgeEffect
 import com.nobody.repoi.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -1003,10 +1004,9 @@ fun CommentReplyDialog(
         },
         properties = DialogProperties(
             usePlatformDefaultWidth = false
-            // KMP：CMP common 无 decorFitsSystemWindows 参数；导航栏沉浸由各 shell 按平台惯例处理。
         )
     ) {
-        // KMP：Dialog 窗口导航栏沉浸由各 shell 按平台惯例处理，此处仅保留输入法内边距逻辑。
+        FullscreenDialogEdgeToEdgeEffect()
         val density = LocalDensity.current
         val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
         val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }

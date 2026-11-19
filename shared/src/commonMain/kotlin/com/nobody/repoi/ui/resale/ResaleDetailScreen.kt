@@ -5,10 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -230,14 +232,14 @@ fun ResaleDetailScreen(
                         .padding(top = innerPadding.calculateTopPadding())
                 )
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
             when {
                 uiState.isLoading && uiState.detail == null -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -250,6 +252,7 @@ fun ResaleDetailScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(innerPadding)
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -271,12 +274,14 @@ fun ResaleDetailScreen(
                 uiState.detail != null -> {
                     val detail = uiState.detail!!
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .consumeWindowInsets(innerPadding),
+                        contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            top = 16.dp,
-                            bottom = 96.dp // 留足底部常驻栏高度
+                            top = innerPadding.calculateTopPadding() + 16.dp,
+                            bottom = innerPadding.calculateBottomPadding() + 16.dp
                         ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {

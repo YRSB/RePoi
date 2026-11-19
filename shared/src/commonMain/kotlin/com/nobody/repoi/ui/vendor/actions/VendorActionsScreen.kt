@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,7 +94,6 @@ fun VendorActionsScreen(
     }
 
     val feedColumns = rememberFeedStaggeredGridColumns()
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -208,7 +208,8 @@ fun VendorActionsScreen(
             onRefresh = { viewModel.refresh() },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             when {
                 pagedState.stage == LoadStage.InitialLoading && pagedState.items.isEmpty() -> {
@@ -253,11 +254,13 @@ fun VendorActionsScreen(
                             start = 8.dp,
                             end = 8.dp,
                             top = 8.dp,
-                            bottom = navBarBottomPadding + 16.dp
+                            bottom = 16.dp + innerPadding.calculateBottomPadding()
                         ),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalItemSpacing = 8.dp,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
                     ) {
                         items(
                             items = pagedState.items,
