@@ -310,3 +310,15 @@ data class MessageBlockNavKey(
 data class SettingsShieldListNavKey(
     val id: String = newNavId()
 ) : AppNavKey
+
+/**
+ * 全屏大图画廊查看器二级页路由契约（对应 ImageViewerScreen）。
+ *
+ * 全面回归 Navigation 3 单根栈体系，原生享有 MaterialSharedAxis.Z 转场
+ * 与系统级 Predictive Back 预测性返回预览动效。
+ */
+@Serializable
+data class ImageViewerNavKey(
+    val param: ImageViewerNavParam,
+    val id: String = newNavId()
+) : AppNavKey

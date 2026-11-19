@@ -184,6 +184,9 @@ fun NavBackStack<NavKey>.navigateToResaleDetail(resaleId: Long) = add(ResaleDeta
 fun NavBackStack<NavKey>.navigateToResaleMarket(hobbyId: Long = 0L, title: String? = null) =
     add(ResaleMarketNavKey(hobbyId = hobbyId, title = title))
 fun NavBackStack<NavKey>.navigateToPictureList(param: PictureListNavParam) = add(PictureListNavKey(param))
+fun NavBackStack<NavKey>.navigateToImageViewer(param: ImageViewerNavParam) = add(ImageViewerNavKey(param))
+fun NavBackStack<NavKey>.navigateToImageViewer(images: List<String>, initialIndex: Int = 0) =
+    navigateToImageViewer(ImageViewerNavParam(images = images, initialIndex = initialIndex))
 fun NavBackStack<NavKey>.navigateToPictureGallery(param: PictureGalleryNavParam) = add(PictureGalleryNavKey(param))
 fun NavBackStack<NavKey>.navigateToExHobbyList(itemId: Long, title: String = "ExHobby") =
     add(ExHobbyListNavKey(itemId = itemId, title = title))
@@ -287,6 +290,9 @@ fun RePoiNavigator.navigateToResaleDetail(resaleId: Long) = currentBackStack.nav
 fun RePoiNavigator.navigateToResaleMarket(hobbyId: Long = 0L, title: String? = null) =
     currentBackStack.navigateToResaleMarket(hobbyId, title)
 fun RePoiNavigator.navigateToPictureList(param: PictureListNavParam) = currentBackStack.navigateToPictureList(param)
+fun RePoiNavigator.navigateToImageViewer(param: ImageViewerNavParam) = currentBackStack.navigateToImageViewer(param)
+fun RePoiNavigator.navigateToImageViewer(images: List<String>, initialIndex: Int = 0) =
+    currentBackStack.navigateToImageViewer(images, initialIndex)
 fun RePoiNavigator.navigateToPictureGallery(param: PictureGalleryNavParam) = currentBackStack.navigateToPictureGallery(param)
 fun RePoiNavigator.navigateToExHobbyList(itemId: Long, title: String = "ExHobby") =
     currentBackStack.navigateToExHobbyList(itemId, title)

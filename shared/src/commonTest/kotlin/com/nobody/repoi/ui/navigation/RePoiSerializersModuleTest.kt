@@ -101,9 +101,16 @@ class RePoiSerializersModuleTest {
             WorksCollectEditNavKey(param = WorksCollectEditNavParam(worksId = 1401L), id = "fixed-id-works-collect"),
             SeriesDetailNavKey(param = SeriesNavParam(seriesId = 1501L), id = "fixed-id-series-detail"),
 
-            // 9. 作品、图片与扩展图库路由 (4)
+            // 9. 作品、图片与扩展图库路由 (5)
             WorksDetailNavKey(param = WorksNavParam(worksId = 1401L), id = "fixed-id-works-detail"),
             PictureListNavKey(param = PictureListNavParam(itemId = 7001L), id = "fixed-id-picture-list"),
+            ImageViewerNavKey(
+                param = ImageViewerNavParam(
+                    images = listOf("https://example.com/img1.jpg", "https://example.com/img2.jpg"),
+                    initialIndex = 1
+                ),
+                id = "fixed-id-image-viewer"
+            ),
             PictureGalleryNavKey(
                 param = PictureGalleryNavParam(
                     userId = 6001L,
@@ -127,7 +134,7 @@ class RePoiSerializersModuleTest {
             MessageBlockNavKey(id = "fixed-id-message-block")
         )
 
-        assertEquals(48, testRoutes.size, "测试必须全量覆盖全部 48 个 AppNavKey")
+        assertEquals(49, testRoutes.size, "测试必须全量覆盖全部 49 个 AppNavKey")
 
         for (originalKey in testRoutes) {
             val encoded = json.encodeToString(polymorphicNavKeySerializer, originalKey)

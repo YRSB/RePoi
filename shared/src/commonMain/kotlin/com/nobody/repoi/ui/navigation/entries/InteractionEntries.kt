@@ -10,6 +10,9 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.NavDisplay
+import com.nobody.repoi.ui.common.ImageViewerScreen
+import com.nobody.repoi.ui.common.ImageViewerStateHolder
+import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.comment.CommentDetailScreen
 import com.nobody.repoi.ui.comment.HobbyCommentsScreen
 import com.nobody.repoi.ui.exhobby.ExHobbyListScreen
@@ -122,6 +125,14 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         PictureListScreen(
             navParam = key.param,
             onBack = onBack
+        )
+    }
+
+    entry<ImageViewerNavKey> { key ->
+        ImageViewerScreen(
+            param = key.param,
+            onBack = onBack,
+            state = LocalImageViewer.current as? ImageViewerStateHolder
         )
     }
 

@@ -29,7 +29,6 @@ import com.nobody.repoi.data.local.defaultThemeSettings
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.data.local.orAvailable
 import com.nobody.repoi.data.media.MediaPipeline
-import com.nobody.repoi.ui.common.ImageViewerHost
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.LocalMediaPipeline
 import com.nobody.repoi.ui.common.rememberImageViewerState
@@ -81,7 +80,6 @@ fun RePoiApp() {
 
 @Composable
 private fun RePoiNavHost() {
-    val imageViewerState = rememberImageViewerState()
     val appMessages = remember { RootMessageBus() }
     val rootSnackbarHostState = remember { SnackbarHostState() }
     // 多媒体管道来自 Koin 单例（与 MediaPipeline.Default 同一对象），经 CompositionLocal 下发给
@@ -100,6 +98,9 @@ private fun RePoiNavHost() {
     val navigator = remember(rootBackStack, tabState) {
         RePoiNavigator(rootBackStack = rootBackStack, tabState = tabState)
     }
+    // 大图控制器关联 Navigator，将画廊唤起动作自动接入 Navigation 3 单根栈 (ImageViewerNavKey)，
+    // 使得全屏看图天然享有 MaterialSharedAxis.Z 进退场与系统级 Predictive Back 预测性返回动效
+    val imageViewerState = rememberImageViewerState(navigator)
     val tabEntryProvider: (NavKey) -> NavEntry<NavKey> = remember(navigator) {
         entryProvider<NavKey> { topLevelEntries(navigator) }
     }
@@ -141,8 +142,6 @@ private fun RePoiNavHost() {
                         .navigationBarsPadding()
                 )
             }
-
-            ImageViewerHost(imageViewerState)
         }
     }
 }

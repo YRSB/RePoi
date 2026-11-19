@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.common
 
 import com.nobody.repoi.platform.FullscreenDialogEdgeToEdgeEffect
+import com.nobody.repoi.ui.navigation.ImageViewerNavParam
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,28 +58,67 @@ import coil3.ImageLoader
 import kotlin.math.roundToInt
 
 /**
- * 全局大图画廊弹窗宿主，统一挂载在根部脚手架 (RePoiApp) 中。
+ * 全屏大图画廊全屏页面（Navigation 3 二级页路由，由 [ImageViewerNavKey] 承载）。
  *
- * KMP 移植版（原生 `ui/common/ImageViewerDialog.kt`）：
- * - Coil2（`coil.compose.AsyncImage`/`coil.imageLoader`/`coil.request.*`/`LocalContext`）
- *   → Coil3（`coil3.compose.AsyncImage`/`LocalPlatformContext`，预取经 Koin 共享 `ImageLoader`）。
- * - 预览注释等 UI 逻辑逐字保留。
+ * 彻底消灭 [Dialog] 独立浮层 Window 封装，全面回归 Navigation 3 单根栈，
+ * 原生支持 [MaterialSharedAxis.Z] 进出场动效与 Android 14+ 系统级 Predictive Back 预测性返回预览。
+ *
+ * @param param 路由强类型参数
+ * @param onBack 返回上一级页面（Navigation 3 出栈）
+ * @param state 关联的大图控制器状态持有者（可动态响应底层列表续拉 [ImageViewerController.updateImages]）
  */
+@Composable
+fun ImageViewerScreen(
+    param: ImageViewerNavParam,
+    onBack: () -> Unit,
+    state: ImageViewerStateHolder? = null,
+    modifier: Modifier = Modifier
+) {
+    // 优先使用 state 中可能由 updateImages 动态更新的最新图片序列
+    val currentUrls = state?.imageUrls?.takeIf { it.isNotEmpty() } ?: param.images
+    val initialPage = (state?.currentIndex ?: param.initialIndex)
+        .coerceIn(0, (currentUrls.size - 1).coerceAtLeast(0))
+
+    DisposableEffect(Unit) {
+        onDispose {
+            state?.resetInternal()
+        }
+    }
+
+    ImageViewerContent(
+        imageUrls = currentUrls,
+        initialIndex = initialPage,
+        onBack = onBack,
+        onLoadMore = state?.onLoadMoreCallback,
+        onPageChange = { page -> state?.currentIndex = page },
+        modifier = modifier
+    )
+}
+
+/**
+ * 全局大图画廊弹窗宿主（已废弃）。
+ *
+ * 大图画廊已全面迁移至 Navigation 3 原生单根栈路由 [ImageViewerNavKey]，
+ * 原生支持 MaterialSharedAxis.Z 与预测性返回预览，无需在根脚手架外挂 Dialog 宿主。
+ */
+@Deprecated(
+    message = "大图查看器已全面升级为 Navigation 3 原生单根栈路由 (ImageViewerNavKey)",
+    level = DeprecationLevel.WARNING
+)
 @Composable
 fun ImageViewerHost(
     state: ImageViewerStateHolder
 ) {
-    if (state.isVisible) {
-        ImageViewerDialog(
-            imageUrls = state.imageUrls,
-            initialIndex = state.currentIndex,
-            onDismissRequest = { state.dismiss() },
-            onLoadMore = state.onLoadMoreCallback,
-            onPageChange = { page -> state.currentIndex = page }
-        )
-    }
+    // 兼容保留空实现：已由 Navigation 3 根栈自动承载渲染
 }
 
+/**
+ * 独立 Dialog 形态的大图画廊（兼容保留）。
+ */
+@Deprecated(
+    message = "请优先通过 Navigation 3 路由 (ImageViewerNavKey) 呈现以支持原生预测性返回动画",
+    replaceWith = ReplaceWith("ImageViewerScreen(param, onBack)")
+)
 @Composable
 fun ImageViewerDialog(
     imageUrls: List<String>,
@@ -85,6 +126,39 @@ fun ImageViewerDialog(
     onDismissRequest: () -> Unit,
     onLoadMore: (() -> Unit)? = null,
     onPageChange: ((Int) -> Unit)? = null
+) {
+    if (imageUrls.isEmpty()) return
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        FullscreenDialogEdgeToEdgeEffect()
+        ImageViewerContent(
+            imageUrls = imageUrls,
+            initialIndex = initialIndex,
+            onBack = onDismissRequest,
+            onLoadMore = onLoadMore,
+            onPageChange = onPageChange
+        )
+    }
+}
+
+/**
+ * 大图查看器核心画廊 UI 内容区：承载横向 Pager、捏合缩放、双向缓存预取与沉浸式顶栏。
+ */
+@Composable
+fun ImageViewerContent(
+    imageUrls: List<String>,
+    initialIndex: Int = 0,
+    onBack: () -> Unit,
+    onLoadMore: (() -> Unit)? = null,
+    onPageChange: ((Int) -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     if (imageUrls.isEmpty()) return
 
@@ -143,107 +217,98 @@ fun ImageViewerDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
     ) {
-        FullscreenDialogEdgeToEdgeEffect()
+        // 1. 横向滑动查看大图（配置 beyondViewportPageCount=1 保证左右各预渲染 1 页，无缝切图零白屏）
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = !isCurrentPageZoomed,
+            beyondViewportPageCount = 1,
+            key = { page -> imageUrls.getOrNull(page) ?: page }
+        ) { page ->
+            PoiZoomableImage(
+                imageUrl = imageUrls[page],
+                isActive = pagerState.currentPage == page,
+                maxDecodeHeightPx = decodeHeightPx,
+                onZoomChanged = { isZoomed ->
+                    if (pagerState.currentPage == page) {
+                        isCurrentPageZoomed = isZoomed
+                    }
+                },
+                onSingleTap = onBack
+            )
+        }
+
+        // 2. 顶部工具栏 (页码 + 关闭按钮，半透明渐变防白底，拦截点击防误关)
+        val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-        ) {
-            // 1. 横向滑动查看大图（配置 beyondViewportPageCount=1 保证左右各预渲染 1 页，无缝切图零白屏）
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = !isCurrentPageZoomed,
-                beyondViewportPageCount = 1
-            ) { page ->
-                PoiZoomableImage(
-                    imageUrl = imageUrls[page],
-                    isActive = pagerState.currentPage == page,
-                    maxDecodeHeightPx = decodeHeightPx,
-                    onZoomChanged = { isZoomed ->
-                        if (pagerState.currentPage == page) {
-                            isCurrentPageZoomed = isZoomed
-                        }
-                    },
-                    onSingleTap = onDismissRequest
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)
+                    )
                 )
-            }
-
-            // 2. 顶部工具栏 (页码 + 关闭按钮，半透明渐变防白底，拦截点击防误关)
-            val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)
-                        )
-                    )
-                    .padding(statusBarPadding)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures { /* 拦截点击防穿透到背景关闭 */ }
-                    }
+                .padding(statusBarPadding)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { /* 拦截点击防穿透到背景关闭 */ }
+                }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${pagerState.currentPage + 1} / ${imageUrls.size}",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Text(
+                    text = "${pagerState.currentPage + 1} / ${imageUrls.size}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
 
-                    IconButton(onClick = onDismissRequest) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "关闭",
-                            tint = Color.White
-                        )
-                    }
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "关闭",
+                        tint = Color.White
+                    )
                 }
             }
+        }
 
-            // 3. 左右悬浮切换按钮 (上一张 / 下一张，仅在多图且未放大状态下展示)
-            if (imageUrls.size > 1) {
-                // 左切换按钮 (上一张)
-                ViewerNavigationButton(
-                    visible = pagerState.currentPage > 0 && !isCurrentPageZoomed,
-                    alignment = Alignment.CenterStart,
-                    contentDescription = "上一张",
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                        }
+        // 3. 左右悬浮切换按钮 (上一张 / 下一张，仅在多图且未放大状态下展示)
+        if (imageUrls.size > 1) {
+            // 左切换按钮 (上一张)
+            ViewerNavigationButton(
+                visible = pagerState.currentPage > 0 && !isCurrentPageZoomed,
+                alignment = Alignment.CenterStart,
+                contentDescription = "上一张",
+                onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
                     }
-                )
+                }
+            )
 
-                // 右切换按钮 (下一张)
-                ViewerNavigationButton(
-                    visible = pagerState.currentPage < imageUrls.size - 1 && !isCurrentPageZoomed,
-                    alignment = Alignment.CenterEnd,
-                    contentDescription = "下一张",
-                    iconRotation = 180f,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
+            // 右切换按钮 (下一张)
+            ViewerNavigationButton(
+                visible = pagerState.currentPage < imageUrls.size - 1 && !isCurrentPageZoomed,
+                alignment = Alignment.CenterEnd,
+                contentDescription = "下一张",
+                iconRotation = 180f,
+                onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
                     }
-                )
-            }
+                }
+            )
         }
     }
 }
