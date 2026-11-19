@@ -1142,9 +1142,10 @@ class HpoiApi(
         setBody(formOf("page" to page, "pageSize" to pageSize))
     }.unwrapDataOrNull<PushMessagePayload>(json, "获取通知列表失败")
 
-    suspend fun markPushRead(type: Int, messageId: Long? = null): Unit =
+    suspend fun markPushRead(type: Int, messageId: Long? = null, page: Int? = null, pageSize: Int? = null): Unit =
         client.post("api/push/read") {
-            setBody(formOf("type" to type, "messageId" to messageId))
+            // page/pageSize 供系统通知浏览即清当前页（对齐官方 MessageNoticeActivity 的调用形态）
+            setBody(formOf("type" to type, "messageId" to messageId, "page" to page, "pageSize" to pageSize))
         }.unwrapUnit(json, "标记已读失败")
 
     suspend fun deletePushMessage(messageId: Long, pushType: Int): Unit =

@@ -12,7 +12,9 @@ import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.ui.board.session.ZoneBoardSessionImpl
+import com.nobody.repoi.ui.message.notice.MessageNoticeViewModel
 import com.nobody.repoi.ui.message.center.MessageCenterViewModel
+import com.nobody.repoi.ui.navigation.MessageNoticeNavParam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +28,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * issue #195 回归测试：首页右上角消息红点在用户查看完消息后必须能去掉。
@@ -230,5 +233,94 @@ class Issue195UnreadBadgeReproTest {
         advanceUntilIdle()
 
         assertEquals(0, homeVm.uiState.value.unreadMessageCount)
+    }
+
+    // ── 用户追加报告：普通评论被赞/被回复的红点也去不掉（官方 app 逆向对齐） ──────────────
+
+    private fun pushJson(items: String): String =
+        """{"success":true,"code":200,"msg":"ok","data":{"pushMessage":[$items]}}"""
+
+    @Test
+    fun markItemRead_sendsItemTypeNotPageTypeNumber() = runTest(testDispatcher) {
+        // 官方 app 各通知 Adapter 单条已读传「条目自带 type」而非消息中心入口 typeNumber；
+        // 两类数值错位时服务端置位失败，点开通知红点也不消失（issue #195 追加报告）
+        val mock = MockApi()
+        mock.route(
+            "api/push/reply",
+            pushJson("""{"id":11,"type":9,"state":0,"content":"有人回复了你"}""")
+        )
+        mock.route("api/push/read", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val viewModel = MessageNoticeViewModel(MessageRepository(mock.api(testDispatcher)))
+        viewModel.loadInitial(MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知"))
+        advanceUntilIdle()
+
+        viewModel.markItemRead(viewModel.uiState.value.messages[0])
+        advanceUntilIdle()
+
+        val readForm = mock.lastRequest().formEntries()
+        assertEquals("9", readForm["type"])
+        assertEquals("11", readForm["messageId"])
+        assertEquals(false, viewModel.uiState.value.messages[0].isUnread)
+    }
+
+    @Test
+    fun markItemRead_failureKeepsUnreadAndShowsError() = runTest(testDispatcher) {
+        // 置位失败时不得本地假置已读：fire-and-forget 掩盖服务端失败曾使红点残留
+        val mock = MockApi()
+        mock.route(
+            "api/push/reply",
+            pushJson("""{"id":11,"type":2,"state":0,"content":"有人回复了你"}""")
+        )
+        mock.route("api/push/read", mock.failure(500, "标记已读失败"))
+
+        val viewModel = MessageNoticeViewModel(MessageRepository(mock.api(testDispatcher)))
+        viewModel.loadInitial(MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知"))
+        advanceUntilIdle()
+
+        viewModel.markItemRead(viewModel.uiState.value.messages[0])
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.messages[0].isUnread)
+        assertEquals("标记已读失败", viewModel.uiState.value.actionMessage)
+    }
+
+    @Test
+    fun systemNoticeLoad_autoClearsCurrentPageAsOfficial() = runTest(testDispatcher) {
+        // 官方 MessageNoticeActivity：系统通知(typeNumber=1)列表加载成功即清当前页未读
+        val mock = MockApi()
+        mock.route(
+            "api/push/system",
+            pushJson("""{"id":1,"type":1,"state":0,"content":"系统通知A"},{"id":2,"type":1,"state":0,"content":"系统通知B"}""")
+        )
+        mock.route("api/push/read", """{"success":true,"code":200,"msg":"ok","data":{}}""")
+
+        val viewModel = MessageNoticeViewModel(MessageRepository(mock.api(testDispatcher)))
+        viewModel.loadInitial(MessageNoticeNavParam(type = "system", typeNumber = 1, title = "系统通知"))
+        advanceUntilIdle()
+
+        val readForm = mock.lastRequest().formEntries()
+        assertEquals("1", readForm["type"])
+        assertEquals("1", readForm["page"])
+        assertEquals("20", readForm["pageSize"])
+        assertEquals(false, viewModel.uiState.value.messages[0].isUnread)
+        assertEquals(false, viewModel.uiState.value.messages[1].isUnread)
+    }
+
+    @Test
+    fun nonSystemNoticeLoad_doesNotAutoSendPageRead() = runTest(testDispatcher) {
+        // 仅系统通知启用浏览即清；赞/回复等分类浏览不发 read（官方同款约束）
+        val mock = MockApi()
+        mock.route(
+            "api/push/reply",
+            pushJson("""{"id":11,"type":2,"state":0,"content":"有人回复了你"}""")
+        )
+
+        val viewModel = MessageNoticeViewModel(MessageRepository(mock.api(testDispatcher)))
+        viewModel.loadInitial(MessageNoticeNavParam(type = "reply", typeNumber = 2, title = "回复通知"))
+        advanceUntilIdle()
+
+        assertEquals(1, mock.requestCount)
+        assertEquals(true, viewModel.uiState.value.messages[0].isUnread)
     }
 }

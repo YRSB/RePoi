@@ -64,11 +64,17 @@ class MessageRepository(
     /**
      * 标记通知消息已读 (api/push/read)。
      *
+     * 防坑契约：type 语义分三种形态——单条已读传「消息条目自带 type」（官方 app 各通知
+     * Adapter 的做法，勿用消息中心入口 typeNumber 替代）；缺 messageId 表示整类清零；
+     * 传 page/pageSize 表示仅清当前页（官方仅对系统通知 type=1 在浏览时使用）。
+     *
      * @param type 消息分类类型数值 (0:全部, 1:系统, 2:回复, 3:赞, 4:推荐, 5:关注, 6:商品)
      * @param messageId 单项消息 ID；为 null 时表示将该分类下所有消息标记为已读
+     * @param page 仅清当前页时的页码
+     * @param pageSize 仅清当前页时的单页容量
      */
-    suspend fun markPushRead(type: Int, messageId: Long? = null): Result<Unit> = runCatching {
-        api.markPushRead(type = type, messageId = messageId)
+    suspend fun markPushRead(type: Int, messageId: Long? = null, page: Int? = null, pageSize: Int? = null): Result<Unit> = runCatching {
+        api.markPushRead(type = type, messageId = messageId, page = page, pageSize = pageSize)
     }
 
     /**
