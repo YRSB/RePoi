@@ -156,4 +156,3 @@ private fun applyEdgeToEdgeToReplyDialogWindow(window: Window) {
 
     (window.decorView as? ViewGroup)?.fitsSystemWindows = false
 }
-
