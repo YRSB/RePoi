@@ -56,6 +56,7 @@ data class CommentDetailUiState(
     val isPraisePending: Boolean = false,
     val isSubmittingReply: Boolean = false,
     val inputText: String = "",
+    val isReplyDialogOpen: Boolean = false,
     val replyTarget: CommentReplyItem? = null,
     val errorMessage: String? = null,
     val actionMessage: String? = null
@@ -107,17 +108,33 @@ class CommentDetailViewModel(
     }
 
     /**
-     * 设置回复目标（子评论）。
+     * 打开回复弹窗。
+     *
+     * @param target 被回复的子评论；若为 null，则表示直接回复层主（主楼）。
      */
-    fun onReplyTargetChanged(target: CommentReplyItem?) {
-        _uiState.update { it.copy(replyTarget = target) }
+    fun openReplyDialog(target: CommentReplyItem? = null) {
+        _uiState.update { it.copy(isReplyDialogOpen = true, replyTarget = target) }
     }
 
     /**
-     * 清空回复目标（切回直接回复主楼）。
+     * 关闭回复弹窗并清空回复目标。
+     */
+    fun closeReplyDialog() {
+        _uiState.update { it.copy(isReplyDialogOpen = false, replyTarget = null) }
+    }
+
+    /**
+     * 设置回复目标（子评论）。
+     */
+    fun onReplyTargetChanged(target: CommentReplyItem?) {
+        openReplyDialog(target)
+    }
+
+    /**
+     * 清空回复目标（切回直接回复主楼或关闭回复）。
      */
     fun clearReplyTarget() {
-        _uiState.update { it.copy(replyTarget = null) }
+        closeReplyDialog()
     }
 
     /**

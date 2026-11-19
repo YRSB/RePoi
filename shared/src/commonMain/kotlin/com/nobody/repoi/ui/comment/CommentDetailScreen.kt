@@ -222,6 +222,9 @@ fun CommentDetailScreen(
                                     pendingPraiseIds = if (uiState.isPraisePending) setOf(comment.id) else emptySet(),
                                     currentUserId = commentUserId,
                                     onPraiseClick = { viewModel.togglePraise() },
+                                    onRequestReply = { _, target ->
+                                        viewModel.openReplyDialog(target)
+                                    },
                                     onReplySubmit = { _, target, content, stickers ->
                                         viewModel.submitReply(
                                             content = content,
@@ -256,7 +259,7 @@ fun CommentDetailScreen(
                             CommentReplyRow(
                                 reply = reply,
                                 isDark = isDark,
-                                onReplyClick = { viewModel.onReplyTargetChanged(it) },
+                                onReplyClick = { viewModel.openReplyDialog(it) },
                                 currentUserId = commentUserId,
                                 onDeleteReply = { viewModel.deleteDetailReply(it) }
                             )
@@ -277,24 +280,23 @@ fun CommentDetailScreen(
         }
     }
 
-    // 点击子评论行“回复”按钮时弹出的输入抽屉（对齐设计图规范）：目标唯一来源为 ViewModel，
+    // 点击层主或子评论“回复”按钮时弹出的输入浮层（主窗口同层 Overlay，对齐 ADR 0027）：目标唯一来源为 ViewModel，
     // 成功时 ViewModel 清空草稿与目标并关框，失败时两者完整保留。
     val currentComment = uiState.comment
-    val targetToReply = uiState.replyTarget
-    if (targetToReply != null && currentComment != null) {
+    if (uiState.isReplyDialogOpen && currentComment != null) {
         CommentReplyDialog(
             comment = currentComment,
-            target = targetToReply,
-            onDismiss = { viewModel.clearReplyTarget() },
+            target = uiState.replyTarget,
+            onDismiss = { viewModel.closeReplyDialog() },
             onSubmit = { content, stickers ->
                 val ok = viewModel.submitReply(
                     content = content,
-                    replyTarget = targetToReply,
+                    replyTarget = uiState.replyTarget,
                     stickers = stickers,
                     clearInputOnSuccess = true
                 )
                 if (ok) {
-                    viewModel.clearReplyTarget()
+                    viewModel.closeReplyDialog()
                 }
                 ok
             },
