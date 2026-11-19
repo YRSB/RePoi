@@ -99,12 +99,15 @@ fun CommentDetailScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 顶部抽屉把手与标题栏（对齐“评论抽屉”规范）
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 顶部抽屉把手与标题栏（对齐“评论抽屉”规范）
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -298,4 +301,5 @@ fun CommentDetailScreen(
             onLoadStickerPacks = { viewModel.loadStickerPacks() }
         )
     }
+}
 }
