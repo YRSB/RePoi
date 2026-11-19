@@ -138,9 +138,10 @@ private fun applyEdgeToEdgeToReplyDialogWindow(window: Window) {
     window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    window.setDimAmount(0.35f)
     window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
     window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
-    window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
 
     window.statusBarColor = Color.TRANSPARENT
     window.navigationBarColor = Color.TRANSPARENT

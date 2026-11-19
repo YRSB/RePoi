@@ -1041,6 +1041,7 @@ fun CommentReplyDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -1067,8 +1068,9 @@ fun CommentReplyDialog(
                         // 消费卡片内部空白区域点击，防止误触发外层遮罩关闭
                     },
                 shape = MaterialTheme.shapes.bottomSheet,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 2.dp,
+                shadowElevation = 8.dp
             ) {
                 Column(
                     modifier = Modifier

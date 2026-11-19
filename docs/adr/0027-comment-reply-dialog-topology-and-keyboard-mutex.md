@@ -30,7 +30,7 @@
    - **表情按钮 😊（常驻）**：点击时若表情面板已开则收起；若未开则收起软键盘并展开表情面板，激活时高亮主色；
    - **键盘按钮 ⌨️（常驻）**：点击时若当前在表情面板，收起表情面板并唤起软键盘；若当前软键盘已升起，点击收起软键盘；若软键盘已收起，点击唤起软键盘，激活时高亮主色；
    - 点击输入框：自动收起表情面板，唤起系统软键盘并定位光标；
-   - **弹窗专用 Inset 穿透（ReplyDialogEdgeToEdgeEffect）**：废止使用带有 `FLAG_LAYOUT_NO_LIMITS` 与 `fitInsetsTypes = 0` 的全屏图片穿透方案，采用保留 `SOFT_INPUT_ADJUST_RESIZE` 与系统 IME Insets 分发的回调垫片，使 `Modifier.imePadding()` 在软键盘多次升降中稳定生效，彻底根除键盘覆盖操作栏的次生缺陷。
+   - **弹窗专用 Inset 穿透与暗色遮罩（ReplyDialogEdgeToEdgeEffect）**：废止使用带有 `FLAG_LAYOUT_NO_LIMITS` 与 `fitInsetsTypes = 0` 的全屏图片穿透方案，采用保留 `SOFT_INPUT_ADJUST_RESIZE` 与系统 IME Insets 分发的回调垫片，使 `Modifier.imePadding()` 在软键盘多次升降中稳定生效；同时显式保留系统原生暗色窗口遮罩（`FLAG_DIM_BEHIND`，dimAmount 0.35f）并辅以 Compose 外层 `scrim` 遮罩与 `shadowElevation = 8.dp` 抽屉阴影，彻底根除蒙层缺失导致的顶部指示条透出底层评论文字与悬浮割裂问题。
 
 4. **固定 280dp 表情面板与渲染规范**：
    表情面板固定容器高度为 `280.dp`（紧密对齐移动端软键盘常规高度），颜文字与表情包 Tab 各自的 `LazyVerticalGrid` 在内部独立滚动，消除不同表情包项数差异引起的容器抖动；网格项必须严格标注稳定的 `key` 与 `contentType`（如 `face_text` 与 `sticker_item`）。
