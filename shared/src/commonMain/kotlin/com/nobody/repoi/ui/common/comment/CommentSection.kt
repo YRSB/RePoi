@@ -71,6 +71,7 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
@@ -1337,7 +1338,7 @@ fun CommentReplyDialog(
                         val packIndex = if (showFaceTab) currentTab - 1 else currentTab
                         if (showFaceTab && currentTab == 0) {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(4),
+                                columns = GridCells.Adaptive(minSize = 100.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f)
@@ -1350,13 +1351,34 @@ fun CommentReplyDialog(
                                     key = { it.id },
                                     contentType = { "face_text" }
                                 ) { face ->
-                                    TextButton(onClick = { insertFaceText(face.content) }) {
-                                        Text(
-                                            text = face.content,
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 1
-                                        )
+                                    val fontSize = when {
+                                        face.content.length >= 12 -> 11.5.sp
+                                        face.content.length >= 9 -> 12.5.sp
+                                        else -> 13.5.sp
+                                    }
+                                    Surface(
+                                        onClick = { insertFaceText(face.content) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color.Transparent,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(38.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = face.content,
+                                                fontSize = fontSize,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }
