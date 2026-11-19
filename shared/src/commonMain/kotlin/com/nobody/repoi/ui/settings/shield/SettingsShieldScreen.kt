@@ -3,7 +3,9 @@ package com.nobody.repoi.ui.settings.shield
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -126,7 +128,12 @@ fun SettingsShieldListContent(
             )
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -181,9 +188,14 @@ fun SettingsShieldListContent(
         } else {
             LazyColumn(
                 state = rememberLazyListState(),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 16.dp, top = 4.dp, end = 16.dp, bottom = 24.dp
+                modifier = Modifier
+                    .fillMaxSize()
+                    .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding())),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 4.dp,
+                    end = 16.dp,
+                    bottom = 24.dp + innerPadding.calculateBottomPadding()
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {

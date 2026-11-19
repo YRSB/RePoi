@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -228,7 +229,8 @@ fun ForumHomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             ForumSearchRow(
                 searchInput = uiState.searchInput,
@@ -351,6 +353,7 @@ fun ForumHomeScreen(
                         uiState = uiState,
                         displayPosts = displayPosts,
                         gridState = gridState,
+                        bottomContentPadding = 88.dp + innerPadding.calculateBottomPadding(),
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onRetry = viewModel::retryPosts,
@@ -531,6 +534,7 @@ private fun ForumPostsPage(
     onImageClick: (List<String>, Int) -> Unit,
     onUserClick: (Long) -> Unit,
     onHeaderClick: () -> Unit,
+    bottomContentPadding: androidx.compose.ui.unit.Dp = 88.dp,
     modifier: Modifier = Modifier
 ) {
     val isSelected = tab.id == uiState.selectedTabId
@@ -577,7 +581,7 @@ private fun ForumPostsPage(
                     start = 12.dp,
                     end = 12.dp,
                     top = 8.dp,
-                    bottom = 88.dp
+                    bottom = bottomContentPadding
                 ),
                 verticalItemSpacing = 12.dp,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),

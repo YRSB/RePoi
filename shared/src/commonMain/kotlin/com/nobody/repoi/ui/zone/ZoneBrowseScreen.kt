@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,7 +64,6 @@ fun ZoneBrowseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
-    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
         topBar = {
@@ -102,7 +102,8 @@ fun ZoneBrowseScreen(
             state = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
+                .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             when {
                 uiState.isLoading -> {
@@ -140,10 +141,12 @@ fun ZoneBrowseScreen(
                 else -> {
                     val columns = 4
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding())),
                         contentPadding = PaddingValues(
                             top = 8.dp,
-                            bottom = 24.dp + navBarBottomPadding
+                            bottom = 24.dp + innerPadding.calculateBottomPadding()
                         )
                     ) {
                         // Section 1: 我关注的

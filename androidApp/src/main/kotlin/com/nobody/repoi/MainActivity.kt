@@ -27,6 +27,9 @@ class MainActivity : ComponentActivity() {
         // 必须在 super.onCreate 之前安装，否则拿不到本次启动的 SplashScreen 实例
         val splashScreen = installSplashScreen()
         enableEdgeToEdge()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
 
         // 待首次读盘落定后再放行遮罩：生命周期协程在 Activity 销毁时自动取消，

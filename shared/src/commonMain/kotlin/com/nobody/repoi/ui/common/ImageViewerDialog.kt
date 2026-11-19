@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.common
 
+import com.nobody.repoi.platform.FullscreenDialogEdgeToEdgeEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -146,11 +147,11 @@ fun ImageViewerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            // KMP：CMP common 无 decorFitsSystemWindows 参数；导航栏沉浸由各 shell 按平台惯例处理。
             dismissOnBackPress = true,
             dismissOnClickOutside = true
         )
     ) {
+        FullscreenDialogEdgeToEdgeEffect()
         Box(
             modifier = Modifier
                 .fillMaxSize()
