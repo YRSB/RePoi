@@ -91,6 +91,8 @@ class UserCollectViewModelTest {
         loginUserId: Long = 999L,
         targetUserId: Long = 999L,
         viewPrefs: DataStore<Preferences> = TestDataStore.inMemory(),
+        autoInit: Boolean = true,
+        beforeVm: (KoinApplication) -> Unit = {},
     ): Env {
         val session = FakeUserSession("utoken-test", loginUserId)
         val app = koinApplication {
@@ -107,9 +109,10 @@ class UserCollectViewModelTest {
             )
         }
         koinApps += app
+        beforeVm(app)
         val viewModel = app.koin.get<UserCollectViewModel>()
         // Screen 的 LaunchedEffect(param) 在生产中下发 NavKey 字段
-        viewModel.initParam(UserCollectNavParam(userId = targetUserId))
+        if (autoInit) viewModel.initParam(UserCollectNavParam(userId = targetUserId))
         return Env(
             mock = mock,
             session = session,
@@ -575,14 +578,15 @@ class UserCollectViewModelTest {
 
         recreated.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
-        assertEquals(requestsBeforeResume + 1, mock.requestCount)
-        assertEquals(2, recreated.uiState.value.hobbyData.items.size)
+        // 重建实例的首屏装载已消费第 2 代，OnResume 不再发冗余刷新
+        assertEquals(requestsBeforeResume, mock.requestCount)
+        assertEquals(1, recreated.uiState.value.hobbyData.items.size)
         assertEquals(2L, env.viewPreferencesManager.getConsumedCollectMutationGeneration())
 
         // 游标已写回持久化层，同一次恢复不得重复刷新
         recreated.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
-        assertEquals(requestsBeforeResume + 1, mock.requestCount)
+        assertEquals(requestsBeforeResume, mock.requestCount)
     }
 
     @Test
@@ -628,5 +632,29 @@ class UserCollectViewModelTest {
 
         assertEquals(requestsBeforeResume + 1, mock.requestCount)
         assertEquals(0, env.viewModel.uiState.value.hobbyData.items.size)
+    }
+
+    @Test
+    fun initParam_firstLoadConsumesPendingGenerationWithoutExtraRefresh() = runTest(testDispatcher) {
+        val viewPrefs = TestDataStore.inMemory()
+        ViewPreferencesManager(viewPrefs).setConsumedCollectMutationGeneration(0L)
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            routeCollectWrite()
+        }
+        val env = buildEnv(mock = mock, viewPrefs = viewPrefs, autoInit = false)
+        assertTrue(env.collectRepository.collectItemAdd(9000L).isSuccess)
+        assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
+
+        env.viewModel.initParam(UserCollectNavParam(userId = 999L))
+        advanceUntilIdle()
+        awaitInitialized(env.viewModel)
+
+        val requestsBeforeResume = mock.requestCount
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+
+        // 首屏已拉取最新列表，恢复感知不得再发一次冗余刷新
+        assertEquals(requestsBeforeResume, mock.requestCount)
     }
 }

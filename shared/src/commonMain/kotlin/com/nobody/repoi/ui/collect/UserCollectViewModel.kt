@@ -365,6 +365,7 @@ class UserCollectViewModel(
         // 归一化必须排在持久化读回之后，否则首屏会用默认排序白发一次请求
         viewModelScope.launch {
             persistedSortReady.await()
+            consumedGenerationReady.await()
             applyInitParam(param)
         }
     }
@@ -389,6 +390,13 @@ class UserCollectViewModel(
             initialTag = targetTag
         )
         if (currentParam == normalizedParam && userId == param.userId) return
+        // 首屏装载会重新拉取服务端最新列表，顺带消费已有代数；
+        // 否则页面重建时 OnResume 会再发一次冗余 refresh，出现双加载指示器
+        val generation = collectRepository.collectMutationGeneration.value
+        consumedMutationGeneration = generation
+        viewModelScope.launch {
+            viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
+        }
         currentParam = normalizedParam
         userId = param.userId
         stateSet("userId", param.userId)
