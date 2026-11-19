@@ -82,6 +82,33 @@ class CommentDetailViewModelTest {
     }
 
     @Test
+    fun replyDialog_forHeaderComment_opensWithNullTarget() = runTest(testDispatcher) {
+        val (_, viewModel, _) = setup()
+
+        viewModel.openReplyDialog(null)
+        viewModel.uiState.value.isReplyDialogOpen shouldBe true
+        viewModel.uiState.value.replyTarget.shouldBeNull()
+
+        viewModel.closeReplyDialog()
+        viewModel.uiState.value.isReplyDialogOpen shouldBe false
+        viewModel.uiState.value.replyTarget.shouldBeNull()
+    }
+
+    @Test
+    fun replyDialog_forChildReply_opensWithTarget() = runTest(testDispatcher) {
+        val (_, viewModel, _) = setup()
+        val reply = CommentReplyItem(id = 101L, content = "被回复的内容")
+
+        viewModel.openReplyDialog(reply)
+        viewModel.uiState.value.isReplyDialogOpen shouldBe true
+        viewModel.uiState.value.replyTarget?.id shouldBe 101L
+
+        viewModel.closeReplyDialog()
+        viewModel.uiState.value.isReplyDialogOpen shouldBe false
+        viewModel.uiState.value.replyTarget.shouldBeNull()
+    }
+
+    @Test
     fun loadDetail_withSnapshot_prePopulatesComment() = runTest(testDispatcher) {
         val (mockApi, viewModel, _) = setup()
         mockApi.route(
