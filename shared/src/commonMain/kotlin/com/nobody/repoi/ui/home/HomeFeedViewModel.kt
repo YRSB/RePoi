@@ -591,6 +591,16 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.Refresh())
     }
 
+    /**
+     * 恢复感知重拉未读数：从消息中心返回首页（重新进入组合 / RESUMED）时由界面层调用。
+     *
+     * 防坑契约：消息中心内「一键全部已读」或逐条已读只改服务端计数，
+     * 首页 `unreadMessageCount` 是独立快照，不重拉会残留陈旧值导致红点不灭（issue #195）。
+     */
+    fun refreshUnreadMessages() {
+        fetchUnreadMessages()
+    }
+
     fun loadInitialFeed() {
         session.dispatch(ZoneBoardIntent.RetryInitial(ZoneBoard.Action))
     }

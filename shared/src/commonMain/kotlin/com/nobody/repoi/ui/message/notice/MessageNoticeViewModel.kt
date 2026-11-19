@@ -34,11 +34,34 @@ class MessageNoticeViewModel(
         pageSize = pageSize,
         keySelector = { it.id }
     ) { page, size ->
-        repository.getPushMessages(
+        val result = repository.getPushMessages(
             type = currentType,
             page = page,
             pageSize = size
         )
+        // 官方 MessageNoticeActivity 仅对系统通知(typeNumber=1)在列表加载成功后
+        // 自动清当前页未读（api/push/read 携 type/page/pageSize）——「浏览即清」，
+        // 其余分类靠点开单条或手动全部已读。
+        if (currentTypeNumber == SYSTEM_NOTICE_TYPE_NUMBER) {
+            result.map { list -> list.filter { it.isUnread } }
+                .getOrNull()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { unreadItems ->
+                    val readResult = repository.markPushRead(
+                        type = currentTypeNumber,
+                        page = page,
+                        pageSize = size
+                    )
+                    if (readResult.isSuccess) {
+                        val readIds = unreadItems.map { it.id }.toSet()
+                        result.map { list -> list.map { item -> item.takeIf { it.id in readIds }?.copy(state = 1) ?: item } }
+                    } else {
+                        result
+                    }
+                } ?: result
+        } else {
+            result
+        }
     }
 
     init {
@@ -92,8 +115,17 @@ class MessageNoticeViewModel(
     fun markItemRead(item: PushMessageItem) {
         if (!item.isUnread) return
         viewModelScope.launch {
-            repository.markPushRead(type = currentTypeNumber, messageId = item.id)
-            loader.updateItem({ it.id == item.id }) { it.copy(state = 1) }
+            // 官方 app 各通知 Adapter 单条已读传「条目自带 type」，勿用页面 typeNumber
+            // 替代（两类数值可能错位，错位时服务端置位失败、红点无法去除，issue #195）；
+            // 条目缺 type 时回落页面值，避免误发 type=0 的「全部已读」语义。
+            val type = item.type.takeIf { it > 0 } ?: currentTypeNumber
+            repository.markPushRead(type = type, messageId = item.id)
+                .onSuccess {
+                    loader.updateItem({ it.id == item.id }) { it.copy(state = 1) }
+                }
+                .onFailure { err ->
+                    _uiState.update { it.copy(actionMessage = err.message ?: "标记已读失败") }
+                }
         }
     }
 
@@ -203,3 +235,6 @@ class MessageNoticeViewModel(
         _uiState.update { it.copy(actionMessage = null) }
     }
 }
+
+/** 系统通知分类数值：官方仅对该类启用「浏览即清当前页」。 */
+private const val SYSTEM_NOTICE_TYPE_NUMBER = 1

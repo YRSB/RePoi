@@ -45,9 +45,17 @@ data class PushCountCategory(
     val actualFollowCount: Int
         get() = if (followNews > 0) followNews else follow
 
-    /** 全量未读通知总数 */
+    /**
+     * 全量未读通知总数（消息红点口径）。
+     *
+     * 防坑契约：不含 [postsReply] —— 官方 app 的 `MainActivity.refreshUnreadCounts`
+     * 将 `posts_reply` 归入讨论板域未读（forumCount，独立驱动讨论板红点），
+     * 消息红点只算 `map.message` 与 push 其余键。若把它计入首页红点，
+     * 用户在讨论板被回复后红点常亮，且消息中心六类入口均无该类可见/可清路径，
+     * 红点永远无法去除（issue #195）。
+     */
     val totalCount: Int
-        get() = system + reply + praise + recommend + actualFollowCount + commodity + postsReply
+        get() = system + reply + praise + recommend + actualFollowCount + commodity
 }
 
 // ── 2. 私信联系人列表模型 ──────────────────────────────────────────────────────────
