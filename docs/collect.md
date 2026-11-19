@@ -54,6 +54,34 @@ private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData
 4 个收藏列表 + 2 个创作列表全部经由 `listWithSessionEnvelope`，token 快照与 4001 自愈只有一份实现。
 新增列表查询请复用该助手，不要重写 `isTokenExpired` 分支。
 
+### 1.4 写后计数基线：服务端快照池与乐观增量
+
+详情页收藏人数 = `collectCountBase + collectCountDelta`（乐观增量，本页 toggle 后 ±1）。
+写成功后必须以服务端 `getCollectCount`（`api/hobby/collectCount`，五分类总人数 `total`）
+重置 base 并归零 delta：他人也在收藏/取消，纯乐观会让基线永久漂移。
+
+```kotlin
+fun observeCollectCountSnapshot(nodeId: Long): StateFlow<CollectCountSnapshot?>  // null = 尚无写后快照
+fun updateCollectCountSnapshot(nodeId: Long, count: Long)                        // 仅写侧成功后调用
+suspend fun getCollectCount(nodeId: Long): Result<CollectCountData>
+```
+
+**这是「写侧必须记得调用」型手动接缝**（§4 变更代数是自动推进的，此处不是）：
+
+- 手办/作品**编辑页**（`CollectEditViewModel` / `WorksCollectEditViewModel`）保存或删除成功后
+  必须调私有 `refreshCountSnapshot(nodeId)` → `updateCollectCountSnapshot` 写池；
+- Hobby/Works 详情页在 `init` 订阅 `observeCollectCountSnapshot`，收到快照即重置基线归零 delta；
+- 六个直接 toggle 的页面（相册/画廊/厂商/系列/角色/人物）写成功后就地 `getCollectCount`
+  重置自身 uiState，不经快照池——当前视图自己就是唯一消费者。
+
+漏调症状：详情页计数**静默失真**——编辑页改了收藏状态，返回详情页人数与档位不对齐、delta 不归零。
+新增任何改变收藏人数的写路径时，必须在成功分支刷新计数（就地重置或走快照池）。
+
+失败语义：`getCollectCount` 失败时**什么都不做**，保留旧快照与乐观 delta，网络异常不是计数变化。
+快照带全局单调 `revision`：人数未变时 StateFlow 仍会发射，delta 才能可靠归零
+（`StateFlow` 值相等不发射）。快照池并发模型与条目状态池同构（CAS 不可变快照，同 `nodeId` 恒返回同一实例）。
+设计动因见 [ADR-0026](adr/0026-post-write-server-count-baseline.md)。
+
 ---
 
 ## 2. 分页：8 类各持一个 `PagedListLoader`

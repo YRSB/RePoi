@@ -1032,8 +1032,9 @@ class UserCollectViewModel(
         val active = _uiState.value.selectedCategory
         val staged = mutableSetOf<UserCollectCategory>()
         UserCollectCategory.entries.forEach { category ->
-            // 闲置空列表不产生预测性请求；判定统一走 isLoaderIdleAndEmpty
-            if (isLoaderIdleAndEmpty(category)) return@forEach
+            // 未切入的大类不产生预测性请求；激活大类处于当前视图，即使闲置且空
+            // （如首屏拉空或失败后）也必须原位重试，不得静默跳过
+            if (category != active && isLoaderIdleAndEmpty(category)) return@forEach
             if (category == active) {
                 dispatchToLoader(category) { it.refresh() }
             } else {

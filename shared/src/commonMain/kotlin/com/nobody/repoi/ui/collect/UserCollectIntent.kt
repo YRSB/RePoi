@@ -123,7 +123,8 @@ sealed interface UserCollectIntent {
     /**
      * 页面恢复感知：比对收藏变更代数，激活大类立即原位刷新，其余已装载大类惰性刷新。
      *
-     * 由 `UserCollectScreen` 的 `LifecycleEventEffect(ON_RESUME)` 驱动（跳过首次进入）。
+     * 由 `UserCollectScreen` 的 `LifecycleEventEffect(ON_RESUME)` 驱动：每次进入组合都派发，
+     * 不得用计数跳过首次进入；幂等由已消费代数游标保证。
      */
     data object OnResume : UserCollectIntent
 }

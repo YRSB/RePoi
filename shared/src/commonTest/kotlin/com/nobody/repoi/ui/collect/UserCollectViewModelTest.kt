@@ -485,6 +485,26 @@ class UserCollectViewModelTest {
     }
 
     @Test
+    fun onResume_refreshesActiveCategoryEvenWhenIdleAndEmpty() = runTest(testDispatcher) {
+        val mock = MockApi().apply {
+            enqueue(hobbies(0))
+            enqueue(hobbies(1))
+            routeCollectWrite()
+        }
+        val env = buildEnv(mock = mock)
+        awaitInitialized(env.viewModel)
+        // 首屏拉空：激活大类闲置且空（对应首屏拉空或失败后的挂空态）
+        assertEquals(0, env.viewModel.uiState.value.hobbyData.items.size)
+        advanceMutationGeneration(env.collectRepository)
+        val requestsBeforeResume = mock.requestCount
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+        // 激活大类处于当前视图：即使闲置且空也必须原位重试，不得静默跳过
+        assertEquals(requestsBeforeResume + 1, mock.requestCount)
+        assertEquals(1, env.viewModel.uiState.value.hobbyData.items.size)
+    }
+
+    @Test
     fun onResume_stagesInactiveCategoriesUntilSwitched() = runTest(testDispatcher) {
         val mock = MockApi().apply {
             enqueue(hobbies(3))
