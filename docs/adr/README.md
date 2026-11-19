@@ -38,6 +38,7 @@
 | [ADR-0024](0024-deep-client-network-pipeline-and-token-self-healing.md) | 客户端网络管道深模块化、响应解包与令牌失效自愈下沉 | **深模块/网络管道/鉴权自愈/仓储净化**：HpoiApi 升级深接缝并暴露洁净载荷、在途凭据快照 Attribute、4001 惰性自愈回调、ADR-0005 候选验权显式旁路、收敛 ApiException 与 CommentNotFoundException、彻底删除 ResponseUnwrap.kt 并剥离 6 仓储会话注入、MockApi 测试断言增强 | 已采纳 (Accepted) - 2026-11-18 |
 | [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 通过 DataStore 持久化已消费代数游标并结合 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳 (Accepted) - 2026-11-18 |
 | [ADR-0026](0026-post-write-server-count-baseline.md) | 写后按服务端计数重置详情页基线与乐观增量归零 | **收藏/计数对齐/乐观增量**：服务端 collectCount 为唯一真相源、快照池带单调 revision 广播、编辑页写侧手动刷新接缝、六个 toggle 页面就地重置 | 已采纳 (Accepted) - 2026-11-19 |
+| [ADR-0027](0027-comment-reply-dialog-topology-and-keyboard-mutex.md) | 评论回复面板纵向拓扑重构与软键盘表情互斥联动 | **评论/回复面板/拓扑/软键盘互斥**：输入框自适应单/双行（44dp~120dp）、操作工具栏提升至表情面板上方、软键盘与表情面板严格互斥互换、固定 240dp 表情容器防抖、分级返回拦截 | 已采纳 (Accepted) - 2026-11-19 |
 
 
 
