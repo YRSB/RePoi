@@ -161,7 +161,7 @@ fun VendorDetailScreen(
                 },
                 floatingToolbar = {
                     if (company != null) {
-                        val baseCollect = company?.collect ?: 0L
+                        val baseCollect = uiState.collectCountBase ?: (company?.collect ?: 0L)
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         VendorFloatingActionBar(
                             collectCount = displayCollect,

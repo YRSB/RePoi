@@ -194,15 +194,4 @@ class CollectRepositoryStateTest {
         assertTrue(result.isFailure)
         assertEquals(CollectConstants.STATE_CARE, observed.value?.state)
     }
-
-    @Test
-    fun markGalleryMutation_incrementsMonotonically() {
-        val (_, repository) = setup()
-        assertEquals(0L, repository.galleryMutationCount.value)
-
-        repository.markGalleryMutation()
-        repository.markGalleryMutation()
-
-        assertEquals(2L, repository.galleryMutationCount.value)
-    }
 }

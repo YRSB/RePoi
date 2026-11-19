@@ -37,6 +37,12 @@ data class CreationPageResult<T>(
 )
 
 /**
+ * 服务端收藏计数快照。[total] 为五分类总人数，[revision] 每次写后刷新单调递增：
+ * 即使人数未变也让详情页订阅收到新值，从而把乐观 delta 归零。
+ */
+data class CollectCountSnapshot(val total: Long, val revision: Long)
+
+/**
  * 收藏模块聚合数据仓储（收藏数据唯一真相源 SSOT）：
  * 管理条目收藏状态的获取、分类人数统计、备选标签以及收藏的保存与删除。
  * 同时承载收藏页的两条写侧链路——批量取消收藏 (`api/collect/batch/cancel`)
@@ -47,6 +53,10 @@ data class CreationPageResult<T>(
  * 条目收藏状态经 [observeCollectState] 以状态流对外暴露：**状态池是唯一真相源**，
  * 读（[refreshCollectState]）与写（保存/取消/收藏项增删）都只落到池内对应的 `MutableStateFlow`，
  * 消费端靠 `StateFlow` 观察获得原子更新（状态驱动，不是事件驱动）。
+ *
+ * 写侧变更代数（ADR-0025）：任何收藏写操作在网络成功后由仓储内部原子推进全域单调
+ * 代数 [collectMutationGeneration]（+1；失败或校验拦截绝不递增），消费端只读比对
+ * 自身游标即可感知跨页收藏变更，调用方物理上无法漏记脏标记。
  *
  * 状态池并发模型（ADR-0011）：
  * - 状态池是 `MutableStateFlow<Map<Long, MutableStateFlow<CollectData?>>>` 的**不可变快照**；
@@ -62,9 +72,45 @@ class CollectRepository(
     /** 条目状态池：nodeId → 该条目的收藏状态流（不可变 map 快照，写入走 CAS） */
     private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData?>>>(emptyMap())
 
-    /** 画廊写操作计数：单调递增，供列表页恢复时判定是否需要静默刷新 */
-    private val _galleryMutationCount = MutableStateFlow(0L)
-    val galleryMutationCount: StateFlow<Long> = _galleryMutationCount.asStateFlow()
+    /**
+     * 收藏变更代数：全域收藏写操作在网络成功后内部原子 +1 的单调计数（初值 0）。
+     * 失败或校验拦截绝不递增；对外只读暴露，调用端无法手动推进（ADR-0025）。
+     */
+    private val _collectMutationGeneration = MutableStateFlow(0L)
+    val collectMutationGeneration: StateFlow<Long> = _collectMutationGeneration.asStateFlow()
+
+    /**
+     * 服务端计数快照池：nodeId → 写后由服务端 `collectCount` 刷新的快照（`null` 表示尚未刷新）。
+     * 与收藏状态池同构，按 nodeId 隔离且同 id 恒返回同一只读流，详情页直接观察即可重置基线。
+     * 快照带单调递增 revision：人数未变时 StateFlow 仍会发射，delta 才能可靠归零。
+     */
+    private val _countSnapshotRevision = MutableStateFlow(0L)
+    private val countSnapshotFlows =
+        MutableStateFlow<Map<Long, MutableStateFlow<CollectCountSnapshot?>>>(emptyMap())
+
+    /** 观察指定 [nodeId] 的服务端收藏计数快照；未刷新前值为 `null`。 */
+    fun observeCollectCountSnapshot(nodeId: Long): StateFlow<CollectCountSnapshot?> =
+        mutableCountSnapshotFlowOf(nodeId)
+
+    /**
+     * 写入服务端计数快照；仅由写侧页面在网络成功后调用（先拉取 `getCollectCount`），
+     * 失败时不调用即保留旧快照与乐观 delta。
+     */
+    fun updateCollectCountSnapshot(nodeId: Long, count: Long) {
+        var revision = 0L
+        _countSnapshotRevision.update { (it + 1).also { next -> revision = next } }
+        mutableCountSnapshotFlowOf(nodeId).value = CollectCountSnapshot(count, revision)
+    }
+
+    /** 取（必要时创建）快照流句柄；CAS 合并保证并发首访同 id 只落一个实例。 */
+    private fun mutableCountSnapshotFlowOf(nodeId: Long): MutableStateFlow<CollectCountSnapshot?> {
+        countSnapshotFlows.value[nodeId]?.let { return it }
+        countSnapshotFlows.update { current ->
+            if (current.containsKey(nodeId)) current
+            else current + (nodeId to MutableStateFlow<CollectCountSnapshot?>(null))
+        }
+        return countSnapshotFlows.value.getValue(nodeId)
+    }
 
     /**
      * 观察指定条目的收藏状态流；同 [nodeId] 恒返回同一实例（幂等），未拉取前值为 `null`。
@@ -90,10 +136,10 @@ class CollectRepository(
     }
 
     /**
-     * 标记画廊发生过收藏写操作；计数只增不减，可随时重读、无订阅者也不丢。
+     * 网络成功后原子推进收藏变更代数（CAS 自增，只增不减）；仅限仓储内部写路径调用。
      */
-    fun markGalleryMutation() {
-        _galleryMutationCount.update { it + 1 }
+    private fun advanceMutationGeneration() {
+        _collectMutationGeneration.update { it + 1 }
     }
 
     /**
@@ -125,28 +171,33 @@ class CollectRepository(
     }
 
     /**
-     * 保存/更新条目收藏信息 (api/collect/hobby/upd)；成功后状态池 := [collectData]。
+     * 保存/更新条目收藏信息 (api/collect/hobby/upd)；成功后状态池 := [collectData]，
+     * 并推进变更代数。
      */
     suspend fun saveCollect(nodeId: Long, collectData: CollectData): Result<Unit> = runCatching {
         val jsonPayload = json.encodeToString(collectData)
         api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         mutableStateFlowOf(nodeId).value = collectData
+        advanceMutationGeneration()
     }
 
     /**
-     * 取消条目收藏 (api/collect/hobby/upd，state="delete")；成功后状态池 := null。
+     * 取消条目收藏 (api/collect/hobby/upd，state="delete")；成功后状态池 := null，
+     * 并推进变更代数。
      */
     suspend fun deleteCollect(nodeId: Long, currentData: CollectData): Result<Unit> = runCatching {
         val deletedData = currentData.copy(state = CollectConstants.STATE_DELETE)
         val jsonPayload = json.encodeToString(deletedData)
         api.updateCollect(nodeId = nodeId, payloadJson = jsonPayload)
         mutableStateFlowOf(nodeId).value = null
+        advanceMutationGeneration()
     }
 
     /**
      * 添加通用条目/相册收藏 (api/collect/item/add)。
      *
-     * 服务端不返回收藏详情，成功后状态池 := `(旧值 ?: CollectData()).copy(state = "care")`。
+     * 服务端不返回收藏详情，成功后状态池 := `(旧值 ?: CollectData()).copy(state = "care")`，
+     * 并推进变更代数。
      * ⚠️ 这里的 `care` 仅作为「已收藏」**占位值**（`CollectData.isCollected` 据此为真），
      * 不代表手办心愿档；其余字段沿用旧值，避免覆盖用户已填的评分/入手信息。
      */
@@ -154,23 +205,40 @@ class CollectRepository(
         api.collectItemAdd(id = nodeId)
         val previous = mutableStateFlowOf(nodeId).value ?: CollectData()
         mutableStateFlowOf(nodeId).value = previous.copy(state = CollectConstants.STATE_CARE)
+        advanceMutationGeneration()
     }
 
     /**
-     * 取消通用条目/相册收藏 (api/collect/del)；成功后状态池 := null。
+     * 取消通用条目/相册收藏 (api/collect/del)；成功后状态池 := null，并推进变更代数。
      */
     suspend fun collectItemDel(nodeId: Long): Result<Unit> = runCatching {
         api.collectItemDel(id = nodeId)
         mutableStateFlowOf(nodeId).value = null
+        advanceMutationGeneration()
     }
 
     /**
-     * 批量取消收藏 (api/collect/batch/cancel)。
+     * 统一切换通用条目/相册收藏的一等公民接缝（ADR-0025）：
+     * 内部按当前收藏状态分发为 [collectItemAdd]（未收藏 → 添加）或 [collectItemDel]
+     * （已收藏 → 取消），该端点同时覆盖通用条目与相册两类实体；
+     * 状态池写入与变更代数推进均由底层写操作在网络成功后原子完成，
+     * 失败不写池、不推进代数。
+     *
+     * @param isCollected 当前是否已收藏；true → 取消，false → 添加
+     * @return 切换后的收藏状态（成功时恒为 `!isCollected`）；失败透传仓储异常
+     */
+    suspend fun toggleItemCollect(nodeId: Long, isCollected: Boolean): Result<Boolean> {
+        val result = if (isCollected) collectItemDel(nodeId) else collectItemAdd(nodeId)
+        return result.map { !isCollected }
+    }
+
+    /**
+     * 批量取消收藏 (api/collect/batch/cancel)；网络成功后推进变更代数。
      *
      * ⚠️ [ids] 必须传**外层收藏节点 id**（如 `UserCollectAlbumItem.id` / `UserCollectHobbyItem.id`），
      * 而**不是** `actualAlbumId` / `actualItemId` 里的真实条目 ID。
      * 仅登录用户本人的收藏中心可用（原版 isSelf 门控）。
-     * 空集合直接短路返回成功，避免向服务端提交空的 `[]`。
+     * 空集合直接短路返回成功，避免向服务端提交空的 `[]`；属校验拦截，不推进代数。
      *
      * 批量接口缺少「外层 id → nodeId」映射，故不逐条改写状态池，列表页靠恢复刷新对齐。
      */
@@ -179,6 +247,7 @@ class CollectRepository(
         // 服务端要求 JSON 数组字符串，如 "[1,2,3]"
         val idArr = ids.joinToString(prefix = "[", postfix = "]", separator = ",")
         api.cancelCollectBatch(idArr = idArr)
+        advanceMutationGeneration()
     }
 
     /**
@@ -430,7 +499,7 @@ class CollectRepository(
     }
 
     /**
-     * 保存作品收藏 (api/works/glean/add)。
+     * 保存作品收藏 (api/works/glean/add)；网络成功后推进变更代数。
      *
      * @param state 收藏状态：1 想看 / 2 在看 / 3 看过
      * @param tagStr 标签串，英文逗号分隔（形如 `"热血,校园"`）
@@ -448,16 +517,18 @@ class CollectRepository(
             comment = comment,
             state = state
         )
+        advanceMutationGeneration()
     }
 
     /**
-     * 取消作品收藏 (api/works/glean/del)。
+     * 取消作品收藏 (api/works/glean/del)；网络成功后推进变更代数。
      */
     suspend fun deleteWorksCollect(worksId: Long): Result<Unit> = runCatching {
         api.deleteWorksCollect(
             itemType = CollectConstants.WORKS_ITEM_TYPE,
             itemId = worksId
         )
+        advanceMutationGeneration()
     }
 
     /**

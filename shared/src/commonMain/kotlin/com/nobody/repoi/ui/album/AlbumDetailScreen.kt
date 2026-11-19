@@ -319,7 +319,7 @@ fun AlbumDetailScreen(
                             isLiked = uiState.isLiked,
                             isCollected = uiState.isCollected,
                             likeCount = (curAlbum?.praiseCount ?: 0L) + uiState.praiseCountDelta,
-                            collectCount = (curAlbum?.collect ?: 0L) + uiState.collectCountDelta,
+                            collectCount = (uiState.collectCountBase ?: (curAlbum?.collect ?: 0L)) + uiState.collectCountDelta,
                             commentCount = curAlbum?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
                             hasRelatedHobby = firstRelatedHobby != null,
                             showCommentButton = !isWidePane,

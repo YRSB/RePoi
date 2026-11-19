@@ -94,7 +94,7 @@ val viewModelModule = module {
     viewModel { ForumHomeViewModel(get(), get()) }
     viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
-    viewModel { PictureGalleryViewModel(get(), get(), get(named("download"))) }
+    viewModel { PictureGalleryViewModel(get(), get(named("download"))) }
     viewModel {
         HomeFeedViewModel(
             sessionFactory = get(),
@@ -133,7 +133,7 @@ val viewModelModule = module {
     viewModel { UserHistoryViewModel(get(), get()) }
     viewModel { VendorDetailViewModel(get(), get(), get(), get()) }
     viewModel { VendorActionsViewModel(get()) }
-    viewModel { WorksDetailViewModel(get(), get()) }
+    viewModelOf(::WorksDetailViewModel)
     viewModel { ZoneBrowseViewModel(get()) }
     viewModelOf(::ZoneDetailViewModel)
     viewModel { ZoneSettingsViewModel(get()) }

@@ -11,7 +11,7 @@ import com.nobody.repoi.data.remote.model.SeriesForumPayload
 import com.nobody.repoi.data.remote.model.SeriesGoodsItem
 import com.nobody.repoi.data.remote.model.SeriesLinkItem
 import com.nobody.repoi.data.repository.SeriesDetailRepository
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
+import com.nobody.repoi.data.repository.CollectRepository
 import com.nobody.repoi.ui.collect.collectDeltaOf
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.Job
@@ -87,6 +87,8 @@ data class SeriesDetailUiState(
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
+    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+    val collectCountBase: Int? = null,
     val isMasked: Boolean = false,
     val isIntroExpanded: Boolean = false
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
@@ -126,7 +128,7 @@ data class SeriesDetailUiState(
 
 class SeriesDetailViewModel(
     private val repository: SeriesDetailRepository,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
+    private val collectRepository: CollectRepository,
     private val commentDelegate: com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 ) : ViewModel() {
 
@@ -300,7 +302,7 @@ class SeriesDetailViewModel(
      * 切换收藏状态（乐观更新 + 失败回滚）。
      *
      * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
-     * [ToggleItemCollectUseCase]，成功即写入收藏仓储状态池。
+     * [CollectRepository.toggleItemCollect]，成功即写入收藏仓储状态池并推进变更代数。
      */
     fun toggleCollect() {
         val state = _uiState.value
@@ -318,7 +320,7 @@ class SeriesDetailViewModel(
         }
 
         viewModelScope.launch {
-            val result = toggleItemCollectUseCase(nodeId, previousCollected)
+            val result = collectRepository.toggleItemCollect(nodeId, previousCollected)
             if (result.isFailure) {
                 // 失败回滚
                 _uiState.update {
@@ -327,6 +329,18 @@ class SeriesDetailViewModel(
                         collectCountDelta = collectDeltaOf(it.originalCollected, previousCollected),
                         commentActionMessage = result.exceptionOrNull()?.message ?: "收藏状态更新失败"
                     )
+                }
+            }
+            else {
+                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+                collectRepository.getCollectCount(nodeId).onSuccess { count ->
+                    _uiState.update { current ->
+                        current.copy(
+                            collectCountBase = count.total,
+                            collectCountDelta = 0,
+                            originalCollected = nextCollected
+                        )
+                    }
                 }
             }
         }

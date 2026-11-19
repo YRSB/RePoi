@@ -76,6 +76,8 @@ data class CollectCountData(
     val buy: Int = 0,
     val resell: Int = 0
 ) {
+    /** 五类收藏人数总和，作为详情页服务端计数基线 */
+    val total: Int get() = care + want + preorder + buy + resell
     fun getCountForState(state: String): Int = when (state) {
         CollectConstants.STATE_CARE -> care
         CollectConstants.STATE_WANT -> want

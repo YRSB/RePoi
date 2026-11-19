@@ -9,6 +9,8 @@ import com.nobody.repoi.data.local.ViewPreferencesManager
 import com.nobody.repoi.data.remote.api.ExHobbyApi
 import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.repository.AlbumDetailRepository
+import com.nobody.repoi.ui.album.AlbumDetailViewModel
+import com.nobody.repoi.ui.character.CharacterDetailViewModel
 import com.nobody.repoi.data.repository.AlbumRepository
 import com.nobody.repoi.data.repository.CharacterDetailRepository
 import com.nobody.repoi.data.repository.CollectRepository
@@ -40,7 +42,6 @@ import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.board.session.ZoneBoardSession
 import com.nobody.repoi.ui.album.AlbumViewModel
 import com.nobody.repoi.ui.collect.UserCollectViewModel
@@ -135,8 +136,7 @@ class KoinModuleVerificationTest {
             koin.getOrNull<ZoneRepository>().shouldNotBeNull()
             koin.getOrNull<CommentInteractionDelegate>().shouldNotBeNull()
 
-            // 4. 收藏写侧 Domain UseCases（factory）
-            koin.getOrNull<ToggleItemCollectUseCase>().shouldNotBeNull()
+            // 4. 保留的收藏写侧 Domain UseCases（factory，共 5 个）
             koin.getOrNull<SaveHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<DeleteHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
@@ -169,6 +169,9 @@ class KoinModuleVerificationTest {
             koin.getOrNull<LoginViewModel>().shouldNotBeNull()
             koin.getOrNull<AlbumViewModel>().shouldNotBeNull()
             koin.getOrNull<FollowViewModel>().shouldNotBeNull()
+            // 规范 §2：无 named 限定符的 VM 必须能用 viewModelOf 解析（9 参与 3 参构造）
+            koin.getOrNull<AlbumDetailViewModel>().shouldNotBeNull()
+            koin.getOrNull<CharacterDetailViewModel>().shouldNotBeNull()
             koin.getOrNull<UserHistoryViewModel>().shouldNotBeNull()
             // 收藏链路 ViewModel：构造依赖最多（仓储 + UseCase + 偏好 + 会话 + 具名下载 client），
             // 解析一次即可捕获 Koin 参数漂移（Koin 无编译期校验，否则只在运行期崩溃）

@@ -17,7 +17,7 @@ RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 
 - **UI**（Material 3 Expressive 规范、自适应双窗格、悬浮栏、网格与 CDN 图片变体）：查阅 [CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范](CODING_STANDARDS.md#自适应与-material-3-expressive-设计规范)
 - **Home**（首页三级信息架构、专区切换器、子板块与板块筛选矩阵、状态键）：查阅 [docs/home-hierarchy.md](docs/home-hierarchy.md)
 - **Theme**（六维主题配置、`resolvePoiColorScheme`、色彩弹簧过渡、冷启动落定门禁、启动遮罩）：查阅 [docs/theme.md](docs/theme.md)
-- **Collect**（收藏状态池、8 类列表与去重键、`UserCollectIntent`、画廊脏位恢复感知、排序记忆、滚动键）：查阅 [docs/collect.md](docs/collect.md)
+- **Collect**（收藏状态池、8 类列表与去重键、`UserCollectIntent`、变更代数与惰性恢复、游标持久化、排序记忆、滚动键；涉及 `SavedStateHandle` 或进程恢复时先读 [docs/collect.md#11-条目状态池与写侧代数](docs/collect.md#11-条目状态池与写侧代数)）：查阅 [docs/collect.md](docs/collect.md)
 - **Media**（图片显示、CDN 变体档位、404 避坑、`PoiAsyncImage` / `PoiZoomableImage`、全屏看图）：查阅 [docs/media.md](docs/media.md)
 - **Quirks**（Hpoi API 反序列化多态、图片 path 拼接与逆向踩坑）：查阅 [docs/API_QUIRKS.md](docs/API_QUIRKS.md)
 - **Domain**（业务模型、实体命名契约与领域术语）：查阅 [docs/domain.md](docs/domain.md)

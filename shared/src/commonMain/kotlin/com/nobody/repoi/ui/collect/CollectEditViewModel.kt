@@ -253,6 +253,7 @@ class CollectEditViewModel(
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
+                    refreshCountSnapshot(fresh.nodeId)
                 },
                 onFailure = { err ->
                     _uiState.update {
@@ -284,6 +285,7 @@ class CollectEditViewModel(
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isDeleting = false, deleteSuccess = true) }
+                    refreshCountSnapshot(fresh.nodeId)
                 },
                 onFailure = { err ->
                     _uiState.update {
@@ -291,6 +293,16 @@ class CollectEditViewModel(
                     }
                 }
             )
+        }
+    }
+
+    /**
+     * 写成功后以服务端 `collectCount` 刷新计数快照，供详情页重置基线并归零 delta。
+     * 请求失败时什么都不做：详情页保留原有乐观 delta，不把网络异常当成计数变化。
+     */
+    private suspend fun refreshCountSnapshot(nodeId: Long) {
+        collectRepository.getCollectCount(nodeId).onSuccess { count ->
+            collectRepository.updateCollectCountSnapshot(nodeId, count.total.toLong())
         }
     }
 }

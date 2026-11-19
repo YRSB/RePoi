@@ -19,7 +19,6 @@ import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
 import com.nobody.repoi.data.repository.UserHistoryRepository
 import com.nobody.repoi.data.session.UserSession
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.util.ListPaging
 import com.nobody.repoi.data.repository.FriendState
 import kotlinx.coroutines.Job
@@ -93,6 +92,8 @@ data class AlbumDetailUiState(
     val isFollowPending: Boolean = false,
     val praiseCountDelta: Long = 0L,
     val collectCountDelta: Long = 0L,
+    /** 写成功后由服务端计数刷新的基线；null 时回落到相册详情接口的 collect 字段 */
+    val collectCountBase: Long? = null,
     val interactionActionMessage: String? = null
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     val isFollowed: Boolean get() = followState.isFollowed
@@ -133,7 +134,6 @@ data class AlbumDetailUiState(
 class AlbumDetailViewModel(
     private val repository: AlbumDetailRepository,
     private val collectRepository: CollectRepository,
-    private val toggleItemCollectUseCase: ToggleItemCollectUseCase,
     private val userSession: UserSession,
     private val followRepository: FollowRepository,
     private val userHistoryRepository: UserHistoryRepository,
@@ -527,8 +527,8 @@ class AlbumDetailViewModel(
         }
 
         viewModelScope.launch {
-            // 写侧委托用例：成功即由 CollectRepository 更新状态池，其他页面经状态流同步
-            val result = toggleItemCollectUseCase(albumId, previousCollected)
+            // 写侧直接交给自治仓储：成功即更新状态池并推进收藏变更代数
+            val result = collectRepository.toggleItemCollect(albumId, previousCollected)
 
             result.fold(
                 onSuccess = {
@@ -537,6 +537,15 @@ class AlbumDetailViewModel(
                             isCollectPending = false,
                             interactionActionMessage = if (nextCollected) "已收藏该相册 ★" else "已取消收藏"
                         )
+                    }
+                    // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+                    collectRepository.getCollectCount(albumId).onSuccess { count ->
+                        _uiState.update { current ->
+                            current.copy(
+                                collectCountBase = count.total.toLong(),
+                                collectCountDelta = 0
+                            )
+                        }
                     }
                 },
                 onFailure = { err ->

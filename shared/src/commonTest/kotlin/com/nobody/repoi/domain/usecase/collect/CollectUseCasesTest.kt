@@ -14,9 +14,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 收藏写侧 Domain UseCases 单测。
- *
- * 覆盖三类缝隙：校验分支**不发请求**（`requestCount == 0`）、成功路径（请求参数与状态池）、失败透传。
+ * 收藏写侧接缝单测：保留的用例覆盖校验分支**不发请求**（`requestCount == 0`）、
+ * 成功路径（请求参数与状态池）与失败透传；通用条目切换已收口到
+ * [CollectRepository.toggleItemCollect]，同样在此验证请求分发与结果翻转。
  * 命名刻意避开 `*ViewModelTest`（CI `excludeTestsMatching` 隔离名单）。
  */
 class CollectUseCasesTest {
@@ -39,7 +39,7 @@ class CollectUseCasesTest {
         env.mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         val observed = env.repository.observeCollectState(100L)
 
-        val result = ToggleItemCollectUseCase(env.repository).invoke(nodeId = 100L, isCollected = false)
+        val result = env.repository.toggleItemCollect(nodeId = 100L, isCollected = false)
 
         assertEquals(true, result.getOrThrow())
         assertEquals("/api/collect/item/add", env.mock.takeRequest().encodedPath)
@@ -52,7 +52,7 @@ class CollectUseCasesTest {
         env.mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         val observed = env.repository.observeCollectState(100L)
 
-        val result = ToggleItemCollectUseCase(env.repository).invoke(nodeId = 100L, isCollected = true)
+        val result = env.repository.toggleItemCollect(nodeId = 100L, isCollected = true)
 
         assertEquals(false, result.getOrThrow())
         assertEquals("/api/collect/del", env.mock.takeRequest().encodedPath)
@@ -64,7 +64,7 @@ class CollectUseCasesTest {
         val env = env()
         env.mock.enqueue(env.mock.failure(500, "收藏失败"))
 
-        val result = ToggleItemCollectUseCase(env.repository).invoke(nodeId = 100L, isCollected = false)
+        val result = env.repository.toggleItemCollect(nodeId = 100L, isCollected = false)
 
         assertTrue(result.isFailure)
         assertEquals("收藏失败", (result.exceptionOrNull() as ApiException).message)

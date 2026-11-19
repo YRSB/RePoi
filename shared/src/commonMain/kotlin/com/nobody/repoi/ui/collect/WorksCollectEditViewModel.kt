@@ -311,6 +311,7 @@ class WorksCollectEditViewModel(
                     _uiState.update {
                         it.copy(isSaving = false, saveSuccess = true, isAlreadyCollected = true, hasDelete = true)
                     }
+                    refreshCountSnapshot(fresh.worksId)
                 },
                 onFailure = { err ->
                     _uiState.update { it.copy(isSaving = false, errorMessage = err.message ?: "保存失败") }
@@ -336,11 +337,22 @@ class WorksCollectEditViewModel(
                     _uiState.update {
                         it.copy(isDeleting = false, deleteSuccess = true, isAlreadyCollected = false, hasDelete = false)
                     }
+                    refreshCountSnapshot(snapshot.worksId)
                 },
                 onFailure = { err ->
                     _uiState.update { it.copy(isDeleting = false, errorMessage = err.message ?: "取消收藏失败") }
                 }
             )
+        }
+    }
+
+    /**
+     * 写成功后以服务端 `collectCount` 刷新快照，供作品详情页展示服务端人数。
+     * 计数请求失败时保留旧快照，不把网络异常误当成人数变化。
+     */
+    private suspend fun refreshCountSnapshot(worksId: Long) {
+        collectRepository.getCollectCount(worksId).onSuccess { count ->
+            collectRepository.updateCollectCountSnapshot(worksId, count.total.toLong())
         }
     }
 }

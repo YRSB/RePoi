@@ -32,7 +32,6 @@ import com.nobody.repoi.domain.usecase.collect.DeleteHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.DeleteWorksCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveHobbyCollectUseCase
 import com.nobody.repoi.domain.usecase.collect.SaveWorksCollectUseCase
-import com.nobody.repoi.domain.usecase.collect.ToggleItemCollectUseCase
 import com.nobody.repoi.ui.common.comment.CommentInteractionDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,7 +94,6 @@ val repositoryModule = module {
     factory { CommentInteractionDelegate(get(), get(), get()) }
 
     // ── 收藏写侧 Domain UseCases（无状态，factory 即取即用） ──
-    factoryOf(::ToggleItemCollectUseCase)
     factoryOf(::SaveHobbyCollectUseCase)
     factoryOf(::DeleteHobbyCollectUseCase)
     factoryOf(::BatchCancelCollectUseCase)
