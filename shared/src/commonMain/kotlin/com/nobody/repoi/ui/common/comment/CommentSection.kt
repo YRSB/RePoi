@@ -103,9 +103,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -987,8 +989,19 @@ fun CommentReplyDialog(
     }
     val targetName = target?.user?.nickname?.ifBlank { null }
         ?: if (comment.id != TOP_LEVEL_COMMENT_DRAFT_ID) comment.user?.nickname?.ifBlank { null } else null
+    val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    val showKeyboard: () -> Unit = {
+        showEmojiPanel = false
+        coroutineScope.launch {
+            focusManager.clearFocus()
+            kotlinx.coroutines.yield()
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     LaunchedEffect(focusRequester) {
         // 等待首帧渲染就绪后立即请求焦点并呼起键盘，使输入框就位与软键盘升起同步
@@ -1009,6 +1022,7 @@ fun CommentReplyDialog(
                     showEmojiPanel = false
                 } else {
                     keyboardController?.hide()
+                    focusManager.clearFocus()
                     onDismiss()
                 }
             }
@@ -1051,6 +1065,7 @@ fun CommentReplyDialog(
                                 showEmojiPanel = false
                             } else {
                                 keyboardController?.hide()
+                                focusManager.clearFocus()
                                 onDismiss()
                             }
                         }
@@ -1119,11 +1134,7 @@ fun CommentReplyDialog(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
-                                if (showEmojiPanel) {
-                                    showEmojiPanel = false
-                                }
-                                focusRequester.requestFocus()
-                                keyboardController?.show()
+                                showKeyboard()
                             }
                     ) {
                         BasicTextField(
@@ -1136,7 +1147,12 @@ fun CommentReplyDialog(
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequester),
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused && showEmojiPanel) {
+                                        showEmojiPanel = false
+                                    }
+                                },
                             enabled = !isSubmitting,
                             decorationBox = { innerTextField ->
                                 if (inputText.text.isEmpty()) {
@@ -1207,6 +1223,7 @@ fun CommentReplyDialog(
                                         showEmojiPanel = false
                                     } else {
                                         keyboardController?.hide()
+                                        focusManager.clearFocus()
                                         showEmojiPanel = true
                                     }
                                 },
@@ -1225,14 +1242,12 @@ fun CommentReplyDialog(
                         IconButton(
                             onClick = {
                                 if (showEmojiPanel) {
-                                    showEmojiPanel = false
-                                    focusRequester.requestFocus()
-                                    keyboardController?.show()
+                                    showKeyboard()
                                 } else if (imeBottom > 0) {
                                     keyboardController?.hide()
+                                    focusManager.clearFocus()
                                 } else {
-                                    focusRequester.requestFocus()
-                                    keyboardController?.show()
+                                    showKeyboard()
                                 }
                             },
                             modifier = Modifier.size(36.dp)
