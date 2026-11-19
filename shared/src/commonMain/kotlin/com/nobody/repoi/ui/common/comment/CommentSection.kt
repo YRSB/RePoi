@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.common.comment
 
-import com.nobody.repoi.platform.ReplyDialogEdgeToEdgeEffect
 import com.nobody.repoi.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -72,6 +71,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -1015,96 +1018,43 @@ fun CommentReplyDialog(
         showEmojiPanel = false
     }
 
-    Dialog(
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
+
+    ModalBottomSheet(
         onDismissRequest = {
             if (!isSubmitting) {
-                if (showEmojiPanel) {
-                    showEmojiPanel = false
-                } else {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                    onDismiss()
-                }
+                onDismiss()
             }
         },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false
-        )
+        sheetState = sheetState,
+        shape = MaterialTheme.shapes.bottomSheet,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        modifier = modifier
     ) {
-        ReplyDialogEdgeToEdgeEffect()
         val density = LocalDensity.current
         val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
         val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }
         val bottomContentPadding = remember(imeBottom, navBarBottom, showEmojiPanel) {
             if (showEmojiPanel) {
-                with(density) { (navBarBottom.toDp() + 6.dp) }
+                with(density) { (navBarBottom.toDp() + 12.dp) }
             } else if (imeBottom > 0) {
-                6.dp
+                12.dp
             } else {
-                with(density) { (navBarBottom.toDp() + 6.dp) }
+                with(density) { (navBarBottom.toDp() + 12.dp) }
             }
         }
 
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .imePadding(),
-            contentAlignment = Alignment.BottomCenter
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 18.dp, end = 18.dp, bottom = bottomContentPadding)
         ) {
-            // 半透明遮罩层：点击即可收起键盘或表情面板并关闭输入弹窗
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        if (!isSubmitting) {
-                            if (showEmojiPanel) {
-                                showEmojiPanel = false
-                            } else {
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                                onDismiss()
-                            }
-                        }
-                    }
-            )
-
-            // 底部输入面板卡片（紧贴软键盘上沿或直接延伸至屏幕物理底端实现导航栏沉浸）
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        // 消费卡片内部空白区域点击，防止误触发外层遮罩关闭
-                    },
-                shape = MaterialTheme.shapes.bottomSheet,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                tonalElevation = 2.dp,
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = bottomContentPadding)
-                ) {
-                    // 顶部小把手指示条（保持 M3 Expressive 抽屉一致视觉）
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 10.dp, bottom = 4.dp)
-                            .width(36.dp)
-                            .height(4.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-
-                    // 回复目标提示
-                    if (targetName != null) {
+            // 回复目标提示
+            if (targetName != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1281,6 +1231,7 @@ fun CommentReplyDialog(
                                         selectedStickers = arrayListOf()
                                         showEmojiPanel = false
                                         keyboardController?.hide()
+                                        sheetState.hide()
                                         onDismiss()
                                     }
                                 }
@@ -1399,8 +1350,6 @@ fun CommentReplyDialog(
                 }
             }
         }
-    }
-}
 
 /**
  * 评论区空状态展示卡。

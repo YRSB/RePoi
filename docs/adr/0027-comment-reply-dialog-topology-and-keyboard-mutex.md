@@ -30,7 +30,13 @@
    - **表情按钮 😊（常驻）**：点击时若表情面板已开则收起；若未开则自动收起软键盘并显式执行 `focusManager.clearFocus()` 清除输入框焦点，展开表情面板，激活时高亮主色；
    - **键盘按钮 ⌨️（常驻）**：点击时若当前在表情面板，关闭表情面板并唤起软键盘；若当前软键盘已升起，点击收起软键盘并清除焦点；若软键盘已收起，通过统一的 `showKeyboard` 管线（重置焦点并在帧调度后重新请求焦点）唤起系统软键盘，激活时高亮主色；
    - **点击输入框**：自动收起表情面板，重置并重新获得焦点呼起软键盘；`BasicTextField` 挂载 `onFocusChanged`，一旦聚焦自动收起表情面板；
-   - **弹窗专用 Inset 穿透与暗色遮罩（ReplyDialogEdgeToEdgeEffect）**：废止使用带有 `FLAG_LAYOUT_NO_LIMITS` 与 `fitInsetsTypes = 0` 的全屏图片穿透方案，采用保留 `SOFT_INPUT_ADJUST_RESIZE` 与系统 IME Insets 分发的回调垫片，使 `Modifier.imePadding()` 在软键盘多次升降中稳定生效；同时显式保留系统原生暗色窗口遮罩（`FLAG_DIM_BEHIND`，dimAmount 0.35f）并辅以 Compose 外层 `scrim` 遮罩与 `shadowElevation = 8.dp` 抽屉阴影，彻底根除蒙层缺失导致的顶部指示条透出底层评论文字与悬浮割裂问题。
+   - **全面迁移至 Material 3 官方 `ModalBottomSheet` 消除子 Window 遮罩与焦点缺陷**：
+     此前尝试使用 Compose `Dialog` + 自定义半透明 Window 垫片（`ReplyDialogEdgeToEdgeEffect`），导致原生子 Window 与 Activity Window 在 Inset 分发、焦点竞争以及 `FLAG_DIM_BEHIND` 上存在平台黑盒（易出现顶部把手透明透底、键盘收起后无法再次弹起等问题）。
+     现全面重构为官方 `ModalBottomSheet`（配合 `rememberBottomSheetState`）：
+     - 由官方 `ModalBottomSheet` 全面托管全局暗色 Scrim、原生手势下拉关闭与软键盘 Inset 自适应；
+     - 使用统一的 `BottomSheetDefaults.DragHandle()` 与 `MaterialTheme.shapes.bottomSheet`（顶角 28dp 形状规范），根除把手区域透底问题；
+     - 彻底删除平台层临时垫片 `ReplyDialogEdgeToEdgeEffect`，架构保持全 Compose Multiplatform 纯净规范；
+     - 底部 Content Padding 动态结合 `navigationBars` 与 `ime` Insets，确保在表情区展开（键盘收起）时底部贴纸与颜文字卡片不被系统三键/手势小白条遮挡。
 
 4. **固定 280dp 表情面板与渲染规范**：
    表情面板固定容器高度为 `280.dp`（紧密对齐移动端软键盘常规高度），颜文字与表情包 Tab 各自的 `LazyVerticalGrid` 在内部独立滚动，消除不同表情包项数差异引起的容器抖动；网格项必须严格标注稳定的 `key` 与 `contentType`（如 `face_text` 与 `sticker_item`）。
