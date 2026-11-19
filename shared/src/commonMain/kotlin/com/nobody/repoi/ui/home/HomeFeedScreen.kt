@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.data.local.CategoryItem
@@ -144,6 +145,12 @@ fun HomeFeedScreen(
     var zoneSwitcherExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(useZoneSwitcherDropdown) {
         zoneSwitcherExpanded = false
+    }
+    // 消息中心内的已读操作只改服务端计数，首页快照会失效；
+    // 返回首页时重拉一次，红点不残留陈旧值（issue #195）。
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshUnreadMessages()
+        onPauseOrDispose { }
     }
     val onCloseZoneSwitcher = { zoneSwitcherExpanded = false }
     val onSelectZoneTab: (String) -> Unit = { tabKey ->

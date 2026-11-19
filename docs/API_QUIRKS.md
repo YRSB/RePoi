@@ -170,3 +170,12 @@
   2. **专区分类外层包装对象**：`api/zone/categories` 的 `data` 节点并非平铺数组，而是包含 `visible: Boolean` 标志的包装对象：`{ "visible": true, "categories": [...] }`。直接解构为 `List<Category>` 会导致反序列化失败。
 - **推荐解法**：
   - 测试桩与业务代码统一遵循 DTO 真实声明；测试环境中使用 `MockApi.routeJson` 或强类型桩函数以获得编译期强约束。
+
+---
+
+## 13. 未读计数 `count-v2` 的 `posts_reply` 键属讨论板域，不计消息红点
+
+- **涉及接口**：`GET api/unread/push-message/count-v2`、`POST api/push/read`。
+- **踩坑现象**：`data.map.push` 返回 7 个键（system/reply/praise/recommend/follownews/follow/commodity/posts_reply）。其中 `posts_reply`（讨论帖被回复未读）在官方 app 中被 `MainActivity.refreshUnreadCounts` 单独归入 **forumCount**（独立驱动讨论板红点，见 `ForumHomeActivity` / `TabUserRequest` 的 `posts_reply` 分支），消息红点只累计 `map.message`（私信）与 push 其余键。客户端若把 `posts_reply` 简单累进「消息未读总数」，用户在讨论板被回复后首页消息红点常亮，而消息中心六大分类入口（typeNumber 1–6）均无该类的可见 badge 与清零路径，红点永远无法去除（issue #195）。
+- **推荐解法**：`PushCountCategory.totalCount` 保持消息域口径：只累加 system/reply/praise/recommend/actualFollowCount/commodity，**排除 `postsReply`**（字段保留用于反序列化，留给未来讨论板红点）。另注意 `api/push/read` 的 type 枚举为 0（全部）–6（商品），无 `posts_reply` 独立数值，消息中心的「一键全部已读」只面向消息域六类。
+- **配套界面契约**：消息中心内的已读操作只改服务端计数，首页 `unreadMessageCount` 是独立快照；从消息中心返回首页（RESUMED）时必须重拉 `count-v2`（`HomeFeedScreen` 的 `LifecycleResumeEffect` → `HomeFeedViewModel.refreshUnreadMessages`），否则已清零的红点残留陈旧值。
