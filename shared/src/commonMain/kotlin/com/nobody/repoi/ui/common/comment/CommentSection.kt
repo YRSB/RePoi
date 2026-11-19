@@ -1,6 +1,5 @@
 package com.nobody.repoi.ui.common.comment
 
-import com.nobody.repoi.platform.FullscreenDialogEdgeToEdgeEffect
 import com.nobody.repoi.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -11,11 +10,16 @@ import androidx.compose.animation.slideOutVertically
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.CommentDetailScreen
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -61,6 +65,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.SentimentSatisfied
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.ui.text.TextStyle
@@ -101,9 +106,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -937,11 +944,24 @@ private fun CommentDeleteConfirmDialog(
 }
 
 /**
- * 回复发表弹窗：标题按被回复人显示“回复 XXX”，直接回复主楼时显示“发表评论”。
- *
- * 保证输入草稿安全：仅当提交成功时清空草稿并关闭弹窗；失败时保持弹窗打开并保留草稿。
+ * 评论输入扩展选择器类型（对齐 Jetchat 架构规范）。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+enum class CommentInputSelector {
+    NONE,
+    EMOJI
+}
+
+/**
+ * 回复发表浮层（基于 Google 官方 Jetchat 架构精细重构）。
+ *
+ * 采用主窗口同层 Overlay 架构配合 Jetchat 的 [CommentInputSelector] 与 Focus Stealing 机制：
+ * 1. 彻底移除 [ModalBottomSheet] 及其 DragHandle，根除手柄透明透底与子窗口 Insets 竞争导致的二段跳缺陷；
+ * 2. 软键盘由 [Modifier.imePadding] 与 [LocalSoftwareKeyboardController] 直接由系统级动画驱动，毫秒级平滑升降；
+ * 3. 展开表情区时通过 [focusTarget] 夺取焦点让输入框失焦，软键盘自然平滑收起；
+ * 4. 键盘按钮常驻工具栏，点击可靠切换软键盘与表情面板；
+ * 5. 光标与提示占位文本统一采用 [Alignment.TopStart] 基准，实现垂直基线像素级对齐；
+ * 6. 保证输入草稿安全：仅当提交成功时清空草稿并关闭浮层；失败时保持浮层打开并保留草稿。
+ */
 @Composable
 fun CommentReplyDialog(
     comment: CommentItem,
@@ -957,7 +977,16 @@ fun CommentReplyDialog(
     var inputText by rememberSaveable(comment.id, target?.id, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(""))
     }
-    var showEmojiPanel by rememberSaveable(comment.id, target?.id) { mutableStateOf(false) }
+    var currentInputSelector by rememberSaveable(comment.id, target?.id) {
+        mutableStateOf(CommentInputSelector.NONE)
+    }
+    var textFieldFocusState by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    val selectorFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     var faceTexts by remember(comment.id, target?.id) { mutableStateOf(listOf<FaceTextItem>()) }
     LaunchedEffect(comment.id, target?.id) {
         faceTexts = loadFaceTexts()
@@ -974,6 +1003,7 @@ fun CommentReplyDialog(
         }
         stickersLoaded = true
     }
+
     fun insertFaceText(face: String) {
         val current = inputText.text
         val rawStart = inputText.selection.start.coerceIn(0, current.length)
@@ -983,327 +1013,390 @@ fun CommentReplyDialog(
         val merged = current.substring(0, from) + face + current.substring(to)
         inputText = inputText.copy(text = merged, selection = TextRange((from + face.length).coerceAtMost(merged.length)))
     }
+
     val targetName = target?.user?.nickname?.ifBlank { null }
         ?: if (comment.id != TOP_LEVEL_COMMENT_DRAFT_ID) comment.user?.nickname?.ifBlank { null } else null
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(focusRequester) {
-        // 等待首帧渲染就绪后立即请求焦点并呼起键盘，使输入框就位与软键盘升起同步
-        androidx.compose.runtime.withFrameNanos { }
+    // 唤起浮层时立即聚焦输入框并弹起软键盘（主窗口内由 imePadding 紧随系统动画无缝升起，杜绝二段跳）
+    LaunchedEffect(Unit) {
         focusRequester.requestFocus()
         keyboardController?.show()
     }
 
-    Dialog(
-        onDismissRequest = {
-            if (!isSubmitting) {
-                keyboardController?.hide()
-                onDismiss()
-            }
-        },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        FullscreenDialogEdgeToEdgeEffect()
-        val density = LocalDensity.current
-        val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
-        val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }
-        val bottomContentPadding = remember(imeBottom, navBarBottom) {
-            if (imeBottom > 0) 6.dp else with(density) { (navBarBottom.toDp() + 6.dp) }
+    // 表情面板处于激活状态时夺取焦点，触发 BasicTextField 失焦并让系统自然收起软键盘（Jetchat 招牌规范）
+    if (currentInputSelector == CommentInputSelector.EMOJI) {
+        SideEffect {
+            selectorFocusRequester.requestFocus()
         }
+    }
 
+    // 关闭收起处理
+    val dismissAll = {
+        if (!isSubmitting) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            onDismiss()
+        }
+    }
+
+    // 返回键拦截：表情展开时优先关闭表情面板；未展开时关闭整个回复浮层
+    PoiShelfBackHandler(enabled = true) {
+        if (currentInputSelector != CommentInputSelector.NONE) {
+            currentInputSelector = CommentInputSelector.NONE
+        } else {
+            dismissAll()
+        }
+    }
+
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // 1. 半透明暗色遮罩（点击收起浮层）
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
-                .imePadding(),
-            contentAlignment = Alignment.BottomCenter
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    dismissAll()
+                }
+        )
+
+        // 2. 贴底输入卡片 Surface（无 DragHandle，圆角平滑，紧贴软键盘升降）
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .imePadding()
+                .navigationBarsPadding(),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp
         ) {
-            // 半透明遮罩层：点击即可收起键盘并关闭输入弹窗
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        if (!isSubmitting) {
-                            keyboardController?.hide()
-                            onDismiss()
-                        }
-                    }
-            )
-
-            // 底部输入面板卡片（紧贴软键盘上沿或直接延伸至屏幕物理底端实现导航栏沉浸）
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        // 消费卡片内部空白区域点击，防止误触发外层遮罩关闭
-                    },
-                shape = MaterialTheme.shapes.bottomSheet,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp
+                    .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = bottomContentPadding)
-                ) {
-                    // 顶部小把手指示条（保持 M3 Expressive 抽屉一致视觉）
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 10.dp, bottom = 4.dp)
-                            .width(36.dp)
-                            .height(4.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-            // 回复目标提示（直接对照参考图）
-            if (targetName != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = "回复",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "@$targetName",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                // 回复目标提示
+                if (targetName != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Text(
+                            text = "回复",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "@$targetName",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
-            }
 
-            // 无边框大输入区（直接对照设计图 1 & 2）
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 90.dp, max = 160.dp)
-            ) {
-                BasicTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    textStyle = TextStyle(
-                        fontSize = 15.sp,
-                        lineHeight = 22.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .focusRequester(focusRequester),
-                    enabled = !isSubmitting,
-                    decorationBox = { innerTextField ->
-                        if (inputText.text.isEmpty()) {
-                            Text(
-                                text = "输入回复内容",
-                                fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        innerTextField()
-                    }
+                // 紧凑自适应输入区（初始 40dp，自适应撑开至 120dp，首行与 Hint 基线严格对齐）
+                val inputTextStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            }
-            // 已选表情数量较少，用 Row 直铺避免懒加载开销
-            if (selectedStickers.isNotEmpty()) {
-                Row(
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .heightIn(min = 40.dp, max = 120.dp)
+                        .verticalScroll(rememberScrollState())
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            if (currentInputSelector != CommentInputSelector.NONE) {
+                                currentInputSelector = CommentInputSelector.NONE
+                            }
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        },
+                    contentAlignment = Alignment.TopStart
                 ) {
-                    selectedStickers.forEachIndexed { index, path ->
-                        key(index) {
-                            Box(modifier = Modifier.size(48.dp)) {
-                                AsyncImage(
-                                    model = MediaPipeline.Default.resolveStickerUrl(path),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.Close,
-                                    contentDescription = "删除",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .size(16.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                                        .clickable { selectedStickers = ArrayList(selectedStickers - path) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            val showFaceTab = faceTexts.isNotEmpty()
-            val tabTitles = buildList {
-                if (showFaceTab) add("颜文字")
-                stickerPacks.forEach { pack -> add(pack.name.ifBlank { "表情包" }) }
-            }
-            val currentTab = emojiTabIndex.coerceIn(0, (tabTitles.size - 1).coerceAtLeast(0))
-            AnimatedVisibility(
-                visible = showEmojiPanel && tabTitles.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    if (tabTitles.size > 1) {
-                        PrimaryScrollableTabRow(
-                            selectedTabIndex = currentTab,
-                            edgePadding = 0.dp
-                        ) {
-                            tabTitles.forEachIndexed { index, title ->
-                                Tab(
-                                    selected = index == currentTab,
-                                    onClick = { emojiTabIndex = index },
-                                    text = { Text(text = title, fontSize = 13.sp) }
-                                )
-                            }
-                        }
-                    }
-                    val packIndex = if (showFaceTab) currentTab - 1 else currentTab
-                    if (showFaceTab && currentTab == 0) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(4),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 220.dp)
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            items(faceTexts, key = { it.id }) { face ->
-                                TextButton(onClick = { insertFaceText(face.content) }) {
+                    BasicTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        textStyle = inputTextStyle,
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { state ->
+                                textFieldFocusState = state.isFocused
+                                if (state.isFocused && currentInputSelector != CommentInputSelector.NONE) {
+                                    currentInputSelector = CommentInputSelector.NONE
+                                }
+                            },
+                        enabled = !isSubmitting,
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.TopStart
+                            ) {
+                                if (inputText.text.isEmpty()) {
                                     Text(
-                                        text = face.content,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1
+                                        text = "输入回复内容",
+                                        style = inputTextStyle.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                }
+
+                // 已选表情贴纸横向预览行
+                if (selectedStickers.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        selectedStickers.forEachIndexed { index, path ->
+                            key(index) {
+                                Box(modifier = Modifier.size(48.dp)) {
+                                    AsyncImage(
+                                        model = MediaPipeline.Default.resolveStickerUrl(path),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "删除",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(16.dp)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                                            .clickable { selectedStickers = ArrayList(selectedStickers - path) }
                                     )
                                 }
                             }
                         }
-                    } else {
-                        val packItems = stickerPacks.getOrNull(packIndex)?.items.orEmpty()
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(5),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 220.dp)
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                    }
+                }
+
+                // 操作工具栏
+                val showFaceTab = faceTexts.isNotEmpty()
+                val tabTitles = buildList {
+                    if (showFaceTab) add("颜文字")
+                    stickerPacks.forEach { pack -> add(pack.name.ifBlank { "表情包" }) }
+                }
+                val currentTab = emojiTabIndex.coerceIn(0, (tabTitles.size - 1).coerceAtLeast(0))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 表情常驻按钮
+                    if (faceTexts.isNotEmpty() || stickerPacks.isNotEmpty() || (onLoadStickerPacks != null && !stickersLoaded)) {
+                        IconButton(
+                            onClick = {
+                                if (currentInputSelector == CommentInputSelector.EMOJI) {
+                                    currentInputSelector = CommentInputSelector.NONE
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                } else {
+                                    currentInputSelector = CommentInputSelector.EMOJI
+                                }
+                            },
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            items(packItems.size, key = { it }) { gridIndex ->
-                                val sticker = packItems[gridIndex]
-                                AsyncImage(
-                                    model = MediaPipeline.Default.resolveStickerUrl(sticker.imageUrl),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .aspectRatio(1f)
-                                        .clickable {
-                                            if (canAddSticker(selectedStickers.size)) {
-                                                selectedStickers = ArrayList(selectedStickers + sticker.imageUrl)
-                                            } else {
-                                                messages.show("最多只能选择4个表情包")
-                                            }
-                                        }
+                            Icon(
+                                imageVector = Icons.Outlined.SentimentSatisfied,
+                                contentDescription = "表情",
+                                tint = if (currentInputSelector == CommentInputSelector.EMOJI) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // 键盘常驻按钮
+                    IconButton(
+                        onClick = {
+                            if (currentInputSelector == CommentInputSelector.EMOJI) {
+                                currentInputSelector = CommentInputSelector.NONE
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
+                            } else if (textFieldFocusState) {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            } else {
+                                currentInputSelector = CommentInputSelector.NONE
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
+                            }
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Keyboard,
+                            contentDescription = "键盘",
+                            tint = if (currentInputSelector == CommentInputSelector.NONE && textFieldFocusState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // 右侧药丸形发送按钮
+                    val canSubmit = (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) && !isSubmitting
+                    Surface(
+                        onClick = {
+                            if (!canSubmit) {
+                                if (inputText.text.isBlank() && selectedStickers.isEmpty()) {
+                                    messages.show("请输入评论内容")
+                                }
+                                return@Surface
+                            }
+                            isSubmitting = true
+                            coroutineScope.launch {
+                                val ok = onSubmit(inputText.text.trim(), selectedStickers.toList())
+                                isSubmitting = false
+                                if (ok) {
+                                    inputText = TextFieldValue("")
+                                    selectedStickers = arrayListOf()
+                                    currentInputSelector = CommentInputSelector.NONE
+                                    dismissAll()
+                                }
+                            }
+                        },
+                        shape = CircleShape,
+                        color = if (canSubmit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        enabled = canSubmit && !isSubmitting,
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 18.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "发送",
+                                    color = if (canSubmit) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
                                 )
                             }
                         }
                     }
                 }
-            }
 
-            // 底部工具条与发送胶囊（直接对照设计图 1 & 2）
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 左侧工具图标：表情
-                if (faceTexts.isNotEmpty() || stickerPacks.isNotEmpty() || (onLoadStickerPacks != null && !stickersLoaded)) {
-                    Icon(
-                        imageVector = Icons.Outlined.SentimentSatisfied,
-                        contentDescription = "表情",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clickable {
-                                showEmojiPanel = !showEmojiPanel
-                                if (showEmojiPanel) keyboardController?.hide() else focusRequester.requestFocus()
-                            }
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 右侧药丸形发送按钮（直接对照设计图）
-                val canSubmit = (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) && !isSubmitting
-                Surface(
-                    onClick = {
-                        if (!canSubmit) {
-                            if (inputText.text.isBlank() && selectedStickers.isEmpty()) {
-                                messages.show("请输入评论内容")
-                            }
-                            return@Surface
-                        }
-                        isSubmitting = true
-                        coroutineScope.launch {
-                            val ok = onSubmit(inputText.text.trim(), selectedStickers.toList())
-                            isSubmitting = false
-                            if (ok) {
-                                inputText = TextFieldValue("")
-                                selectedStickers = arrayListOf()
-                                showEmojiPanel = false
-                                keyboardController?.hide()
-                                onDismiss()
-                            }
-                        }
-                    },
-                    shape = CircleShape,
-                    color = if (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.height(36.dp)
+                // 底部表情面板插槽（通过 focusTarget 夺取焦点，自然收起软键盘）
+                AnimatedVisibility(
+                    visible = currentInputSelector == CommentInputSelector.EMOJI && tabTitles.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 18.dp),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .focusRequester(selectorFocusRequester)
+                            .focusTarget()
                     ) {
-                        if (isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
+                        if (tabTitles.size > 1) {
+                            PrimaryScrollableTabRow(
+                                selectedTabIndex = currentTab,
+                                edgePadding = 0.dp
+                            ) {
+                                tabTitles.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = index == currentTab,
+                                        onClick = { emojiTabIndex = index },
+                                        text = { Text(text = title, fontSize = 13.sp) }
+                                    )
+                                }
+                            }
+                        }
+                        val packIndex = if (showFaceTab) currentTab - 1 else currentTab
+                        if (showFaceTab && currentTab == 0) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(
+                                    faceTexts,
+                                    key = { it.id },
+                                    contentType = { "face_text" }
+                                ) { face ->
+                                    TextButton(onClick = { insertFaceText(face.content) }) {
+                                        Text(
+                                            text = face.content,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
                         } else {
-                            Text(
-                                text = "发送",
-                                color = if (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
+                            val packItems = stickerPacks.getOrNull(packIndex)?.items.orEmpty()
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(5),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(
+                                    packItems,
+                                    key = { sticker -> "${packIndex}_${sticker.imageUrl}" },
+                                    contentType = { "sticker_item" }
+                                ) { sticker ->
+                                    AsyncImage(
+                                        model = MediaPipeline.Default.resolveStickerUrl(sticker.imageUrl),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .aspectRatio(1f)
+                                            .clickable {
+                                                if (canAddSticker(selectedStickers.size)) {
+                                                    selectedStickers = ArrayList(selectedStickers + sticker.imageUrl)
+                                                } else {
+                                                    messages.show("最多只能选择4个表情包")
+                                                }
+                                            }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
-}
 }
 
 /**
