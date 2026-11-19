@@ -131,4 +131,3 @@ class MessageNoticeViewModelTest {
         assertEquals(setOf(102L), viewModel.uiState.value.selectedIds)
     }
 }
-
