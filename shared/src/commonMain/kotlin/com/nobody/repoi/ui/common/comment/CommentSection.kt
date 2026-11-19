@@ -1,6 +1,6 @@
 package com.nobody.repoi.ui.common.comment
 
-import com.nobody.repoi.platform.FullscreenDialogEdgeToEdgeEffect
+import com.nobody.repoi.platform.ReplyDialogEdgeToEdgeEffect
 import com.nobody.repoi.platform.PoiShelfBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -1017,7 +1017,7 @@ fun CommentReplyDialog(
             usePlatformDefaultWidth = false
         )
     ) {
-        FullscreenDialogEdgeToEdgeEffect()
+        ReplyDialogEdgeToEdgeEffect()
         val density = LocalDensity.current
         val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
         val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }
@@ -1034,7 +1034,7 @@ fun CommentReplyDialog(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .then(if (!showEmojiPanel) Modifier.imePadding() else Modifier),
+                .imePadding(),
             contentAlignment = Alignment.BottomCenter
         ) {
             // 半透明遮罩层：点击即可收起键盘或表情面板并关闭输入弹窗
@@ -1197,14 +1197,12 @@ fun CommentReplyDialog(
                             .padding(top = 8.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 左侧工具图标：表情 / 键盘互斥切换
+                        // 左侧工具图标 1：表情切换按钮（常驻）
                         if (faceTexts.isNotEmpty() || stickerPacks.isNotEmpty() || (onLoadStickerPacks != null && !stickersLoaded)) {
                             IconButton(
                                 onClick = {
                                     if (showEmojiPanel) {
                                         showEmojiPanel = false
-                                        focusRequester.requestFocus()
-                                        keyboardController?.show()
                                     } else {
                                         keyboardController?.hide()
                                         showEmojiPanel = true
@@ -1213,12 +1211,36 @@ fun CommentReplyDialog(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (showEmojiPanel) Icons.Outlined.Keyboard else Icons.Outlined.SentimentSatisfied,
-                                    contentDescription = if (showEmojiPanel) "键盘" else "表情",
+                                    imageVector = Icons.Outlined.SentimentSatisfied,
+                                    contentDescription = "表情",
                                     tint = if (showEmojiPanel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
+                        }
+
+                        // 左侧工具图标 2：键盘切换按钮（常驻！）
+                        IconButton(
+                            onClick = {
+                                if (showEmojiPanel) {
+                                    showEmojiPanel = false
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                } else if (imeBottom > 0) {
+                                    keyboardController?.hide()
+                                } else {
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                }
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Keyboard,
+                                contentDescription = "键盘",
+                                tint = if (!showEmojiPanel && imeBottom > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -1273,7 +1295,7 @@ fun CommentReplyDialog(
                         }
                     }
 
-                    // 底部表情面板插槽（固定 240dp 高度，位于操作栏正下方）
+                    // 底部表情面板插槽（固定 280dp 高度，等同于软键盘高度，位于操作栏正下方）
                     AnimatedVisibility(
                         visible = showEmojiPanel && tabTitles.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth()
@@ -1281,7 +1303,7 @@ fun CommentReplyDialog(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(240.dp)
+                                .height(280.dp)
                         ) {
                             if (tabTitles.size > 1) {
                                 PrimaryScrollableTabRow(

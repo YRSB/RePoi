@@ -11,3 +11,8 @@ import androidx.compose.runtime.Composable
 actual fun FullscreenDialogEdgeToEdgeEffect() {
     // 桌面端无系统栏，空实现
 }
+
+@Composable
+actual fun ReplyDialogEdgeToEdgeEffect() {
+    // 桌面端无软键盘与系统栏，空实现
+}

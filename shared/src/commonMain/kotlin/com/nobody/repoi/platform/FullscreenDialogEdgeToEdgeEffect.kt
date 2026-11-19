@@ -10,3 +10,10 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 expect fun FullscreenDialogEdgeToEdgeEffect()
+
+/**
+ * 为包含软键盘输入的底部抽屉 Dialog（如评论回复弹窗）注入底层窗口配置：
+ * 保留系统软键盘 Insets 动态分发与 SOFT_INPUT_ADJUST_RESIZE，同时实现透明系统栏与全屏沉浸。
+ */
+@Composable
+expect fun ReplyDialogEdgeToEdgeEffect()
