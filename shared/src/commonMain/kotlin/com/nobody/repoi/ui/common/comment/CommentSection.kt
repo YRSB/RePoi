@@ -10,6 +10,10 @@ import androidx.compose.animation.slideOutVertically
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 import com.nobody.repoi.ui.comment.CommentDetailScreen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -995,9 +999,11 @@ fun CommentReplyDialog(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var isKeyboardActive by remember { mutableStateOf(false) }
 
     val showKeyboard: () -> Unit = {
         showEmojiPanel = false
+        isKeyboardActive = true
         coroutineScope.launch {
             focusManager.clearFocus()
             kotlinx.coroutines.yield()
@@ -1006,16 +1012,10 @@ fun CommentReplyDialog(
         }
     }
 
-    LaunchedEffect(focusRequester) {
-        // 等待首帧渲染就绪后立即请求焦点并呼起键盘，使输入框就位与软键盘升起同步
-        androidx.compose.runtime.withFrameNanos { }
-        focusRequester.requestFocus()
-        keyboardController?.show()
-    }
-
-    // 表情面板展开时拦截系统返回键，优先仅收起表情面板
-    PoiShelfBackHandler(enabled = showEmojiPanel) {
-        showEmojiPanel = false
+    val hideKeyboard: () -> Unit = {
+        isKeyboardActive = false
+        keyboardController?.hide()
+        focusManager.clearFocus()
     }
 
     val sheetState = rememberBottomSheetState(
@@ -1023,9 +1023,23 @@ fun CommentReplyDialog(
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
 
+    // 等待底部抽屉平滑展开到位后，再请求焦点并呼起系统软键盘，杜绝软键盘抢先弹出的“二段跳”现象
+    LaunchedEffect(sheetState) {
+        snapshotFlow { sheetState.currentValue }
+            .filter { it == SheetValue.Expanded }
+            .first()
+        showKeyboard()
+    }
+
+    // 表情面板展开时拦截系统返回键，优先仅收起表情面板
+    PoiShelfBackHandler(enabled = showEmojiPanel) {
+        showEmojiPanel = false
+    }
+
     ModalBottomSheet(
         onDismissRequest = {
             if (!isSubmitting) {
+                hideKeyboard()
                 onDismiss()
             }
         },
@@ -1036,12 +1050,11 @@ fun CommentReplyDialog(
         modifier = modifier
     ) {
         val density = LocalDensity.current
-        val imeBottom: Int = with(density) { WindowInsets.ime.getBottom(density) }
         val navBarBottom: Int = with(density) { WindowInsets.navigationBars.getBottom(density) }
-        val bottomContentPadding = remember(imeBottom, navBarBottom, showEmojiPanel) {
+        val bottomContentPadding = remember(isKeyboardActive, navBarBottom, showEmojiPanel) {
             if (showEmojiPanel) {
                 with(density) { (navBarBottom.toDp() + 12.dp) }
-            } else if (imeBottom > 0) {
+            } else if (isKeyboardActive) {
                 12.dp
             } else {
                 with(density) { (navBarBottom.toDp() + 12.dp) }
@@ -1075,6 +1088,12 @@ fun CommentReplyDialog(
                     }
 
                     // 紧凑自适应输入区（初始 44dp 约 1~2 行，最多自适应撑开至 120dp 约 4~5 行，内部滚动）
+                    val inputTextStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1085,34 +1104,41 @@ fun CommentReplyDialog(
                                 indication = null
                             ) {
                                 showKeyboard()
-                            }
+                            },
+                        contentAlignment = Alignment.CenterStart
                     ) {
                         BasicTextField(
                             value = inputText,
                             onValueChange = { inputText = it },
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                lineHeight = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
+                            textStyle = inputTextStyle,
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
                                 .onFocusChanged { focusState ->
-                                    if (focusState.isFocused && showEmojiPanel) {
-                                        showEmojiPanel = false
+                                    if (focusState.isFocused) {
+                                        isKeyboardActive = true
+                                        if (showEmojiPanel) {
+                                            showEmojiPanel = false
+                                        }
                                     }
                                 },
                             enabled = !isSubmitting,
                             decorationBox = { innerTextField ->
-                                if (inputText.text.isEmpty()) {
-                                    Text(
-                                        text = "输入回复内容",
-                                        fontSize = 15.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (inputText.text.isEmpty()) {
+                                        Text(
+                                            text = "输入回复内容",
+                                            style = inputTextStyle.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
                                 }
-                                innerTextField()
                             }
                         )
                     }
@@ -1172,8 +1198,7 @@ fun CommentReplyDialog(
                                     if (showEmojiPanel) {
                                         showEmojiPanel = false
                                     } else {
-                                        keyboardController?.hide()
-                                        focusManager.clearFocus()
+                                        hideKeyboard()
                                         showEmojiPanel = true
                                     }
                                 },
@@ -1193,9 +1218,8 @@ fun CommentReplyDialog(
                             onClick = {
                                 if (showEmojiPanel) {
                                     showKeyboard()
-                                } else if (imeBottom > 0) {
-                                    keyboardController?.hide()
-                                    focusManager.clearFocus()
+                                } else if (isKeyboardActive) {
+                                    hideKeyboard()
                                 } else {
                                     showKeyboard()
                                 }
@@ -1205,7 +1229,7 @@ fun CommentReplyDialog(
                             Icon(
                                 imageVector = Icons.Outlined.Keyboard,
                                 contentDescription = "键盘",
-                                tint = if (!showEmojiPanel && imeBottom > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (!showEmojiPanel && isKeyboardActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -1230,7 +1254,7 @@ fun CommentReplyDialog(
                                         inputText = TextFieldValue("")
                                         selectedStickers = arrayListOf()
                                         showEmojiPanel = false
-                                        keyboardController?.hide()
+                                        hideKeyboard()
                                         sheetState.hide()
                                         onDismiss()
                                     }

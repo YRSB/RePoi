@@ -28,15 +28,17 @@
 
 3. **操作栏按钮常驻与软键盘/表情互斥联动**：
    - **表情按钮 😊（常驻）**：点击时若表情面板已开则收起；若未开则自动收起软键盘并显式执行 `focusManager.clearFocus()` 清除输入框焦点，展开表情面板，激活时高亮主色；
-   - **键盘按钮 ⌨️（常驻）**：点击时若当前在表情面板，关闭表情面板并唤起软键盘；若当前软键盘已升起，点击收起软键盘并清除焦点；若软键盘已收起，通过统一的 `showKeyboard` 管线（重置焦点并在帧调度后重新请求焦点）唤起系统软键盘，激活时高亮主色；
-   - **点击输入框**：自动收起表情面板，重置并重新获得焦点呼起软键盘；`BasicTextField` 挂载 `onFocusChanged`，一旦聚焦自动收起表情面板；
+   - **键盘按钮 ⌨️（常驻）与状态精确管理**：通过 `isKeyboardActive` 显式追踪软键盘活跃状态，解决 Android 子 Window 内部 `WindowInsets.ime.getBottom()` 恒为 0 导致无法识别键盘展开、点击键盘按钮无响应的问题；点击时若在表情面板则切回键盘，若已处于键盘模式则收起软键盘并清除焦点，若未激活则重新获焦呼起键盘；
+   - **抽屉展开就位后再呼起键盘（杜绝二段跳）**：通过 `snapshotFlow { sheetState.currentValue }.filter { it == SheetValue.Expanded }.first()` 监听抽屉动画，在 BottomSheet 平滑滑入到位后再激活焦点拉起软键盘，彻底消除软键盘抢先弹出造成的画面剧烈跳动；
+   - **光标与提示词（Hint）像素级竖直对齐**：统一采用 `MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 22.sp)` 样式，并在 `decorationBox` 中采用 `Box(contentAlignment = Alignment.CenterStart)` 居中承载，消除光标与 Hint 文本因字偶行高指标不一致引起的竖直偏置；
+   - **点击输入框**：自动收起表情面板，重置并重新获得焦点呼起软键盘；`BasicTextField` 挂载 `onFocusChanged`，一旦聚焦自动收起表情面板并标记 `isKeyboardActive = true`；
    - **全面迁移至 Material 3 官方 `ModalBottomSheet` 消除子 Window 遮罩与焦点缺陷**：
      此前尝试使用 Compose `Dialog` + 自定义半透明 Window 垫片（`ReplyDialogEdgeToEdgeEffect`），导致原生子 Window 与 Activity Window 在 Inset 分发、焦点竞争以及 `FLAG_DIM_BEHIND` 上存在平台黑盒（易出现顶部把手透明透底、键盘收起后无法再次弹起等问题）。
      现全面重构为官方 `ModalBottomSheet`（配合 `rememberBottomSheetState`）：
      - 由官方 `ModalBottomSheet` 全面托管全局暗色 Scrim、原生手势下拉关闭与软键盘 Inset 自适应；
      - 使用统一的 `BottomSheetDefaults.DragHandle()` 与 `MaterialTheme.shapes.bottomSheet`（顶角 28dp 形状规范），根除把手区域透底问题；
      - 彻底删除平台层临时垫片 `ReplyDialogEdgeToEdgeEffect`，架构保持全 Compose Multiplatform 纯净规范；
-     - 底部 Content Padding 动态结合 `navigationBars` 与 `ime` Insets，确保在表情区展开（键盘收起）时底部贴纸与颜文字卡片不被系统三键/手势小白条遮挡。
+     - 底部 Content Padding 动态结合 `isKeyboardActive` 与 `navigationBars` Insets，键盘激活时紧贴软键盘上沿（12dp），表情区展开或无键盘时预留安全避让区，避免被系统三键/手势条遮挡。
 
 4. **固定 280dp 表情面板与渲染规范**：
    表情面板固定容器高度为 `280.dp`（紧密对齐移动端软键盘常规高度），颜文字与表情包 Tab 各自的 `LazyVerticalGrid` 在内部独立滚动，消除不同表情包项数差异引起的容器抖动；网格项必须严格标注稳定的 `key` 与 `contentType`（如 `face_text` 与 `sticker_item`）。
