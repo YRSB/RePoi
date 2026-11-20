@@ -13,22 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Bookmarks
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Collections
-import androidx.compose.material.icons.outlined.Domain
-import androidx.compose.material.icons.outlined.DynamicFeed
-import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,6 +42,8 @@ import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSwitchItem
 import com.nobody.repoi.ui.settings.shield.SettingsShieldUiState
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 private fun privacyTitle(key: String): String = when (key) {
     PrivacySettingKeys.COLLECT_HOBBY -> "周边条目(手办、动漫、模型、布偶、娃娃)"
@@ -121,7 +107,7 @@ fun SettingsContentPane(
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { editingKey = null }) {
-                            Icon(imageVector = Icons.Filled.Close, contentDescription = "关闭")
+                            Icon(painter = painterResource(PoiIcons.Filled.Close), contentDescription = "关闭")
                         }
                     }
                     options.forEachIndexed { index, label ->
@@ -175,7 +161,7 @@ fun SettingsContentPane(
                     if (showBackButton) {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -204,7 +190,7 @@ fun SettingsContentPane(
             item(key = "segment-content", contentType = "segment") {
                 SettingItemGroup(title = "内容与扩展") {
                     SettingSwitchItem(
-                        icon = Icons.Outlined.Visibility,
+                        icon = PoiIcons.Outlined.Visibility,
                         title = "R18 内容",
                         subtitle = if (!isLoggedIn) {
                             "需登录后配置"
@@ -220,7 +206,7 @@ fun SettingsContentPane(
                         onCheckedChange = onNsfwChange
                     )
                     SettingSwitchItem(
-                        icon = Icons.Outlined.Collections,
+                        icon = PoiIcons.Outlined.Collections,
                         title = "ExHobby",
                         subtitle = "显示来自ExHobby的图片",
                         checked = isExHobbyEnabled,
@@ -233,13 +219,13 @@ fun SettingsContentPane(
             item(key = "segment-shield", contentType = "segment") {
                 SettingItemGroup(title = "名单管理") {
                     SettingItem(
-                        icon = Icons.Outlined.Block,
+                        icon = PoiIcons.Outlined.Block,
                         title = "屏蔽列表",
                         subtitle = if (isLoggedIn) "用户 / 厂商 / 条目" else "需登录后管理",
                         enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -248,13 +234,13 @@ fun SettingsContentPane(
                         onClick = if (isLoggedIn) onOpenShieldList else null
                     )
                     SettingItem(
-                        icon = Icons.Outlined.PersonOff,
+                        icon = PoiIcons.Outlined.PersonOff,
                         title = "黑名单",
                         subtitle = if (isLoggedIn) "被屏蔽的用户将无法向您发送私信" else "需登录后管理",
                         enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                         trailingContent = {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -280,7 +266,7 @@ fun SettingsContentPane(
                         }
                     } else {
                         SettingItem(
-                            icon = Icons.Outlined.Category,
+                            icon = PoiIcons.Outlined.Category,
                             title = "周边条目(手办、动漫、模型、布偶、娃娃)",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_HOBBY] ?: 0
@@ -288,7 +274,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -299,7 +285,7 @@ fun SettingsContentPane(
                             } else null
                         )
                         SettingItem(
-                            icon = Icons.Outlined.Bookmarks,
+                            icon = PoiIcons.Outlined.Bookmarks,
                             title = "收藏内容(相册、图片、文章)",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_ALBUM] ?: 0
@@ -307,7 +293,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -318,7 +304,7 @@ fun SettingsContentPane(
                             } else null
                         )
                         SettingItem(
-                            icon = Icons.Outlined.BarChart,
+                            icon = PoiIcons.Outlined.BarChart,
                             title = "收藏统计(历史消费、入手数量、待补款等)",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_STATISTICS] ?: 0
@@ -326,7 +312,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -337,7 +323,7 @@ fun SettingsContentPane(
                             } else null
                         )
                         SettingItem(
-                            icon = Icons.Outlined.Domain,
+                            icon = PoiIcons.Outlined.Domain,
                             title = "其他内容(系列、厂商、角色、人物、作品)",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.COLLECT_OTHER] ?: 0
@@ -345,7 +331,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -365,7 +351,7 @@ fun SettingsContentPane(
                         title = "动态与社交可见性",
                     ) {
                         SettingItem(
-                            icon = Icons.Outlined.DynamicFeed,
+                            icon = PoiIcons.Outlined.DynamicFeed,
                             title = "个人主页动态",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.OWN_ACTION] ?: 0
@@ -373,7 +359,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -384,7 +370,7 @@ fun SettingsContentPane(
                             } else null
                         )
                         SettingItem(
-                            icon = Icons.Outlined.Groups,
+                            icon = PoiIcons.Outlined.Groups,
                             title = "关注、粉丝",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_FRIEND] ?: 0
@@ -392,7 +378,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -403,7 +389,7 @@ fun SettingsContentPane(
                             } else null
                         )
                         SettingItem(
-                            icon = Icons.Outlined.Forum,
+                            icon = PoiIcons.Outlined.Forum,
                             title = "讨论板个人主页",
                             subtitle = visibilityOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.PRIVACY_POSTS] ?: 0
@@ -411,7 +397,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
@@ -431,7 +417,7 @@ fun SettingsContentPane(
                         title = "私信设置"
                     ) {
                         SettingItem(
-                            icon = Icons.AutoMirrored.Outlined.Chat,
+                            icon = PoiIcons.AutoMirrored.Outlined.Chat,
                             title = "陌生人私信设置",
                             subtitle = strangerOptions.getOrElse(
                                 privacyState.values[PrivacySettingKeys.STRANGER_MESSAGE] ?: 0
@@ -439,7 +425,7 @@ fun SettingsContentPane(
                             enabled = isLoggedIn && !shieldState.isLoading && !shieldState.isSaving,
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = if (isLoggedIn) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)

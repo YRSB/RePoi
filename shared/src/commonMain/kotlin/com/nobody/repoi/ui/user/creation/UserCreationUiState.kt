@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.user.creation
+package com.nobody.repoi.ui.user.creation
 
 import com.nobody.repoi.data.remote.model.UserCollectAlbumItem
 import com.nobody.repoi.data.remote.model.UserCollectPicItem

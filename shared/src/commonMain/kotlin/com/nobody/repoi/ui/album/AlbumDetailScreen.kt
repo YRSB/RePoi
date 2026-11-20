@@ -46,17 +46,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -111,7 +100,6 @@ import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.data.remote.model.RelatedAlbumItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 import com.nobody.repoi.ui.common.DetailTopNavigation
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.TextButton
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
@@ -131,6 +119,8 @@ import com.nobody.repoi.ui.exhobby.ExHobbyPreviewSection
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.ui.theme.largeCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -434,7 +424,7 @@ fun AlbumDetailScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.PhotoLibrary,
+                                    painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                                     contentDescription = null,
                                     modifier = Modifier.size(40.dp),
                                     tint = MaterialTheme.colorScheme.outline
@@ -1006,7 +996,7 @@ private fun RelatedAlbumCard(
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ThumbUp,
+                            painter = painterResource(PoiIcons.Filled.ThumbUp),
                             contentDescription = "点赞",
                             tint = Color.White,
                             modifier = Modifier.size(11.dp)
@@ -1049,7 +1039,7 @@ private fun AlbumFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleLike,
             text = if (likeCount > 0) "$likeCount" else null,
-            icon = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            icon = if (isLiked) PoiIcons.Filled.Favorite else PoiIcons.Filled.FavoriteBorder,
             contentDescription = if (isLiked) "已点赞" else "点赞",
             isProminent = isLiked,
             containerColor = if (isLiked) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -1061,7 +1051,7 @@ private fun AlbumFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
-            icon = if (isCollected) Icons.Filled.Star else Icons.Filled.StarBorder,
+            icon = if (isCollected) PoiIcons.Filled.Star else PoiIcons.Filled.StarBorder,
             contentDescription = if (isCollected) "已收藏" else "收藏",
             isProminent = isCollected,
             containerColor = if (isCollected) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
@@ -1074,7 +1064,7 @@ private fun AlbumFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让点赞/收藏这类切换控件着色
                 isProminent = false
@@ -1085,7 +1075,7 @@ private fun AlbumFloatingActionBar(
         if (hasRelatedHobby) {
             ExpressiveToolbarButton(
                 onClick = onNavigateToRelatedHobby,
-                icon = Icons.Filled.PhotoLibrary,
+                icon = PoiIcons.Filled.PhotoLibrary,
                 contentDescription = "关联手办",
                 isProminent = false
             )
@@ -1094,7 +1084,7 @@ private fun AlbumFloatingActionBar(
         // 5. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )

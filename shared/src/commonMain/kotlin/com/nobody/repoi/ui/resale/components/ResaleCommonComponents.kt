@@ -7,12 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Report
-import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +38,8 @@ import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.plainTextClipEntry
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 外部链接跳转与剪贴板统一处理工具。
@@ -107,7 +103,7 @@ fun ResaleMoreBottomSheet(
             ListItem(
                 headlineContent = { Text("同款二手") },
                 leadingContent = {
-                    Icon(imageVector = Icons.Filled.ShoppingBag, contentDescription = null)
+                    Icon(painter = painterResource(PoiIcons.Filled.ShoppingBag), contentDescription = null)
                 },
                 modifier = Modifier.clickable {
                     onDismiss()
@@ -128,7 +124,7 @@ fun ResaleMoreBottomSheet(
                         )
                     },
                     leadingContent = {
-                        Icon(imageVector = Icons.Filled.Link, contentDescription = null)
+                        Icon(painter = painterResource(PoiIcons.Filled.Link), contentDescription = null)
                     },
                     modifier = Modifier.clickable {
                         onDismiss()
@@ -142,7 +138,7 @@ fun ResaleMoreBottomSheet(
                 headlineContent = { Text("举报") },
                 leadingContent = {
                     Icon(
-                        imageVector = Icons.Filled.Report,
+                        painter = painterResource(PoiIcons.Filled.Report),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -158,7 +154,7 @@ fun ResaleMoreBottomSheet(
                 headlineContent = { Text("取消", color = MaterialTheme.colorScheme.outline) },
                 leadingContent = {
                     Icon(
-                        imageVector = Icons.Filled.Cancel,
+                        painter = painterResource(PoiIcons.Filled.Cancel),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.outline
                     )
@@ -256,7 +252,7 @@ fun FilterDropdownChip(
         },
         trailingIcon = {
             Icon(
-                imageVector = Icons.Default.ArrowDropDown,
+                painter = painterResource(PoiIcons.ArrowDropDown),
                 contentDescription = null,
                 modifier = Modifier
                     .size(18.dp)

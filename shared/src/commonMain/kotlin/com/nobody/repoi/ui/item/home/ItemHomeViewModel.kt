@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.item.home
+package com.nobody.repoi.ui.item.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

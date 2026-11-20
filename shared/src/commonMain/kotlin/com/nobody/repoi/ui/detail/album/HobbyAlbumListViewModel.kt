@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.detail.album
+package com.nobody.repoi.ui.detail.album
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

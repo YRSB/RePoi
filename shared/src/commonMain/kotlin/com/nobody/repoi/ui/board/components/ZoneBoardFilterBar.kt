@@ -11,11 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
@@ -54,6 +49,8 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 板块折叠筛选条内容（只渲染行内容，不在内部折叠；折叠位移由宿主的 `scrollBehavior` 驱动）。
@@ -145,7 +142,7 @@ fun ZoneBoardFilterBar(
                             label = { Text(selectedCategory?.name ?: "全部分类") },
                             trailingIcon = {
                                 Icon(
-                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    painter = painterResource(PoiIcons.Filled.ArrowDropDown),
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -368,7 +365,7 @@ fun ZoneBoardFilterBar(
                         label = { Text("高级筛选") },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Filled.FilterList,
+                                painter = painterResource(PoiIcons.Filled.FilterList),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -380,11 +377,7 @@ fun ZoneBoardFilterBar(
                         onClick = { onIntent(ZoneBoardIntent.ToggleHobbyViewMode) }
                     ) {
                         Icon(
-                            imageVector = if (hobbyIsGridMode) {
-                                Icons.AutoMirrored.Filled.List
-                            } else {
-                                Icons.Filled.GridView
-                            },
+                            painter = painterResource(if (hobbyIsGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
                             contentDescription = if (hobbyIsGridMode) "切换列表模式" else "切换网格模式",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

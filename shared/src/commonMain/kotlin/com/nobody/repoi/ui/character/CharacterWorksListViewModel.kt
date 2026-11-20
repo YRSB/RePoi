@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.character
+package com.nobody.repoi.ui.character
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

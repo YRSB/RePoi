@@ -22,12 +22,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoAlbum
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,6 +65,8 @@ import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 手办专属相关相册列表页面。
@@ -131,7 +127,7 @@ fun HobbyAlbumListScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -379,7 +375,7 @@ private fun HobbyAlbumStaggeredCard(
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ThumbUp,
+                            painter = painterResource(PoiIcons.Filled.ThumbUp),
                             contentDescription = "点赞",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(12.dp)
@@ -413,7 +409,7 @@ private fun HobbyAlbumListError(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.BrokenImage,
+            painter = painterResource(PoiIcons.Filled.BrokenImage),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(48.dp)
@@ -428,7 +424,7 @@ private fun HobbyAlbumListError(
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Icon(
-                imageVector = Icons.Filled.Refresh,
+                painter = painterResource(PoiIcons.Filled.Refresh),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
@@ -451,7 +447,7 @@ private fun HobbyAlbumListEmpty(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.PhotoAlbum,
+            painter = painterResource(PoiIcons.Filled.PhotoAlbum),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
             modifier = Modifier.size(48.dp)

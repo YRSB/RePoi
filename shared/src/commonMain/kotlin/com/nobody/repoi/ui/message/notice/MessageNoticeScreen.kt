@@ -24,13 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -74,6 +67,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 分类通知列表页面，支持单项已读、全部已读、多选管理删除与实体跳转联动。
@@ -148,11 +143,11 @@ fun MessageNoticeScreen(
                 navigationIcon = {
                     if (uiState.isManagerMode) {
                         IconButton(onClick = { viewModel.toggleManagerMode() }) {
-                            Icon(imageVector = Icons.Filled.Close, contentDescription = "退出管理")
+                            Icon(painter = painterResource(PoiIcons.Filled.Close), contentDescription = "退出管理")
                         }
                     } else {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack), contentDescription = "返回")
                         }
                     }
                 },
@@ -167,7 +162,7 @@ fun MessageNoticeScreen(
                     } else {
                         IconButton(onClick = { viewModel.markAllRead() }) {
                             Icon(
-                                imageVector = Icons.Filled.DoneAll,
+                                painter = painterResource(PoiIcons.Filled.DoneAll),
                                 contentDescription = "全部已读",
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -175,7 +170,7 @@ fun MessageNoticeScreen(
                         if (uiState.messages.isNotEmpty()) {
                             IconButton(onClick = { viewModel.toggleManagerMode() }) {
                                 Icon(
-                                    imageVector = Icons.Filled.Checklist,
+                                    painter = painterResource(PoiIcons.Filled.Checklist),
                                     contentDescription = "批量管理",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -221,7 +216,7 @@ fun MessageNoticeScreen(
                             )
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Delete,
+                                painter = painterResource(PoiIcons.Filled.Delete),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -251,7 +246,7 @@ fun MessageNoticeScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Filled.Notifications,
+                            painter = painterResource(PoiIcons.Filled.Notifications),
                             contentDescription = null,
                             modifier = Modifier.size(56.dp),
                             tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
@@ -381,7 +376,7 @@ private fun NoticeItemRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Notifications,
+                        painter = painterResource(PoiIcons.Filled.Notifications),
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer

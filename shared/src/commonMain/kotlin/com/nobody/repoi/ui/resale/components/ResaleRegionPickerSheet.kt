@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.local.ResaleProvince
 import com.nobody.repoi.data.local.ResaleRegionData
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 二手交易地区双栏级联选择底板（100% 对齐条目页 CategoryPickerSheet 与 Hpoi 原版体系）
@@ -108,7 +107,7 @@ fun ResaleRegionPickerSheet(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "关闭",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -282,7 +281,7 @@ private fun RegionSubItemRow(
 
         if (isSelected) {
             Icon(
-                imageVector = Icons.Filled.Done,
+                painter = painterResource(PoiIcons.Filled.Done),
                 contentDescription = "已选择",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp)

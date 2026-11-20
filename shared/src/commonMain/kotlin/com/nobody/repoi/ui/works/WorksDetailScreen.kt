@@ -34,12 +34,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -105,6 +99,8 @@ import com.nobody.repoi.ui.navigation.CharacterNavParam
 import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.theme.largeCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -373,7 +369,7 @@ internal fun WorksFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态
                 isProminent = false
@@ -383,7 +379,7 @@ internal fun WorksFloatingActionBar(
         // 2. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )
@@ -543,7 +539,7 @@ internal fun WorksSeriesSection(
                 )
             }
             Icon(
-                imageVector = Icons.Filled.ChevronRight,
+                painter = painterResource(PoiIcons.Filled.ChevronRight),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
@@ -578,7 +574,7 @@ internal fun WorksCharactersSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多")
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -640,7 +636,7 @@ internal fun WorksCharactersSection(
                                     }
                                 }
                                 Icon(
-                                    imageVector = Icons.Filled.ChevronRight,
+                                    painter = painterResource(PoiIcons.Filled.ChevronRight),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
@@ -680,7 +676,7 @@ internal fun WorksHobbysSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多")
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

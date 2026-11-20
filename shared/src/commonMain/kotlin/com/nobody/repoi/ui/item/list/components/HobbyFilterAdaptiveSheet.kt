@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +43,8 @@ import com.nobody.repoi.ui.item.list.FilterLabels
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.common.ModalSideSheet
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * M3 注意：高级多维筛选参数数据类唯一定义归属 M2
@@ -139,7 +138,7 @@ private fun HobbyFilterSheetContent(
             if (showCloseButton) {
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "关闭",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -302,7 +301,7 @@ private fun <T> FlowFilterSection(
                     leadingIcon = if (selected) {
                         {
                             Icon(
-                                imageVector = Icons.Filled.Done,
+                                painter = painterResource(PoiIcons.Filled.Done),
                                 contentDescription = null,
                                 modifier = Modifier.size(FilterChipDefaults.IconSize)
                             )

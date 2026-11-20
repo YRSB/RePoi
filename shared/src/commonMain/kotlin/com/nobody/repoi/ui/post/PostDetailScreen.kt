@@ -21,12 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -86,6 +80,8 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.HtmlRichTextParser
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 讨论贴详情页。
@@ -253,7 +249,7 @@ fun PostDetailScreen(
                 ExpressiveToolbarButton(
                     onClick = { openTopLevelCommentDialog() },
                     text = "回帖",
-                    icon = Icons.AutoMirrored.Filled.Comment,
+                    icon = PoiIcons.AutoMirrored.Filled.Comment,
                     contentDescription = "回帖",
                     // 回帖是导航类操作，无激活态
                     isProminent = false
@@ -263,7 +259,7 @@ fun PostDetailScreen(
                 ExpressiveToolbarButton(
                     onClick = { scrollToComments() },
                     text = "${uiState.totalCommentCount}",
-                    icon = Icons.Outlined.ChatBubbleOutline,
+                    icon = PoiIcons.Outlined.ChatBubbleOutline,
                     contentDescription = "回帖列表",
                     isProminent = false
                 )
@@ -275,7 +271,7 @@ fun PostDetailScreen(
                         val shareItemId = detail?.itemId?.takeIf { it > 0L } ?: postId
                         textSharing.share("【$title】PoiShelf 讨论：https://www.hpoi.net.cn/posts/$shareItemId")
                     },
-                    icon = Icons.Filled.Share,
+                    icon = PoiIcons.Filled.Share,
                     contentDescription = "分享",
                     isProminent = false
                 )
@@ -284,7 +280,7 @@ fun PostDetailScreen(
                 if (isAuthor) {
                     ExpressiveToolbarButton(
                         onClick = { showDeletePostConfirm = true },
-                        icon = Icons.Filled.Delete,
+                        icon = PoiIcons.Filled.Delete,
                         contentDescription = "删除帖子",
                         isProminent = false,
                         contentColor = MaterialTheme.colorScheme.error,
@@ -694,7 +690,7 @@ private fun PostErrorCard(
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             Button(onClick = onRetry) {
-                Icon(imageVector = Icons.Default.Refresh, contentDescription = "重试")
+                Icon(painter = painterResource(PoiIcons.Refresh), contentDescription = "重试")
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("重新加载")
             }

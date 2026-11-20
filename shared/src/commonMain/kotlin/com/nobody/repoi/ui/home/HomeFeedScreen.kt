@@ -16,11 +16,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -106,6 +101,8 @@ import com.nobody.repoi.ui.search.SearchNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -473,7 +470,7 @@ fun HomeFeedScreen(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Search,
+                        painter = painterResource(PoiIcons.Filled.Search),
                         contentDescription = "搜索"
                     )
                 }
@@ -485,7 +482,7 @@ fun HomeFeedScreen(
                             }
                         }
                     ) {
-                        Icon(imageVector = Icons.Outlined.Email, contentDescription = "消息中心")
+                        Icon(painter = painterResource(PoiIcons.Outlined.Email), contentDescription = "消息中心")
                     }
                 }
             },
@@ -513,7 +510,7 @@ fun HomeFeedScreen(
                 .padding(end = 16.dp, bottom = fabBottomPadding)
         ) {
             Icon(
-                imageVector = Icons.Filled.Refresh,
+                painter = painterResource(PoiIcons.Filled.Refresh),
                 contentDescription = "回到顶部并刷新"
             )
         }
@@ -709,7 +706,7 @@ private fun HomeBoardPage(
                             .padding(24.dp)
                     ) {
                         EmptyState(
-                            icon = Icons.Outlined.Category,
+                            icon = PoiIcons.Outlined.Category,
                             title = "还没有关注的专区",
                             description = "去专区广场关注感兴趣的专区，这里会汇总它们的动态",
                             actionLabel = "去专区广场",

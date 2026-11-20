@@ -21,11 +21,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -64,6 +59,8 @@ import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.navigation.PictureListNavParam
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 通用图片列表/全集页面。
@@ -119,7 +116,7 @@ fun PictureListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -373,7 +370,7 @@ private fun PictureListError(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.BrokenImage,
+                painter = painterResource(PoiIcons.BrokenImage),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
@@ -391,7 +388,7 @@ private fun PictureListError(
                 shape = CircleShape
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    painter = painterResource(PoiIcons.Refresh),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -418,7 +415,7 @@ private fun PictureListEmpty(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Image,
+                painter = painterResource(PoiIcons.Image),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(48.dp)

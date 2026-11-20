@@ -31,17 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -85,6 +74,8 @@ import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun LoginScreen(
@@ -154,7 +145,7 @@ fun LoginContent(
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "返回",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -200,7 +191,7 @@ fun LoginContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Login,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.Login),
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -390,7 +381,7 @@ private fun AccountLoginForm(
             placeholder = { Text("请输入 Hpoi 账号或绑定邮箱") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Filled.Person,
+                    painter = painterResource(PoiIcons.Filled.Person),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -411,7 +402,7 @@ private fun AccountLoginForm(
             placeholder = { Text("请输入账号密码") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Filled.Lock,
+                    painter = painterResource(PoiIcons.Filled.Lock),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -419,7 +410,7 @@ private fun AccountLoginForm(
             trailingIcon = {
                 IconButton(onClick = onTogglePasswordVisibility) {
                     Icon(
-                        imageVector = if (uiState.passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        painter = painterResource(if (uiState.passwordVisible) PoiIcons.Filled.VisibilityOff else PoiIcons.Filled.Visibility),
                         contentDescription = if (uiState.passwordVisible) "隐藏密码" else "显示密码"
                     )
                 }
@@ -461,7 +452,7 @@ private fun TokenLoginForm(
             placeholder = { Text("粘贴从其他设备导出的 utoken") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Filled.Key,
+                    painter = painterResource(PoiIcons.Filled.Key),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -471,20 +462,20 @@ private fun TokenLoginForm(
                     if (uiState.token.isNotEmpty()) {
                         IconButton(onClick = onClearToken) {
                             Icon(
-                                imageVector = Icons.Filled.Clear,
+                                painter = painterResource(PoiIcons.Filled.Clear),
                                 contentDescription = "清空令牌"
                             )
                         }
                     }
                     IconButton(onClick = onPasteToken) {
                         Icon(
-                            imageVector = Icons.Filled.ContentPaste,
+                            painter = painterResource(PoiIcons.Filled.ContentPaste),
                             contentDescription = "从剪贴板粘贴"
                         )
                     }
                     IconButton(onClick = onToggleTokenVisibility) {
                         Icon(
-                            imageVector = if (uiState.tokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            painter = painterResource(if (uiState.tokenVisible) PoiIcons.Filled.VisibilityOff else PoiIcons.Filled.Visibility),
                             contentDescription = if (uiState.tokenVisible) "隐藏令牌" else "显示令牌"
                         )
                     }
@@ -517,7 +508,7 @@ private fun TokenLoginForm(
                 verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Info,
+                    painter = painterResource(PoiIcons.Outlined.Info),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp).padding(top = 2.dp),
                     tint = MaterialTheme.colorScheme.primary

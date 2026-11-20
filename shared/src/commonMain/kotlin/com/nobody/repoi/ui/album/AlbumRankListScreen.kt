@@ -21,11 +21,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +69,8 @@ import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.ui.album.components.AlbumTextCover
 import com.nobody.repoi.ui.album.components.formatAlbumTime
 import androidx.compose.material3.Card
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 internal fun levelTier(level: Int): Int = when {
     level <= 0 -> 0
@@ -128,7 +125,7 @@ fun AlbumRankListScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Filled.EmojiEvents,
+                            painter = painterResource(PoiIcons.Filled.EmojiEvents),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
@@ -146,7 +143,7 @@ fun AlbumRankListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -209,7 +206,7 @@ fun AlbumRankListScreen(
                                                 enabled = !uiState.isLoading
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.KeyboardArrowLeft),
                                                     contentDescription = "上一期"
                                                 )
                                             }
@@ -227,7 +224,7 @@ fun AlbumRankListScreen(
                                                 enabled = !uiState.isLoading && uiState.diff < 0
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.KeyboardArrowRight),
                                                     contentDescription = "下一期"
                                                 )
                                             }
@@ -443,7 +440,7 @@ private fun RankListEmpty() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Filled.EmojiEvents,
+                painter = painterResource(PoiIcons.Filled.EmojiEvents),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outlineVariant,
                 modifier = Modifier.size(56.dp)

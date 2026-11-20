@@ -26,12 +26,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +68,8 @@ import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 角色专属登场作品列表页面。
@@ -111,7 +107,7 @@ fun CharacterWorksListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -369,7 +365,7 @@ private fun CharacterWorksListItemCard(
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.CalendarToday,
+                                    painter = painterResource(PoiIcons.Outlined.CalendarToday),
                                     contentDescription = null,
                                     modifier = Modifier.size(13.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -384,7 +380,7 @@ private fun CharacterWorksListItemCard(
                     }
 
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = "查看作品详情",
                         modifier = Modifier
                             .align(Alignment.CenterVertically)
@@ -505,7 +501,7 @@ private fun CharacterWorksEmptyState(
             modifier = Modifier.padding(horizontal = 32.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Movie,
+                painter = painterResource(PoiIcons.Movie),
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -525,7 +521,7 @@ private fun CharacterWorksEmptyState(
             Spacer(modifier = Modifier.height(4.dp))
             Button(onClick = onRetry) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    painter = painterResource(PoiIcons.Refresh),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -566,7 +562,7 @@ private fun CharacterWorksErrorState(
             Spacer(modifier = Modifier.height(4.dp))
             Button(onClick = onRetry) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    painter = painterResource(PoiIcons.Refresh),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )

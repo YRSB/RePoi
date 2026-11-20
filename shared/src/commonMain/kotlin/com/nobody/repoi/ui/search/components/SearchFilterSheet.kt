@@ -27,10 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -79,6 +75,8 @@ import com.nobody.repoi.ui.search.HobbyAllCategory
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.theme.sideSheet
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 侧边抽屉动画时长常量（毫秒） */
 private const val SIDE_SHEET_ANIMATION_DURATION_MS = 260
@@ -151,7 +149,7 @@ fun <T> FilterChipSection(
                     leadingIcon = if (showLeadingCheckmark && isSelected) {
                         {
                             Icon(
-                                imageVector = Icons.Filled.Done,
+                                painter = painterResource(PoiIcons.Filled.Done),
                                 contentDescription = null,
                                 modifier = Modifier.size(FilterChipDefaults.IconSize)
                             )
@@ -386,7 +384,7 @@ fun SearchFilterSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Outlined.Tune,
+                painter = painterResource(PoiIcons.Outlined.Tune),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -400,7 +398,7 @@ fun SearchFilterSheetContent(
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onDismiss) {
                 Icon(
-                    imageVector = Icons.Filled.Close,
+                    painter = painterResource(PoiIcons.Filled.Close),
                     contentDescription = "关闭",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -554,4 +552,3 @@ fun FilterSheetActions(
         }
     }
 }
-

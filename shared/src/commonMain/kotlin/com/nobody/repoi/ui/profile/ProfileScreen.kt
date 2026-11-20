@@ -28,22 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Mail
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -111,6 +95,9 @@ import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.abs
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.DrawableResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -506,7 +493,7 @@ private fun ProfileImmersiveHeader(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Mail,
+                            painter = painterResource(PoiIcons.Filled.Mail),
                             contentDescription = "消息中心",
                             tint = Color.White
                         )
@@ -515,7 +502,7 @@ private fun ProfileImmersiveHeader(
 
                 IconButton(onClick = onToggleTheme) {
                     Icon(
-                        imageVector = if (isDark) Icons.Filled.WbSunny else Icons.Filled.NightsStay,
+                        painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
                         contentDescription = "切换深浅色主题",
                         tint = Color.White
                     )
@@ -523,7 +510,7 @@ private fun ProfileImmersiveHeader(
 
                 IconButton(onClick = onSettingsClick) {
                     Icon(
-                        imageVector = Icons.Filled.Settings,
+                        painter = painterResource(PoiIcons.Filled.Settings),
                         contentDescription = "设置",
                         tint = Color.White
                     )
@@ -556,7 +543,7 @@ private fun ProfileImmersiveHeader(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Filled.AccountBox,
+                            painter = painterResource(PoiIcons.Filled.AccountBox),
                             contentDescription = "默认头像",
                             modifier = Modifier.size(36.dp),
                             tint = Color.White
@@ -584,7 +571,7 @@ private fun ProfileImmersiveHeader(
                             overflow = TextOverflow.Ellipsis
                         )
                         Icon(
-                            imageVector = Icons.Filled.ChevronRight,
+                            painter = painterResource(PoiIcons.Filled.ChevronRight),
                             contentDescription = "用户资料",
                             modifier = Modifier.size(18.dp),
                             tint = Color.White.copy(alpha = 0.85f)
@@ -641,7 +628,7 @@ private fun ProfileImmersiveHeader(
 
                         // 个人二维码图标
                         Icon(
-                            imageVector = Icons.Filled.QrCode,
+                            painter = painterResource(PoiIcons.Filled.QrCode),
                             contentDescription = "个人二维码",
                             modifier = Modifier.size(16.dp),
                             tint = Color.White.copy(alpha = 0.85f)
@@ -774,7 +761,7 @@ private fun ProfileQuickActionGrid(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 QuickActionButton(
-                    icon = Icons.Filled.Star,
+                    icon = PoiIcons.Filled.Star,
                     label = "我的收藏",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
@@ -789,7 +776,7 @@ private fun ProfileQuickActionGrid(
                 )
 
                 QuickActionButton(
-                    icon = Icons.Filled.PhotoLibrary,
+                    icon = PoiIcons.Filled.PhotoLibrary,
                     label = "我的发布",
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.weight(1f),
@@ -804,7 +791,7 @@ private fun ProfileQuickActionGrid(
                 )
 
                 QuickActionButton(
-                    icon = Icons.Filled.ShoppingBag,
+                    icon = PoiIcons.Filled.ShoppingBag,
                     label = "我的二手",
                     tint = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f),
@@ -814,7 +801,7 @@ private fun ProfileQuickActionGrid(
                 )
 
                 QuickActionButton(
-                    icon = Icons.Filled.History,
+                    icon = PoiIcons.Filled.History,
                     label = "浏览历史",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
@@ -833,7 +820,7 @@ private fun ProfileQuickActionGrid(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     QuickActionButton(
-                        icon = Icons.Filled.Star,
+                        icon = PoiIcons.Filled.Star,
                         label = "我的收藏",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f),
@@ -847,7 +834,7 @@ private fun ProfileQuickActionGrid(
                         }
                     )
                     QuickActionButton(
-                        icon = Icons.Filled.PhotoLibrary,
+                        icon = PoiIcons.Filled.PhotoLibrary,
                         label = "我的发布",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.weight(1f),
@@ -867,7 +854,7 @@ private fun ProfileQuickActionGrid(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     QuickActionButton(
-                        icon = Icons.Filled.ShoppingBag,
+                        icon = PoiIcons.Filled.ShoppingBag,
                         label = "我的二手",
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.weight(1f),
@@ -876,7 +863,7 @@ private fun ProfileQuickActionGrid(
                         }
                     )
                     QuickActionButton(
-                        icon = Icons.Filled.History,
+                        icon = PoiIcons.Filled.History,
                         label = "浏览历史",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f),
@@ -889,8 +876,7 @@ private fun ProfileQuickActionGrid(
 }
 
 @Composable
-private fun QuickActionButton(
-    icon: ImageVector,
+private fun QuickActionButton(icon: DrawableResource,
     label: String,
     tint: Color,
     modifier: Modifier = Modifier,
@@ -912,7 +898,7 @@ private fun QuickActionButton(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(icon),
                 contentDescription = label,
                 modifier = Modifier.size(24.dp),
                 tint = tint
@@ -1194,7 +1180,7 @@ private fun ProfileAlbumShowcaseCard(
                     modifier = Modifier.height(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        painter = painterResource(PoiIcons.Filled.Add),
                         contentDescription = "发布",
                         modifier = Modifier.size(16.dp)
                     )
@@ -1247,7 +1233,7 @@ private fun ProfileAlbumShowcaseCard(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Icon(
-                            imageVector = Icons.Filled.ChevronRight,
+                            painter = painterResource(PoiIcons.Filled.ChevronRight),
                             contentDescription = "查看更多",
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -1292,7 +1278,7 @@ private fun ProfileAlbumCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(28.dp)
@@ -1314,7 +1300,7 @@ private fun ProfileAlbumCard(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ThumbUp,
+                        painter = painterResource(PoiIcons.Filled.ThumbUp),
                         contentDescription = "获赞",
                         tint = Color.White,
                         modifier = Modifier.size(10.dp)
@@ -1418,7 +1404,7 @@ private fun ProfileResaleCard(
                     modifier = Modifier.height(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        painter = painterResource(PoiIcons.Filled.Add),
                         contentDescription = "发布",
                         modifier = Modifier.size(16.dp)
                     )
@@ -1479,7 +1465,7 @@ private fun CollectFigureCard(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Filled.AccountBox,
+                    painter = painterResource(PoiIcons.Filled.AccountBox),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -1670,21 +1656,21 @@ private fun UnauthenticatedImmersiveHeader(
             ) {
                 IconButton(onClick = onMailClick) {
                     Icon(
-                        imageVector = Icons.Filled.Mail,
+                        painter = painterResource(PoiIcons.Filled.Mail),
                         contentDescription = "消息中心",
                         tint = Color.White
                     )
                 }
                 IconButton(onClick = onToggleTheme) {
                     Icon(
-                        imageVector = if (isDark) Icons.Filled.WbSunny else Icons.Filled.NightsStay,
+                        painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
                         contentDescription = "切换深浅色主题",
                         tint = Color.White
                     )
                 }
                 IconButton(onClick = onSettingsClick) {
                     Icon(
-                        imageVector = Icons.Filled.Settings,
+                        painter = painterResource(PoiIcons.Filled.Settings),
                         contentDescription = "设置",
                         tint = Color.White
                     )
@@ -1707,7 +1693,7 @@ private fun UnauthenticatedImmersiveHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Person,
+                        painter = painterResource(PoiIcons.Filled.Person),
                         contentDescription = "默认头像",
                         modifier = Modifier.size(36.dp),
                         tint = Color.White
@@ -1733,7 +1719,7 @@ private fun UnauthenticatedImmersiveHeader(
                             overflow = TextOverflow.Ellipsis
                         )
                         Icon(
-                            imageVector = Icons.Filled.ChevronRight,
+                            painter = painterResource(PoiIcons.Filled.ChevronRight),
                             contentDescription = "登录",
                             modifier = Modifier.size(18.dp),
                             tint = Color.White.copy(alpha = 0.85f)
@@ -1909,7 +1895,7 @@ fun SupplementedMoneyDialog(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            painter = painterResource(PoiIcons.Filled.Close),
                             contentDescription = "关闭",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant

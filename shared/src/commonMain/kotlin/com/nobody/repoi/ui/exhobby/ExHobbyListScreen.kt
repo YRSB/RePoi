@@ -22,11 +22,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +61,8 @@ import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.navigation.ExHobbyListNavKey
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * ExHobby 扩展图库二级全量列表页面。
@@ -130,7 +127,7 @@ fun ExHobbyListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -323,7 +320,7 @@ private fun ExHobbyListFooter(
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedButton(onClick = onRetry) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
+                            painter = painterResource(PoiIcons.Refresh),
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
@@ -360,7 +357,7 @@ private fun ExHobbyListEmpty(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Image,
+                painter = painterResource(PoiIcons.Image),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(64.dp)
@@ -401,7 +398,7 @@ private fun ExHobbyListError(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                painter = painterResource(PoiIcons.Warning),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(56.dp)
@@ -422,7 +419,7 @@ private fun ExHobbyListError(
             )
             Spacer(modifier = Modifier.height(20.dp))
             Button(onClick = onRetry) {
-                Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                Icon(painter = painterResource(PoiIcons.Refresh), contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = "点击重试")
             }

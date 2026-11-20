@@ -23,20 +23,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import com.nobody.repoi.ui.common.ExpressiveToolbarButton
 import androidx.compose.material3.AssistChip
@@ -79,6 +65,8 @@ import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.AdaptiveChunkedGrid
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 // ─────────────────────────────────────────────────────────────
 // 区块 0：角色档案综合头部 (CharacterHeaderSection)
@@ -317,7 +305,7 @@ internal fun CharacterWorksSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多", fontSize = 12.sp)
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -391,7 +379,7 @@ internal fun CharacterWorksSection(
                                     }
 
                                     Icon(
-                                        imageVector = Icons.Filled.ChevronRight,
+                                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(18.dp)
@@ -512,7 +500,7 @@ internal fun CharacterHobbysSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多", fontSize = 12.sp)
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -717,7 +705,7 @@ private fun CharacterAlbumCard(
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ThumbUp,
+                            painter = painterResource(PoiIcons.Filled.ThumbUp),
                             contentDescription = "点赞",
                             tint = Color.White,
                             modifier = Modifier.size(11.dp)
@@ -755,7 +743,7 @@ private fun AlbumMoreTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Filled.PhotoLibrary,
+                painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
@@ -904,7 +892,7 @@ internal fun CharacterErrorState(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onRetry) {
-                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                    Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text("重试")
                 }
@@ -937,7 +925,7 @@ internal fun CharacterFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
-            icon = if (isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isCollected) PoiIcons.Filled.Favorite else PoiIcons.Outlined.FavoriteBorder,
             contentDescription = if (isCollected) "已收藏" else "收藏",
             isProminent = isCollected,
             containerColor = if (isCollected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -950,7 +938,7 @@ internal fun CharacterFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
                 isProminent = false
@@ -960,7 +948,7 @@ internal fun CharacterFloatingActionBar(
         // 3. 分享次级操作
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )

@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +26,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.ui.theme.bottomSheet
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.DrawableResource
 
 /**
  * 专区右下角「+」悬浮按钮唤起的发布操作底部弹窗
@@ -71,7 +70,7 @@ fun ZonePublishSheet(
             )
 
             PublishActionItem(
-                icon = Icons.Filled.Forum,
+                icon = PoiIcons.Filled.Forum,
                 title = "发布讨论贴",
                 description = "在专区发起讨论、提问或交流",
                 onClick = {
@@ -81,7 +80,7 @@ fun ZonePublishSheet(
             )
 
             PublishActionItem(
-                icon = Icons.Filled.PhotoLibrary,
+                icon = PoiIcons.Filled.PhotoLibrary,
                 title = "发布相册分享",
                 description = "分享实物开箱、摄影或晒图相册",
                 onClick = {
@@ -91,7 +90,7 @@ fun ZonePublishSheet(
             )
 
             PublishActionItem(
-                icon = Icons.Filled.Sell,
+                icon = PoiIcons.Filled.Sell,
                 title = "发布二手条目",
                 description = "发布闲置转让或求购意向",
                 onClick = {
@@ -106,8 +105,7 @@ fun ZonePublishSheet(
 }
 
 @Composable
-private fun PublishActionItem(
-    icon: ImageVector,
+private fun PublishActionItem(icon: DrawableResource,
     title: String,
     description: String,
     onClick: () -> Unit,
@@ -136,7 +134,7 @@ private fun PublishActionItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(24.dp)

@@ -31,33 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.Wc
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -131,6 +104,9 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.DrawableResource
 
 /**
  * 用户个人资料与主页展示页面。
@@ -231,7 +207,7 @@ fun UserInfoScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Person,
+                            painter = painterResource(PoiIcons.Filled.Person),
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.outline
@@ -245,7 +221,7 @@ fun UserInfoScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { viewModel.loadProfile(userId) }) {
-                            Icon(imageVector = Icons.Filled.Refresh, contentDescription = null)
+                            Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = "重新加载")
                         }
@@ -487,7 +463,7 @@ private fun LazyListScope.userContentFeedItems(
             if (uiState.albums.isEmpty()) {
                 item(key = "empty_albums") {
                     EmptyTabPlaceholder(
-                        icon = Icons.Filled.PhotoLibrary,
+                        icon = PoiIcons.Filled.PhotoLibrary,
                         text = if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
                     )
                 }
@@ -532,7 +508,7 @@ private fun LazyListScope.userContentFeedItems(
             if (uiState.actions.isEmpty()) {
                 item(key = "empty_actions") {
                     EmptyTabPlaceholder(
-                        icon = Icons.Filled.Timeline,
+                        icon = PoiIcons.Filled.Timeline,
                         text = if (uiState.isSelf) "你还没有发布动态" else "该用户暂无动态"
                     )
                 }
@@ -585,7 +561,7 @@ private fun LazyListScope.userContentFeedItems(
         2 -> {
             item(key = "empty_resale") {
                 EmptyTabPlaceholder(
-                    icon = Icons.Filled.Sell,
+                    icon = PoiIcons.Filled.Sell,
                     text = if (uiState.isSelf) "你暂无在售二手条目" else "该用户暂无在售二手条目"
                 )
             }
@@ -737,7 +713,7 @@ private fun UserProfileBanner(
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "返回",
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
@@ -754,7 +730,7 @@ private fun UserProfileBanner(
                     ) {
                         IconButton(onClick = onEdit) {
                             Icon(
-                                imageVector = Icons.Filled.Edit,
+                                painter = painterResource(PoiIcons.Filled.Edit),
                                 contentDescription = "编辑资料",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
@@ -770,7 +746,7 @@ private fun UserProfileBanner(
                 ) {
                     IconButton(onClick = onRefresh) {
                         Icon(
-                            imageVector = Icons.Filled.Refresh,
+                            painter = painterResource(PoiIcons.Filled.Refresh),
                             contentDescription = "刷新",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -845,7 +821,7 @@ private fun UserProfileHeader(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Person,
+                            painter = painterResource(PoiIcons.Filled.Person),
                             contentDescription = null,
                             modifier = Modifier.size(40.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -960,7 +936,7 @@ private fun UserProfileHeader(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Verified,
+                    painter = painterResource(PoiIcons.Filled.Verified),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -1062,7 +1038,7 @@ private fun UserFollowButton(
         ) {
             if (isMutual) {
                 Icon(
-                    imageVector = Icons.Default.SyncAlt,
+                    painter = painterResource(PoiIcons.SyncAlt),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(13.dp)
@@ -1086,7 +1062,7 @@ private fun UserFollowButton(
             modifier = modifier.height(32.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
+                painter = painterResource(PoiIcons.Add),
                 contentDescription = null,
                 modifier = Modifier.size(14.dp)
             )
@@ -1227,7 +1203,7 @@ private fun UserOrderStatsCard(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
+                        painter = painterResource(PoiIcons.ArrowDropDown),
                         contentDescription = "查看消费明细",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.outline
@@ -1348,8 +1324,7 @@ private fun UserAlbumSubChips(
  * 空状态提示占位。
  */
 @Composable
-private fun EmptyTabPlaceholder(
-    icon: ImageVector,
+private fun EmptyTabPlaceholder(icon: DrawableResource,
     text: String,
     modifier: Modifier = Modifier
 ) {
@@ -1361,7 +1336,7 @@ private fun EmptyTabPlaceholder(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier.size(48.dp)
@@ -1402,7 +1377,7 @@ private fun BasicProfileSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Info,
+                    painter = painterResource(PoiIcons.Filled.Info),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
@@ -1419,7 +1394,7 @@ private fun BasicProfileSection(
 
             // 1. UID（带快捷复制）
             ProfileInfoRow(
-                icon = Icons.Filled.Fingerprint,
+                icon = PoiIcons.Filled.Fingerprint,
                 label = "UID",
                 value = profile.id.toString(),
                 trailingContent = {
@@ -1430,7 +1405,7 @@ private fun BasicProfileSection(
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ContentCopy,
+                            painter = painterResource(PoiIcons.Filled.ContentCopy),
                             contentDescription = "复制UID",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
@@ -1441,28 +1416,28 @@ private fun BasicProfileSection(
 
             // 2. 性别
             ProfileInfoRow(
-                icon = Icons.Filled.Wc,
+                icon = PoiIcons.Filled.Wc,
                 label = "性别",
                 value = profile.genderText
             )
 
             // 3. 生日
             ProfileInfoRow(
-                icon = Icons.Filled.Cake,
+                icon = PoiIcons.Filled.Cake,
                 label = "生日",
                 value = profile.birth?.ifBlank { null } ?: "未设置"
             )
 
             // 4. 城市
             ProfileInfoRow(
-                icon = Icons.Filled.LocationOn,
+                icon = PoiIcons.Filled.LocationOn,
                 label = "城市",
                 value = profile.city?.ifBlank { null } ?: "未设置"
             )
 
             // 5. 注册时间
             ProfileInfoRow(
-                icon = Icons.Filled.CalendarMonth,
+                icon = PoiIcons.Filled.CalendarMonth,
                 label = "注册时间",
                 value = profile.displayRegisterTime
             )
@@ -1470,7 +1445,7 @@ private fun BasicProfileSection(
             // 6. 官方认证（若有）
             if (profile.isVerified) {
                 ProfileInfoRow(
-                    icon = Icons.Filled.Verified,
+                    icon = PoiIcons.Filled.Verified,
                     label = "认证信息",
                     value = profile.verify.orEmpty()
                 )
@@ -1483,8 +1458,7 @@ private fun BasicProfileSection(
  * 个人资料单项只读展示行。
  */
 @Composable
-private fun ProfileInfoRow(
-    icon: ImageVector,
+private fun ProfileInfoRow(icon: DrawableResource,
     label: String,
     value: String = "",
     customValue: (@Composable () -> Unit)? = null,
@@ -1496,7 +1470,7 @@ private fun ProfileInfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
             modifier = Modifier.size(18.dp)

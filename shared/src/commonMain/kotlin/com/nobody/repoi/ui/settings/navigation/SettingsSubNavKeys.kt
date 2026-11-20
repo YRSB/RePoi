@@ -1,15 +1,12 @@
 package com.nobody.repoi.ui.settings.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ManageAccounts
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.common.PoiIcons
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import org.jetbrains.compose.resources.DrawableResource
 
 /**
  * 设置页内部子路由契约（模块私有子 Key，不污染全局导航根栈）。
@@ -65,12 +62,12 @@ val SettingsSubNavSerializersModule: SerializersModule = SerializersModule {
 enum class SettingsGroup(
     val title: String,
     val description: String,
-    val icon: ImageVector,
+    val icon: DrawableResource,
     val navKey: SettingsSubNavKey
 ) {
-    Appearance("外观与主题", "主题颜色、深色模式与壁纸取色", Icons.Outlined.Palette, SettingsAppearanceNavKey),
-    Content("浏览与内容", "屏蔽过滤、R18 限制与隐私可见性", Icons.Outlined.Tune, SettingsContentNavKey),
-    Account("账号与安全", "当前账号状态、个人主页与手账同步", Icons.Outlined.ManageAccounts, SettingsAccountNavKey);
+    Appearance("外观与主题", "主题颜色、深色模式与壁纸取色", PoiIcons.Outlined.Palette, SettingsAppearanceNavKey),
+    Content("浏览与内容", "屏蔽过滤、R18 限制与隐私可见性", PoiIcons.Outlined.Tune, SettingsContentNavKey),
+    Account("账号与安全", "当前账号状态、个人主页与手账同步", PoiIcons.Outlined.ManageAccounts, SettingsAccountNavKey);
 
     companion object {
         fun fromNavKey(key: NavKey?): SettingsGroup? = when (key) {

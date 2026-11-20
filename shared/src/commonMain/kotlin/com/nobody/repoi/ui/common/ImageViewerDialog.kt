@@ -22,9 +22,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +53,8 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import coil3.ImageLoader
 import kotlin.math.roundToInt
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 全屏大图画廊全屏页面（Navigation 3 二级页路由，由 [ImageViewerNavKey] 承载）。
@@ -262,7 +261,7 @@ fun ImageViewerContent(
 
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "关闭",
                         tint = Color.White
                     )
@@ -336,7 +335,7 @@ private fun BoxScope.ViewerNavigationButton(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                     contentDescription = contentDescription,
                     tint = Color.White,
                     modifier = if (iconRotation != 0f) Modifier.graphicsLayer(rotationZ = iconRotation) else Modifier

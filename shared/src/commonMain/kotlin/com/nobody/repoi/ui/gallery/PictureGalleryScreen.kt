@@ -28,15 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,7 +57,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -431,7 +424,7 @@ private fun GalleryActionBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            GalleryIconButton(icon = Icons.AutoMirrored.Filled.ArrowBack, description = "返回", onClick = onBack)
+            GalleryIconButton(icon = PoiIcons.ArrowBack, description = "返回", onClick = onBack)
 
             Text(
                 text = pageText,
@@ -444,7 +437,7 @@ private fun GalleryActionBar(
                 // 收藏星标 + 收藏数徽章
                 Box(contentAlignment = Alignment.Center) {
                     GalleryIconButton(
-                        icon = if (isCollected) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        icon = if (isCollected) PoiIcons.Favorite else PoiIcons.FavoriteBorder,
                         description = if (isCollected) "取消收藏" else "收藏",
                         tint = if (isCollected) MaterialTheme.colorScheme.error else Color.White,
                         onClick = onToggleCollect,
@@ -472,7 +465,7 @@ private fun GalleryActionBar(
                 }
 
                 GalleryIconButton(
-                    icon = Icons.Filled.MoreHoriz,
+                    icon = PoiIcons.MoreHoriz,
                     description = "更多操作",
                     onClick = onMore
                 )
@@ -486,7 +479,7 @@ private fun GalleryActionBar(
  */
 @Composable
 private fun GalleryIconButton(
-    icon: ImageVector,
+    icon: DrawableResource,
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -500,7 +493,7 @@ private fun GalleryIconButton(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(icon),
                 contentDescription = description,
                 tint = tint,
                 modifier = Modifier.size(22.dp)
@@ -703,24 +696,24 @@ private fun GalleryActionSheet(
         // 「列表」入口无可用上下文时隐藏（见 PictureGalleryScreen 的 KDoc）
         if (showListEntry) {
             GallerySheetRow(
-                icon = Icons.AutoMirrored.Filled.List,
+                icon = PoiIcons.List,
                 label = "列表",
                 onClick = onOpenPictureList
             )
         }
         GallerySheetRow(
-            icon = Icons.Filled.HighQuality,
+            icon = PoiIcons.HighQuality,
             label = "原图",
             onClick = onToggleRaw
         )
         GallerySheetRow(
-            icon = Icons.Filled.Download,
+            icon = PoiIcons.Download,
             label = if (isDownloading) "保存中…" else "下载",
             enabled = !isDownloading,
             onClick = onDownload
         )
         GallerySheetRow(
-            icon = Icons.Filled.Report,
+            icon = PoiIcons.Report,
             label = "举报",
             onClick = onReport
         )
@@ -732,7 +725,7 @@ private fun GalleryActionSheet(
  */
 @Composable
 private fun GallerySheetRow(
-    icon: ImageVector,
+    icon: DrawableResource,
     label: String,
     onClick: () -> Unit,
     enabled: Boolean = true
@@ -751,7 +744,7 @@ private fun GallerySheetRow(
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(icon),
                 contentDescription = null,
                 tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(22.dp)

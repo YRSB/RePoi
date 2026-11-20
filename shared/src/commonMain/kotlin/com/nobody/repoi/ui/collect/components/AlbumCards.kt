@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +41,8 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.CardDefaults
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 // ── 收藏相册页卡片 ──────────────────────────────────────────
 
@@ -245,7 +244,7 @@ private fun SelectionMark(
         Box(contentAlignment = Alignment.Center) {
             if (selected) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
+                    painter = painterResource(PoiIcons.Filled.Check),
                     contentDescription = "已选中",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(14.dp)
@@ -273,7 +272,7 @@ private fun CollectPraiseBadge(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.ThumbUp,
+                painter = painterResource(PoiIcons.Filled.ThumbUp),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(12.dp)

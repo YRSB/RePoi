@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.resale
+package com.nobody.repoi.ui.resale
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

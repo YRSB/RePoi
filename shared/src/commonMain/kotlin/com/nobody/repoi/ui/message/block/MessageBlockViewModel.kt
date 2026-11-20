@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.message.block
+package com.nobody.repoi.ui.message.block
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

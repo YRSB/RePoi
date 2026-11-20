@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +43,8 @@ import com.nobody.repoi.ui.collect.components.EmptyCollectView
 import com.nobody.repoi.ui.collect.components.ErrorCollectView
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 // ── 通用实体子页（厂商/系列/角色/人物） ─────────────────────
 
@@ -153,7 +152,7 @@ internal fun CommonCollectSubPage(
             )
             IconButton(onClick = onToggleViewMode) {
                 Icon(
-                    imageVector = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.List,
+                    painter = painterResource(if (isListView) PoiIcons.GridView else PoiIcons.AutoMirrored.Filled.List),
                     contentDescription = if (isListView) "切换为网格视图" else "切换为列表视图",
                     tint = MaterialTheme.colorScheme.onSurface
                 )

@@ -32,16 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -87,6 +77,8 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 
 
@@ -644,7 +636,7 @@ private fun SeriesAlbumCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.PhotoLibrary,
+                        painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(36.dp)
@@ -668,7 +660,7 @@ private fun SeriesAlbumCard(
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ThumbUp,
+                            painter = painterResource(PoiIcons.Filled.ThumbUp),
                             contentDescription = "点赞",
                             tint = Color.White,
                             modifier = Modifier.size(11.dp)
@@ -706,7 +698,7 @@ private fun SeriesAlbumMoreTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Filled.PhotoLibrary,
+                painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
@@ -856,7 +848,7 @@ internal fun SeriesFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onCollectClick,
             text = if (collectCount > 0) "$collectCount" else null,
-            icon = if (isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isCollected) PoiIcons.Filled.Favorite else PoiIcons.Outlined.FavoriteBorder,
             contentDescription = if (isCollected) "已收藏" else "收藏",
             isProminent = isCollected,
             containerColor = if (isCollected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -869,7 +861,7 @@ internal fun SeriesFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
                 isProminent = false
@@ -879,7 +871,7 @@ internal fun SeriesFloatingActionBar(
         // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )
@@ -980,7 +972,7 @@ internal fun SeriesInfoBottomSheet(
                 )
                 IconButton(onClick = onDismissRequest) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "关闭",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

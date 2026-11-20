@@ -11,8 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -44,6 +42,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.min
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 判定「已放大」的缩放阈值：不高于该值视为未放大（单指滑动交还外层 `HorizontalPager`）。 */
 internal const val POI_ZOOMED_THRESHOLD: Float = 1.02f
@@ -559,7 +559,7 @@ fun PoiZoomableImage(
     ) {
         if (isBlankUrl || hasImageError) {
             Icon(
-                imageVector = Icons.Filled.BrokenImage,
+                painter = painterResource(PoiIcons.Filled.BrokenImage),
                 contentDescription = contentDescription,
                 tint = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.size(48.dp)
