@@ -249,6 +249,12 @@ HomeScreen
 3. 三级：`feed_sub_type` 恢复；非法值回落 `recommend`。
 4. 切换专区时写入一级键；切换板块时写入二级键（`{tabKey}|{type}`）。
 5. 兼容：历史 `feed_sub_type=all` 读入时映射为 `allInfo`；旧版 `feed_category_id` 不再参与首页筛选。
+6. 首屏加载门闩（issue #198）：冷启动落定前 `ZoneBoardSession` 以 `deferInitialLoad=true` 创建，
+   挂起一切首屏懒加载 / 重试 / 刷新与筛选重载，快照一律投影「首屏加载中」（防闪空态）；
+   `subType` 恢复值只登记不加载。落定信号解闩恰好发一次请求：聚合态（`all`/`follow`/缺失）＝
+   DataStore 预热完成；单专区（`z{nodeId}`）＝预热完成且 `zone/home-tabs` 返回。
+   否则构造时按默认「全部 + recommend」乐观发出的请求在落定切换作用域后被作废重发，
+   用户看到加载指示器转两轮且信息流内容闪清。
 
 ---
 

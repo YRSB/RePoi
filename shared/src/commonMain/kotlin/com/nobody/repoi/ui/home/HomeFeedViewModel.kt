@@ -153,7 +153,10 @@ class HomeFeedViewModel(
     val session: ZoneBoardSession = sessionFactory.create(
         coroutineScope = viewModelScope,
         initialScope = _uiState.value.zoneScope,
-        initialBoard = _uiState.value.selectedBoard
+        initialBoard = _uiState.value.selectedBoard,
+        // issue #198：冷启动落盘偏好异步落定前挂起首屏加载，落定后 resumeInitialLoad()
+        // 一次性以最终「专区 + 板块 + 子类」参数加载，杜绝乐观默认请求作废重发导致的双指示器闪烁。
+        deferInitialLoad = true
     )
 
     /**
@@ -354,6 +357,8 @@ class HomeFeedViewModel(
 
                 if (coldStartResolvedTabKey != null) {
                     if (categoryChanged) syncBoards(scope)
+                    // 单区冷启动落定（恢复 z{nodeId} 或不可用回落 all）：解闩恰好一次首屏请求
+                    session.resumeInitialLoad()
                 } else if (categoryChanged) {
                     syncBoards(scope)
                 }
@@ -382,6 +387,8 @@ class HomeFeedViewModel(
             savedSelectionReady.value = true
             if (!coldStartTabResolved && zoneTabKeyNodeId(savedTabKey) == null) {
                 coldStartTabResolved = true
+                // 落盘一级为聚合态（all/follow/缺失）：落盘值即最终值，读盘完成即解闩首屏
+                session.resumeInitialLoad()
             }
         }
     }
@@ -427,6 +434,8 @@ class HomeFeedViewModel(
 
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
         session.updateScope(scope)
+        // 用户已显式选定专区：无需等待冷启动落定，立即解闩防 loading 悬挂
+        session.resumeInitialLoad()
         val memoryKey = homeBoardMemoryKey(scope, firstBoard)
         boardScrollMemories[memoryKey]?.let { saved ->
             session.dispatch(ZoneBoardIntent.SaveScrollPosition(firstBoard, saved.index, saved.offset))
@@ -449,6 +458,8 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(selectedBoard = board) }
         viewModelScope.launch { persistBoardSelection() }
         session.dispatch(ZoneBoardIntent.SelectBoard(board))
+        // 用户已显式切换板块：立即解闩防 loading 悬挂（落定前点击的极窄竞态兜底）
+        session.resumeInitialLoad()
         if (board == ZoneBoard.Album) {
             syncAlbumCategories(current.zoneScope)
         }
@@ -599,10 +610,6 @@ class HomeFeedViewModel(
      */
     fun refreshUnreadMessages() {
         fetchUnreadMessages()
-    }
-
-    fun loadInitialFeed() {
-        session.dispatch(ZoneBoardIntent.RetryInitial(ZoneBoard.Action))
     }
 
     fun loadNextPage() {

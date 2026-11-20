@@ -696,6 +696,75 @@ class HomeFeedViewModelTest {
         // 运行期「关注」空态短路仍由独立用例覆盖（selectZoneTab_followWithNoFocusZones_*）
     }
 
+
+    @Test
+    fun coldStart_savedSingleZone_restoresWithSingleInitialFeedRequest() = runTest(testDispatcher) {
+        // issue #198：上次停留在单专区时，冷启动恢复落定前不得先在「全部」作用域
+        // 发出注定作废的乐观首屏请求（用户看到加载指示器转两轮 + 信息流闪烁）。
+        val env = env(savedTabKey = "z100")
+        env.stubFocusedZone(nodeId = 100L)
+        env.stubZoneInfo(nodeId = 100L, tabs = listOf("action"))
+        env.stubFeed(
+            subType = "recommend",
+            zoneNodeId = 100L,
+            zoneIds = "100",
+            items = listOf(item(1, "1700000000000"))
+        )
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("z100", state.selectedCategory.tabKey, "冷启动应恢复到上次停留的单专区")
+        assertEquals(listOf(1L), state.items.map { it.id })
+        assertFalse(state.isInitialLoading)
+        assertNull(state.errorMessage, "作废的乐观请求不得污染最终态")
+        assertEquals(
+            1,
+            env.feedRequests,
+            "冷启动恢复单专区只允许一次首屏请求（落定前不得先按默认『全部』作用域乐观加载）"
+        )
+    }
+
+
+    @Test
+    fun coldStart_savedNonDefaultSubType_loadsOnceWithSavedSubType() = runTest(testDispatcher) {
+        // issue #198 变体：上次筛选非默认动态子类时，冷启动首屏请求应直接携带
+        // 落盘 subType，不得先按默认 recommend 发出一次再重发。
+        val env = env(savedTabKey = "all", savedSubType = "comment")
+        env.stubFeed(subType = "comment", items = listOf(item(3, "1700000000000")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("comment", state.selectedSubType)
+        assertEquals(listOf(3L), state.items.map { it.id })
+        assertFalse(state.isInitialLoading)
+        assertEquals(
+            1,
+            env.feedRequests,
+            "落盘 subType 非默认时冷启动只允许一次首屏请求"
+        )
+        assertEquals("comment", env.lastFeedForm()["subType"])
+    }
+
+
+    @Test
+    fun coldStart_savedDefaults_loadExactlyOnce() = runTest(testDispatcher) {
+        // 回归保护：默认落盘值（全部 + 推荐）冷启动只发一次首屏请求，
+        // 修复不得让最常见路径退化成零请求或双请求。
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "1700000000000")))
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        assertEquals("all", viewModel.uiState.value.selectedCategory.tabKey)
+        assertEquals(listOf(1L), viewModel.uiState.value.items.map { it.id })
+        assertEquals(1, env.feedRequests)
+    }
+
     @Test
     fun scrollPosition_saveAndReset() = runTest(testDispatcher) {
         val env = env()
