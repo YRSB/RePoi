@@ -18,7 +18,6 @@ import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
-import com.nobody.repoi.data.repository.ForumRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -115,7 +114,6 @@ class KoinModuleVerificationTest {
             koin.getOrNull<CommentRepository>().shouldNotBeNull()
             koin.getOrNull<ExHobbyRepository>().shouldNotBeNull()
             koin.getOrNull<FollowRepository>().shouldNotBeNull()
-            koin.getOrNull<ForumRepository>().shouldNotBeNull()
             koin.getOrNull<HobbyDetailRepository>().shouldNotBeNull()
             koin.getOrNull<HomeRepository>().shouldNotBeNull()
             koin.getOrNull<ItemRepository>().shouldNotBeNull()

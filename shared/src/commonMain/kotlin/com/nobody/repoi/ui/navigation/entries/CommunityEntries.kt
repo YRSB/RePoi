@@ -4,15 +4,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.nobody.repoi.platform.LocalAppMessages
-import com.nobody.repoi.ui.forum.ForumHomeScreen
-import com.nobody.repoi.ui.forum.PlateSubscribeScreen
 import com.nobody.repoi.ui.post.PostDetailScreen
 import com.nobody.repoi.ui.zone.ZoneBrowseScreen
 import com.nobody.repoi.ui.zone.ZoneDetailScreen
 import com.nobody.repoi.ui.zone.ZoneSettingsScreen
 
 /**
- * 注册专区、讨论板与帖子详情等社区领域路由。
+ * 注册专区与帖子详情等社区领域路由。
  */
 fun EntryProviderScope<NavKey>.communityEntries(
     navigator: RePoiNavigator,
@@ -62,26 +60,6 @@ fun EntryProviderScope<NavKey>.communityEntries(
     entry<ZoneSettingsNavKey> {
         ZoneSettingsScreen(
             onNavigateBack = onBack
-        )
-    }
-
-    entry<ForumHomeNavKey> {
-        ForumHomeScreen(
-            onNavigateBack = onBack,
-            onNavigateToPost = { postId, nodeId, title ->
-                navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
-            },
-            onNavigateToUser = { targetUserId -> navigator.navigateToUser(targetUserId) },
-            onNavigateToSelf = { navigator.navigateToUser(0L) },
-            onNavigateToMessage = { navigator.navigateToMessageCenter() },
-            onNavigateToPlates = { navigator.navigateToPlateSubscribe() }
-        )
-    }
-
-    entry<PlateSubscribeNavKey> {
-        PlateSubscribeScreen(
-            onNavigateBack = onBack,
-            onNavigateToLogin = { navigator.navigateToLogin() }
         )
     }
 

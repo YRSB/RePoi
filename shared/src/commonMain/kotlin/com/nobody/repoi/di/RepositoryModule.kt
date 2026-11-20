@@ -8,7 +8,6 @@ import com.nobody.repoi.data.repository.CommentRepository
 import com.nobody.repoi.data.repository.CoverFreshnessRepository
 import com.nobody.repoi.data.repository.ExHobbyRepository
 import com.nobody.repoi.data.repository.FollowRepository
-import com.nobody.repoi.data.repository.ForumRepository
 import com.nobody.repoi.data.repository.HobbyDetailRepository
 import com.nobody.repoi.data.repository.HomeRepository
 import com.nobody.repoi.data.repository.ItemRepository
@@ -45,7 +44,7 @@ import org.koin.dsl.module
 import org.koin.dsl.onClose
 
 /**
- * 仓储模块：27 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
+ * 仓储模块：26 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
  * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
  *
  * 模块尾部同时挂载收藏写侧 Domain UseCases（`factory`，无状态、随用随建）：
@@ -59,7 +58,6 @@ val repositoryModule = module {
     single { CommentRepository(get()) }
     single { ExHobbyRepository(get()) }
     single { FollowRepository(get(), get()) }
-    single { ForumRepository(get()) }
     singleOf(::HobbyDetailRepository)
     single { HomeRepository(get()) }
     single { ItemRepository(get()) }

@@ -22,10 +22,10 @@ import com.nobody.repoi.data.remote.model.PostItem
  *    分类下拉（`ItemType=album` 的 albums 分类接口）；讨论分支（`type != album`）构造
  *    `ForumPageFragment` 时固定 `itemType = ""`，bundle 中**没有任何分类参数**。
  * 2. **线上实测 `GET api/posts/search`**：
- *    - `itemType` 取反编译 `ForumHomeActivity.type` 的 6 个合法键（`""`/`hobby`/`works`/
+ *    - `itemType` 取原版反编译的 6 个合法键（`""`/`hobby`/`works`/
  *      `works_element`/`company`/`person`）与非法值，首屏 id 序列**全部相同** → 服务端忽略该参数；
  *    - `category` / `categoryId` / `zoneCategoryId` / `plateId` 同样被忽略（id 序列不变）；
- *    - 实际生效的过滤维度只有 `zoneNodeId`（单值）、`forumNodeId`、`keyword` 与 `order`/`page`。
+ *    - 实际生效的过滤维度只有 `zoneNodeId`（单值）、`keyword` 与 `order`/`page`。
  * 3. 因此 #158 验收标准中的「分类过滤」以「原版无入口、接口无参数」记为**不适用**，
  *    不伪造分类 Chip；详见 `docs/research/aggregate-api-verification.md` §4.3 与 §5。
  */

@@ -176,8 +176,6 @@ fun NavBackStack<NavKey>.navigateToZoneBrowse() = add(ZoneBrowseNavKey)
 fun NavBackStack<NavKey>.navigateToZoneDetail(nodeId: Long, initialName: String? = null, initialIcon: String? = null, initialCover: String? = null) =
     add(ZoneDetailNavKey(nodeId = nodeId, initialName = initialName, initialIcon = initialIcon, initialCover = initialCover))
 fun NavBackStack<NavKey>.navigateToZoneSettings() = add(ZoneSettingsNavKey)
-fun NavBackStack<NavKey>.navigateToForumHome() = add(ForumHomeNavKey)
-fun NavBackStack<NavKey>.navigateToPlateSubscribe() = add(PlateSubscribeNavKey)
 fun NavBackStack<NavKey>.navigateToPostDetail(postId: Long, initialTitle: String? = null, nodeId: Long? = null) =
     add(PostDetailNavKey(postId = postId, initialTitle = initialTitle, nodeId = nodeId))
 fun NavBackStack<NavKey>.navigateToResaleDetail(resaleId: Long) = add(ResaleDetailNavKey(resaleId = resaleId))
@@ -282,8 +280,6 @@ fun RePoiNavigator.navigateToZoneBrowse() = currentBackStack.navigateToZoneBrows
 fun RePoiNavigator.navigateToZoneDetail(nodeId: Long, initialName: String? = null, initialIcon: String? = null, initialCover: String? = null) =
     currentBackStack.navigateToZoneDetail(nodeId, initialName, initialIcon, initialCover)
 fun RePoiNavigator.navigateToZoneSettings() = currentBackStack.navigateToZoneSettings()
-fun RePoiNavigator.navigateToForumHome() = currentBackStack.navigateToForumHome()
-fun RePoiNavigator.navigateToPlateSubscribe() = currentBackStack.navigateToPlateSubscribe()
 fun RePoiNavigator.navigateToPostDetail(postId: Long, initialTitle: String? = null, nodeId: Long? = null) =
     currentBackStack.navigateToPostDetail(postId, initialTitle, nodeId)
 fun RePoiNavigator.navigateToResaleDetail(resaleId: Long) = currentBackStack.navigateToResaleDetail(resaleId)

@@ -76,8 +76,6 @@
 | **专区与社区** | 专区广场浏览 | `ZoneBrowseNavKey` | `ui/zone/ZoneBrowseScreen` | `ZoneBrowseViewModel` | `ZoneRepository` |
 | **专区与社区** | 专区详情与分类流 | `ZoneDetailNavKey` | `ui/zone/ZoneDetailScreen` | `ZoneDetailViewModel` | `ZoneRepository` |
 | **专区与社区** | 专区关注与偏好管理 | `ZoneSettingsNavKey` | `ui/zone/ZoneSettingsScreen` | `ZoneSettingsViewModel` | `ZoneRepository` |
-| **专区与社区** | 讨论板主页 | `ForumHomeNavKey` | `ui/forum/ForumHomeScreen` | `ForumHomeViewModel` | `ForumRepository` |
-| **专区与社区** | 版块订阅管理 | `PlateSubscribeNavKey` | `ui/forum/PlateSubscribeScreen` | `PlateSubscribeViewModel` | `ForumRepository` |
 | **二手市场** | 同款二手市场流 | `ResaleMarketNavKey` | `ui/resale/ResaleMarketScreen` | `ResaleMarketViewModel` | `ResaleRepository` |
 | **二手市场** | 二手交易详情 | `ResaleDetailNavKey` | `ui/resale/ResaleDetailScreen` | `ResaleDetailViewModel` | `ResaleRepository` |
 | **社交与用户** | 好友与社交列表 (关注/粉丝/获赞) | `FriendListNavKey` | `ui/friend/FriendListScreen` | `FriendListViewModel` | `UserRepository` |

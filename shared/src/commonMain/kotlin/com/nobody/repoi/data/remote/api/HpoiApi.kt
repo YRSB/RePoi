@@ -34,8 +34,6 @@ import com.nobody.repoi.data.remote.model.DiscussListPayload
 import com.nobody.repoi.data.remote.model.DiscussReplyListPayload
 import com.nobody.repoi.data.remote.model.FellowCountPayload
 import com.nobody.repoi.data.remote.model.FellowTypePayload
-import com.nobody.repoi.data.remote.model.ForumDetailPayload
-import com.nobody.repoi.data.remote.model.ForumListPayload
 import com.nobody.repoi.data.remote.model.HobbyAlbumPayload
 import com.nobody.repoi.data.remote.model.HobbyDetailPayload
 import com.nobody.repoi.data.remote.model.HobbyGroupPayload
@@ -394,11 +392,10 @@ class HpoiApi(
             setBody(formOf("nodeId" to nodeId))
         }.unwrapUnit(json, "专区访问上报失败")
 
-    // ── 讨论/帖子/版块 ─────────────────────────────────────────────
+    // ── 讨论/帖子 ───────────────────────────────────────────────────
 
     suspend fun searchPosts(
         zoneNodeId: Long? = null,
-        forumNodeId: Long? = null,
         order: String? = null,
         page: Int = 1,
         pageSize: Int = 20,
@@ -406,7 +403,6 @@ class HpoiApi(
         itemType: String? = null,
     ): PostListPayload = client.get("api/posts/search") {
         if (zoneNodeId != null) parameter("zoneNodeId", zoneNodeId)
-        if (forumNodeId != null) parameter("forumNodeId", forumNodeId)
         if (order != null) parameter("order", order)
         parameter("page", page)
         parameter("pageSize", pageSize)
@@ -475,29 +471,6 @@ class HpoiApi(
         client.post("api/posts/del") {
             setBody(formOf("nodeId" to nodeId))
         }.unwrapUnit(json, "删除帖子失败")
-
-    suspend fun getFocusForumList(forumPage: Int = 1): ForumListPayload? =
-        client.post("api/forum/focus/list") {
-            setBody(formOf("forumPage" to forumPage))
-        }.unwrapDataOrNull<ForumListPayload>(json, "获取已关注版块失败")
-
-    suspend fun getUnfocusForumList(forumPage: Int = 1): ForumListPayload? =
-        client.post("api/forum/not/focus/list") {
-            setBody(formOf("forumPage" to forumPage))
-        }.unwrapDataOrNull<ForumListPayload>(json, "获取未关注版块失败")
-
-    suspend fun toggleForumFocus(forumNodeId: Long, state: Int): Unit =
-        client.post("api/forum/focus") {
-            setBody(formOf("forumNodeId" to forumNodeId, "state" to state))
-        }.unwrapUnit(json, "版块关注操作失败")
-
-    suspend fun updateForumFocusOrder(order: String): Unit =
-        client.post("api/forum/focus/sort/upd") {
-            setBody(formOf("order" to order))
-        }.unwrapUnit(json, "保存版块排序失败")
-
-    suspend fun getForumDetail(forumId: Long): ForumDetailPayload? =
-        client.get("api/forum/$forumId").unwrapDataOrNull<ForumDetailPayload>(json, "获取版块详情失败")
 
     // ── 相册频道/点赞/评论 ──────────────────────────────────────────
 

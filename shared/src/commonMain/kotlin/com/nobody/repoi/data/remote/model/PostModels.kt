@@ -25,7 +25,6 @@ data class PostItem(
     val userLevel: Int = 0,
     val userHeader: String? = null,
     val forumName: String? = null,
-    val forumNodeId: Long? = null,
     val userNodeId: Long? = null,
     val discussCount: Int = 0,
     val pics: String? = null,
