@@ -2,4 +2,7 @@
 <!-- 启动遮罩配色（ADR-0012）：与 Compose 侧浅色主题的背景同值，淡出时不会出现第二层色块 -->
 <resources>
     <color name="splash_background">#F7F8FA</color>
+    <!-- 图标回退配色（API < 31）：与经典 M3 天蓝/深海蓝静态色值同值 -->
+    <color name="ic_launcher_background">#DEEDFF</color>
+    <color name="ic_launcher_foreground">#004D79</color>
 </resources>
