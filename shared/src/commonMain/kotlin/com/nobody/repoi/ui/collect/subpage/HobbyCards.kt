@@ -1,9 +1,7 @@
 package com.nobody.repoi.ui.collect.subpage
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +41,6 @@ import com.nobody.repoi.ui.common.card.PoiPosterCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
 import com.nobody.repoi.util.PriceFormatter
-import androidx.compose.material3.ElevatedCard
 
 // ── 周边卡片字段映射矩阵 ────────────────────────────────────
 
@@ -322,6 +318,7 @@ internal fun HobbyCollectListCard(
         onClick = onClick,
         onLongClick = onLongClick.takeIf { isSelectionEnabled },
         modifier = modifier,
+        verticalArrangement = Arrangement.SpaceBetween,
         thumbnail = {
             PoiThumbnail.Square {
                 PoiAsyncImage(
@@ -342,23 +339,28 @@ internal fun HobbyCollectListCard(
             }
         }
     ) {
-        // 4 个微标签：两行两列等宽，取值随收藏状态自适应
-        fields.chunked(2).forEach { rowFields ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                rowFields.forEach { field ->
-                    HpoiInfoBadgeItem(
-                        label = field.label,
-                        value = field.value(item),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                // 奇数个字段时补一个等宽占位，保持两列对齐
-                repeat(2 - rowFields.size) {
-                    Box(modifier = Modifier.weight(1f))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // 4 个微标签：两行两列等宽，取值随收藏状态自适应
+            fields.chunked(2).forEach { rowFields ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    rowFields.forEach { field ->
+                        HpoiInfoBadgeItem(
+                            label = field.label,
+                            value = field.value(item),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // 奇数个字段时补一个等宽占位，保持两列对齐
+                    repeat(2 - rowFields.size) {
+                        Box(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }

@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -48,6 +50,7 @@ fun PoiListCard(
     enabled: Boolean = true,
     shape: Shape = MaterialTheme.shapes.medium,
     verticalAlignment: Alignment.Vertical = Alignment.Top,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(5.dp, verticalAlignment),
     title: @Composable () -> Unit,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
@@ -61,17 +64,22 @@ fun PoiListCard(
             }
         )
 
+    val cardContent: @Composable () -> Unit = {
+        ListCardLayout(
+            thumbnail = thumbnail,
+            title = title,
+            content = content,
+            verticalAlignment = verticalAlignment,
+            verticalArrangement = verticalArrangement
+        )
+    }
+
     if (onLongClick != null && enabled) {
         ElevatedCard(
             modifier = cardModifier,
             shape = shape
         ) {
-            ListCardLayout(
-                thumbnail = thumbnail,
-                title = title,
-                content = content,
-                verticalAlignment = verticalAlignment
-            )
+            cardContent()
         }
     } else {
         ElevatedCard(
@@ -80,12 +88,7 @@ fun PoiListCard(
             modifier = cardModifier,
             shape = shape
         ) {
-            ListCardLayout(
-                thumbnail = thumbnail,
-                title = title,
-                content = content,
-                verticalAlignment = verticalAlignment
-            )
+            cardContent()
         }
     }
 }
@@ -104,6 +107,7 @@ fun PoiListCard(
     titleMaxLines: Int = 1,
     shape: Shape = MaterialTheme.shapes.medium,
     verticalAlignment: Alignment.Vertical = Alignment.Top,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(5.dp, verticalAlignment),
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     PoiListCard(
@@ -114,6 +118,7 @@ fun PoiListCard(
         enabled = enabled,
         shape = shape,
         verticalAlignment = verticalAlignment,
+        verticalArrangement = verticalArrangement,
         title = {
             Text(
                 text = title,
@@ -133,11 +138,13 @@ private fun ListCardLayout(
     thumbnail: @Composable () -> Unit,
     title: @Composable () -> Unit,
     content: (@Composable ColumnScope.() -> Unit)?,
-    verticalAlignment: Alignment.Vertical
+    verticalAlignment: Alignment.Vertical,
+    verticalArrangement: Arrangement.Vertical
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(IntrinsicSize.Min)
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = verticalAlignment
@@ -147,8 +154,10 @@ private fun ListCardLayout(
 
         // 右侧信息列
         Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            verticalArrangement = verticalArrangement
         ) {
             title()
             content?.invoke(this)
