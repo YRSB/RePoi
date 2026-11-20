@@ -21,18 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -64,7 +52,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -144,7 +134,7 @@ fun MessageCenterScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -154,7 +144,7 @@ fun MessageCenterScreen(
                         onClick = { viewModel.markAllRead() }
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.DoneAll,
+                            painter = painterResource(PoiIcons.DoneAll),
                             contentDescription = "全部已读",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -163,7 +153,7 @@ fun MessageCenterScreen(
                         onClick = onNavigateToBlock
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Shield,
+                            painter = painterResource(PoiIcons.Shield),
                             contentDescription = "黑名单",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -250,7 +240,7 @@ fun MessageCenterScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    imageVector = Icons.Filled.Forum,
+                                    painter = painterResource(PoiIcons.Forum),
                                     contentDescription = null,
                                     modifier = Modifier.size(48.dp),
                                     tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
@@ -336,7 +326,7 @@ private fun NotificationCategoriesSection(
             title = "系统通知",
             type = "system",
             typeNumber = 1,
-            icon = Icons.Filled.Notifications,
+            icon = PoiIcons.Notifications,
             tint = Color(0xFF1E88E5),
             badgeCount = unreadCounts.system
         ),
@@ -344,7 +334,7 @@ private fun NotificationCategoriesSection(
             title = "回复我的",
             type = "reply",
             typeNumber = 2,
-            icon = Icons.Filled.Forum,
+            icon = PoiIcons.Forum,
             tint = Color(0xFFFB8C00),
             badgeCount = unreadCounts.reply
         ),
@@ -352,7 +342,7 @@ private fun NotificationCategoriesSection(
             title = "收到的赞",
             type = "praise",
             typeNumber = 3,
-            icon = Icons.Filled.Favorite,
+            icon = PoiIcons.Favorite,
             tint = Color(0xFFE91E63),
             badgeCount = unreadCounts.praise
         ),
@@ -360,7 +350,7 @@ private fun NotificationCategoriesSection(
             title = "特别推荐",
             type = "recommend",
             typeNumber = 4,
-            icon = Icons.Filled.Campaign,
+            icon = PoiIcons.Campaign,
             tint = Color(0xFF8E24AA),
             badgeCount = unreadCounts.recommend
         ),
@@ -368,7 +358,7 @@ private fun NotificationCategoriesSection(
             title = "关注动态",
             type = "follow",
             typeNumber = 5,
-            icon = Icons.Filled.People,
+            icon = PoiIcons.People,
             tint = Color(0xFF43A047),
             badgeCount = unreadCounts.actualFollowCount
         ),
@@ -376,7 +366,7 @@ private fun NotificationCategoriesSection(
             title = "周边提醒",
             type = "commodity",
             typeNumber = 6,
-            icon = Icons.Filled.ShoppingBag,
+            icon = PoiIcons.ShoppingBag,
             tint = Color(0xFF00ACC1),
             badgeCount = unreadCounts.commodity
         )
@@ -402,7 +392,7 @@ private data class CategoryEntry(
     val title: String,
     val type: String,
     val typeNumber: Int,
-    val icon: ImageVector,
+    val icon: DrawableResource,
     val tint: Color,
     val badgeCount: Int
 )
@@ -453,7 +443,7 @@ private fun CategoryGridItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = entry.icon,
+                        painter = painterResource(entry.icon),
                         contentDescription = entry.title,
                         modifier = Modifier.size(24.dp),
                         tint = entry.tint
@@ -549,7 +539,7 @@ private fun ContactItemCard(
                     ) {
                         if (item.isTop) {
                             Icon(
-                                imageVector = Icons.Filled.PushPin,
+                                painter = painterResource(PoiIcons.PushPin),
                                 contentDescription = "置顶",
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -594,7 +584,7 @@ private fun ContactItemCard(
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
-                        imageVector = Icons.Filled.MoreVert,
+                        painter = painterResource(PoiIcons.MoreVert),
                         contentDescription = "更多操作",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )

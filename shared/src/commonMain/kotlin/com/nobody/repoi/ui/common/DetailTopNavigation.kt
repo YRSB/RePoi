@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nobody.repoi.ui.theme.topBarScrolled
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 详情页统一顶部导航栏：
@@ -70,7 +70,7 @@ fun DetailTopNavigation(
                     modifier = Modifier.size(38.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "返回",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurface

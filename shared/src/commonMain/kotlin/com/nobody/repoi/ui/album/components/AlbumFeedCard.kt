@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -39,6 +37,8 @@ import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun AlbumFeedCard(
@@ -172,7 +172,7 @@ private fun PraiseBadge(count: Long, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.ThumbUp,
+                painter = painterResource(PoiIcons.Filled.ThumbUp),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(12.dp)

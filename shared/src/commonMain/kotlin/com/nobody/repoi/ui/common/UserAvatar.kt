@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -28,6 +26,8 @@ import coil3.request.crossfade
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 统一的用户圆形头像组件。
@@ -80,7 +80,7 @@ fun UserAvatar(
             )
         } else {
             Icon(
-                imageVector = Icons.Filled.Person,
+                painter = painterResource(PoiIcons.Filled.Person),
                 contentDescription = contentDescription,
                 modifier = Modifier.size(size * 0.65f),
                 tint = iconColor

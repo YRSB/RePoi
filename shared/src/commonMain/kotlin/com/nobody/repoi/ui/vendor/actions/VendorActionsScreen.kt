@@ -21,11 +21,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +57,8 @@ import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
 import com.nobody.repoi.ui.navigation.VendorActionsNavParam
 import com.nobody.repoi.util.paging.LoadStage
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 厂商全量动态二级页面。
@@ -112,7 +109,7 @@ fun VendorActionsScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回"
                             )
                         }
@@ -122,7 +119,7 @@ fun VendorActionsScreen(
                         Box {
                             IconButton(onClick = { viewModel.toggleCategoryMenu(true) }) {
                                 Icon(
-                                    imageVector = Icons.Default.FilterList,
+                                    painter = painterResource(PoiIcons.FilterList),
                                     contentDescription = "品类筛选",
                                     tint = if (uiState.selectedCategoryId != 0) {
                                         MaterialTheme.colorScheme.primary
@@ -151,7 +148,7 @@ fun VendorActionsScreen(
                                                 )
                                                 if (isSelected) {
                                                     Icon(
-                                                        imageVector = Icons.Default.Check,
+                                                        painter = painterResource(PoiIcons.Check),
                                                         contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.primary,
                                                         modifier = Modifier.size(16.dp)
@@ -384,7 +381,7 @@ private fun VendorActionsErrorState(
             )
             Button(onClick = onRetry) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    painter = painterResource(PoiIcons.Refresh),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )

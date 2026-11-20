@@ -16,15 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.CollectionsBookmark
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
@@ -46,6 +37,8 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.ResaleSearchItem
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 专区二手交易卡片（参考首页动态 ActionCard 交易样式重构）。
@@ -149,7 +142,7 @@ fun ZoneResaleCard(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Person,
+                                    painter = painterResource(PoiIcons.Filled.Person),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
@@ -244,7 +237,7 @@ fun ZoneResaleCard(
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Sell,
+                                    painter = painterResource(PoiIcons.Filled.Sell),
                                     contentDescription = null,
                                     modifier = Modifier.size(11.5.dp),
                                     tint = MaterialTheme.colorScheme.primary
@@ -273,7 +266,7 @@ fun ZoneResaleCard(
                                     modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Verified,
+                                        painter = painterResource(PoiIcons.Filled.Verified),
                                         contentDescription = null,
                                         modifier = Modifier.size(11.5.dp),
                                         tint = MaterialTheme.colorScheme.secondary
@@ -303,7 +296,7 @@ fun ZoneResaleCard(
                                     modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.LocationOn,
+                                        painter = painterResource(PoiIcons.Outlined.LocationOn),
                                         contentDescription = null,
                                         modifier = Modifier.size(11.5.dp),
                                         tint = MaterialTheme.colorScheme.tertiary
@@ -342,7 +335,7 @@ fun ZoneResaleCard(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.CollectionsBookmark,
+                                painter = painterResource(PoiIcons.Outlined.CollectionsBookmark),
                                 contentDescription = null,
                                 modifier = Modifier.size(12.dp),
                                 tint = MaterialTheme.colorScheme.outline
@@ -371,7 +364,7 @@ fun ZoneResaleCard(
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Image,
+                                    painter = painterResource(PoiIcons.Outlined.Image),
                                     contentDescription = "查看实物图",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
@@ -385,7 +378,7 @@ fun ZoneResaleCard(
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.ChatBubbleOutline,
+                                    painter = painterResource(PoiIcons.Outlined.ChatBubbleOutline),
                                     contentDescription = "私信",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
@@ -399,7 +392,7 @@ fun ZoneResaleCard(
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.MoreHoriz,
+                                    painter = painterResource(PoiIcons.Filled.MoreHoriz),
                                     contentDescription = "更多",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)

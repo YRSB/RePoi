@@ -17,15 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.automirrored.outlined.Login
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -59,6 +50,8 @@ import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import com.nobody.repoi.ui.settings.components.SettingSliderItem
 import com.nobody.repoi.ui.settings.navigation.SettingsGroup
 import kotlin.math.roundToInt
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 internal fun formatBytes(bytes: Long): String {
     if (bytes < 0) return "未知"
@@ -143,7 +136,7 @@ fun SettingsListPane(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -209,7 +202,7 @@ fun SettingsListPane(
                                     )
                                 }
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.outline
@@ -236,7 +229,7 @@ fun SettingsListPane(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.Login,
+                                        painter = painterResource(PoiIcons.AutoMirrored.Outlined.Login),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(24.dp)
@@ -254,7 +247,7 @@ fun SettingsListPane(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.Login,
+                                        painter = painterResource(PoiIcons.AutoMirrored.Outlined.Login),
                                         contentDescription = null,
                                         modifier = Modifier.size(ButtonDefaults.IconSize)
                                     )
@@ -318,7 +311,7 @@ fun SettingsListPane(
                             } else {
                                 "当前上限：${formatCacheLimit(currentLimitBytes)}"
                             },
-                            icon = Icons.Outlined.Storage,
+                            icon = PoiIcons.Outlined.Storage,
                             value = sliderIndex,
                             valueRange = 0f..9f,
                             steps = 8,
@@ -336,18 +329,18 @@ fun SettingsListPane(
                             } else {
                                 "已占用 ${formatBytes(cacheState.sizeBytes)}"
                             },
-                            icon = Icons.Outlined.DeleteSweep,
+                            icon = PoiIcons.Outlined.DeleteSweep,
                             onClick = onRequestClearCache
                         )
                         SettingItem(
                             title = "导出应用日志",
-                            icon = Icons.AutoMirrored.Outlined.Article,
+                            icon = PoiIcons.AutoMirrored.Outlined.Article,
                             onClick = onExportLog
                         )
                         SettingItem(
                             title = "关于 RePoi",
                             subtitle = "版本 ${AppInfo.versionName}",
-                            icon = Icons.Outlined.Info,
+                            icon = PoiIcons.Outlined.Info,
                             onClick = onRequestAbout
                         )
                     }
@@ -358,7 +351,7 @@ fun SettingsListPane(
                         SettingItemGroup {
                             SettingItem(
                                 title = "退出当前账号",
-                                icon = Icons.AutoMirrored.Outlined.Logout,
+                                icon = PoiIcons.AutoMirrored.Outlined.Logout,
                                 iconTint = MaterialTheme.colorScheme.error,
                                 titleColor = MaterialTheme.colorScheme.error,
                                 onClick = onRequestLogout

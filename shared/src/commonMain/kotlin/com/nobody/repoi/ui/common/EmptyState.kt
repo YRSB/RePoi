@@ -13,10 +13,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 遵循 Material 3 Expressive 规范的标准空状态占位组件。
@@ -25,12 +26,12 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun EmptyState(
-    icon: ImageVector,
+    icon: DrawableResource,
     title: String,
     modifier: Modifier = Modifier,
     description: String? = null,
     actionLabel: String? = null,
-    actionIcon: ImageVector? = null,
+    actionIcon: DrawableResource? = null,
     onAction: (() -> Unit)? = null,
 ) {
     Column(
@@ -39,7 +40,7 @@ fun EmptyState(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
             modifier = Modifier.size(56.dp)
@@ -66,7 +67,7 @@ fun EmptyState(
             ) {
                 if (actionIcon != null) {
                     Icon(
-                        imageVector = actionIcon,
+                        painter = painterResource(actionIcon),
                         contentDescription = null,
                         modifier = Modifier.size(ButtonDefaults.IconSize)
                     )

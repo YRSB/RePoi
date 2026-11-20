@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +38,8 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiListCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 手办/周边搜索结果横向卡片（基于 PoiListCard 深基元）
@@ -167,7 +166,7 @@ fun AlbumStaggeredCard(
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.ThumbUp,
+                                painter = painterResource(PoiIcons.Filled.ThumbUp),
                                 contentDescription = "点赞",
                                 tint = Color.White,
                                 modifier = Modifier.size(11.dp)
@@ -364,7 +363,7 @@ fun EmptyResultPlaceholder(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.Search,
+                painter = painterResource(PoiIcons.Filled.Search),
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.outlineVariant

@@ -22,15 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import kotlin.math.roundToInt
-import androidx.compose.material.icons.Icons
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -76,6 +68,8 @@ import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.collect.components.renderPagingFooter
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 周边页滚动保存键的内容维度，生产与测试共用 */
 internal fun hobbyScrollKeyInputs(uiState: UserCollectUiState): Array<out Any?> = arrayOf<Any?>(
@@ -328,7 +322,7 @@ internal fun HobbyCollectSubPage(
                             contentAlignment = Alignment.Center
                         ) {
                             HobbyEmptyState(
-                                icon = Icons.Filled.VisibilityOff,
+                                icon = PoiIcons.Filled.VisibilityOff,
                                 title = "用户已隐藏内容",
                                 subtitle = COLLECT_CONTENT_HIDDEN_TEXT
                             )
@@ -343,7 +337,7 @@ internal fun HobbyCollectSubPage(
                             contentAlignment = Alignment.Center
                         ) {
                             HobbyEmptyState(
-                                icon = Icons.Filled.Inbox,
+                                icon = PoiIcons.Filled.Inbox,
                                 title = "未收藏周边~",
                                 subtitle = "可以在详情页将感兴趣的条目加入收藏"
                             )
@@ -473,7 +467,7 @@ internal fun HobbyCollectSubPage(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.FilterList,
+                                    painter = painterResource(PoiIcons.FilterList),
                                     contentDescription = "多维筛选",
                                     tint = if (hasFilter) {
                                         MaterialTheme.colorScheme.primary
@@ -573,7 +567,7 @@ private fun HobbyStateDropdown(
             },
             trailingIcon = {
                 Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
+                    painter = painterResource(PoiIcons.ArrowDropDown),
                     contentDescription = if (expanded) "收起状态菜单" else "展开状态菜单",
                     modifier = Modifier
                         .size(18.dp)
@@ -650,7 +644,7 @@ private fun HobbySortControl(
             onClick = { expanded = true },
             leadingIcon = {
                 Icon(
-                    imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    painter = painterResource(if (isAsc) PoiIcons.ArrowUpward else PoiIcons.ArrowDownward),
                     contentDescription = if (isAsc) "升序" else "降序",
                     modifier = Modifier.size(16.dp)
                 )
@@ -664,7 +658,7 @@ private fun HobbySortControl(
             },
             trailingIcon = {
                 Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
+                    painter = painterResource(PoiIcons.ArrowDropDown),
                     contentDescription = if (expanded) "收起排序菜单" else "展开排序菜单",
                     modifier = Modifier
                         .size(18.dp)
@@ -691,7 +685,7 @@ private fun HobbySortControl(
                     leadingIcon = if (isSelected) {
                         {
                             Icon(
-                                imageVector = if (isAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                painter = painterResource(if (isAsc) PoiIcons.ArrowUpward else PoiIcons.ArrowDownward),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
@@ -802,7 +796,7 @@ private fun BatchErrorBanner(
             )
             IconButton(onClick = onDismiss) {
                 Icon(
-                    imageVector = Icons.Filled.Close,
+                    painter = painterResource(PoiIcons.Filled.Close),
                     contentDescription = "关闭提示",
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )

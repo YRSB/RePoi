@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,8 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -204,7 +204,7 @@ internal fun hobbyGridBadgeField(collectState: String, isSelf: Boolean): HobbyCa
  */
 @Composable
 internal fun HobbyEmptyState(
-    icon: ImageVector,
+    icon: DrawableResource,
     title: String,
     subtitle: String?,
     modifier: Modifier = Modifier
@@ -218,7 +218,7 @@ internal fun HobbyEmptyState(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.outlineVariant
@@ -408,7 +408,7 @@ private fun SelectionOverlay(
         ) {
             if (isSelected) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
+                    painter = painterResource(PoiIcons.Check),
                     contentDescription = "已选中",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.padding(3.dp)

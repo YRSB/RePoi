@@ -39,10 +39,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -93,6 +89,8 @@ import com.nobody.repoi.ui.common.UserAvatar
 import com.nobody.repoi.ui.common.card.PoiCaptionGridCard
 import com.nobody.repoi.ui.common.card.PoiPosterCard
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,7 +156,7 @@ fun UserHistoryScreen(
                         }
                     }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -656,7 +654,7 @@ private fun HobbyHistoryGridCard(
                 ) {
                     if (isSelected) {
                         Icon(
-                            imageVector = Icons.Filled.Check,
+                            painter = painterResource(PoiIcons.Filled.Check),
                             contentDescription = "已选择",
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(16.dp)
@@ -785,7 +783,7 @@ private fun AlbumHistoryWaterfallCard(
                 ) {
                     if (isSelected) {
                         Icon(
-                            imageVector = Icons.Filled.Check,
+                            painter = painterResource(PoiIcons.Filled.Check),
                             contentDescription = "已选择",
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(16.dp)
@@ -813,7 +811,7 @@ private fun HistoryEmptyView(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.History,
+            painter = painterResource(PoiIcons.Filled.History),
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.outlineVariant

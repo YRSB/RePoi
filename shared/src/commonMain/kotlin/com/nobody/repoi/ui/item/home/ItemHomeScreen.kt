@@ -38,16 +38,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -70,9 +60,11 @@ import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -231,7 +223,7 @@ fun ItemHomeScreen(
                                 item(key = "preorder", contentType = "preview") {
                                     PreviewSectionGrid(
                                         title = "热门预订",
-                                        icon = Icons.Filled.CalendarToday,
+                                        icon = PoiIcons.CalendarToday,
                                         iconTint = MaterialTheme.colorScheme.primary,
                                         items = uiState.preOrderItems,
                                         onMoreClick = {
@@ -264,7 +256,7 @@ fun ItemHomeScreen(
                                 item(key = "release", contentType = "preview") {
                                     PreviewSectionGrid(
                                         title = "热门出荷",
-                                        icon = Icons.Filled.Sell,
+                                        icon = PoiIcons.Sell,
                                         iconTint = MaterialTheme.colorScheme.secondary,
                                         items = uiState.releaseItems,
                                         onMoreClick = {
@@ -343,7 +335,7 @@ private fun ItemCategoryTabBar(
                 leadingIcon = if (isSelected) {
                     {
                         Icon(
-                            imageVector = Icons.Filled.Done,
+                            painter = painterResource(PoiIcons.Done),
                             contentDescription = null,
                             modifier = Modifier.size(FilterChipDefaults.IconSize)
                         )
@@ -391,7 +383,7 @@ private fun QuickEntranceSection(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
             QuickEntranceItem(
-                icon = Icons.Filled.NewReleases,
+                icon = PoiIcons.NewReleases,
                 title = "最新入库",
                 cardHeight = cardHeight,
                 iconSize = iconSize,
@@ -406,7 +398,7 @@ private fun QuickEntranceSection(
                 }
             )
             QuickEntranceItem(
-                icon = Icons.Filled.CalendarToday,
+                icon = PoiIcons.CalendarToday,
                 title = "发售日历",
                 cardHeight = cardHeight,
                 iconSize = iconSize,
@@ -423,7 +415,7 @@ private fun QuickEntranceSection(
                 }
             )
             QuickEntranceItem(
-                icon = Icons.Filled.Whatshot,
+                icon = PoiIcons.Whatshot,
                 title = "每周热门",
                 cardHeight = cardHeight,
                 iconSize = iconSize,
@@ -438,7 +430,7 @@ private fun QuickEntranceSection(
                 }
             )
             QuickEntranceItem(
-                icon = Icons.Filled.MilitaryTech,
+                icon = PoiIcons.MilitaryTech,
                 title = "好评TOP",
                 cardHeight = cardHeight,
                 iconSize = iconSize,
@@ -456,7 +448,7 @@ private fun QuickEntranceSection(
 }
 @Composable
 private fun RowScope.QuickEntranceItem(
-    icon: ImageVector,
+    icon: DrawableResource,
     title: String,
     cardHeight: Dp,
     iconSize: Dp,
@@ -479,7 +471,7 @@ private fun RowScope.QuickEntranceItem(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(icon),
                     contentDescription = title,
                     modifier = Modifier.size(iconSize),
                     tint = MaterialTheme.colorScheme.primary
@@ -502,7 +494,7 @@ private fun RowScope.QuickEntranceItem(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(icon),
                     contentDescription = title,
                     modifier = Modifier.size(iconSize),
                     tint = MaterialTheme.colorScheme.primary
@@ -529,7 +521,7 @@ private fun RowScope.QuickEntranceItem(
 @Composable
 private fun PreviewSectionGrid(
     title: String,
-    icon: ImageVector,
+    icon: DrawableResource,
     iconTint: Color,
     items: List<HobbyItemSummary>,
     onMoreClick: () -> Unit,
@@ -560,7 +552,7 @@ private fun PreviewSectionGrid(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                         tint = iconTint
@@ -577,7 +569,7 @@ private fun PreviewSectionGrid(
             TextButton(onClick = onMoreClick) {
                 Text(text = "查看更多")
                 Icon(
-                    imageVector = Icons.Filled.ChevronRight,
+                    painter = painterResource(PoiIcons.ChevronRight),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -638,14 +630,14 @@ private fun PreviewItemCard(
                 )
             } else if (isNoCover) {
                 Icon(
-                    imageVector = Icons.Filled.PhotoLibrary,
+                    painter = painterResource(PoiIcons.PhotoLibrary),
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Filled.BrokenImage,
+                    painter = painterResource(PoiIcons.BrokenImage),
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
                     tint = MaterialTheme.colorScheme.outline

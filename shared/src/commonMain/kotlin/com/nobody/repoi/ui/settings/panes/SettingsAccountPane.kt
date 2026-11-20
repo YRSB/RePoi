@@ -13,22 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.outlined.Login
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,13 +44,16 @@ import com.nobody.repoi.ui.settings.bindings
 import com.nobody.repoi.ui.settings.components.SettingItem
 import com.nobody.repoi.ui.settings.components.SettingItemGroup
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.DrawableResource
 
-private fun accountBindingIcon(title: String): ImageVector = when (title) {
-    "登录密码" -> Icons.Outlined.Lock
-    "手机" -> Icons.Outlined.Smartphone
-    "邮箱" -> Icons.Outlined.Email
-    "微信" -> Icons.Outlined.Link
-    else -> Icons.Outlined.AccountCircle
+private fun accountBindingIcon(title: String): DrawableResource = when (title) {
+    "登录密码" -> PoiIcons.Outlined.Lock
+    "手机" -> PoiIcons.Outlined.Smartphone
+    "邮箱" -> PoiIcons.Outlined.Email
+    "微信" -> PoiIcons.Outlined.Link
+    else -> PoiIcons.Outlined.AccountCircle
 }
 
 /**
@@ -110,7 +97,7 @@ fun SettingsAccountPane(
                     if (showBackButton) {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -133,11 +120,11 @@ fun SettingsAccountPane(
                 contentAlignment = Alignment.Center
             ) {
                 EmptyState(
-                    icon = Icons.Outlined.Lock,
+                    icon = PoiIcons.Outlined.Lock,
                     title = "登录后管理账号与安全",
                     description = "查看已绑定的手机、邮箱与微信",
                     actionLabel = "立即登录",
-                    actionIcon = Icons.AutoMirrored.Outlined.Login,
+                    actionIcon = PoiIcons.AutoMirrored.Outlined.Login,
                     onAction = onNavigateToLogin
                 )
             }
@@ -156,12 +143,12 @@ fun SettingsAccountPane(
                 item(key = "profile", contentType = "row") {
                     SettingItemGroup(title = "基本信息") {
                         SettingItem(
-                            icon = Icons.Outlined.Person,
+                            icon = PoiIcons.Outlined.Person,
                             title = "个人信息",
                             subtitle = "头像昵称与个人主页",
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.outline
@@ -186,7 +173,7 @@ fun SettingsAccountPane(
                             }
                         } else if (accountState.loadFailed) {
                             SettingItem(
-                                icon = Icons.Outlined.ErrorOutline,
+                                icon = PoiIcons.Outlined.ErrorOutline,
                                 title = "账号状态加载失败",
                                 subtitle = "点击重试",
                                 titleColor = MaterialTheme.colorScheme.error,
@@ -202,12 +189,12 @@ fun SettingsAccountPane(
                                 )
                             }
                             SettingItem(
-                                icon = Icons.Outlined.Key,
+                                icon = PoiIcons.Outlined.Key,
                                 title = "导出登录 Token",
                                 subtitle = "复制当前会话令牌到其他设备",
                                 trailingContent = {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.outline
@@ -223,7 +210,7 @@ fun SettingsAccountPane(
                     SettingItemGroup {
                         SettingItem(
                             title = "退出当前账号",
-                            icon = Icons.AutoMirrored.Outlined.Logout,
+                            icon = PoiIcons.AutoMirrored.Outlined.Logout,
                             iconTint = MaterialTheme.colorScheme.error,
                             titleColor = MaterialTheme.colorScheme.error,
                             onClick = onRequestLogout
@@ -271,7 +258,7 @@ private fun TokenExportDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                imageVector = Icons.Outlined.Key,
+                painter = painterResource(PoiIcons.Outlined.Key),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface
             )
@@ -304,7 +291,7 @@ private fun TokenExportDialog(
                     trailingIcon = {
                         IconButton(onClick = onToggleVisibility) {
                             Icon(
-                                imageVector = if (revealed) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                painter = painterResource(if (revealed) PoiIcons.Filled.VisibilityOff else PoiIcons.Filled.Visibility),
                                 contentDescription = if (revealed) "隐藏令牌" else "显示令牌"
                             )
                         }
@@ -331,7 +318,7 @@ private fun TokenExportDialog(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ContentCopy,
+                        painter = painterResource(PoiIcons.Filled.ContentCopy),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

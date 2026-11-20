@@ -19,12 +19,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.PhotoAlbum
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +57,8 @@ import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
 import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.navigation.CharacterAlbumListNavParam
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 角色专属相关相册列表页面。
@@ -98,7 +94,7 @@ fun CharacterAlbumListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -267,7 +263,7 @@ private fun CharacterAlbumStaggeredCard(
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.ThumbUp,
+                                painter = painterResource(PoiIcons.Filled.ThumbUp),
                                 contentDescription = "点赞",
                                 tint = Color.White,
                                 modifier = Modifier.size(11.dp)
@@ -353,7 +349,7 @@ private fun CharacterAlbumListError(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.BrokenImage,
+                painter = painterResource(PoiIcons.BrokenImage),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
@@ -371,7 +367,7 @@ private fun CharacterAlbumListError(
                 shape = CircleShape
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    painter = painterResource(PoiIcons.Refresh),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -398,7 +394,7 @@ private fun CharacterAlbumListEmpty(
             modifier = Modifier.padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.PhotoAlbum,
+                painter = painterResource(PoiIcons.PhotoAlbum),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(48.dp)

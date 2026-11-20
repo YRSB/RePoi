@@ -19,9 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,6 +57,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 黑名单管理页面：展示被屏蔽的用户列表，支持解除屏蔽。
@@ -119,7 +118,7 @@ fun MessageBlockScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -151,7 +150,7 @@ fun MessageBlockScreen(
                         modifier = Modifier.padding(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Shield,
+                            painter = painterResource(PoiIcons.Filled.Shield),
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)

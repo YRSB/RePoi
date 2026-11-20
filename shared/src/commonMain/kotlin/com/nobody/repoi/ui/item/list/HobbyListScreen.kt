@@ -36,14 +36,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -110,6 +102,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * KMP 当前年份（`Calendar.getInstance().get(YEAR)` 替代）。
@@ -583,7 +577,7 @@ private fun HobbyListTopBar(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Search,
+                                painter = painterResource(PoiIcons.Filled.Search),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -620,7 +614,7 @@ private fun HobbyListTopBar(
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Close,
+                                        painter = painterResource(PoiIcons.Filled.Close),
                                         contentDescription = "清空",
                                         modifier = Modifier.size(14.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -646,7 +640,7 @@ private fun HobbyListTopBar(
             if (isSearchActive) {
                 IconButton(onClick = onExitSearch) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "退出搜索",
                         modifier = Modifier.size(24.dp)
                     )
@@ -654,7 +648,7 @@ private fun HobbyListTopBar(
             } else if (showBackButton) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "返回",
                         modifier = Modifier.size(24.dp)
                     )
@@ -686,7 +680,7 @@ private fun HobbyListTopBar(
                         // 1. 搜索按钮
                         IconButton(onClick = onToggleSearch) {
                             Icon(
-                                imageVector = Icons.Filled.Search,
+                                painter = painterResource(PoiIcons.Filled.Search),
                                 contentDescription = "展开搜索",
                                 modifier = Modifier.size(24.dp)
                             )
@@ -694,7 +688,7 @@ private fun HobbyListTopBar(
                         // 2. 视图切换按钮（独享 48dp 标准触控目标）
                         IconButton(onClick = onToggleViewMode) {
                             Icon(
-                                imageVector = if (isGridMode) Icons.AutoMirrored.Filled.List else Icons.Filled.GridView,
+                                painter = painterResource(if (isGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
                                 contentDescription = if (isGridMode) "切换至列表视图" else "切换至网格视图",
                                 modifier = Modifier.size(24.dp)
                             )
@@ -712,7 +706,7 @@ private fun HobbyListTopBar(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.FilterList,
+                                    painter = painterResource(PoiIcons.Filled.FilterList),
                                     contentDescription = "高级筛选",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -895,7 +889,7 @@ private fun FilterDropdownChip(
         },
         trailingIcon = {
             Icon(
-                imageVector = Icons.Default.ArrowDropDown,
+                painter = painterResource(PoiIcons.ArrowDropDown),
                 contentDescription = null,
                 modifier = Modifier
                     .size(18.dp)

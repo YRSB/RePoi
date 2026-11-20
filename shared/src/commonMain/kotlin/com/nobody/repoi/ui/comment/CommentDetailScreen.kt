@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +48,8 @@ import com.nobody.repoi.ui.common.comment.CommentReplyDialog
 import com.nobody.repoi.ui.common.comment.CommentReplyRow
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 评论详情页：头部主楼 + 子评论分页流 + 底部回复输入框（对齐原版 CommentReplyActivity）。
@@ -139,7 +139,7 @@ fun CommentDetailScreen(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            painter = painterResource(PoiIcons.Filled.Close),
                             contentDescription = "关闭",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)

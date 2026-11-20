@@ -29,14 +29,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -97,6 +89,8 @@ import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.theme.largeCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 1v1 私信聊天主界面：左右气泡流、表情选择、图片发送与轮询。
@@ -194,13 +188,13 @@ fun MessageChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack), contentDescription = "返回")
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "更多")
+                            Icon(painter = painterResource(PoiIcons.Filled.MoreVert), contentDescription = "更多")
                         }
                         DropdownMenu(
                             expanded = showMenu,
@@ -213,7 +207,7 @@ fun MessageChatScreen(
                                     onNavigateToUser(uiState.targetUserId)
                                 },
                                 leadingIcon = {
-                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null)
+                                    Icon(painter = painterResource(PoiIcons.Filled.Person), contentDescription = null)
                                 }
                             )
                             DropdownMenuItem(
@@ -229,7 +223,7 @@ fun MessageChatScreen(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Filled.Block,
+                                        painter = painterResource(PoiIcons.Filled.Block),
                                         contentDescription = null,
                                         tint = if (uiState.isBlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                     )
@@ -588,7 +582,7 @@ private fun ChatBottomInputBar(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
                     } else {
                         Icon(
-                            imageVector = Icons.Filled.AddPhotoAlternate,
+                            painter = painterResource(PoiIcons.Filled.AddPhotoAlternate),
                             contentDescription = "发送图片",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -598,7 +592,7 @@ private fun ChatBottomInputBar(
                 // 表情切换按钮
                 IconButton(onClick = onToggleEmoji) {
                     Icon(
-                        imageVector = Icons.Filled.EmojiEmotions,
+                        painter = painterResource(PoiIcons.Filled.EmojiEmotions),
                         contentDescription = "表情",
                         tint = if (isEmojiPanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -631,7 +625,7 @@ private fun ChatBottomInputBar(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
                     } else {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.Send),
                             contentDescription = "发送",
                             tint = if (inputContent.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )

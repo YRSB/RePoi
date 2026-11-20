@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +47,8 @@ import com.nobody.repoi.ui.collect.components.WorksCollectCard
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.collect.components.worksDetailItemId
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 // ── 作品子页（从通用 4 页拆出，独立实现） ──────────────────
 
@@ -171,7 +170,7 @@ internal fun WorksCollectSubPage(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Icon(
-                    imageVector = Icons.Default.ArrowDownward,
+                    painter = painterResource(PoiIcons.ArrowDownward),
                     contentDescription = if (worksOrderAsc) "当前升序，点击切换为降序" else "当前降序，点击切换为升序",
                     modifier = Modifier
                         .size(16.dp)
@@ -184,7 +183,7 @@ internal fun WorksCollectSubPage(
             if (isSelf) {
                 IconButton(onClick = onOpenFilter) {
                     Icon(
-                        imageVector = Icons.Default.FilterList,
+                        painter = painterResource(PoiIcons.FilterList),
                         contentDescription = "标签筛选",
                         tint = if (worksTag.isNullOrBlank()) {
                             MaterialTheme.colorScheme.onSurface

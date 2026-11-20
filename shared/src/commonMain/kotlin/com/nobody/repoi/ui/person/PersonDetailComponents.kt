@@ -23,14 +23,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -63,6 +55,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 // ─────────────────────────────────────────────────────────────
 
@@ -306,7 +300,7 @@ internal fun PersonHobbiesSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多")
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -389,7 +383,7 @@ internal fun PersonHobbiesSection(
                         TextButton(onClick = onViewMore) {
                             Text(text = "查看全部周边")
                             Icon(
-                                imageVector = Icons.Filled.ChevronRight,
+                                painter = painterResource(PoiIcons.Filled.ChevronRight),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -440,7 +434,7 @@ internal fun PersonWorksSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多")
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -557,7 +551,7 @@ internal fun PersonCharactersSection(
                 TextButton(onClick = onViewMore) {
                     Text(text = "查看更多")
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -656,7 +650,7 @@ internal fun PersonFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
-            icon = if (isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isCollected) PoiIcons.Filled.Favorite else PoiIcons.Outlined.FavoriteBorder,
             contentDescription = if (isCollected) "已收藏" else "收藏",
             isProminent = isCollected,
             containerColor = if (isCollected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -669,7 +663,7 @@ internal fun PersonFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
                 isProminent = false
@@ -679,7 +673,7 @@ internal fun PersonFloatingActionBar(
         // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )
@@ -717,7 +711,7 @@ internal fun PersonErrorState(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                     contentDescription = "返回",
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp)

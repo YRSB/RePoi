@@ -20,13 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,6 +64,8 @@ import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 二手出售详情页（对应逆向 ResaleDetailActivity 规范与截图 1）。
@@ -133,7 +128,7 @@ fun ResaleDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Person,
+                                    painter = painterResource(PoiIcons.Filled.Person),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.size(20.dp)
@@ -180,7 +175,7 @@ fun ResaleDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -188,7 +183,7 @@ fun ResaleDetailScreen(
                 actions = {
                     IconButton(onClick = { showReportDialog = true }) {
                         Icon(
-                            imageVector = Icons.Filled.Report,
+                            painter = painterResource(PoiIcons.Filled.Report),
                             contentDescription = "举报",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -467,7 +462,7 @@ private fun ResaleLinkedHobbyCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.BrokenImage,
+                        painter = painterResource(PoiIcons.Filled.BrokenImage),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(24.dp)
@@ -538,7 +533,7 @@ private fun ResaleDetailBottomBar(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ChatBubbleOutline,
+                    painter = painterResource(PoiIcons.Filled.ChatBubbleOutline),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
@@ -567,7 +562,7 @@ private fun ResaleDetailBottomBar(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.OpenInBrowser,
+                        painter = painterResource(PoiIcons.Filled.OpenInBrowser),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )

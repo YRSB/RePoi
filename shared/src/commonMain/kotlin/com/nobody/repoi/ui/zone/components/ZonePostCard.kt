@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -40,6 +37,8 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.ui.common.LevelPill
 import com.nobody.repoi.ui.common.PoiAsyncImage
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 专区讨论分类下的帖子卡片（风格对齐信息流 ActionCard，严格限制配图高度）。
@@ -262,7 +261,7 @@ fun ZonePostCard(
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Image,
+                            painter = painterResource(PoiIcons.Outlined.Image),
                             contentDescription = "图片数量",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             modifier = Modifier.size(15.dp)
@@ -282,7 +281,7 @@ fun ZonePostCard(
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ChatBubbleOutline,
+                        painter = painterResource(PoiIcons.Outlined.ChatBubbleOutline),
                         contentDescription = "回复数量",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         modifier = Modifier.size(15.dp)

@@ -45,16 +45,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -98,8 +88,6 @@ import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_L
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import com.nobody.repoi.platform.LocalAppMessages
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.ThumbUp
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
@@ -135,6 +123,8 @@ import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.item.list.HobbyListNavParam
 import com.nobody.repoi.ui.navigation.PictureListNavParam
 import com.nobody.repoi.ui.navigation.HobbyAlbumListNavParam
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -667,7 +657,7 @@ private fun HobbyHeaderOfficialSection(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.PhotoLibrary,
+                                    painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                                     contentDescription = "暂无封面",
                                     tint = if (isDark) Color.White.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.3f),
                                     modifier = Modifier.size(32.dp)
@@ -888,7 +878,7 @@ private fun OfficialPicsMoreTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Filled.PhotoLibrary,
+                painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
@@ -1527,7 +1517,7 @@ private fun HobbyAlbumMoreTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Filled.PhotoLibrary,
+                painter = painterResource(PoiIcons.Filled.PhotoLibrary),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
@@ -1601,7 +1591,7 @@ private fun HobbyUserAlbumCard(
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ThumbUp,
+                            painter = painterResource(PoiIcons.Filled.ThumbUp),
                             contentDescription = "点赞",
                             tint = Color.White,
                             modifier = Modifier.size(11.dp)
@@ -1645,7 +1635,7 @@ private fun HobbyFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleFavorite,
             text = if (displayCollect > 0) "$displayCollect" else null,
-            icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isFavorite) PoiIcons.Filled.Favorite else PoiIcons.Outlined.FavoriteBorder,
             contentDescription = if (isFavorite) "已收藏" else "收藏",
             isProminent = isFavorite,
             containerColor = if (isFavorite) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -1658,7 +1648,7 @@ private fun HobbyFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentListClick,
                 text = "$displayComment",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
                 isProminent = false
@@ -1681,7 +1671,7 @@ private fun RatingStars(score: Double) {
         for (i in 1..5) {
             val filled = score >= i
             Icon(
-                imageVector = if (filled) Icons.Filled.Star else Icons.Filled.StarBorder,
+                painter = painterResource(if (filled) PoiIcons.Filled.Star else PoiIcons.Filled.StarBorder),
                 contentDescription = null,
                 modifier = Modifier.size(13.dp),
                 tint = if (filled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
@@ -1716,7 +1706,7 @@ private fun DetailErrorState(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(28.dp)

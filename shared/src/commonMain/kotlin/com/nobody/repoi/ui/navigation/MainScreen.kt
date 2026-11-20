@@ -3,17 +3,6 @@ package com.nobody.repoi.ui.navigation
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
@@ -33,12 +22,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 主界面：自适应导航套件（底栏/导航栏）+ 当前 Tab 首屏内容。
@@ -79,7 +70,7 @@ fun MainScreen(
                                 onClick = { navigator.selectTab(destination) },
                                 icon = {
                                     Icon(
-                                        imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
+                                        painter = painterResource(if (isSelected) destination.selectedIcon else destination.unselectedIcon),
                                         contentDescription = destination.label,
                                         modifier = Modifier.size(24.dp)
                                     )
@@ -117,7 +108,7 @@ fun MainScreen(
                         onClick = { navigator.selectTab(destination) },
                         icon = {
                             Icon(
-                                imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
+                                painter = painterResource(if (isSelected) destination.selectedIcon else destination.unselectedIcon),
                                 contentDescription = destination.label,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -154,12 +145,12 @@ fun MainScreen(
 
 enum class AppDestinations(
     val label: String,
-    val unselectedIcon: ImageVector,
-    val selectedIcon: ImageVector,
+    val unselectedIcon: DrawableResource,
+    val selectedIcon: DrawableResource,
 ) {
-    HOME("动态", Icons.Outlined.Home, Icons.Filled.Home),
-    ITEMS("条目", Icons.Outlined.Category, Icons.Filled.Category),
-    ALBUM("相册", Icons.Outlined.PhotoLibrary, Icons.Filled.PhotoLibrary),
-    FOLLOW("关注", Icons.Outlined.People, Icons.Filled.People),
-    PROFILE("我的", Icons.Outlined.Person, Icons.Filled.Person),
+    HOME("动态", PoiIcons.Outlined.Home, PoiIcons.Filled.Home),
+    ITEMS("条目", PoiIcons.Outlined.Category, PoiIcons.Filled.Category),
+    ALBUM("相册", PoiIcons.Outlined.PhotoLibrary, PoiIcons.Filled.PhotoLibrary),
+    FOLLOW("关注", PoiIcons.Outlined.People, PoiIcons.Filled.People),
+    PROFILE("我的", PoiIcons.Outlined.Person, PoiIcons.Filled.Person),
 }

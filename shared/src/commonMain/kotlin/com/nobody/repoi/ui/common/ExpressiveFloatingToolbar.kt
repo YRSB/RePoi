@@ -24,10 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * Material 3 Expressive 悬浮操作栏（Floating Toolbar）适配层。
@@ -90,7 +91,7 @@ fun ExpressiveToolbarButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     text: String? = null,
-    icon: ImageVector? = null,
+    icon: DrawableResource? = null,
     contentDescription: String? = null,
     isProminent: Boolean = false,
     containerColor: Color = if (isProminent) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -107,7 +108,7 @@ fun ExpressiveToolbarButton(
             ) {
                 if (icon != null) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = null,
                         tint = iconTint,
                         modifier = Modifier.size(18.dp)
@@ -149,7 +150,7 @@ fun ExpressiveToolbarButton(
         val iconContent: @Composable () -> Unit = {
             if (icon != null) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(icon),
                     contentDescription = contentDescription,
                     tint = iconTint,
                     modifier = Modifier.size(24.dp)

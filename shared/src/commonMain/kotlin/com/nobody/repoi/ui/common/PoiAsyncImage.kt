@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -27,6 +25,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import kotlin.math.abs
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 未命中缓存、无回退比例且非自适应场景下的默认纵横比（正方形占位，防布局跳动）。 */
 private const val DEFAULT_ASPECT_RATIO = 1.0f
@@ -253,7 +253,7 @@ private fun PoiAsyncImageCore(
             // 失败/无模型态：大容器（详情、全屏入口）与 72dp 级缩略图各占一半概率，
             // 因此取 28dp 折中而不引入 BoxWithConstraints（后者在 Lazy 列表逐项测量有额外开销）
             Icon(
-                imageVector = Icons.Filled.BrokenImage,
+                painter = painterResource(PoiIcons.Filled.BrokenImage),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
                 modifier = Modifier.size(BrokenImageIconSize)

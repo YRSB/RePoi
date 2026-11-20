@@ -53,23 +53,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.material.icons.automirrored.filled.Reply
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material.icons.outlined.SentimentSatisfied
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.AlertDialog
@@ -140,6 +129,8 @@ import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.util.FaceTextItem
 import com.nobody.repoi.util.loadFaceTexts
 import com.nobody.repoi.ui.theme.bottomSheet
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * M3 注意：评论区内容过滤与展示模式唯一定义归属 M2
@@ -279,7 +270,7 @@ fun CommentSectionHeader(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                         contentDescription = "返回",
                         modifier = Modifier.size(18.dp)
                     )
@@ -310,7 +301,7 @@ fun CommentSectionHeader(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.Sort,
+                painter = painterResource(PoiIcons.AutoMirrored.Filled.Sort),
                 contentDescription = "排序方式",
                 modifier = Modifier.size(15.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -536,7 +527,7 @@ fun CommentItemCard(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Reply,
+                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.Reply),
                                         contentDescription = "回复",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(15.dp)
@@ -658,7 +649,7 @@ private fun CommentPraiseButton(
         )
     ) {
         Icon(
-            imageVector = if (comment.praiseState) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+            painter = painterResource(if (comment.praiseState) PoiIcons.Filled.ThumbUp else PoiIcons.Outlined.ThumbUp),
             contentDescription = if (comment.praiseState) "已点赞" else "点赞",
             tint = if (comment.praiseState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(14.dp)
@@ -845,7 +836,7 @@ fun CommentReplyRow(
                                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Reply,
+                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.Reply),
                                         contentDescription = "回复",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(13.dp)
@@ -1180,7 +1171,7 @@ fun CommentReplyDialog(
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     Icon(
-                                        imageVector = Icons.Filled.Close,
+                                        painter = painterResource(PoiIcons.Filled.Close),
                                         contentDescription = "删除",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
@@ -1224,7 +1215,7 @@ fun CommentReplyDialog(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.SentimentSatisfied,
+                                painter = painterResource(PoiIcons.Outlined.SentimentSatisfied),
                                 contentDescription = "表情",
                                 tint = if (currentInputSelector == CommentInputSelector.EMOJI) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
@@ -1251,7 +1242,7 @@ fun CommentReplyDialog(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Keyboard,
+                            painter = painterResource(PoiIcons.Outlined.Keyboard),
                             contentDescription = "键盘",
                             tint = if (currentInputSelector == CommentInputSelector.NONE && textFieldFocusState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
@@ -1818,7 +1809,7 @@ fun CommentFeedPane(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Edit,
+                    painter = painterResource(PoiIcons.Filled.Edit),
                     contentDescription = "我要说两句",
                     modifier = Modifier.size(24.dp)
                 )

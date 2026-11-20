@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -55,6 +51,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 设置分组的小标题。
@@ -172,7 +171,7 @@ fun SettingItem(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: ImageVector? = null,
+    icon: DrawableResource? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
@@ -188,7 +187,7 @@ fun SettingItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = it,
+                    painter = painterResource(it),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                     tint = if (enabled) iconTint else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -277,7 +276,7 @@ fun SettingSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: ImageVector? = null,
+    icon: DrawableResource? = null,
     enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -299,13 +298,13 @@ fun SettingSwitchItem(
                 thumbContent = {
                     if (checked) {
                         Icon(
-                            imageVector = Icons.Filled.Check,
+                            painter = painterResource(PoiIcons.Check),
                             contentDescription = null,
                             modifier = Modifier.size(SwitchDefaults.IconSize)
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            painter = painterResource(PoiIcons.Close),
                             contentDescription = null,
                             modifier = Modifier.size(SwitchDefaults.IconSize)
                         )
@@ -327,7 +326,7 @@ fun SettingSwitchItem(
 data class ButtonGroupOption<T>(
     val value: T,
     val label: String,
-    val icon: ImageVector? = null
+    val icon: DrawableResource? = null
 )
 
 /**
@@ -385,7 +384,7 @@ fun <T> SettingButtonGroup(
             ) {
                 option.icon?.let {
                     Icon(
-                        imageVector = it,
+                        painter = painterResource(it),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -422,7 +421,7 @@ fun SettingSliderItem(
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
+    icon: DrawableResource? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
@@ -447,7 +446,7 @@ fun SettingSliderItem(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = it,
+                            painter = painterResource(it),
                             contentDescription = null,
                             tint = iconTint,
                             modifier = Modifier.size(24.dp)
@@ -525,7 +524,7 @@ fun <T> SettingDropdownItem(
     valueLabel: (T) -> String,
     onValueChange: (T) -> Unit,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
+    icon: DrawableResource? = null,
     subtitle: String? = null,
     enabled: Boolean = true,
 ) {
@@ -579,7 +578,7 @@ fun <T> SettingDropdownItem(
                             leadingIcon = if (isSelected) {
                                 {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        painter = painterResource(PoiIcons.Check),
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp),
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer

@@ -20,11 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,6 +64,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.foundation.shape.CircleShape
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 作品收藏编辑页（原版 `net.hpoi.ui.collect.CollectWorksActivity`）。
@@ -136,7 +133,7 @@ fun WorksCollectEditScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -149,7 +146,7 @@ fun WorksCollectEditScreen(
                             enabled = !uiState.isSaving && !uiState.isDeleting
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Delete,
+                                painter = painterResource(PoiIcons.Filled.Delete),
                                 contentDescription = "取消收藏",
                                 tint = MaterialTheme.colorScheme.error
                             )
@@ -449,7 +446,7 @@ fun WorksCollectEditScreen(
             onDismissRequest = { viewModel.setDeleteConfirmDialogVisible(false) },
             icon = {
                 Icon(
-                    imageVector = Icons.Filled.Delete,
+                    painter = painterResource(PoiIcons.Filled.Delete),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -570,7 +567,7 @@ private fun WorksCollectTagsSection(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        painter = painterResource(PoiIcons.Filled.Add),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -591,7 +588,7 @@ private fun WorksCollectTagsSection(
                             label = { Text(tag, fontSize = 12.sp) },
                             trailingIcon = {
                                 Icon(
-                                    imageVector = Icons.Filled.Close,
+                                    painter = painterResource(PoiIcons.Filled.Close),
                                     contentDescription = "删除",
                                     modifier = Modifier
                                         .size(14.dp)

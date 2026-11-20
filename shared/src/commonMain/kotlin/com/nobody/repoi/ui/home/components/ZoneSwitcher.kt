@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.ui.home.ZoneSwitcherGroup
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 顶栏锚点的无障碍文案；即可点区域的唯一语义标签。 */
 private const val ZONE_SWITCHER_CONTENT_DESCRIPTION = "切换专区"
@@ -80,7 +79,7 @@ internal fun ZoneSwitcherAnchor(
             modifier = Modifier.weight(1f, fill = false)
         )
         Icon(
-            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            painter = painterResource(if (expanded) PoiIcons.Filled.ExpandLess else PoiIcons.Filled.ExpandMore),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )

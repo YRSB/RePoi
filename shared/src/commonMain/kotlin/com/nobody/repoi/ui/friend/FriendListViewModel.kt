@@ -1,4 +1,4 @@
-﻿package com.nobody.repoi.ui.friend
+package com.nobody.repoi.ui.friend
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

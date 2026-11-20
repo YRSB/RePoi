@@ -21,14 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -111,6 +103,8 @@ import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -447,7 +441,7 @@ fun ZoneDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -520,7 +514,7 @@ fun ZoneDetailScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Add,
+                    painter = painterResource(PoiIcons.Filled.Add),
                     contentDescription = "发布内容到专区"
                 )
             }
@@ -672,7 +666,7 @@ fun ZoneDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Search,
+                                        painter = painterResource(PoiIcons.Filled.Search),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(18.dp)
@@ -713,7 +707,7 @@ fun ZoneDetailScreen(
                                             modifier = Modifier.size(20.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Filled.Close,
+                                                painter = painterResource(PoiIcons.Filled.Close),
                                                 contentDescription = "清空搜索",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.size(16.dp)
@@ -728,7 +722,7 @@ fun ZoneDetailScreen(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isGridMode) Icons.AutoMirrored.Filled.List else Icons.Filled.GridView,
+                                    painter = painterResource(if (isGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
                                     contentDescription = if (isGridMode) "切换列表模式" else "切换网格模式",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -752,7 +746,7 @@ fun ZoneDetailScreen(
                                     }
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.FilterList,
+                                        painter = painterResource(PoiIcons.Filled.FilterList),
                                         contentDescription = "高级筛选",
                                         tint = if (hasAdvancedFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -781,7 +775,7 @@ fun ZoneDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Search,
+                                        painter = painterResource(PoiIcons.Filled.Search),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(18.dp)
@@ -822,7 +816,7 @@ fun ZoneDetailScreen(
                                             modifier = Modifier.size(20.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Filled.Close,
+                                                painter = painterResource(PoiIcons.Filled.Close),
                                                 contentDescription = "清空搜索",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.size(16.dp)

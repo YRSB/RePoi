@@ -32,16 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -90,6 +80,8 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.bottomSheet
 import androidx.compose.material3.ElevatedCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 
 
@@ -188,7 +180,7 @@ internal fun VendorHeaderSection(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Star,
+                                        painter = painterResource(PoiIcons.Filled.Star),
                                         contentDescription = null,
                                         modifier = Modifier.size(12.dp),
                                         tint = MaterialTheme.colorScheme.secondary
@@ -650,7 +642,7 @@ internal fun VendorFloatingActionBar(
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
-            icon = if (isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isCollected) PoiIcons.Filled.Favorite else PoiIcons.Outlined.FavoriteBorder,
             contentDescription = if (isCollected) "已关注" else "关注",
             isProminent = isCollected,
             containerColor = if (isCollected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -663,7 +655,7 @@ internal fun VendorFloatingActionBar(
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
-                icon = Icons.AutoMirrored.Filled.Comment,
+                icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
                 // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
                 isProminent = false
@@ -673,7 +665,7 @@ internal fun VendorFloatingActionBar(
         // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
-            icon = Icons.Filled.Share,
+            icon = PoiIcons.Filled.Share,
             contentDescription = "分享",
             isProminent = false
         )
@@ -946,7 +938,7 @@ private fun StarRatingBar(
         (1..5).forEach { starIndex ->
             val isFull = rating >= starIndex
             Icon(
-                imageVector = if (isFull) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                painter = painterResource(if (isFull) PoiIcons.Filled.Star else PoiIcons.Outlined.StarBorder),
                 contentDescription = "$starIndex 星",
                 tint = if (isFull) Color(0xFFFFB300) else MaterialTheme.colorScheme.outlineVariant,
                 modifier = Modifier
@@ -1011,7 +1003,7 @@ internal fun VendorInfoBottomSheet(
 
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "关闭",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

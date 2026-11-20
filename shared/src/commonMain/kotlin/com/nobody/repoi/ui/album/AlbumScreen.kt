@@ -31,11 +31,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -92,6 +87,8 @@ import com.nobody.repoi.data.remote.model.AlbumOrder
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
 
 import kotlinx.coroutines.launch
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(
@@ -358,7 +355,7 @@ fun AlbumScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Refresh,
+                    painter = painterResource(PoiIcons.Filled.Refresh),
                     contentDescription = "回到顶部并刷新"
                 )
             }
@@ -404,7 +401,7 @@ private fun AlbumZoneTabs(
             }
             IconButton(onClick = onBrowseZones) {
                 Icon(
-                    imageVector = Icons.Filled.Add,
+                    painter = painterResource(PoiIcons.Filled.Add),
                     contentDescription = "分区管理"
                 )
             }
@@ -544,7 +541,7 @@ private fun RankingSections(
                         ) {
                             Text(text = "查看更多")
                             Icon(
-                                imageVector = Icons.Filled.ChevronRight,
+                                painter = painterResource(PoiIcons.Filled.ChevronRight),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -657,7 +654,7 @@ private fun AlbumLoginGuide(onLogin: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Filled.Person,
+                painter = painterResource(PoiIcons.Filled.Person),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                 modifier = Modifier.size(52.dp)

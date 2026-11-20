@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,6 +60,8 @@ import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
 import com.nobody.repoi.ui.resale.components.ResaleRegionPickerSheet
 import com.nobody.repoi.ui.resale.components.ResaleReportDialog
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 同款二手与全站二手市场页（复用专区已有的二手设计体系与规范组件）。
@@ -158,7 +157,7 @@ fun ResaleMarketScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -177,7 +176,7 @@ fun ResaleMarketScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    painter = painterResource(PoiIcons.Add),
                     contentDescription = "发布二手"
                 )
             }

@@ -13,11 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +33,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 自定义轻量搜索顶栏
@@ -77,7 +74,7 @@ fun SearchTopBar(
             // 返回按键
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                     contentDescription = "返回",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -160,7 +157,7 @@ fun SearchTopBar(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        painter = painterResource(PoiIcons.Filled.Close),
                         contentDescription = "清除输入",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -182,7 +179,7 @@ fun SearchTopBar(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Tune,
+                            painter = painterResource(PoiIcons.Outlined.Tune),
                             contentDescription = "筛选与排序",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -203,7 +200,7 @@ fun SearchTopBar(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Search,
+                        painter = painterResource(PoiIcons.Filled.Search),
                         contentDescription = "搜索",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp)

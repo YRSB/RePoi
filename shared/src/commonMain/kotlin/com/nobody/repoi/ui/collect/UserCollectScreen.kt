@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +50,8 @@ import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 全量用户收藏中枢界面（对标 Hpoi 2.39 原版架构）。
@@ -129,7 +127,7 @@ fun UserCollectScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -140,7 +138,7 @@ fun UserCollectScreen(
                     if (uiState.selectedCategory == UserCollectCategory.HOBBY) {
                         IconButton(onClick = { viewModel.onIntent(UserCollectIntent.ToggleViewMode) }) {
                             Icon(
-                                imageVector = if (uiState.isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.List,
+                                painter = painterResource(if (uiState.isListView) PoiIcons.GridView else PoiIcons.AutoMirrored.Filled.List),
                                 contentDescription = if (uiState.isListView) "切换为网格视图" else "切换为列表视图",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )

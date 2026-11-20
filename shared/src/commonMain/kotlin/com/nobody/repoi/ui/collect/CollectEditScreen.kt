@@ -26,16 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -93,6 +83,8 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /** 收藏日期格式化：`yyyy-MM-dd` 经由 [DateTimeFormats.ymdFromMillis]（KMP datetime，无 SDF 单例）。 */
 
@@ -149,7 +141,7 @@ fun CollectEditScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                             contentDescription = "返回"
                         )
                     }
@@ -161,7 +153,7 @@ fun CollectEditScreen(
                             enabled = !uiState.isSaving && !uiState.isDeleting
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.DeleteOutline,
+                                painter = painterResource(PoiIcons.Filled.DeleteOutline),
                                 contentDescription = "取消收藏",
                                 tint = MaterialTheme.colorScheme.error
                             )
@@ -478,7 +470,7 @@ fun CollectEditScreen(
             onDismissRequest = { viewModel.setDeleteConfirmDialogVisible(false) },
             icon = {
                 Icon(
-                    imageVector = Icons.Filled.Delete,
+                    painter = painterResource(PoiIcons.Filled.Delete),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -726,7 +718,7 @@ private fun CollectRatingSection(
                     val isFilled = star <= rating
                     IconButton(onClick = { onRatingChange(star) }) {
                         Icon(
-                            imageVector = if (isFilled) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            painter = painterResource(if (isFilled) PoiIcons.Filled.Star else PoiIcons.Outlined.StarBorder),
                             contentDescription = "$star 星",
                             tint = if (isFilled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.size(32.dp)
@@ -815,7 +807,7 @@ private fun CollectOrderDetailsSection(
                         )
                     }
                     Icon(
-                        imageVector = Icons.Filled.CalendarToday,
+                        painter = painterResource(PoiIcons.Filled.CalendarToday),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
@@ -998,7 +990,7 @@ private fun CollectTagsSection(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        painter = painterResource(PoiIcons.Filled.Add),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1020,7 +1012,7 @@ private fun CollectTagsSection(
                             label = { Text(tag, fontSize = 12.sp) },
                             trailingIcon = {
                                 Icon(
-                                    imageVector = Icons.Filled.Close,
+                                    painter = painterResource(PoiIcons.Filled.Close),
                                     contentDescription = "删除",
                                     modifier = Modifier
                                         .size(14.dp)
@@ -1063,7 +1055,7 @@ private fun CollectTagsSection(
                             icon = if (alreadyAdded) {
                                 {
                                     Icon(
-                                        imageVector = Icons.Filled.Check,
+                                        painter = painterResource(PoiIcons.Filled.Check),
                                         contentDescription = null,
                                         modifier = Modifier.size(14.dp)
                                     )

@@ -21,14 +21,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.BrightnessAuto
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Style
-import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +65,8 @@ import com.nobody.repoi.ui.theme.effectiveFor
 import com.nobody.repoi.ui.theme.resolveSchemeSource
 import com.nobody.repoi.ui.theme.seedColorScheme
 import com.nobody.repoi.ui.theme.themeCardColorsFromScheme
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 外观与主题详情 Pane：承载显示模式、色卡圆盘、色彩算法与规范、AMOLED 纯黑等配置。
@@ -177,7 +171,7 @@ fun SettingsAppearancePane(
                     if (showBackButton) {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -207,9 +201,9 @@ fun SettingsAppearancePane(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingGroupTitle(text = "显示模式")
                     val themeOptions = listOf(
-                        ButtonGroupOption(ThemeMode.LIGHT, "浅色", Icons.Outlined.LightMode),
-                        ButtonGroupOption(ThemeMode.DARK, "深色", Icons.Outlined.DarkMode),
-                        ButtonGroupOption(ThemeMode.SYSTEM, "跟随系统", Icons.Outlined.BrightnessAuto)
+                        ButtonGroupOption(ThemeMode.LIGHT, "浅色", PoiIcons.Outlined.LightMode),
+                        ButtonGroupOption(ThemeMode.DARK, "深色", PoiIcons.Outlined.DarkMode),
+                        ButtonGroupOption(ThemeMode.SYSTEM, "跟随系统", PoiIcons.Outlined.BrightnessAuto)
                     )
                     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         SettingButtonGroup(
@@ -254,7 +248,7 @@ fun SettingsAppearancePane(
             item(key = "color-spec-group", contentType = "segment") {
                 SettingItemGroup(title = "色彩算法与规范") {
                     SettingDropdownItem(
-                        icon = Icons.Outlined.Style,
+                        icon = PoiIcons.Outlined.Style,
                         title = "色彩风格",
                         selectedValue = paletteStyle,
                         values = AllPaletteStyles,
@@ -262,7 +256,7 @@ fun SettingsAppearancePane(
                         onValueChange = onPaletteStyleChange
                     )
                     SettingDropdownItem(
-                        icon = Icons.Outlined.Tune,
+                        icon = PoiIcons.Outlined.Tune,
                         title = "色彩标准",
                         selectedValue = specVersion,
                         values = AllSpecVersions,
@@ -276,7 +270,7 @@ fun SettingsAppearancePane(
                 SettingItemGroup(title = "显示效果") {
                     if (supportsDynamicColor) {
                         SettingSwitchItem(
-                            icon = Icons.Outlined.Wallpaper,
+                            icon = PoiIcons.Outlined.Wallpaper,
                             title = "动态主题",
                             subtitle = "将壁纸颜色应用于主题",
                             checked = dynamicColor,
@@ -284,7 +278,7 @@ fun SettingsAppearancePane(
                         )
                     }
                     SettingSwitchItem(
-                        icon = Icons.Outlined.DarkMode,
+                        icon = PoiIcons.Outlined.DarkMode,
                         title = "Amoled 深色",
                         subtitle = "深色模式下使用纯黑背景省电护眼",
                         checked = amoled,
@@ -364,4 +358,3 @@ private fun PodAuraThemeCard(
         }
     }
 }
-

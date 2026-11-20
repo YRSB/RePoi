@@ -31,9 +31,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -83,6 +80,8 @@ import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.home.components.ActionCard
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 关注屏（顶层关注目的地，承载关注条目/用户模块）。
@@ -443,7 +442,7 @@ fun FollowScreen(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
-                Icon(imageVector = Icons.Filled.Refresh, contentDescription = "回到顶部并刷新")
+                Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = "回到顶部并刷新")
             }
         }
     }
@@ -519,7 +518,7 @@ private fun FollowLoginGuide(onLogin: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Filled.Person,
+                painter = painterResource(PoiIcons.Filled.Person),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                 modifier = Modifier.size(52.dp)

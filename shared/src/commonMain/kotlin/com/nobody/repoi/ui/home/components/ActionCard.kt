@@ -22,14 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.nobody.repoi.ui.common.PoiIcons
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -302,8 +296,8 @@ fun ActionCard(
                             NoticeParamChips(
                                 price = price?.let { "¥$it" },
                                 releaseDate = tradePurity,
-                                priceIcon = Icons.Filled.Sell,
-                                releaseDateIcon = Icons.Filled.Verified
+                                priceIcon = PoiIcons.Sell,
+                                releaseDateIcon = PoiIcons.Verified
                             )
                         }
                     }
@@ -365,7 +359,7 @@ private fun OfficialBulletBadge() {
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.Campaign,
+                painter = painterResource(PoiIcons.Campaign),
                 contentDescription = null,
                 modifier = Modifier.size(11.dp),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -461,8 +455,8 @@ private fun NoticeParamChips(
     price: String?,
     releaseDate: String?,
     modifier: Modifier = Modifier,
-    priceIcon: ImageVector = Icons.Filled.Sell,
-    releaseDateIcon: ImageVector = Icons.Filled.CalendarToday
+    priceIcon: DrawableResource = PoiIcons.Sell,
+    releaseDateIcon: DrawableResource = PoiIcons.CalendarToday
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -489,7 +483,7 @@ private fun NoticeParamChips(
 
 @Composable
 private fun ParamChip(
-    icon: ImageVector,
+    icon: DrawableResource,
     label: String,
     iconTint: Color = MaterialTheme.colorScheme.primary
 ) {
@@ -503,7 +497,7 @@ private fun ParamChip(
             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(icon),
                 contentDescription = null,
                 modifier = Modifier.size(11.5.dp),
                 tint = iconTint
@@ -557,7 +551,7 @@ private fun UserFeedHeader(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Filled.Person,
+                painter = painterResource(PoiIcons.Person),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)
@@ -712,7 +706,7 @@ private fun ActionCardBottomStats(
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Comment,
+                    painter = painterResource(PoiIcons.Comment),
                     contentDescription = "讨论数",
                     modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.outline
@@ -730,7 +724,7 @@ private fun ActionCardBottomStats(
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Favorite,
+                    painter = painterResource(PoiIcons.Favorite),
                     contentDescription = "收藏数",
                     modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.outline
