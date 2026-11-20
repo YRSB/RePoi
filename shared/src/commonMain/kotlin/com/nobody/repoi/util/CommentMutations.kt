@@ -16,9 +16,31 @@ object CommentMutations {
         return filterShielded(item.replys ?: emptyList()).take(REPLY_PREVIEW_LIMIT)
     }
 
+    /** 是否为已被屏蔽的主楼评论。 */
+    fun isShielded(item: CommentItem): Boolean = item.isShielded
+
+    /** 是否为已被屏蔽的子回复。 */
+    fun isShielded(reply: CommentReplyItem): Boolean = reply.isShielded
+
     /** 屏蔽项过滤（详情页与内联同一口径）。 */
     fun filterShielded(replies: List<CommentReplyItem>): List<CommentReplyItem> {
-        return replies.filter { it.contentCleanText != "(已屏蔽)" }
+        return replies.filterNot { isShielded(it) }
+    }
+
+    /**
+     * 过滤已屏蔽的主楼评论，并级联剔除保留主楼下的已屏蔽子评论。
+     *
+     * - 当主楼被屏蔽时，整楼及其下挂子评论彻底移除；
+     * - 正常主楼保留，且其下挂的已屏蔽子评论被过滤。
+     */
+    fun filterShieldedComments(comments: List<CommentItem>): List<CommentItem> {
+        return comments.filterNot { isShielded(it) }.map { comment ->
+            if (comment.replys != null) {
+                comment.copy(replys = filterShielded(comment.replys))
+            } else {
+                comment
+            }
+        }
     }
 
     /** 回复目标用户 ID：取首个非零值，双零时传空（与展示侧判定对齐）。 */
@@ -31,10 +53,10 @@ object CommentMutations {
         }
     }
 
-    /** 是否需要展示“共 X 条回复”（总数或实际列表超出预览窗口即展示）。 */
+    /** 是否需要展示“共 X 条回复”（总数或实际有效列表超出预览窗口即展示）。 */
     fun hasMoreReplies(item: CommentItem): Boolean {
-        return item.reply > REPLY_PREVIEW_LIMIT ||
-            (item.replys ?: emptyList()).size > REPLY_PREVIEW_LIMIT
+        val validReplies = filterShielded(item.replys ?: emptyList())
+        return item.reply > REPLY_PREVIEW_LIMIT || validReplies.size > REPLY_PREVIEW_LIMIT
     }
 
     /** 点赞乐观应用：取反 praiseState 并 ±1。 */

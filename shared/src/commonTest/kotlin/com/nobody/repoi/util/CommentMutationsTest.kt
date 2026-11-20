@@ -56,6 +56,19 @@ class CommentMutationsTest {
         assertFalse(CommentMutations.hasMoreReplies(full))
         // 无回复：不展示
         assertFalse(CommentMutations.hasMoreReplies(comment(id = 4L, replyCount = 0, replys = emptyList())))
+
+        // replyCount = 2, 但 replys 中包含 2 条正常与 2 条已屏蔽（原始 size = 4 > 3），过滤后有效仅 2 条，不应展示“更多”
+        val itemWithShielded = comment(
+            id = 5L,
+            replyCount = 2,
+            replys = listOf(
+                reply(1L),
+                CommentReplyItem(id = 2L, content = "(已屏蔽)"),
+                CommentReplyItem(id = 3L, content = "(已屏蔽)"),
+                reply(4L)
+            )
+        )
+        assertFalse(CommentMutations.hasMoreReplies(itemWithShielded))
     }
 
     @Test
@@ -121,5 +134,71 @@ class CommentMutationsTest {
         )
         assertEquals(null, CommentMutations.resolveReplyToUserId(noIds))
         assertEquals(null, CommentMutations.resolveReplyToUserId(null))
+    }
+
+    @Test
+    fun isShielded_detectsMaskTextAndIsMaskFlag() {
+        val maskedTextComment = CommentItem(id = 1L, content = "(已屏蔽)")
+        val htmlMaskedComment = CommentItem(id = 2L, content = "<p>(已屏蔽)</p>")
+        val isMaskComment = CommentItem(id = 3L, content = "正常内容", isMask = 1)
+        val normalComment = CommentItem(id = 4L, content = "正常内容", isMask = 0)
+
+        assertTrue(CommentMutations.isShielded(maskedTextComment))
+        assertTrue(CommentMutations.isShielded(htmlMaskedComment))
+        assertTrue(CommentMutations.isShielded(isMaskComment))
+        assertFalse(CommentMutations.isShielded(normalComment))
+        assertTrue(maskedTextComment.isShielded)
+        assertTrue(isMaskComment.isShielded)
+        assertFalse(normalComment.isShielded)
+
+        val maskedReply = CommentReplyItem(id = 5L, content = "(已屏蔽)")
+        val htmlMaskedReply = CommentReplyItem(id = 6L, htmlContent = "<span>(已屏蔽)</span>")
+        val normalReply = CommentReplyItem(id = 7L, content = "正常回复")
+
+        assertTrue(CommentMutations.isShielded(maskedReply))
+        assertTrue(CommentMutations.isShielded(htmlMaskedReply))
+        assertFalse(CommentMutations.isShielded(normalReply))
+        assertTrue(maskedReply.isShielded)
+        assertFalse(normalReply.isShielded)
+    }
+
+    @Test
+    fun filterShieldedComments_removesShieldedRootsAndFiltersSubReplies() {
+        val comments = listOf(
+            // 主楼已屏蔽（文本匹配），下挂子回复应随整楼级联移除
+            CommentItem(
+                id = 1L,
+                content = "(已屏蔽)",
+                reply = 2,
+                replys = listOf(reply(11L), reply(12L))
+            ),
+            // 主楼已屏蔽（isMask == 1），下挂子回复应随整楼级联移除
+            CommentItem(
+                id = 2L,
+                content = "正常文字",
+                isMask = 1,
+                reply = 1,
+                replys = listOf(reply(21L))
+            ),
+            // 正常主楼，下挂 1 条已屏蔽子回复与 2 条正常子回复
+            CommentItem(
+                id = 3L,
+                content = "正常主楼内容",
+                reply = 3,
+                replys = listOf(
+                    reply(31L),
+                    CommentReplyItem(id = 32L, content = "(已屏蔽)"),
+                    reply(33L)
+                )
+            )
+        )
+
+        val filtered = CommentMutations.filterShieldedComments(comments)
+
+        // 仅保留正常主楼 3L，且其子评论中的 32L (已屏蔽) 被剔除
+        assertEquals(1, filtered.size)
+        val remaining = filtered.single()
+        assertEquals(3L, remaining.id)
+        assertEquals(listOf(31L, 33L), remaining.replys?.map { it.id })
     }
 }

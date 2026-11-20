@@ -567,7 +567,7 @@ fun CommentItemCard(
                 }
 
                 // 5. 【楼中楼子评论嵌套气泡框】(直接对照设计图 0)
-                val replies = (comment.replys ?: emptyList()).filter { it.contentCleanText != "(已屏蔽)" }
+                val replies = CommentMutations.filterShielded(comment.replys ?: emptyList())
                 if (showReplyPreview && replies.isNotEmpty()) {
                     val canJumpToDetail = interaction.onViewAllReplies != null
                     val hasMoreReplies = CommentMutations.hasMoreReplies(comment)

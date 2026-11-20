@@ -15,6 +15,9 @@ import com.nobody.repoi.util.parseEmoticonUrls
 
 // ── 3.1 评论区模型 ───────────────────────────────
 
+/** 平台服务端屏蔽占位纯文本 */
+const val SHIELDED_COMMENT_TEXT = "(已屏蔽)"
+
 @Serializable
 data class CommentPayload(
     val list: List<CommentItem>? = null
@@ -52,6 +55,10 @@ data class CommentItem(
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
+
+    /** 是否为已被服务端或本地屏蔽的内容 */
+    val isShielded: Boolean
+        get() = contentCleanText == SHIELDED_COMMENT_TEXT || isMask == 1
 }
 
 @Serializable
@@ -102,6 +109,10 @@ data class CommentReplyItem(
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
+
+    /** 是否为已被服务端或本地屏蔽的内容 */
+    val isShielded: Boolean
+        get() = contentCleanText == SHIELDED_COMMENT_TEXT
 }
 
 // ── 3.2 子评论详情与回复发表模型 ───────────────────────────────
