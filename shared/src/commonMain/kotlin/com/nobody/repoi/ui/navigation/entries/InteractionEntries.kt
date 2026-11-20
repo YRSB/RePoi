@@ -1,15 +1,7 @@
 package com.nobody.repoi.ui.navigation
 
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.metadata
-import androidx.navigation3.ui.NavDisplay
 import com.nobody.repoi.ui.common.ImageViewerScreen
 import com.nobody.repoi.ui.common.ImageViewerStateHolder
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -64,56 +56,14 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         )
     }
 
-    entry<CommentDetailNavKey>(
-        metadata = metadata {
-            put(NavDisplay.TransitionKey) {
-                slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(300)
-                ) togetherWith fadeOut(animationSpec = tween(150))
-            }
-            put(NavDisplay.PopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(250)
-                )
-            }
-            put(NavDisplay.PredictivePopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(250)
-                )
-            }
-        }
-    ) { key ->
+    entry<CommentDetailNavKey> { key ->
         CommentDetailScreen(
             navParam = key.param,
             onBack = onBack
         )
     }
 
-    entry<HobbyCommentsNavKey>(
-        metadata = metadata {
-            put(NavDisplay.TransitionKey) {
-                slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(300)
-                ) togetherWith fadeOut(animationSpec = tween(150))
-            }
-            put(NavDisplay.PopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(250)
-                )
-            }
-            put(NavDisplay.PredictivePopTransitionKey) {
-                fadeIn(animationSpec = tween(150)) togetherWith slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(250)
-                )
-            }
-        }
-    ) { key ->
+    entry<HobbyCommentsNavKey> { key ->
         HobbyCommentsScreen(
             navParam = key.param,
             onBack = onBack,
