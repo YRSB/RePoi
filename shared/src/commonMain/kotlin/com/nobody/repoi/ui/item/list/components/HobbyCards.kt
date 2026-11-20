@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.item.list.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,6 +66,7 @@ fun HobbyListCard(
         title = item.displayName,
         onClick = onClick,
         modifier = modifier,
+        verticalArrangement = Arrangement.SpaceBetween,
         thumbnail = {
             PoiThumbnail.Square {
                 PoiAsyncImage(
@@ -77,42 +79,47 @@ fun HobbyListCard(
             }
         }
     ) {
-        // 第 1 行：厂商 与 发售（等宽 2 列）
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            HpoiInfoBadgeItem(
-                label = "厂商",
-                value = item.companyName.orEmpty(),
-                modifier = Modifier.weight(1f)
-            )
+            // 第 1 行：厂商 与 发售（等宽 2 列）
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HpoiInfoBadgeItem(
+                    label = "厂商",
+                    value = item.companyName.orEmpty(),
+                    modifier = Modifier.weight(1f)
+                )
 
-            HpoiInfoBadgeItem(
-                label = "发售",
-                value = item.displayReleaseDateText,
-                modifier = Modifier.weight(1f)
-            )
-        }
+                HpoiInfoBadgeItem(
+                    label = "发售",
+                    value = item.displayReleaseDateText,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-        // 第 2 行：定价 与 评分（等宽 2 列）
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HpoiInfoBadgeItem(
-                label = "定价",
-                value = item.displayPriceText,
-                modifier = Modifier.weight(1f)
-            )
+            // 第 2 行：定价 与 评分（等宽 2 列）
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HpoiInfoBadgeItem(
+                    label = "定价",
+                    value = item.displayPriceText,
+                    modifier = Modifier.weight(1f)
+                )
 
-            HpoiInfoBadgeItem(
-                label = "评分",
-                value = if (item.rating > 0) item.displayRatingText else "0.00",
-                modifier = Modifier.weight(1f)
-            )
+                HpoiInfoBadgeItem(
+                    label = "评分",
+                    value = if (item.rating > 0) item.displayRatingText else "0.00",
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
