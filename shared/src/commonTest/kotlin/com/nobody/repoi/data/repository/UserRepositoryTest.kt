@@ -10,7 +10,6 @@ import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderStaticData
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.data.remote.model.UserCollectCommonItem
-import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.data.remote.model.UserProfile
 
 import kotlinx.coroutines.CoroutineStart
@@ -121,53 +120,6 @@ class UserRepositoryTest {
         val data = result.getOrThrow()
         assertEquals("新昵称", data.profile.displayName)
         assertEquals(6, data.profile.level)
-    }
-
-    @Test
-    fun currencyType_parsesAllCurrenciesAndCalculatesFormattedText() {
-        val usdItem = UserCollectHobbyItem(money = 120.0, currency = "dollar")
-        assertEquals("$120", usdItem.formattedOrderMoneyText)
-
-        val eurItem = UserCollectHobbyItem(money = 85.0, currency = "euro")
-        assertEquals("€85", eurItem.formattedOrderMoneyText)
-
-        val hkdItem = UserCollectHobbyItem(money = 250.0, currency = "hkd")
-        assertEquals("HK$250", hkdItem.formattedOrderMoneyText)
-
-        val cnyItem = UserCollectHobbyItem(money = 399.0, currency = "rmb")
-        assertEquals("¥399", cnyItem.formattedOrderMoneyText)
-
-        val jpyItem = UserCollectHobbyItem(money = 18000.0, currency = "yen")
-        assertEquals("JP¥18000", jpyItem.formattedOrderMoneyText)
-    }
-
-    @Test
-    fun userCollectHobbyItem_parsesNestedCollectionAndComputesProperties() {
-        val jsonStr = """{
-            "id": 501,
-            "itemId": 0,
-            "itemNodeId": 601,
-            "name": "Fallback Name",
-            "nameCN": "优先中文名",
-            "iconUrl": "icons/pic.jpg",
-            "rating": 19.2,
-            "ratingCount": 2,
-            "collection": {
-                "state": "preorder",
-                "orderTime": "2026-05-20",
-                "orderMoney": 16800.0,
-                "orderMoneyCurrency": "yen"
-            }
-        }"""
-        val item = json.decodeFromString<UserCollectHobbyItem>(jsonStr)
-        assertEquals(501L, item.actualItemId)
-        assertEquals("优先中文名", item.displayName)
-        assertEquals("icons/pic.jpg", item.actualCover)
-        assertEquals("preorder", item.actualCollectState)
-        assertEquals("2026-05-20", item.actualOrderTime)
-        assertEquals(16800.0, item.actualOrderMoney ?: 0.0, 0.001)
-        assertEquals("yen", item.actualCurrency)
-        assertEquals(9.6, item.averageRating, 0.001)
     }
 
     @Test

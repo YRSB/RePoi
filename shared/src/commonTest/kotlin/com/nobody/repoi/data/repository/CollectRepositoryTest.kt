@@ -261,7 +261,7 @@ class CollectRepositoryTest {
     fun getUserCollectHobbyList_passesAllRequiredParamsAndParsesItems() = runTest {
         val (mock, repository) = setup()
         mock.enqueue(
-            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"name":"Original Name","nameCN":"中文名称","cover":"covers/hobby1.jpg","price":"15000日元","money":15000.0,"currency":"yen","releaseDate":"2026-10-01","collectState":"preorder","rating":9.6,"ratingCount":2},{"id":1002,"name":"No CN Name","iconUrl":"icons/hobby2.jpg"}]}}"""
+            """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"name":"Original Name","nameCN":"中文名称","cover":"covers/hobby1.jpg","price":"15000日元","money":15000.0,"currency":"yen","releaseDate":"2026-10-01","collectState":"preorder","rating":9.6,"ratingCount":2,"collection":{"orderMoney":15000.0,"orderMoneyCurrency":"yen"}},{"id":1002,"name":"No CN Name","iconUrl":"icons/hobby2.jpg"}]}}"""
         )
 
         val result = repository.getUserCollectHobbyList(
@@ -290,6 +290,7 @@ class CollectRepositoryTest {
         assertEquals(1002L, item2.actualItemId)
         assertEquals("icons/hobby2.jpg", item2.actualCover)
         assertEquals("No CN Name", item2.displayName)
+        assertNull(item2.formattedOrderMoneyText)
 
         // 验证请求中传递的参数 (GET Query)
         val recorded = mock.takeRequest()
