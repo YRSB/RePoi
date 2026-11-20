@@ -54,13 +54,6 @@ data class ZoneDetailNavKey(
 @Serializable
 data object ZoneSettingsNavKey : AppNavKey
 
-// 讨论板相关路由契约
-@Serializable
-data object ForumHomeNavKey : AppNavKey
-
-@Serializable
-data object PlateSubscribeNavKey : AppNavKey
-
 // 讨论贴详情路由契约
 @Serializable
 data class PostDetailNavKey(

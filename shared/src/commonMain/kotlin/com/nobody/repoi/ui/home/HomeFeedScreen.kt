@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -124,7 +123,6 @@ fun HomeFeedScreen(
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
-    onNavigateToForumHome: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
     /** 讨论帖点击（itemId, nodeId, 初始标题）；为空时提示「即将上线」。 */
     onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
@@ -477,12 +475,6 @@ fun HomeFeedScreen(
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = "搜索"
-                    )
-                }
-                IconButton(onClick = { onNavigateToForumHome?.invoke() }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Forum,
-                        contentDescription = "讨论板"
                     )
                 }
                 IconButton(onClick = { onNavigateToMessage?.invoke() }) {

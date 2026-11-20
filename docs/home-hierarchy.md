@@ -11,7 +11,7 @@
 
 ```
 ┌──────────────────────────────────────────────┐
-│ 顶栏： [ 当前专区名 ▾ ]      [搜索] [讨论板] [消息] │  ← 一级：专区切换器（抽屉/下拉）
+│ 顶栏： [ 当前专区名 ▾ ]                 [搜索] [消息] │  ← 一级：专区切换器（抽屉/下拉）
 ├──────────────────────────────────────────────┤
 │ 动态 | 分享 | 讨论 | 产品 | 二手 | 厂商 | …    │  ← 二级：子板块 PrimaryScrollableTabRow
 ├──────────────────────────────────────────────┤
@@ -97,7 +97,7 @@
 
 ```
 HomeScreen
-├─ TopAppBar(title = ZoneSwitcherAnchor, actions = 搜索/讨论板/消息)
+├─ TopAppBar(title = ZoneSwitcherAnchor, actions = 搜索/消息)
 ├─ HeaderStack（高度栈统一计算，避免拼死的 totalHeaderHeight）
 │  ├─ PrimaryScrollableTabRow(板块)
 │  └─ BoardFilterBar（可折叠，测量高度）
@@ -122,9 +122,9 @@ HomeScreen
 ### 3.1 顶栏
 
 - 标题区：`Text(当前专区名, 单行省略)` + 展开箭头，整块可点击（`role = Button`，`contentDescription = "切换专区"`），最小触控 48dp。
-- 动作区：`[搜索] [讨论板] [消息]`：
+- 动作区：`[搜索] [消息]`：
   - 搜索：进入搜索落地页，`initialCategory = if (nodeId == 0) 10000 else nodeId`（保留现状透传）；
-  - 讨论板、消息（含未读 Badge）：保持 ADR-0020 结论。
+  - 消息（含未读 Badge）：保留红点状态（#192 移除讨论板入口）。
 - 顶栏保持 `WindowInsets.statusBars`，滚动时保持不变（现状）。
 
 ### 3.2 专区切换器

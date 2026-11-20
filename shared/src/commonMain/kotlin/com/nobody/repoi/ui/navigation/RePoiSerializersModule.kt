@@ -28,9 +28,7 @@ val RePoiSerializersModule = SerializersModule {
         subclass(ZoneDetailNavKey::class, ZoneDetailNavKey.serializer())
         subclass(ZoneSettingsNavKey::class, ZoneSettingsNavKey.serializer())
 
-        // 4. 讨论板与帖子路由 (3)
-        subclass(ForumHomeNavKey::class, ForumHomeNavKey.serializer())
-        subclass(PlateSubscribeNavKey::class, PlateSubscribeNavKey.serializer())
+        // 4. 讨论贴路由 (1)
         subclass(PostDetailNavKey::class, PostDetailNavKey.serializer())
 
         // 5. 二手交易与市场路由 (2)

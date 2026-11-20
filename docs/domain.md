@@ -17,7 +17,7 @@
 | **专区** | `Zone` | 特定 IP 或主题聚合专区（如初音未来、东方 Project 专区）；术语见 GLOSSARY（避免「圈子/频道」）。 | `ZoneItem`, `ZoneDetailData` |
 | **子板块** | `ZoneBoard` | 专区内部按内容形态划分的一级内容分区（动态/分享/讨论/产品/二手/厂商/系列/作品/角色/人物），由服务端下发并按客户端白名单裁剪。 | `ZoneTabItem` |
 | **板块筛选** | `BoardFilter` | 子板块自带的过滤与排序层（筛选 Chip、排序菜单、高级筛选抽屉），按板块分别定义。 | 各板块筛选状态 |
-| **讨论板/帖子** | `Forum` / `Post` | 社区发帖、问答与二级回帖交流。 | `PostItem`, `PostDetailData` |
+| **讨论帖** | `Post` | 社区发帖、问答与二级回帖交流（版块概念已随 Issue #192 移除）。 | `PostItem`, `PostDetailData` |
 | **二手交易** | `Resale` | 用户手办二手转让行情、发帖求购与地域筛选。 | `ResaleItem`, `ResaleDetailData` |
 | **收藏管理** | `Collect` | 用户收藏资产（心愿想买、预定在途、已入柜、已出转）。 | `CollectItem`, `CollectState` |
 

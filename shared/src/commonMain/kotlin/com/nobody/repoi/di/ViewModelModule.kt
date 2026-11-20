@@ -20,8 +20,6 @@ import com.nobody.repoi.ui.detail.HobbyDetailViewModel
 import com.nobody.repoi.ui.detail.album.HobbyAlbumListViewModel
 import com.nobody.repoi.ui.exhobby.ExHobbyListViewModel
 import com.nobody.repoi.ui.follow.FollowViewModel
-import com.nobody.repoi.ui.forum.ForumHomeViewModel
-import com.nobody.repoi.ui.forum.PlateSubscribeViewModel
 import com.nobody.repoi.ui.friend.FriendListViewModel
 import com.nobody.repoi.ui.gallery.PictureGalleryViewModel
 import com.nobody.repoi.ui.home.HomeFeedViewModel
@@ -91,8 +89,6 @@ val viewModelModule = module {
     viewModel { HobbyAlbumListViewModel(get()) }
     viewModel { ExHobbyListViewModel(get()) }
     viewModel { FollowViewModel(get(), get()) }
-    viewModel { ForumHomeViewModel(get(), get()) }
-    viewModel { PlateSubscribeViewModel(get(), get()) }
     viewModel { FriendListViewModel(get(), get()) }
     viewModel { PictureGalleryViewModel(get(), get(named("download"))) }
     viewModel {
