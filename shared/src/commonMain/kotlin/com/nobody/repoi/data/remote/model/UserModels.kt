@@ -306,8 +306,8 @@ data class UserCollectHobbyItem(
     val displayName: String get() = nameCN?.ifBlank { null } ?: name ?: ""
     val actualCollectState: String? get() = collectState?.ifBlank { null } ?: collection?.state
     val actualOrderTime: String? get() = orderTime?.ifBlank { null } ?: collection?.orderTime
-    val actualOrderMoney: Double? get() = money ?: collection?.orderMoney
-    val actualCurrency: String? get() = currency?.ifBlank { null } ?: collection?.orderMoneyCurrency
+    val actualOrderMoney: Double? get() = collection?.orderMoney
+    val actualCurrency: String? get() = collection?.orderMoneyCurrency?.ifBlank { null }
     val averageRating: Double get() = if (ratingCount > 0 && rating > 0.0) rating / ratingCount else rating
 
     val displayReleaseDateText: String
