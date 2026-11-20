@@ -38,6 +38,16 @@ data class ZoneBoardSnapshot(
     val scrollPosition: BoardScrollPosition = BoardScrollPosition()
 )
 
+/**
+ * 首屏延迟加载门闩期间的快照投影：把分页视图置为「首屏加载中」。
+ *
+ * 防坑契约：门闩期间 pager 尚未发请求，其真实 `ZoneBoardPageView` 为
+ * 「零条目 + 未加载」，直接投影会被宿主四态判定误读成空态并闪「空空如也」卡片；
+ * 必须经此投影保证 UI 在落定前持续显示加载指示器（issue #198）。
+ */
+internal fun ZoneBoardSnapshot.withPendingInitialLoad(): ZoneBoardSnapshot =
+    copy(pageView = pageView.copy(isLoading = true, errorMessage = null))
+
 /** ZoneBoardSnapshot 条目数量扩展。 */
 val ZoneBoardSnapshot.itemCount: Int
     get() = content.itemCount

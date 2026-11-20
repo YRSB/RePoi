@@ -46,6 +46,8 @@ class ZoneBoardSessionImpl(
     private val coroutineScope: CoroutineScope,
     initialScope: ZoneQueryScope = ZoneQueryScope.All,
     initialBoard: ZoneBoard = ZoneBoard.Action,
+    /** 首屏加载延迟门闩：见 [ZoneBoardSession.resumeInitialLoad]（issue #198）。 */
+    deferInitialLoad: Boolean = false,
     homeRepository: HomeRepository,
     albumRepository: AlbumRepository,
     zoneRepository: ZoneRepository,
@@ -54,6 +56,8 @@ class ZoneBoardSessionImpl(
     viewPreferencesManager: ViewPreferencesManager
 ) : ZoneBoardSession {
 
+    /** 门闩状态：解除前所有首屏懒加载 / 重试 / 刷新与筛选重载挂起。 */
+    private var initialLoadDeferred = deferInitialLoad
     private var currentScope: ZoneQueryScope = initialScope
     private var activeBoard: ZoneBoard = initialBoard
 
@@ -120,27 +124,38 @@ class ZoneBoardSessionImpl(
 
     init {
         val initialScroll = scrollPositions[activeBoard] ?: BoardScrollPosition()
-        _activeSnapshot = MutableStateFlow(pagerFor(activeBoard).currentSnapshot(initialScroll))
+        _activeSnapshot = MutableStateFlow(pendingAwareSnapshot(pagerFor(activeBoard), initialScroll))
         activeSnapshot = _activeSnapshot.asStateFlow()
 
         val actionScroll = scrollPositions[ZoneBoard.Action] ?: BoardScrollPosition()
-        _actionSnapshot = MutableStateFlow(actionPager.currentSnapshot(actionScroll))
+        _actionSnapshot = MutableStateFlow(pendingAwareSnapshot(actionPager, actionScroll))
         actionSnapshot = _actionSnapshot.asStateFlow()
 
-        // 初始活跃板块触发首屏懒加载
-        pagerFor(activeBoard).ensureLoaded(currentScope)
-        if (activeBoard != ZoneBoard.Action) {
-            actionPager.ensureLoaded(currentScope)
+        if (!initialLoadDeferred) {
+            // 初始活跃板块触发首屏懒加载（门闩延迟场景由 resumeInitialLoad 统一触发）
+            pagerFor(activeBoard).ensureLoaded(currentScope)
+            if (activeBoard != ZoneBoard.Action) {
+                actionPager.ensureLoaded(currentScope)
+            }
         }
+    }
+
+    /** 门闩期间把快照投影为「首屏加载中」，避免宿主四态判定闪空态（issue #198）。 */
+    private fun pendingAwareSnapshot(
+        pager: BoardPager,
+        scroll: BoardScrollPosition
+    ): ZoneBoardSnapshot {
+        val snapshot = pager.currentSnapshot(scroll)
+        return if (initialLoadDeferred) snapshot.withPendingInitialLoad() else snapshot
     }
 
     override fun snapshotFor(board: ZoneBoard): ZoneBoardSnapshot {
         val pager = pagerFor(board)
-        if (!pager.isLoaded) {
+        if (!initialLoadDeferred && !pager.isLoaded) {
             pager.ensureLoaded(currentScope)
         }
         val scroll = scrollPositions[board] ?: BoardScrollPosition()
-        return pager.currentSnapshot(scroll)
+        return pendingAwareSnapshot(pager, scroll)
     }
 
     override fun dispatch(intent: ZoneBoardIntent) {
@@ -159,10 +174,12 @@ class ZoneBoardSessionImpl(
                 pagerFor(target).loadMore(currentScope)
             }
             is ZoneBoardIntent.RetryInitial -> {
+                if (initialLoadDeferred) return
                 val target = intent.board ?: activeBoard
                 pagerFor(target).loadInitial(currentScope)
             }
             is ZoneBoardIntent.Refresh -> {
+                if (initialLoadDeferred) return
                 val target = intent.board ?: activeBoard
                 pagerFor(target).refresh(currentScope)
             }
@@ -170,7 +187,11 @@ class ZoneBoardSessionImpl(
             // ── 筛选意图：Action ──
             is ZoneBoardIntent.SelectSubType -> {
                 scrollPositions[ZoneBoard.Action] = BoardScrollPosition()
-                actionPager.setSubType(intent.subType, currentScope)
+                if (initialLoadDeferred) {
+                    actionPager.stageSubType(intent.subType)
+                } else {
+                    actionPager.setSubType(intent.subType, currentScope)
+                }
             }
 
             // ── 筛选意图：Album ──
@@ -289,23 +310,40 @@ class ZoneBoardSessionImpl(
         for (pager in allPagers) {
             pager.onScopeChanged(scope)
         }
-        val activePager = pagerFor(activeBoard)
-        activePager.ensureLoaded(scope)
-        if (activeBoard != ZoneBoard.Action) {
-            actionPager.ensureLoaded(scope)
+        if (!initialLoadDeferred) {
+            val activePager = pagerFor(activeBoard)
+            activePager.ensureLoaded(scope)
+            if (activeBoard != ZoneBoard.Action) {
+                actionPager.ensureLoaded(scope)
+            }
         }
         _actionSnapshot.value = actionPager.currentSnapshot(BoardScrollPosition())
+            .let { if (initialLoadDeferred) it.withPendingInitialLoad() else it }
         _activeSnapshot.value = snapshotFor(activeBoard)
     }
 
+    override fun resumeInitialLoad() {
+        if (!initialLoadDeferred) return
+        initialLoadDeferred = false
+        val activePager = pagerFor(activeBoard)
+        activePager.ensureLoaded(currentScope)
+        if (activeBoard != ZoneBoard.Action) {
+            actionPager.ensureLoaded(currentScope)
+        }
+        // ensureLoaded 同步置「首屏加载中」并回调 handleBoardChanged 刷新快照流；
+        // 幂等重入（门闩已解除）直接短路。
+    }
+
     private fun handleBoardChanged(board: ZoneBoard) {
+        // 门闩期间的任何回调（如 stageSubType）必须维持「首屏加载中」投影，
+        // 否则会把 pager 的「零条目 + 未加载」真实态推给宿主闪空态（issue #198）。
         if (board == ZoneBoard.Action) {
             val scroll = scrollPositions[ZoneBoard.Action] ?: BoardScrollPosition()
-            _actionSnapshot.value = actionPager.currentSnapshot(scroll)
+            _actionSnapshot.value = pendingAwareSnapshot(actionPager, scroll)
         }
         if (board == activeBoard) {
             val scroll = scrollPositions[board] ?: BoardScrollPosition()
-            _activeSnapshot.value = pagerFor(board).currentSnapshot(scroll)
+            _activeSnapshot.value = pendingAwareSnapshot(pagerFor(board), scroll)
         }
     }
 
@@ -323,12 +361,14 @@ class ZoneBoardSessionImpl(
         override fun create(
             coroutineScope: CoroutineScope,
             initialScope: ZoneQueryScope,
-            initialBoard: ZoneBoard
+            initialBoard: ZoneBoard,
+            deferInitialLoad: Boolean
         ): ZoneBoardSession {
             return ZoneBoardSessionImpl(
                 coroutineScope = coroutineScope,
                 initialScope = initialScope,
                 initialBoard = initialBoard,
+                deferInitialLoad = deferInitialLoad,
                 homeRepository = homeRepository,
                 albumRepository = albumRepository,
                 zoneRepository = zoneRepository,
@@ -499,6 +539,19 @@ private class ActionBoardPager(
         if (newSubType == subType) return
         subType = newSubType
         loadInitial(scope)
+    }
+
+    /**
+     * 首屏延迟门闩期间的筛选落位：只登记 [subType] 不触发请求。
+     *
+     * 防坑契约：冷启动落盘 subType 与默认值不同时，若走 [setSubType] 会在门闩解除前
+     * 以「当前作用域 + 落盘子类」乐观发出一次首屏请求，落定切换作用域后作废重发（issue #198）；
+     * 登记后由 [ZoneBoardSessionImpl.resumeInitialLoad] 用最终参数一次性加载。
+     */
+    fun stageSubType(newSubType: String) {
+        if (newSubType == subType) return
+        subType = newSubType
+        onChanged()
     }
 
     override fun onScopeChanged(newScope: ZoneQueryScope) {
