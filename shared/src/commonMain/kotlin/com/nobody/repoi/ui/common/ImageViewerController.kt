@@ -44,7 +44,12 @@ interface ImageViewerController {
      */
     fun updateImages(images: List<String>)
 
-    /** 关闭大图查看器 */
+    /**
+     * 关闭大图查看器。
+     *
+     * 与 Navigation 单根栈联动时，本操作在复位状态后会同步弹出承载路由；
+     * 未接入导航的宿主（如预览或测试）仅复位状态。
+     */
     fun dismiss()
 }
 
@@ -180,28 +185,25 @@ class ImageViewerStateHolder internal constructor(
  * 在 Compose 树中记住并恢复大图宿主状态。
  *
  * 依托 [rememberSaveable] 保障屏幕旋转或折叠屏折叠展开重建 Activity 时大图状态与进度不丢失。
- * 传入 [navigator] 时，自动联动压入/弹出 [ImageViewerNavKey] 路由，全面获得预测性返回动画。
+ * 必须传入 [navigator]：展示/关闭会自动联动压入/弹出 [ImageViewerNavKey] 路由，
+ * 从而获得 MaterialSharedAxis.Z 转场与系统级预测性返回动画。
  */
 @Composable
 fun rememberImageViewerState(
-    navigator: RePoiNavigator? = null
+    navigator: RePoiNavigator
 ): ImageViewerStateHolder {
     val holder = rememberSaveable(saver = ImageViewerStateHolder.Saver) {
         ImageViewerStateHolder()
     }
-    holder.onShowInNavigator = if (navigator != null) {
-        { images, initialIndex ->
-            if (navigator.currentBackStack.lastOrNull() !is ImageViewerNavKey) {
-                navigator.navigateToImageViewer(images, initialIndex)
-            }
+    holder.onShowInNavigator = { images, initialIndex ->
+        if (navigator.currentBackStack.lastOrNull() !is ImageViewerNavKey) {
+            navigator.navigateToImageViewer(images, initialIndex)
         }
-    } else null
-    holder.onDismissInNavigator = if (navigator != null) {
-        {
-            if (navigator.currentBackStack.lastOrNull() is ImageViewerNavKey) {
-                navigator.pop()
-            }
+    }
+    holder.onDismissInNavigator = {
+        if (navigator.currentBackStack.lastOrNull() is ImageViewerNavKey) {
+            navigator.pop()
         }
-    } else null
+    }
     return holder
 }

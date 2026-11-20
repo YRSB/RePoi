@@ -74,9 +74,11 @@ fun ImageViewerScreen(
     state: ImageViewerStateHolder? = null,
     modifier: Modifier = Modifier
 ) {
-    // 优先使用 state 中可能由 updateImages 动态更新的最新图片序列
-    val currentUrls = state?.imageUrls?.takeIf { it.isNotEmpty() } ?: param.images
-    val initialPage = (state?.currentIndex ?: param.initialIndex)
+    // 仅当状态持有者确实处于打开态时才优先采用其动态序列；否则回退路由参数，
+    // 避免 holder 空态遗留的 currentIndex=0 吞掉 param.initialIndex
+    val activeState = state?.takeIf { it.isVisible }
+    val currentUrls = activeState?.imageUrls ?: param.images
+    val initialPage = (activeState?.currentIndex ?: param.initialIndex)
         .coerceIn(0, (currentUrls.size - 1).coerceAtLeast(0))
 
     DisposableEffect(Unit) {
@@ -96,28 +98,14 @@ fun ImageViewerScreen(
 }
 
 /**
- * 全局大图画廊弹窗宿主（已废弃）。
- *
- * 大图画廊已全面迁移至 Navigation 3 原生单根栈路由 [ImageViewerNavKey]，
- * 原生支持 MaterialSharedAxis.Z 与预测性返回预览，无需在根脚手架外挂 Dialog 宿主。
- */
-@Deprecated(
-    message = "大图查看器已全面升级为 Navigation 3 原生单根栈路由 (ImageViewerNavKey)",
-    level = DeprecationLevel.WARNING
-)
-@Composable
-fun ImageViewerHost(
-    state: ImageViewerStateHolder
-) {
-    // 兼容保留空实现：已由 Navigation 3 根栈自动承载渲染
-}
-
-/**
  * 独立 Dialog 形态的大图画廊（兼容保留）。
  */
 @Deprecated(
     message = "请优先通过 Navigation 3 路由 (ImageViewerNavKey) 呈现以支持原生预测性返回动画",
-    replaceWith = ReplaceWith("ImageViewerScreen(param, onBack)")
+    replaceWith = ReplaceWith(
+        "ImageViewerContent(imageUrls, initialIndex, onBack = onDismissRequest, " +
+            "onLoadMore = onLoadMore, onPageChange = onPageChange)"
+    )
 )
 @Composable
 fun ImageViewerDialog(
@@ -227,8 +215,7 @@ fun ImageViewerContent(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = !isCurrentPageZoomed,
-            beyondViewportPageCount = 1,
-            key = { page -> imageUrls.getOrNull(page) ?: page }
+            beyondViewportPageCount = 1
         ) { page ->
             PoiZoomableImage(
                 imageUrl = imageUrls[page],
