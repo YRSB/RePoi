@@ -165,3 +165,15 @@ data class MessageChatNavParam(
     val targetUserHeader: String? = null,
     val resaleId: Long? = null,
 )
+
+/**
+ * 全屏大图查看器路由参数。
+ *
+ * @param images 大图 URL 列表（完整可加载 URL）
+ * @param initialIndex 初始定位下标
+ */
+@Serializable
+data class ImageViewerNavParam(
+    val images: List<String> = emptyList(),
+    val initialIndex: Int = 0,
+)

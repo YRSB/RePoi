@@ -10,6 +10,9 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.nobody.repoi.ui.navigation.ImageViewerNavKey
+import com.nobody.repoi.ui.navigation.RePoiNavigator
+import com.nobody.repoi.ui.navigation.navigateToImageViewer
 
 /**
  * 全局全屏大图画廊操作控制器。
@@ -41,7 +44,12 @@ interface ImageViewerController {
      */
     fun updateImages(images: List<String>)
 
-    /** 关闭大图查看器 */
+    /**
+     * 关闭大图查看器。
+     *
+     * 与 Navigation 单根栈联动时，本操作在复位状态后会同步弹出承载路由；
+     * 未接入导航的宿主（如预览或测试）仅复位状态。
+     */
     fun dismiss()
 }
 
@@ -81,6 +89,12 @@ class ImageViewerStateHolder internal constructor(
     var onLoadMoreCallback by mutableStateOf<(() -> Unit)?>(null)
         internal set
 
+    /** 联动导航路由入栈回调（当注入 [RePoiNavigator] 时） */
+    var onShowInNavigator: ((images: List<String>, initialIndex: Int) -> Unit)? = null
+
+    /** 联动导航路由退栈回调（当注入 [RePoiNavigator] 时） */
+    var onDismissInNavigator: (() -> Unit)? = null
+
     override val isVisible: Boolean
         get() = imageUrls.isNotEmpty()
 
@@ -88,8 +102,10 @@ class ImageViewerStateHolder internal constructor(
         val validImages = images.filter { it.isNotBlank() }
         if (validImages.isEmpty()) return
         imageUrls = validImages
-        currentIndex = initialIndex.coerceIn(0, validImages.size - 1)
+        val safeIndex = initialIndex.coerceIn(0, validImages.size - 1)
+        currentIndex = safeIndex
         onLoadMoreCallback = onLoadMore
+        onShowInNavigator?.invoke(validImages, safeIndex)
     }
 
     /**
@@ -114,6 +130,19 @@ class ImageViewerStateHolder internal constructor(
     }
 
     override fun dismiss() {
+        val wasVisible = isVisible
+        imageUrls = emptyList()
+        currentIndex = 0
+        onLoadMoreCallback = null
+        if (wasVisible) {
+            onDismissInNavigator?.invoke()
+        }
+    }
+
+    /**
+     * 内部状态复位：仅清空图片列表与索引，不反向触发导航出栈（供路由退出完成时调用）。
+     */
+    internal fun resetInternal() {
         imageUrls = emptyList()
         currentIndex = 0
         onLoadMoreCallback = null
@@ -154,11 +183,27 @@ class ImageViewerStateHolder internal constructor(
 
 /**
  * 在 Compose 树中记住并恢复大图宿主状态。
+ *
  * 依托 [rememberSaveable] 保障屏幕旋转或折叠屏折叠展开重建 Activity 时大图状态与进度不丢失。
+ * 必须传入 [navigator]：展示/关闭会自动联动压入/弹出 [ImageViewerNavKey] 路由，
+ * 从而获得 MaterialSharedAxis.Z 转场与系统级预测性返回动画。
  */
 @Composable
-fun rememberImageViewerState(): ImageViewerStateHolder {
-    return rememberSaveable(saver = ImageViewerStateHolder.Saver) {
+fun rememberImageViewerState(
+    navigator: RePoiNavigator
+): ImageViewerStateHolder {
+    val holder = rememberSaveable(saver = ImageViewerStateHolder.Saver) {
         ImageViewerStateHolder()
     }
+    holder.onShowInNavigator = { images, initialIndex ->
+        if (navigator.currentBackStack.lastOrNull() !is ImageViewerNavKey) {
+            navigator.navigateToImageViewer(images, initialIndex)
+        }
+    }
+    holder.onDismissInNavigator = {
+        if (navigator.currentBackStack.lastOrNull() is ImageViewerNavKey) {
+            navigator.pop()
+        }
+    }
+    return holder
 }

@@ -150,6 +150,11 @@ class NavExtensionsTest {
         val gscKey = assertIs<SearchResultNavKey>(rootStack.last())
         assertEquals("GSC", gscKey.param.keyword)
 
+        navigator.navigateToImageViewer(listOf("https://example.com/2.jpg"), 0)
+        assertEquals(6, rootStack.size)
+        val imageViewerNavKey = assertIs<ImageViewerNavKey>(rootStack.last())
+        assertEquals(listOf("https://example.com/2.jpg"), imageViewerNavKey.param.images)
+
         tabState.backStacks.forEach { (_, stack) -> assertEquals(1, stack.size) }
     }
 
@@ -212,6 +217,12 @@ class NavExtensionsTest {
         assertEquals(10, stack.size)
         val searchResultParamKey = assertIs<SearchResultNavKey>(stack.last())
         assertEquals("粘土人", searchResultParamKey.param.keyword)
+
+        stack.navigateToImageViewer(listOf("https://example.com/1.jpg"), 0)
+        assertEquals(11, stack.size)
+        val imageViewerKey = assertIs<ImageViewerNavKey>(stack.last())
+        assertEquals(listOf("https://example.com/1.jpg"), imageViewerKey.param.images)
+        assertEquals(0, imageViewerKey.param.initialIndex)
     }
 
     @Test
