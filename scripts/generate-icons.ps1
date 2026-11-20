@@ -304,7 +304,7 @@ $fgXmlPath = Join-Path $androidResDir "drawable-v24/ic_launcher_foreground.xml"
 [System.IO.File]::WriteAllText($fgXmlPath, ($fgXmlContent.TrimEnd() + "`n"), $utf8NoBom)
 Write-Host "Updated Android Foreground: $fgXmlPath"
 
-# 4.3 Monochrome (Android 13+ 主题图标适配)
+# 4.3 Monochrome (Android 13+ 主题图标适配，纯白剪影支持系统双色着色)
 $monoXmlContent = @'
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -312,15 +312,56 @@ $monoXmlContent = @'
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Android 13+ Themed Icons Silhouette: Pure M3 Capsule "H" Mark -->
+    <!-- Android 13+ 单色主题图标剪影：纯正 M3 胶囊 H 标（纯白 #FFFFFF 配合系统双色主题着色） -->
     <path
-        android:fillColor="#000000"
+        android:fillColor="#FFFFFF"
         android:pathData="M 31,35 C 31,31.55 33.8,28.75 37.25,28.75 C 40.7,28.75 43.5,31.55 43.5,35 L 43.5,44 C 43.5,46.76 45.74,49 48.5,49 L 59.5,49 C 62.26,49 64.5,46.76 64.5,44 L 64.5,35 C 64.5,31.55 67.3,28.75 70.75,28.75 C 74.2,28.75 77,31.55 77,35 L 77,73 C 77,76.45 74.2,79.25 70.75,79.25 C 67.3,79.25 64.5,76.45 64.5,73 L 64.5,66.5 C 64.5,63.74 62.26,61.5 59.5,61.5 L 48.5,61.5 C 45.74,61.5 43.5,63.74 43.5,66.5 L 43.5,73 C 43.5,76.45 40.7,79.25 37.25,79.25 C 33.8,79.25 31,76.45 31,73 Z" />
 </vector>
 '@
 $monoXmlPath = Join-Path $androidResDir "drawable/ic_launcher_monochrome.xml"
 [System.IO.File]::WriteAllText($monoXmlPath, ($monoXmlContent.TrimEnd() + "`n"), $utf8NoBom)
 Write-Host "Updated Android Monochrome: $monoXmlPath"
+
+# 4.4 Dynamic Foreground (Android 12+ API 31+ Monet 动态前景色矢量图层)
+$fgDynXmlContent = @'
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Material 3 二级环境光实体微阴影 -->
+    <path
+        android:fillColor="#1E000000"
+        android:pathData="M 31,36.5 C 31,33.05 33.8,30.25 37.25,30.25 C 40.7,30.25 43.5,33.05 43.5,36.5 L 43.5,45.5 C 43.5,48.26 45.74,50.5 48.5,50.5 L 59.5,50.5 C 62.26,50.5 64.5,48.26 64.5,45.5 L 64.5,36.5 C 64.5,33.05 67.3,30.25 70.75,30.25 C 74.2,30.25 77,33.05 77,36.5 L 77,74.5 C 77,77.95 74.2,80.75 70.75,80.75 C 67.3,80.75 64.5,77.95 64.5,74.5 L 64.5,68 C 64.5,65.24 62.26,63 59.5,63 L 48.5,63 C 45.74,63 43.5,65.24 43.5,68 L 43.5,74.5 C 43.5,77.95 40.7,80.75 37.25,80.75 C 33.8,80.75 31,77.95 31,74.5 Z" />
+    <!-- Material 3 一级关键光实体微阴影 -->
+    <path
+        android:fillColor="#2B000000"
+        android:pathData="M 31,35.8 C 31,32.35 33.8,29.55 37.25,29.55 C 40.7,29.55 43.5,32.35 43.5,35.8 L 43.5,44.8 C 43.5,47.56 45.74,49.8 48.5,49.8 L 59.5,49.8 C 62.26,49.8 64.5,47.56 64.5,44.8 L 64.5,35.8 C 64.5,32.35 67.3,29.55 70.75,29.55 C 74.2,29.55 77,32.35 77,35.8 L 77,73.8 C 77,77.25 74.2,80.05 70.75,80.05 C 67.3,80.05 64.5,77.25 64.5,73.8 L 64.5,67.3 C 64.5,64.54 62.26,62.3 59.5,62.3 L 48.5,62.3 C 45.74,62.3 43.5,64.54 43.5,67.3 L 43.5,73.8 C 43.5,77.25 40.7,80.05 37.25,80.05 C 33.8,80.05 31,77.25 31,73.8 Z" />
+    <!-- 核心 Material 3 黄金比例胶囊 H 标识面（接入系统 Monet 动态强调前景色） -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M 31,35 C 31,31.55 33.8,28.75 37.25,28.75 C 40.7,28.75 43.5,31.55 43.5,35 L 43.5,44 C 43.5,46.76 45.74,49 48.5,49 L 59.5,49 C 62.26,49 64.5,46.76 64.5,44 L 64.5,35 C 64.5,31.55 67.3,28.75 70.75,28.75 C 74.2,28.75 77,31.55 77,35 L 77,73 C 77,76.45 74.2,79.25 70.75,79.25 C 67.3,79.25 64.5,76.45 64.5,73 L 64.5,66.5 C 64.5,63.74 62.26,61.5 59.5,61.5 L 48.5,61.5 C 45.74,61.5 43.5,63.74 43.5,66.5 L 43.5,73 C 43.5,76.45 40.7,79.25 37.25,79.25 C 33.8,79.25 31,76.45 31,73 Z" />
+</vector>
+'@
+$fgDynXmlPath = Join-Path $androidResDir "drawable/ic_launcher_foreground_dynamic.xml"
+[System.IO.File]::WriteAllText($fgDynXmlPath, ($fgDynXmlContent.TrimEnd() + "`n"), $utf8NoBom)
+Write-Host "Updated Android Dynamic Foreground: $fgDynXmlPath"
+
+# 4.5 Android 12+ (API 31+) Mipmap Adaptive Icon XML Assets
+$v31Dir = Join-Path $androidResDir "mipmap-anydpi-v31"
+if (-not (Test-Path $v31Dir)) { [System.IO.Directory]::CreateDirectory($v31Dir) | Out-Null }
+$adaptiveDynXml = @'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground_dynamic" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>
+'@
+[System.IO.File]::WriteAllText((Join-Path $v31Dir "ic_launcher.xml"), ($adaptiveDynXml.TrimEnd() + "`n"), $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $v31Dir "ic_launcher_round.xml"), ($adaptiveDynXml.TrimEnd() + "`n"), $utf8NoBom)
+Write-Host "Updated Android API 31+ Adaptive Icons: $v31Dir"
 
 # 5. Android Mipmap PNGs (全密度切图)
 $densityMap = @{
