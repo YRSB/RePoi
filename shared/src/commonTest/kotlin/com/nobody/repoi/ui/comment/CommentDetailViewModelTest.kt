@@ -43,8 +43,8 @@ class CommentDetailViewModelTest {
     private fun setup(): Triple<MockApi, CommentDetailViewModel, FakeUserSession> {
         val mockApi = MockApi()
         val session = FakeUserSession("test-token")
-        val commentRepo = CommentRepository(mockApi.api())
-        val stickerRepo = StickerRepository(mockApi.api())
+        val commentRepo = CommentRepository(mockApi.api(testDispatcher))
+        val stickerRepo = StickerRepository(mockApi.api(testDispatcher))
         val viewModel = CommentDetailViewModel(
             repository = commentRepo,
             stickerRepository = stickerRepo,
@@ -133,5 +133,132 @@ class CommentDetailViewModelTest {
             successState.comment?.content shouldBe "快照测试评论"
             successState.phase shouldBe CommentDetailPhase.Success
         }
+    }
+
+    @Test
+    fun loadDetail_whenHeaderIsShielded_hidesHeaderAndDropsAllReplies() = runTest(testDispatcher) {
+        val (mockApi, viewModel, _) = setup()
+        mockApi.route(
+            "api/comment/getreply",
+            mockApi.ok("""{"comment":{"id":2001,"content":"(已屏蔽)"},"replies":[{"id":1,"content":"正常回复"}]}""")
+        )
+
+        // 快照本身为已屏蔽，初始渲染态主楼和子回复均应清空
+        val snapshot = CommentItem(id = 2001L, content = "(已屏蔽)")
+        val param = CommentDetailNavParam(commentId = 2001L, relateNodeId = 500L, snapshot = snapshot)
+
+        viewModel.uiState.test {
+            awaitItem().comment shouldBe null
+
+            viewModel.loadDetail(param)
+            val loadingState = awaitItem()
+            loadingState.comment shouldBe null
+            loadingState.replies shouldBe emptyList()
+
+            val successState = awaitItem()
+            successState.comment shouldBe null
+            successState.replies shouldBe emptyList()
+            successState.hasMore shouldBe false
+        }
+    }
+
+    @Test
+    fun loadDetail_whenHeaderIsMaskFlag_hidesHeaderAndDropsAllReplies() = runTest(testDispatcher) {
+        val (mockApi, viewModel, _) = setup()
+        mockApi.route(
+            "api/comment/getreply",
+            mockApi.ok("""{"comment":{"id":2002,"content":"正常文字但被标记","isMask":1},"replies":[{"id":1,"content":"正常回复"}]}""")
+        )
+
+        val param = CommentDetailNavParam(commentId = 2002L, relateNodeId = 500L, snapshot = null)
+
+        viewModel.uiState.test {
+            awaitItem().comment shouldBe null
+
+            viewModel.loadDetail(param)
+            awaitItem().phase shouldBe CommentDetailPhase.Loading
+
+            val successState = awaitItem()
+            successState.comment shouldBe null
+            successState.replies shouldBe emptyList()
+            successState.hasMore shouldBe false
+        }
+    }
+
+    @Test
+    fun loadDetail_whenHeaderNormalWithMixedReplies_filtersShieldedRepliesOnly() = runTest(testDispatcher) {
+        val (mockApi, viewModel, _) = setup()
+        mockApi.route(
+            "api/comment/getreply",
+            mockApi.ok(
+                """{
+                    "comment":{
+                        "id":2003,
+                        "content":"正常主楼",
+                        "replys":[{"id":1,"content":"正常回复1"},{"id":2,"content":"(已屏蔽)"},{"id":3,"content":"正常回复3"}]
+                    },
+                    "list":[{"id":1,"content":"正常回复1"},{"id":2,"content":"(已屏蔽)"},{"id":3,"content":"正常回复3"}]
+                }"""
+            )
+        )
+
+        val param = CommentDetailNavParam(commentId = 2003L, relateNodeId = 500L, snapshot = null)
+
+        viewModel.uiState.test {
+            awaitItem().comment shouldBe null
+
+            viewModel.loadDetail(param)
+            awaitItem().phase shouldBe CommentDetailPhase.Loading
+
+            val successState = awaitItem()
+            successState.comment?.id shouldBe 2003L
+            successState.comment?.replys?.map { it.id } shouldBe listOf(1L, 3L)
+            successState.replies.map { it.id } shouldBe listOf(1L, 3L)
+        }
+    }
+
+    @Test
+    fun loadNextPage_filtersShieldedReplies() = runTest(testDispatcher) {
+        val (mockApi, viewModel, _) = setup()
+        mockApi.route(
+            "api/comment/getreply",
+            mockApi.ok(
+                """{
+                    "comment":{"id":2004,"content":"正常主楼"},
+                    "list":[
+                        {"id":1,"content":"正常1"},{"id":2,"content":"正常2"},{"id":3,"content":"正常3"},{"id":4,"content":"正常4"},{"id":5,"content":"正常5"},
+                        {"id":6,"content":"正常6"},{"id":7,"content":"正常7"},{"id":8,"content":"正常8"},{"id":9,"content":"正常9"},{"id":10,"content":"正常10"}
+                    ]
+                }"""
+            )
+        )
+
+        val param = CommentDetailNavParam(commentId = 2004L, relateNodeId = 500L, snapshot = null)
+        viewModel.loadDetail(param)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.value.replies.size shouldBe 10
+        viewModel.uiState.value.hasMore shouldBe true
+
+        // 下一页包含屏蔽回复与正常回复
+        mockApi.replaceRoute(
+            "api/comment/getreply",
+            mockApi.ok(
+                """{
+                    "comment":{"id":2004,"content":"正常主楼"},
+                    "list":[
+                        {"id":11,"content":"(已屏蔽)"},
+                        {"id":12,"content":"正常12"}
+                    ]
+                }"""
+            )
+        )
+
+        viewModel.loadNextPage()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 仅正常12被追加，11被过滤
+        val ids = viewModel.uiState.value.replies.map { it.id }
+        ids shouldBe (1L..10L).toList() + listOf(12L)
     }
 }

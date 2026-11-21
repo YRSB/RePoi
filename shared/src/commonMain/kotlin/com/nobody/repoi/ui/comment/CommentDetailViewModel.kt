@@ -89,12 +89,16 @@ class CommentDetailViewModel(
                 _uiState.update { current ->
                     val comment = current.comment
                     if (comment == null || comment.id != updated.id) return@update current
-                    current.copy(
-                        comment = comment.copy(
-                            praiseState = updated.praiseState,
-                            praiseCount = updated.praiseCount
+                    if (CommentMutations.isShielded(updated)) {
+                        current.toShieldedEmpty()
+                    } else {
+                        current.copy(
+                            comment = comment.copy(
+                                praiseState = updated.praiseState,
+                                praiseCount = updated.praiseCount
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -147,14 +151,16 @@ class CommentDetailViewModel(
         loadJob?.cancel()
         moreJob?.cancel()
         loadJob = viewModelScope.launch {
+            val initialSnapshot = param.snapshot?.takeUnless { CommentMutations.isShielded(it) }
+            val initialReplies = initialSnapshot?.let { CommentMutations.previewReplies(it) } ?: emptyList()
             _uiState.value = CommentDetailUiState(
                 commentId = param.commentId,
                 relateNodeId = param.relateNodeId,
                 phase = CommentDetailPhase.Loading,
                 isHot = param.isHot,
                 isDiscuss = param.isDiscuss,
-                comment = param.snapshot,
-                replies = param.snapshot?.let { CommentMutations.previewReplies(it) } ?: emptyList()
+                comment = initialSnapshot,
+                replies = initialReplies
             )
             val result = if (param.isDiscuss) {
                 repository.getReplies(
@@ -179,14 +185,26 @@ class CommentDetailViewModel(
                             }
                             if (snapshot != null) withReplies.copy(praiseState = snapshot.praiseState) else withReplies
                         } ?: param.snapshot
-                        it.copy(
-                            phase = CommentDetailPhase.Success,
-                            comment = calibrated,
-                            replies = CommentMutations.filterShielded(pageData.replies),
-                            page = 1,
-                            hasMore = pageData.replies.size >= REPLY_PAGE_SIZE,
-                            errorMessage = null
-                        )
+                        val isShielded = calibrated?.let { CommentMutations.isShielded(it) } ?: false
+                        if (isShielded) {
+                            it.copy(
+                                phase = CommentDetailPhase.Success,
+                                page = 1,
+                                errorMessage = null
+                            ).toShieldedEmpty()
+                        } else {
+                            val cleanCalibrated = calibrated?.let { c ->
+                                if (c.replys != null) c.copy(replys = CommentMutations.filterShielded(c.replys)) else c
+                            }
+                            it.copy(
+                                phase = CommentDetailPhase.Success,
+                                comment = cleanCalibrated,
+                                replies = CommentMutations.filterShielded(pageData.replies),
+                                page = 1,
+                                hasMore = pageData.replies.size >= REPLY_PAGE_SIZE,
+                                errorMessage = null
+                            )
+                        }
                     }
                 },
                 onFailure = { err ->
@@ -248,13 +266,20 @@ class CommentDetailViewModel(
                     return@launch
                 }
                 _uiState.update { current ->
+                    val serverComment = successData.comment
+                    if (serverComment != null && CommentMutations.isShielded(serverComment)) {
+                        return@update current.toShieldedEmpty(isLoadingMore = false)
+                    }
                     val ids = current.replies.map { reply -> reply.id }.toSet()
                     val appended = CommentMutations.filterShielded(successData.replies)
                         .filter { it.id !in ids }
                         .distinctBy { it.id }
+                    val cleanServerComment = serverComment?.let { c ->
+                        if (c.replys != null) c.copy(replys = CommentMutations.filterShielded(c.replys)) else c
+                    }
                     current.copy(
                         isLoadingMore = false,
-                        comment = successData.comment?.let { server ->
+                        comment = cleanServerComment?.let { server ->
                             current.comment?.takeIf { it.id == server.id }?.let { server.copy(praiseState = it.praiseState) } ?: server
                         } ?: current.comment,
                         replies = current.replies + appended,
@@ -475,6 +500,15 @@ class CommentDetailViewModel(
                 _uiState.update { it.copy(actionMessage = err.message ?: "删除回复失败") }
                 false
             }
+        )
+    }
+
+    private fun CommentDetailUiState.toShieldedEmpty(isLoadingMore: Boolean = false): CommentDetailUiState {
+        return copy(
+            comment = null,
+            replies = emptyList(),
+            hasMore = false,
+            isLoadingMore = isLoadingMore
         )
     }
 }

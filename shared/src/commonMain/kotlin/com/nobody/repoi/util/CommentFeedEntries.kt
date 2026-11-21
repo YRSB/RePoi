@@ -30,17 +30,19 @@ fun buildCommentFeedEntries(
     commentsError: String?,
     showHeader: Boolean = true
 ): List<CommentFeedEntry> {
+    val cleanHot = CommentMutations.filterShieldedComments(hotComments)
+    val cleanLatest = CommentMutations.filterShieldedComments(latestComments)
     val entries = mutableListOf<CommentFeedEntry>()
     if (showHeader) entries.add(CommentFeedEntry.Header)
-    if (isLoading && hotComments.isEmpty() && latestComments.isEmpty()) {
+    if (isLoading && cleanHot.isEmpty() && cleanLatest.isEmpty()) {
         entries.add(CommentFeedEntry.Loading)
         return entries
     }
     when (filterMode) {
         CommentFilterMode.DEFAULT -> {
-            val topHot = hotComments.take(COMMENT_HOT_PREVIEW_LIMIT)
+            val topHot = cleanHot.take(COMMENT_HOT_PREVIEW_LIMIT)
             if (topHot.isNotEmpty()) {
-                val hasLatest = latestComments.isNotEmpty()
+                val hasLatest = cleanLatest.isNotEmpty()
                 topHot.forEachIndexed { index, it ->
                     val isLast = index == topHot.lastIndex
                     val showDivider = !(isLast && hasLatest)
@@ -48,8 +50,8 @@ fun buildCommentFeedEntries(
                 }
                 if (hasLatest) entries.add(CommentFeedEntry.LatestDivider)
             }
-            if (latestComments.isNotEmpty()) {
-                latestComments.forEach { entries.add(CommentFeedEntry.LatestComment("default_latest_${it.id}", it)) }
+            if (cleanLatest.isNotEmpty()) {
+                cleanLatest.forEach { entries.add(CommentFeedEntry.LatestComment("default_latest_${it.id}", it)) }
             } else if (topHot.isEmpty()) {
                 entries.add(CommentFeedEntry.Empty("empty_default_comments", "暂无评论，快来抢占第一条讨论吧 (・ω・)"))
             }
@@ -58,18 +60,18 @@ fun buildCommentFeedEntries(
                     key = "default_comments_footer",
                     isLoadingMore = isLoadingMore,
                     hasMore = hasMore,
-                    hasAny = topHot.isNotEmpty() || latestComments.isNotEmpty(),
+                    hasAny = topHot.isNotEmpty() || cleanLatest.isNotEmpty(),
                     errorMessage = commentsError
                 )
             )
         }
         CommentFilterMode.HOT -> {
-            if (hotComments.isNotEmpty()) {
-                hotComments.forEachIndexed { index, it ->
-                    val isLast = index == hotComments.lastIndex
+            if (cleanHot.isNotEmpty()) {
+                cleanHot.forEachIndexed { index, it ->
+                    val isLast = index == cleanHot.lastIndex
                     entries.add(CommentFeedEntry.HotComment("hot_only_${it.id}", it, !isLast))
                 }
-                entries.add(CommentFeedEntry.HotFooter(hotComments.size))
+                entries.add(CommentFeedEntry.HotFooter(cleanHot.size))
             } else if (commentsError != null) {
                 entries.add(
                     CommentFeedEntry.PagedFooter(
@@ -85,8 +87,8 @@ fun buildCommentFeedEntries(
             }
         }
         CommentFilterMode.LATEST -> {
-            if (latestComments.isNotEmpty()) {
-                latestComments.forEach { entries.add(CommentFeedEntry.LatestComment("latest_only_${it.id}", it)) }
+            if (cleanLatest.isNotEmpty()) {
+                cleanLatest.forEach { entries.add(CommentFeedEntry.LatestComment("latest_only_${it.id}", it)) }
                 entries.add(
                     CommentFeedEntry.PagedFooter(
                         key = "latest_comments_footer",

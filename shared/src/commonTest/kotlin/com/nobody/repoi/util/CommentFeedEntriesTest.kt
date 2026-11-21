@@ -179,4 +179,89 @@ class CommentFeedEntriesTest {
         val empty = entries.filterIsInstance<CommentFeedEntry.Empty>().single()
         assertEquals("empty_latest_comments", empty.key)
     }
+
+    @Test
+    fun feedEntries_filtersShieldedHotAndLatestComments() {
+        val hotList = listOf(
+            CommentItem(id = 1L, content = "正常热门1"),
+            CommentItem(id = 2L, content = "(已屏蔽)"),
+            CommentItem(id = 3L, content = "正常文字但被标记", isMask = 1),
+            CommentItem(id = 4L, content = "正常热门4")
+        )
+        val latestList = listOf(
+            CommentItem(id = 11L, content = "正常最新11"),
+            CommentItem(id = 12L, content = "(已屏蔽)"),
+            CommentItem(id = 13L, content = "正常最新13", isMask = 1),
+            CommentItem(id = 14L, content = "正常最新14")
+        )
+
+        val entries = buildCommentFeedEntries(
+            filterMode = CommentFilterMode.DEFAULT,
+            hotComments = hotList,
+            latestComments = latestList,
+            isLoading = false,
+            isLoadingMore = false,
+            hasMore = true,
+            commentsError = null
+        )
+
+        val hot = entries.filterIsInstance<CommentFeedEntry.HotComment>()
+        assertEquals(listOf(1L, 4L), hot.map { it.comment.id })
+
+        val latest = entries.filterIsInstance<CommentFeedEntry.LatestComment>()
+        assertEquals(listOf(11L, 14L), latest.map { it.comment.id })
+    }
+
+    @Test
+    fun feedEntries_allCommentsShielded_fallsBackToEmptyState() {
+        val shieldedHot = listOf(
+            CommentItem(id = 1L, content = "(已屏蔽)"),
+            CommentItem(id = 2L, content = "违规", isMask = 1)
+        )
+        val shieldedLatest = listOf(
+            CommentItem(id = 11L, content = "(已屏蔽)"),
+            CommentItem(id = 12L, content = "违规最新", isMask = 1)
+        )
+
+        // 1. DEFAULT 模式全屏蔽 -> 降级为 Empty，hasAny = false
+        val defaultEntries = buildCommentFeedEntries(
+            filterMode = CommentFilterMode.DEFAULT,
+            hotComments = shieldedHot,
+            latestComments = shieldedLatest,
+            isLoading = false,
+            isLoadingMore = false,
+            hasMore = false,
+            commentsError = null
+        )
+        val defaultEmpty = defaultEntries.filterIsInstance<CommentFeedEntry.Empty>().single()
+        assertEquals("empty_default_comments", defaultEmpty.key)
+        val defaultFooter = defaultEntries.filterIsInstance<CommentFeedEntry.PagedFooter>().single()
+        assertFalse(defaultFooter.hasAny)
+
+        // 2. HOT 模式全屏蔽 -> 降级为 Empty
+        val hotEntries = buildCommentFeedEntries(
+            filterMode = CommentFilterMode.HOT,
+            hotComments = shieldedHot,
+            latestComments = shieldedLatest,
+            isLoading = false,
+            isLoadingMore = false,
+            hasMore = false,
+            commentsError = null
+        )
+        val hotEmpty = hotEntries.filterIsInstance<CommentFeedEntry.Empty>().single()
+        assertEquals("empty_hot_comments", hotEmpty.key)
+
+        // 3. LATEST 模式全屏蔽 -> 降级为 Empty
+        val latestEntries = buildCommentFeedEntries(
+            filterMode = CommentFilterMode.LATEST,
+            hotComments = shieldedHot,
+            latestComments = shieldedLatest,
+            isLoading = false,
+            isLoadingMore = false,
+            hasMore = false,
+            commentsError = null
+        )
+        val latestEmpty = latestEntries.filterIsInstance<CommentFeedEntry.Empty>().single()
+        assertEquals("empty_latest_comments", latestEmpty.key)
+    }
 }
