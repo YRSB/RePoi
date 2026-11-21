@@ -17,6 +17,7 @@ import com.nobody.repoi.data.repository.ResaleRepository
 import com.nobody.repoi.data.repository.ZoneRepository
 import com.nobody.repoi.data.session.FakeUserSession
 import com.nobody.repoi.data.session.SessionState
+import com.nobody.repoi.data.session.UserSession
 import com.nobody.repoi.ui.board.ZoneBoard
 import com.nobody.repoi.ui.board.ZoneBoardCapability
 import com.nobody.repoi.ui.board.ZoneBoardContent
@@ -162,12 +163,15 @@ class HomeFeedViewModelTest {
         )
     }
 
-    private fun Env.viewModel(accounts: Boolean = false): HomeFeedViewModel =
+    private fun Env.viewModel(
+        accounts: Boolean = false,
+        customSession: UserSession? = null,
+    ): HomeFeedViewModel =
         HomeFeedViewModel(
             sessionFactory = sessionFactory,
             zoneRepository = zoneRepository,
             viewPreferencesManager = preferences,
-            userSession = if (accounts) userSession else FakeUserSession(),
+            userSession = customSession ?: if (accounts) userSession else FakeUserSession(),
             messageRepository = if (accounts) messageRepository else null,
             albumRepository = albumRepository
         )
@@ -680,20 +684,111 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun coldStart_savedFollow_fallsBackToAllAndLoadsAllFeed() = runTest(testDispatcher) {
-        // #156 恢复规则 1：上次为「关注」时冷启动回落「全部」，不恢复关注态
+    fun coldStart_savedFollow_restoresFollowAndLoadsFeed() = runTest(testDispatcher) {
+        // #212：冷启动允许恢复上次保存的「关注」聚合态，不再硬编码回落「全部」
         val env = env(savedTabKey = "follow")
-        env.stubFeed(items = listOf(item(1, "100")))
+        env.stubFocusedZone(nodeId = 100L)
+        env.stubFeed(zoneIds = "100", items = listOf(item(1, "100")))
 
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals("all", state.selectedCategory.tabKey)
+        assertEquals("follow", state.selectedCategory.tabKey)
+        assertTrue(state.isColdStartReady, "冷启动落定后应标记就绪")
         assertEquals(listOf(1L), state.items.map { it.id })
         assertFalse(state.isInitialLoading)
-        assertNull(env.lastFeedForm()["zoneNodeId"])
-        // 运行期「关注」空态短路仍由独立用例覆盖（selectZoneTab_followWithNoFocusZones_*）
+    }
+
+    @Test
+    fun coldStart_waitsForSessionPrewarm_singleRequestWithToken() = runTest(testDispatcher) {
+        // #212 严格单次请求与会话就绪门禁：启动时等待 userSession 离开 Prewarming 态
+        // 仅发起恰好一次 getZoneHomeTabs() 请求，杜绝空 Token 请求与二次请求竞争
+        val fakeSession = FakeUserSession(SessionState.Prewarming)
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100")))
+
+        val viewModel = env.viewModel(customSession = fakeSession)
+        advanceUntilIdle()
+
+        // 预热未完成前：不发起专区首屏请求，首屏保持未就绪
+        assertEquals(0, env.zoneMock.requestCount, "凭据预热未结束前不得发起专区请求")
+        assertFalse(viewModel.isColdStartReady.value, "凭据预热未结束前首屏不得标记就绪")
+
+        // 凭据预热完成
+        fakeSession.setState(SessionState.Authenticated(userId = 42L, token = "utoken-verified"))
+        advanceUntilIdle()
+
+        // 预热完成后仅发起一次请求
+        assertEquals(1, env.zoneMock.requestCount, "预热完成后仅发起恰好一次专区请求")
+        assertTrue(viewModel.isColdStartReady.value, "落定后首屏标记就绪")
+    }
+
+    @Test
+    fun coldStart_networkFailure_setsColdStartError_andRetryRecovers() = runTest(testDispatcher) {
+        // #212 异常超时兜底与重试回路
+        val env = env()
+        env.zoneMock.replaceRoute(
+            "api/zone/home-tabs",
+            """{"success":false,"code":500,"msg":"Internal Server Error"}"""
+        )
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isColdStartReady, "网络失败时首屏不得标记就绪")
+        assertEquals("Internal Server Error", state.coldStartError)
+
+        // 模拟网络恢复，触发重试
+        env.zoneMock.replaceRoute(
+            "api/zone/home-tabs",
+            """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
+        )
+        env.stubFeed(items = listOf(item(1, "100")))
+        viewModel.retryColdStart()
+        advanceUntilIdle()
+
+        val recoveredState = viewModel.uiState.value
+        assertTrue(recoveredState.isColdStartReady, "重试成功后首屏标记就绪")
+        assertNull(recoveredState.coldStartError, "重试成功后错误信息应清除")
+    }
+
+    @Test
+    fun coldStart_savedBoardMemory_notOverwrittenByAction() = runTest(testDispatcher) {
+        // #212 消除 Pager 误写与状态丢失：恢复非首板块时不被第 0 项覆写
+        val env = env(savedTabKey = "z100", savedBoardKey = "z100|album")
+        env.stubFocusedZone(100L)
+        env.stubZoneInfo(100L, tabs = listOf("action", "album"))
+        env.albumMock.replaceRoute(
+            "api/album/list",
+            """{"success":true,"code":200,"msg":"ok","data":{"page":1,"list":[{"id":1,"itemId":101,"nameCN":"相册1","cover":"c.jpg"}]}}"""
+        )
+
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("z100", state.selectedCategory.tabKey)
+        assertEquals(ZoneBoard.Album, state.selectedBoard)
+        assertTrue(state.isColdStartReady)
+        // 验证落盘的二级板块键仍然是 z100|album，没有被反向覆写为 z100|action
+        assertEquals("z100|album", env.preferences.getInitialFeedZoneBoardKey())
+    }
+
+    @Test
+    fun refreshFeed_triggersZoneHomeTabsRefresh() = runTest(testDispatcher) {
+        // #212 下拉刷新纳入 zoneRepository.getZoneHomeTabs()
+        val env = env()
+        env.stubFeed(items = listOf(item(1, "100")))
+        val viewModel = env.viewModel()
+        advanceUntilIdle()
+
+        val zoneRequestsBefore = env.zoneMock.requestCount
+        viewModel.refreshFeed()
+        advanceUntilIdle()
+
+        assertEquals(zoneRequestsBefore + 1, env.zoneMock.requestCount, "下拉刷新应重新拉取专区首页数据")
     }
 
 
@@ -872,20 +967,20 @@ class HomeFeedViewModelTest {
     }
 
     @Test
-    fun zoneHomeTabsSync_dispatchesImmediatelyAndResyncsAfterPrewarm() = runTest(testDispatcher) {
+    fun zoneHomeTabsSync_waitsForPrewarm_andDispatchesSingleRequest() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = emptyList())
         env.userSession.setState(SessionState.Prewarming)
 
         env.viewModel(accounts = true)
         advanceUntilIdle()
-        // 不等待预热：首屏立即同步一次（可能暂为空令牌响应）
-        assertEquals(1, env.zoneMock.requestCount)
+        // #212 严格单次请求：启动时等待预热完成，不得在空 Token 状态下提前发送请求
+        assertEquals(0, env.zoneMock.requestCount)
 
         env.userSession.setState(SessionState.Authenticated(userId = 1L, token = "utoken-test"))
         advanceUntilIdle()
-        // 预热完成后补拉一次带凭据的响应，保证关注专区最终一致
-        assertEquals(2, env.zoneMock.requestCount)
+        // 预热完成后仅发起一次带凭据的请求
+        assertEquals(1, env.zoneMock.requestCount)
     }
 
     @Test

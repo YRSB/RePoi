@@ -64,11 +64,11 @@ class HomeSelectionRestoreTest {
     private val availableTabKeys = listOf("all", "follow", "z100", "z200")
 
     @Test
-    fun resolveInitialTabKey_followFallsBackToAll() {
-        // 冷启动规则：上次为「关注」不恢复，回落「全部」
-        assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey("follow", availableTabKeys))
-        // 即使「关注」在可用集合中也必须回落
-        assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey(ZONE_TAB_KEY_FOLLOW, listOf("follow")))
+    fun resolveInitialTabKey_followRestoresFollowWhenAvailable() {
+        // 冷启动规则（#212）：允许恢复上次保存的「关注」聚合态
+        assertEquals(ZONE_TAB_KEY_FOLLOW, resolveInitialTabKey(ZONE_TAB_KEY_FOLLOW, availableTabKeys))
+        // 若可用集合中不含「关注」，安全回落「全部」
+        assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey(ZONE_TAB_KEY_FOLLOW, listOf("all", "z100")))
     }
 
     @Test
