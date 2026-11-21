@@ -239,7 +239,7 @@ fun AlbumDetailScreen(
             val album = uiState.album
 
             val relateNodeId = uiState.album?.actualAlbumId ?: uiState.albumId
-            val commentInteraction = remember(uiState.pendingPraiseIds, relateNodeId, commentUserId) {
+            val commentInteraction = remember(uiState.pendingPraiseIds, relateNodeId, commentUserId, onUrlClick) {
                 CommentSectionInteraction(
                     pendingPraiseIds = uiState.pendingPraiseIds,
                     currentUserId = commentUserId,
@@ -261,7 +261,8 @@ fun AlbumDetailScreen(
                                 snapshot = comment
                             )
                         )
-                    }
+                    },
+                    onUrlClick = onUrlClick
                 )
             }
 

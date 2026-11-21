@@ -128,7 +128,7 @@ fun PostDetailScreen(
         }
     }
 
-    val commentInteraction = remember(uiState.currentUserId, onNavigateToCommentDetail) {
+    val commentInteraction = remember(uiState.currentUserId, onNavigateToCommentDetail, onUrlClick) {
         CommentSectionInteraction(
             currentUserId = uiState.currentUserId,
             onAddComment = { content, stickers ->
@@ -172,7 +172,8 @@ fun PostDetailScreen(
             },
             onLoadStickerPacks = {
                 viewModel.loadStickerPacks()
-            }
+            },
+            onUrlClick = onUrlClick
         )
     }
 

@@ -30,6 +30,7 @@ fun HobbyCommentsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToCommentDetail: ((CommentDetailNavParam) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
     viewModel: HobbyCommentsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -51,7 +52,7 @@ fun HobbyCommentsScreen(
         }
     }
 
-    val interaction = remember(uiState.pendingPraiseIds, userId, navParam.nodeId) {
+    val interaction = remember(uiState.pendingPraiseIds, userId, navParam.nodeId, onUrlClick) {
         CommentSectionInteraction(
             pendingPraiseIds = uiState.pendingPraiseIds,
             currentUserId = userId,
@@ -74,7 +75,8 @@ fun HobbyCommentsScreen(
                         isHot = uiState.hotComments.any { it.id == comment.id }
                     )
                 )
-            }
+            },
+            onUrlClick = onUrlClick
         )
     }
 

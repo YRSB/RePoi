@@ -18,6 +18,23 @@ import com.nobody.repoi.util.parseEmoticonUrls
 /** 平台服务端屏蔽占位纯文本 */
 const val SHIELDED_COMMENT_TEXT = "(已屏蔽)"
 
+/**
+ * 清洗服务端返回的 HTML 富文本为纯文本，正确处理实体转义标签与换行。
+ */
+internal fun cleanHtmlToPlainText(raw: String?): String {
+    if (raw.isNullOrBlank()) return ""
+    return raw
+        .replace(Regex("(?i)&lt;br\\s*/?&gt;|<br\\s*/?>"), "\n")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace(Regex("(?i)</?[a-z][a-z0-9]*(?:\\s+[^>]*)?>"), "")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .trim()
+}
+
 @Serializable
 data class CommentPayload(
     val list: List<CommentItem>? = null
@@ -41,17 +58,7 @@ data class CommentItem(
 ) {
     /** 纯文本评论内容（脱除 HTML 标签与回车格式化） */
     val contentCleanText: String
-        get() {
-            if (content.isNullOrBlank()) return ""
-            return content
-                .replace(Regex("(?i)<br\\s*/?>"), "\n")
-                .replace(Regex("<[^>]+>"), "")
-                .replace("&nbsp;", " ")
-                .replace("&amp;", "&")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .trim()
-        }
+        get() = cleanHtmlToPlainText(content)
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
@@ -94,18 +101,7 @@ data class CommentReplyItem(
 ) {
     /** 纯文本回复内容（优先服务端富文本，脱除 HTML 标签与回车格式化） */
     val contentCleanText: String
-        get() {
-            val raw = htmlContent?.ifBlank { null } ?: content
-            if (raw.isNullOrBlank()) return ""
-            return raw
-                .replace(Regex("(?i)<br\\s*/?>"), "\n")
-                .replace(Regex("<[^>]+>"), "")
-                .replace("&nbsp;", " ")
-                .replace("&amp;", "&")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .trim()
-        }
+        get() = cleanHtmlToPlainText(htmlContent?.ifBlank { null } ?: content)
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)

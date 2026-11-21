@@ -102,6 +102,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -113,6 +114,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.navigationBarsPadding
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentUser
 import com.nobody.repoi.data.remote.model.StickerPackData
@@ -475,8 +477,16 @@ fun CommentItemCard(
                 }
 
                 // 3. 主评论正文
+                val linkColor = MaterialTheme.colorScheme.primary
+                val parsedCommentContent = remember(comment.content, interaction.onUrlClick, linkColor) {
+                    HtmlRichTextParser.parse(
+                        html = comment.content,
+                        linkColor = linkColor,
+                        onLinkClick = interaction.onUrlClick
+                    )
+                }
                 Text(
-                    text = comment.contentCleanText,
+                    text = if (parsedCommentContent.text.isNotBlank()) parsedCommentContent else AnnotatedString(comment.contentCleanText),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 21.sp,
@@ -590,7 +600,10 @@ fun CommentItemCard(
                         ) {
                             displayReplies.forEach { reply ->
                                 Text(
-                                    text = replyRelationText(reply = reply),
+                                    text = replyRelationText(
+                                        reply = reply,
+                                        onUrlClick = interaction.onUrlClick
+                                    ),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     lineHeight = 18.sp,
@@ -665,35 +678,78 @@ private fun CommentPraiseButton(
 }
 
 /**
- * 子评论关系富文本：“昵称A 回复 昵称B：正文”（无被回复人时为“昵称A：正文”）。
+ * 是否为自言自语式回复（作者与被回复人为同一人时不展示“回复”关系）。
  */
-@Composable
-fun replyRelationText(
-    reply: CommentReplyItem
-): androidx.compose.ui.text.AnnotatedString {
-    val colorScheme = MaterialTheme.colorScheme
+internal fun isSelfReplyTarget(reply: CommentReplyItem): Boolean {
+    val authorName = reply.user?.nickname?.ifBlank { null } ?: "胶友"
+    val toName = reply.toUser?.nickname?.ifBlank { null }
+    // 同名不同人需区分：优先按用户 ID 判定，仅双方均无可用 ID 时回退昵称比较
+    val fromIds = listOfNotNull(reply.user?.id, reply.user?.userId).filter { it != 0L }.toSet()
+    val toIds = listOfNotNull(reply.toUser?.id, reply.toUser?.userId).filter { it != 0L }.toSet()
+    return if (fromIds.isNotEmpty() && toIds.isNotEmpty()) {
+        fromIds.intersect(toIds).isNotEmpty()
+    } else if (fromIds.isEmpty() && toIds.isEmpty()) {
+        toName == authorName
+    } else {
+        false
+    }
+}
+
+/**
+ * 纯函数：构建子评论在主列表回复预览行的富文本（包含回复人关系与富文本正文解析）。
+ */
+fun buildReplyRelationText(
+    reply: CommentReplyItem,
+    primaryColor: Color,
+    outlineColor: Color,
+    onUrlClick: ((String) -> Unit)? = null
+): AnnotatedString {
     val authorName = reply.user?.nickname?.ifBlank { null } ?: "胶友"
     val toName = reply.toUser?.nickname?.ifBlank { null }
     val isSelfReply = isSelfReplyTarget(reply)
     val showReply = !toName.isNullOrBlank() && !isSelfReply
+    val contentRaw = reply.htmlContent?.ifBlank { null } ?: reply.content
+    val parsedContent = HtmlRichTextParser.parse(
+        html = contentRaw,
+        linkColor = primaryColor,
+        onLinkClick = onUrlClick
+    )
     return buildAnnotatedString {
-        withStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold)) {
+        withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
             append(authorName)
         }
         if (showReply) {
             append(" ")
-            withStyle(SpanStyle(color = colorScheme.outline)) {
+            withStyle(SpanStyle(color = outlineColor)) {
                 append("回复")
             }
             append(" ")
-            withStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold)) {
+            withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
                 append(toName)
             }
         }
         append("：")
-        append(reply.contentCleanText)
+        if (parsedContent.text.isNotBlank()) {
+            append(parsedContent)
+        } else {
+            append(reply.contentCleanText)
+        }
     }
 }
+
+/**
+ * 子评论关系富文本：“昵称A 回复 昵称B：正文”（无被回复人时为“昵称A：正文”）。
+ */
+@Composable
+fun replyRelationText(
+    reply: CommentReplyItem,
+    onUrlClick: ((String) -> Unit)? = null
+): AnnotatedString = buildReplyRelationText(
+    reply = reply,
+    primaryColor = MaterialTheme.colorScheme.primary,
+    outlineColor = MaterialTheme.colorScheme.outline,
+    onUrlClick = onUrlClick
+)
 
 /**
  * 评论详情页子评论整行：头像 + 昵称等级行 + 正文行 + 时间行 + 分割线（对齐原版）。
@@ -705,7 +761,8 @@ fun CommentReplyRow(
     onReplyClick: ((CommentReplyItem) -> Unit)? = null,
     modifier: Modifier = Modifier,
     currentUserId: Long = 0L,
-    onDeleteReply: (suspend (CommentReplyItem) -> Boolean)? = null
+    onDeleteReply: (suspend (CommentReplyItem) -> Boolean)? = null,
+    onUrlClick: ((String) -> Unit)? = null
 ) {
     var showDeleteConfirm by remember(reply.id) { mutableStateOf(false) }
     var isDeleting by remember(reply.id) { mutableStateOf(false) }
@@ -775,7 +832,10 @@ fun CommentReplyRow(
 
                 // 3. 正文（带回复 @xxx 前缀）
                 Text(
-                    text = replyDetailContentText(reply = reply),
+                    text = replyDetailContentText(
+                        reply = reply,
+                        onUrlClick = onUrlClick
+                    ),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 20.sp,
@@ -862,47 +922,54 @@ fun CommentReplyRow(
 }
 
 /**
- * 详情页子评论正文：“回复 昵称：正文”（无被回复人时仅正文）。
+ * 纯函数：构建详情页子评论正文富文本（“回复 昵称：正文”；无被回复人时仅正文）。
  */
-@Composable
-fun replyDetailContentText(
-    reply: CommentReplyItem
-): androidx.compose.ui.text.AnnotatedString {
-    val colorScheme = MaterialTheme.colorScheme
+fun buildReplyDetailContentText(
+    reply: CommentReplyItem,
+    primaryColor: Color,
+    outlineColor: Color,
+    onUrlClick: ((String) -> Unit)? = null
+): AnnotatedString {
     val toName = reply.toUser?.nickname?.ifBlank { null }
     val showReply = !toName.isNullOrBlank() && !isSelfReplyTarget(reply)
+    val contentRaw = reply.htmlContent?.ifBlank { null } ?: reply.content
+    val parsedContent = HtmlRichTextParser.parse(
+        html = contentRaw,
+        linkColor = primaryColor,
+        onLinkClick = onUrlClick
+    )
     return buildAnnotatedString {
         if (showReply) {
-            withStyle(SpanStyle(color = colorScheme.outline)) {
+            withStyle(SpanStyle(color = outlineColor)) {
                 append("回复")
             }
             append(" ")
-            withStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold)) {
+            withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
                 append(toName)
             }
             append("：")
         }
-        append(reply.contentCleanText)
+        if (parsedContent.text.isNotBlank()) {
+            append(parsedContent)
+        } else {
+            append(reply.contentCleanText)
+        }
     }
 }
 
 /**
- * 是否为自言自语式回复（作者与被回复人为同一人时不展示“回复”关系）。
+ * 详情页子评论正文：“回复 昵称：正文”（无被回复人时仅正文）。
  */
-private fun isSelfReplyTarget(reply: CommentReplyItem): Boolean {
-    val authorName = reply.user?.nickname?.ifBlank { null } ?: "胶友"
-    val toName = reply.toUser?.nickname?.ifBlank { null }
-    // 同名不同人需区分：优先按用户 ID 判定，仅双方均无可用 ID 时回退昵称比较
-    val fromIds = listOfNotNull(reply.user?.id, reply.user?.userId).filter { it != 0L }.toSet()
-    val toIds = listOfNotNull(reply.toUser?.id, reply.toUser?.userId).filter { it != 0L }.toSet()
-    return if (fromIds.isNotEmpty() && toIds.isNotEmpty()) {
-        fromIds.intersect(toIds).isNotEmpty()
-    } else if (fromIds.isEmpty() && toIds.isEmpty()) {
-        toName == authorName
-    } else {
-        false
-    }
-}
+@Composable
+fun replyDetailContentText(
+    reply: CommentReplyItem,
+    onUrlClick: ((String) -> Unit)? = null
+): AnnotatedString = buildReplyDetailContentText(
+    reply = reply,
+    primaryColor = MaterialTheme.colorScheme.primary,
+    outlineColor = MaterialTheme.colorScheme.outline,
+    onUrlClick = onUrlClick
+)
 
 private fun isOwnUser(user: CommentUser?, currentUserId: Long): Boolean {
     if (currentUserId <= 0L || user == null) return false
@@ -1966,7 +2033,8 @@ fun SupportingCommentPane(
                                 isHot = hotComments.any { it.id == threadComment.id },
                                 isDiscuss = title == "回帖" || title.contains("讨论")
                             ),
-                            onBack = { activeThreadComment = null }
+                            onBack = { activeThreadComment = null },
+                            onUrlClick = interaction.onUrlClick
                         )
                     }
                 }

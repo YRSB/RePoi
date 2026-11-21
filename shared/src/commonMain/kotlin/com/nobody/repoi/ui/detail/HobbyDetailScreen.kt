@@ -201,7 +201,7 @@ fun HobbyDetailScreen(
 
         val makerCompanyId = uiState.makerCompanyId
         val relateNodeId = uiState.detail?.actualNodeId ?: uiState.itemId
-        val commentInteraction = remember(uiState.pendingPraiseIds, relateNodeId, commentUserId) {
+        val commentInteraction = remember(uiState.pendingPraiseIds, relateNodeId, commentUserId, onUrlClick) {
             CommentSectionInteraction(
                 pendingPraiseIds = uiState.pendingPraiseIds,
                 currentUserId = commentUserId,
@@ -223,7 +223,8 @@ fun HobbyDetailScreen(
                             snapshot = comment
                         )
                     )
-                }
+                },
+                onUrlClick = onUrlClick
             )
         }
 
