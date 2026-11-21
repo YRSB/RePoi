@@ -23,4 +23,48 @@ class CommentModelsTest {
         )
         assertEquals("@小猫咪能有什么坏心眼 回复测试", reply.contentCleanText)
     }
+
+    @Test
+    fun commentReplyItem_preferContentOverHtmlContent_stripsDuplicateReplyPrefix() {
+        val reply = CommentReplyItem(
+            content = "有推荐的产品链接吗，私信一个",
+            htmlContent = "<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个",
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告")
+        )
+        assertEquals("有推荐的产品链接吗，私信一个", reply.contentCleanText)
+    }
+
+    @Test
+    fun commentReplyItem_htmlContentOnly_stripsServerTemplatePrefix() {
+        val reply = CommentReplyItem(
+            content = null,
+            htmlContent = "<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个",
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告")
+        )
+        assertEquals("有推荐的产品链接吗，私信一个", reply.contentCleanText)
+    }
+
+    @Test
+    fun stripReplyPrefix_handlesVariousTemplateAndPlainTextPrefixes() {
+        assertEquals(
+            "有推荐的产品链接吗，私信一个",
+            stripReplyPrefix("<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个", "死亡宣告")
+        )
+        assertEquals(
+            "有推荐的产品链接吗，私信一个",
+            stripReplyPrefix("<a href='/user/58475'>回复死亡宣告:</a> 有推荐的产品链接吗，私信一个", "死亡宣告")
+        )
+        assertEquals(
+            "有推荐的产品链接吗，私信一个",
+            stripReplyPrefix("回复死亡宣告: 有推荐的产品链接吗，私信一个", "死亡宣告")
+        )
+        assertEquals(
+            "有推荐的产品链接吗，私信一个",
+            stripReplyPrefix("回复 死亡宣告：有推荐的产品链接吗，私信一个", "死亡宣告")
+        )
+        assertEquals(
+            "回复死亡宣告的问题：我也在找链接",
+            stripReplyPrefix("回复死亡宣告的问题：我也在找链接", "死亡宣告")
+        )
+    }
 }

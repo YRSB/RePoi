@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.navigationBarsPadding
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.remote.model.CommentItem
+import com.nobody.repoi.data.remote.model.stripReplyPrefix
 import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 import com.nobody.repoi.data.remote.model.CommentUser
@@ -708,9 +709,10 @@ fun buildReplyRelationText(
     val toName = reply.toUser?.nickname?.ifBlank { null }
     val isSelfReply = isSelfReplyTarget(reply)
     val showReply = !toName.isNullOrBlank() && !isSelfReply
-    val contentRaw = reply.htmlContent?.ifBlank { null } ?: reply.content
+    val contentRaw = reply.content?.ifBlank { null } ?: reply.htmlContent
+    val strippedRaw = stripReplyPrefix(contentRaw, toName)
     val parsedContent = HtmlRichTextParser.parse(
-        html = contentRaw,
+        html = strippedRaw,
         linkColor = primaryColor,
         onLinkClick = onUrlClick
     )
@@ -932,9 +934,10 @@ fun buildReplyDetailContentText(
 ): AnnotatedString {
     val toName = reply.toUser?.nickname?.ifBlank { null }
     val showReply = !toName.isNullOrBlank() && !isSelfReplyTarget(reply)
-    val contentRaw = reply.htmlContent?.ifBlank { null } ?: reply.content
+    val contentRaw = reply.content?.ifBlank { null } ?: reply.htmlContent
+    val strippedRaw = stripReplyPrefix(contentRaw, toName)
     val parsedContent = HtmlRichTextParser.parse(
-        html = contentRaw,
+        html = strippedRaw,
         linkColor = primaryColor,
         onLinkClick = onUrlClick
     )

@@ -66,4 +66,79 @@ class CommentSectionTextTest {
         link.linkInteractionListener?.onClick(link)
         assertEquals("https://www.hpoi.net/user/224213", clickedUrl)
     }
+
+    @Test
+    fun buildReplyDetailContentText_withServerHtmlTemplate_noDuplicateReplyPrefix() {
+        val reply = CommentReplyItem(
+            id = 36143455L,
+            user = CommentUser(id = 1L, nickname = "Deciso"),
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告"),
+            content = "有推荐的产品链接吗，私信一个",
+            htmlContent = "<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个"
+        )
+        val annotated = buildReplyDetailContentText(
+            reply = reply,
+            primaryColor = Color.Blue,
+            outlineColor = Color.Gray,
+            onUrlClick = null
+        )
+
+        assertEquals("回复 死亡宣告：有推荐的产品链接吗，私信一个", annotated.text)
+    }
+
+    @Test
+    fun buildReplyRelationText_withServerHtmlTemplate_noDuplicateReplyPrefix() {
+        val reply = CommentReplyItem(
+            id = 36143455L,
+            user = CommentUser(id = 1L, nickname = "Deciso"),
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告"),
+            content = "有推荐的产品链接吗，私信一个",
+            htmlContent = "<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个"
+        )
+        val annotated = buildReplyRelationText(
+            reply = reply,
+            primaryColor = Color.Blue,
+            outlineColor = Color.Gray,
+            onUrlClick = null
+        )
+
+        assertEquals("Deciso 回复 死亡宣告：有推荐的产品链接吗，私信一个", annotated.text)
+    }
+
+    @Test
+    fun buildReplyDetailContentText_htmlContentFallback_stripsServerTemplate() {
+        val reply = CommentReplyItem(
+            id = 36143455L,
+            user = CommentUser(id = 1L, nickname = "Deciso"),
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告"),
+            content = null,
+            htmlContent = "<span>回复<a target='_blank' href='user/58475'>死亡宣告: </a></span>有推荐的产品链接吗，私信一个"
+        )
+        val annotated = buildReplyDetailContentText(
+            reply = reply,
+            primaryColor = Color.Blue,
+            outlineColor = Color.Gray,
+            onUrlClick = null
+        )
+
+        assertEquals("回复 死亡宣告：有推荐的产品链接吗，私信一个", annotated.text)
+    }
+
+    @Test
+    fun buildReplyDetailContentText_contentContainsPlainTextPrefix_stripsDuplicate() {
+        val reply = CommentReplyItem(
+            id = 36143455L,
+            user = CommentUser(id = 1L, nickname = "Deciso"),
+            toUser = CommentUser(id = 58475L, nickname = "死亡宣告"),
+            content = "回复死亡宣告: 有推荐的产品链接吗，私信一个"
+        )
+        val annotated = buildReplyDetailContentText(
+            reply = reply,
+            primaryColor = Color.Blue,
+            outlineColor = Color.Gray,
+            onUrlClick = null
+        )
+
+        assertEquals("回复 死亡宣告：有推荐的产品链接吗，私信一个", annotated.text)
+    }
 }

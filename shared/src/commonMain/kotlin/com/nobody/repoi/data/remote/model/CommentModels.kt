@@ -19,6 +19,44 @@ import com.nobody.repoi.util.parseEmoticonUrls
 const val SHIELDED_COMMENT_TEXT = "(已屏蔽)"
 
 /**
+ * 脱除评论回复正文开头的服务端模板或冗余回复目标前缀（如 `<span>回复<a...>xxx: </a></span>` 或 `回复xxx:`）。
+ */
+internal fun stripReplyPrefix(raw: String?, toNickname: String? = null): String {
+    if (raw.isNullOrBlank()) return ""
+    var result = raw.trim()
+    // 1. 服务端模板标签前缀：如 <span>回复<a ...>xxx: </a></span> 或 &lt;span&gt;回复...&lt;/span&gt;
+    result = result.replace(
+        Regex("(?i)^\\s*(?:&lt;|<)span(?:&gt;|>)\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*(?:&lt;|<)/span(?:&gt;|>)\\s*[:：]?\\s*"),
+        ""
+    )
+    result = result.replace(
+        Regex("(?i)^\\s*(?:&lt;|<)span(?:&gt;|>)\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*(?:&lt;|<)/span(?:&gt;|>)\\s*"),
+        ""
+    )
+    // 2. 裸 a 标签包含回复前缀：如 <a href="...">回复xxx:</a> 或 &lt;a...&gt;回复xxx:&lt;/a&gt;
+    result = result.replace(
+        Regex("(?i)^\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>)\\s*回复.*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*"),
+        ""
+    )
+    // 3. 回复前缀包含 a 标签用户链接：如 回复<a href="...">xxx</a>: 或 回复 <a href="...">xxx</a>:
+    result = result.replace(
+        Regex("(?i)^\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*"),
+        ""
+    )
+    // 4. 指定被回复人昵称的纯文本前缀（必须包含冒号结尾）：如 回复 死亡宣告: 或 回复死亡宣告：
+    if (!toNickname.isNullOrBlank()) {
+        val cleanName = toNickname.trim().removePrefix("@").removeSuffix(":").removeSuffix("：").trim()
+        if (cleanName.isNotBlank()) {
+            result = result.replace(
+                Regex("^\\s*回复\\s*@?${Regex.escape(cleanName)}\\s*[:：]\\s*"),
+                ""
+            )
+        }
+    }
+    return result.trim()
+}
+
+/**
  * 清洗服务端返回的 HTML 富文本为纯文本，正确处理实体转义标签与换行。
  */
 internal fun cleanHtmlToPlainText(raw: String?): String {
@@ -99,9 +137,13 @@ data class CommentReplyItem(
     val htmlContent: String? = null,
     val emoticon: JsonElement? = null
 ) {
-    /** 纯文本回复内容（优先服务端富文本，脱除 HTML 标签与回车格式化） */
+    /** 纯文本回复内容（优先真实用户正文，脱除 HTML 标签、回复前缀与回车格式化） */
     val contentCleanText: String
-        get() = cleanHtmlToPlainText(htmlContent?.ifBlank { null } ?: content)
+        get() {
+            val raw = content?.ifBlank { null } ?: htmlContent
+            val stripped = stripReplyPrefix(raw, toUser?.nickname)
+            return cleanHtmlToPlainText(stripped)
+        }
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
