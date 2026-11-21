@@ -108,6 +108,12 @@ private fun RePoiNavHost() {
     // remember(backStack.toList()) 记忆条目、Tab 切换不改根栈，故经 State 下传当前 Tab 的 entries。
     val tabEntries = rememberUpdatedState(tabState.toDecoratedEntries(tabEntryProvider))
 
+    // 监听导航目的地切换（Tab 切换或二级页面入出栈），自动清除未过期的悬浮 SnackBar（Issue #209）
+    NavigationSnackbarDismissalEffect(
+        navigator = navigator,
+        snackbarHostState = rootSnackbarHostState
+    )
+
     LaunchedEffect(appMessages) {
         while (true) {
             val message = appMessages.take()
