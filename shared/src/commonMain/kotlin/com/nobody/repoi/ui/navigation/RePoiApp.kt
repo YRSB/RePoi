@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -121,7 +123,17 @@ private fun RePoiNavHost() {
         }
     }
 
+    val systemUriHandler = LocalUriHandler.current
+    val appUriHandler = remember(navigator, systemUriHandler, appMessages) {
+        object : UriHandler {
+            override fun openUri(uri: String) {
+                navigator.navigateUrl(uri, systemUriHandler, appMessages::show)
+            }
+        }
+    }
+
     CompositionLocalProvider(
+        LocalUriHandler provides appUriHandler,
         LocalImageViewer provides imageViewerState,
         LocalAppMessages provides appMessages,
         LocalMediaPipeline provides mediaPipeline

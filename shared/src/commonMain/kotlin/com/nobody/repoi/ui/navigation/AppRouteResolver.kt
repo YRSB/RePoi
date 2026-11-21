@@ -199,6 +199,7 @@ object AppRouteResolver {
     private val WORKS_REGEX = Regex("""^${HPOI_PREFIX}works/(\d+)${TRAILING_BOUNDARY}""", RegexOption.IGNORE_CASE)
     private val SERIES_REGEX = Regex("""^${HPOI_PREFIX}series/(\d+)${TRAILING_BOUNDARY}""", RegexOption.IGNORE_CASE)
     private val USER_REGEX = Regex("""^${HPOI_PREFIX}user/(\d+)${TRAILING_BOUNDARY}""", RegexOption.IGNORE_CASE)
+    private val USER_HOME_REGEX = Regex("""^${HPOI_PREFIX}user/home/?(?:\?[^#]*\buserId=(\d+)(?:[&#]|$))""", RegexOption.IGNORE_CASE)
 
     /**
      * 解析超链接为站内目标；非站内、空白或非法 ID 一律回退 [RouteTarget.External]，
@@ -233,6 +234,9 @@ object AppRouteResolver {
             return RouteTarget.Internal(SeriesDetailNavKey(SeriesNavParam(seriesId = id)))
         }
         entityId(USER_REGEX, trimmed)?.let { id ->
+            return RouteTarget.Internal(UserInfoNavKey(UserInfoNavParam(userId = id)))
+        }
+        entityId(USER_HOME_REGEX, trimmed)?.let { id ->
             return RouteTarget.Internal(UserInfoNavKey(UserInfoNavParam(userId = id)))
         }
 

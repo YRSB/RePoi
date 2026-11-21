@@ -147,4 +147,52 @@ class NavigateTargetExtensionTest {
         assertEquals(1, navigator.rootBackStack.size)
         assertTrue(messages.isEmpty())
     }
+
+    @Test
+    fun `navigateUrl resolves internal user url and pushes UserInfoNavKey`() {
+        val navigator = testNavigator()
+        val uriHandler = RecordingUriHandler()
+        val messages = mutableListOf<String>()
+
+        navigator.navigateUrl("https://www.hpoi.net/user/10235", uriHandler, messages::add)
+
+        val key = assertIs<UserInfoNavKey>(navigator.rootBackStack.last())
+        assertEquals(10235L, key.param.userId)
+        assertTrue(uriHandler.opened.isEmpty())
+        assertTrue(messages.isEmpty())
+    }
+
+    @Test
+    fun `navigateUrl resolves relative user url and pushes UserInfoNavKey`() {
+        val navigator = testNavigator()
+        val uriHandler = RecordingUriHandler()
+        val messages = mutableListOf<String>()
+
+        navigator.navigateUrl("user/10235", uriHandler, messages::add)
+
+        val key = assertIs<UserInfoNavKey>(navigator.rootBackStack.last())
+        assertEquals(10235L, key.param.userId)
+        assertTrue(uriHandler.opened.isEmpty())
+        assertTrue(messages.isEmpty())
+    }
+
+    @Test
+    fun `smart UriHandler delegates internal url to navigator without calling system UriHandler`() {
+        val navigator = testNavigator()
+        val systemUriHandler = RecordingUriHandler()
+        val messages = mutableListOf<String>()
+        val appUriHandler = object : UriHandler {
+            override fun openUri(uri: String) {
+                navigator.navigateUrl(uri, systemUriHandler, messages::add)
+            }
+        }
+
+        appUriHandler.openUri("https://www.hpoi.net/user/10235")
+        val key = assertIs<UserInfoNavKey>(navigator.rootBackStack.last())
+        assertEquals(10235L, key.param.userId)
+        assertTrue(systemUriHandler.opened.isEmpty())
+
+        appUriHandler.openUri("https://example.com/external")
+        assertEquals(listOf("https://example.com/external"), systemUriHandler.opened)
+    }
 }

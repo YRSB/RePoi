@@ -1,7 +1,9 @@
 package com.nobody.repoi.ui.navigation
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.ui.common.ImageViewerScreen
 import com.nobody.repoi.ui.common.ImageViewerStateHolder
 import com.nobody.repoi.ui.common.LocalImageViewer
@@ -57,17 +59,23 @@ fun EntryProviderScope<NavKey>.interactionEntries(
     }
 
     entry<CommentDetailNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         CommentDetailScreen(
             navParam = key.param,
-            onBack = onBack
+            onBack = onBack,
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 
     entry<HobbyCommentsNavKey> { key ->
+        val uriHandler = LocalUriHandler.current
+        val messages = LocalAppMessages.current
         HobbyCommentsScreen(
             navParam = key.param,
             onBack = onBack,
-            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) }
+            onNavigateToCommentDetail = { commentParam -> navigator.navigateToCommentDetail(commentParam) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 

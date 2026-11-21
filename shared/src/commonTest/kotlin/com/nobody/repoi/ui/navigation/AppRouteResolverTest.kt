@@ -373,6 +373,25 @@ class AppRouteResolverTest {
     }
 
     @Test
+    fun `resolveUrl - user home with userId query resolves to UserInfoNavKey`() {
+        val urls = listOf(
+            "https://www.hpoi.net/user/home?userId=666",
+            "https://www.hpoi.net/user/home/?userId=666",
+            "http://hpoi.net/user/home?tab=collect&userId=666#top",
+            "/user/home?userId=666",
+            "user/home?userId=666"
+        )
+        for (url in urls) {
+            val key = assertIs<UserInfoNavKey>(urlKey(url), "Expected User route for $url")
+            assertEquals(666L, key.param.userId, "userId for $url")
+        }
+
+        // 验证非法后缀（如 123abc）不会被吞为 123，回退到 External
+        val malformed = "/user/home?userId=123abc"
+        assertEquals(RouteTarget.External(malformed), AppRouteResolver.resolveUrl(malformed))
+    }
+
+    @Test
     fun `resolveUrl - case insensitive host and path variants resolve internally`() {
         val hobby = hobbyUrlKey("HTTPS://WWW.HPOI.NET/HOBBY/42")
         assertEquals(42L, hobby.param.itemId)

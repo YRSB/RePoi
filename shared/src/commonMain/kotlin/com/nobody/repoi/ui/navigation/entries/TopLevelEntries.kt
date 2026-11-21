@@ -44,7 +44,8 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
             onNavigateToPost = { postId, nodeId, title ->
                 navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
-            onNavigateToUser = { userId -> navigator.navigateToUser(userId) }
+            onNavigateToUser = { userId -> navigator.navigateToUser(userId) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 
@@ -71,7 +72,8 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
         val messages = LocalAppMessages.current
         FollowScreen(
             onActionClick = { item -> navigator.navigateAction(item, uriHandler, messages::show) },
-            onNavigateToLogin = { navigator.navigateToLogin() }
+            onNavigateToLogin = { navigator.navigateToLogin() },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 

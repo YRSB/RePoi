@@ -126,6 +126,8 @@ fun ZoneDetailScreen(
     onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToResaleMarket: ((Long, String?) -> Unit)? = null,
     onActionClick: ((ActionItem) -> Unit)? = null,
+    /** 富文本超链接点击（跳转用户/条目/外部网页等）。 */
+    onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: ZoneDetailViewModel = koinViewModel()
 ) {
@@ -399,7 +401,8 @@ fun ZoneDetailScreen(
         handleResaleContactClick,
         onNavigateToUser,
         handleEntityClick,
-        handleHobbyClick
+        handleHobbyClick,
+        onUrlClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -413,7 +416,8 @@ fun ZoneDetailScreen(
             onResaleUserClick = onNavigateToUser,
             onResaleMoreClick = { item -> activeMoreResaleItem = item },
             onHobbyClick = handleHobbyClick,
-            onEntityClick = { board, item -> handleEntityClick(board, item) }
+            onEntityClick = { board, item -> handleEntityClick(board, item) },
+            onUrlClick = onUrlClick
         )
     }
 
