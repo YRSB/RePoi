@@ -126,6 +126,8 @@ fun HomeFeedScreen(
     onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
     /** 讨论帖作者点击。 */
     onNavigateToUser: ((Long) -> Unit)? = null,
+    /** 富文本超链接点击（跳转用户/条目/外部网页等）。 */
+    onUrlClick: ((String) -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -174,6 +176,7 @@ fun HomeFeedScreen(
             onNavigateToMessage = onNavigateToMessage,
             onNavigateToPost = onNavigateToPost,
             onNavigateToUser = onNavigateToUser,
+            onUrlClick = onUrlClick,
         )
     }
 }
@@ -195,6 +198,7 @@ private fun HomeFeedReadyContent(
     onNavigateToMessage: (() -> Unit)? = null,
     onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
     onNavigateToUser: ((Long) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
 ) {
     val session = viewModel.session
     val activeSnapshot by session.activeSnapshot.collectAsStateWithLifecycle()
@@ -281,7 +285,8 @@ private fun HomeFeedReadyContent(
         handleResaleClick,
         handleHobbyClick,
         onNavigateToUser,
-        onEntityClick
+        onEntityClick,
+        onUrlClick
     ) {
         ZoneBoardItemActions(
             onActionClick = onActionClick,
@@ -293,7 +298,8 @@ private fun HomeFeedReadyContent(
             onResaleClick = handleResaleClick,
             onResaleUserClick = onNavigateToUser,
             onHobbyClick = handleHobbyClick,
-            onEntityClick = onEntityClick
+            onEntityClick = onEntityClick,
+            onUrlClick = onUrlClick
         )
     }
 

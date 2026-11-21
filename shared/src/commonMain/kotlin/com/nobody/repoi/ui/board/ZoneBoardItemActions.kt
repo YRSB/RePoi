@@ -41,5 +41,7 @@ data class ZoneBoardItemActions(
      */
     val onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     /** 产品卡片点击（跳转产品详情）。 */
-    val onHobbyClick: ((HobbyItemSummary) -> Unit)? = null
+    val onHobbyClick: ((HobbyItemSummary) -> Unit)? = null,
+    /** 富文本超链接点击（跳转用户/条目/外部网页等）。 */
+    val onUrlClick: ((String) -> Unit)? = null
 )

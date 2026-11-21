@@ -91,6 +91,7 @@ import org.jetbrains.compose.resources.painterResource
 fun FollowScreen(
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToLogin: (() -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: FollowViewModel = koinViewModel()
 ) {
@@ -304,7 +305,8 @@ fun FollowScreen(
                         ActionCard(
                             actionItem = actionItem,
                             onActionClick = onActionClick,
-                            onImageClick = onCardImageClick
+                            onImageClick = onCardImageClick,
+                            onUrlClick = onUrlClick
                         )
                     }
                     item(span = StaggeredGridItemSpan.FullLine) {

@@ -25,6 +25,7 @@ object HtmlRichTextParser {
         html: String?,
         linkColor: Color = Color(0xFF1E88E5),
         onLinkClick: ((String) -> Unit)? = null,
+        linkUnderline: Boolean = false,
     ): AnnotatedString {
         if (html.isNullOrBlank()) return AnnotatedString("")
         // 统一预处理：
@@ -67,7 +68,7 @@ object HtmlRichTextParser {
                             val linkStyles = TextLinkStyles(
                                 style = SpanStyle(
                                     color = linkColor,
-                                    textDecoration = TextDecoration.Underline,
+                                    textDecoration = if (linkUnderline) TextDecoration.Underline else TextDecoration.None,
                                     fontWeight = FontWeight.Medium,
                                 ),
                             )

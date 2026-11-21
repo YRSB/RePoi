@@ -109,7 +109,8 @@ fun ZoneBoardPane(
                         ActionCard(
                             actionItem = item,
                             onActionClick = itemActions.onActionClick,
-                            onImageClick = itemActions.onActionImageClick
+                            onImageClick = itemActions.onActionImageClick,
+                            onUrlClick = itemActions.onUrlClick
                         )
                     }
                 }

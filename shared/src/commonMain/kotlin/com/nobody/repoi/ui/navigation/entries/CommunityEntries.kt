@@ -53,7 +53,8 @@ fun EntryProviderScope<NavKey>.communityEntries(
                 navigator.navigateToPostDetail(postId = postId, initialTitle = title, nodeId = nodeId)
             },
             onNavigateToResaleDetail = { resaleId -> navigator.navigateToResaleDetail(resaleId) },
-            onNavigateToResaleMarket = { hobbyId, title -> navigator.navigateToResaleMarket(hobbyId = hobbyId, title = title) }
+            onNavigateToResaleMarket = { hobbyId, title -> navigator.navigateToResaleMarket(hobbyId = hobbyId, title = title) },
+            onUrlClick = { url -> navigator.navigateUrl(url, uriHandler, messages::show) }
         )
     }
 
