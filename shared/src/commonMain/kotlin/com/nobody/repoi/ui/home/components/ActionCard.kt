@@ -36,6 +36,7 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,13 +93,15 @@ fun ActionCard(
     val isTrade = FeedContentResolver.isTradeAction(actionItem)
     val mainComment = remember(actionItem) { FeedContentResolver.resolveMainComment(actionItem) }
 
+    val uriHandler = LocalUriHandler.current
+    val effectiveUrlClick: (String) -> Unit = onUrlClick ?: { url -> uriHandler.openUri(url) }
     val linkColor = MaterialTheme.colorScheme.primary
-    val parsedMainComment = remember(mainComment, linkColor, onUrlClick) {
+    val parsedMainComment = remember(mainComment, linkColor, effectiveUrlClick) {
         if (mainComment.isNullOrBlank()) null
         else HtmlRichTextParser.parse(
             html = mainComment,
             linkColor = linkColor,
-            onLinkClick = onUrlClick
+            onLinkClick = effectiveUrlClick
         )
     }
 
