@@ -39,8 +39,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 data class FeedCategory(
     val tabKey: String = "all",
@@ -59,6 +61,10 @@ private data class ColdStartInputs(
 )
 
 data class HomeFeedUiState(
+    /** 冷启动首屏是否已落定就绪（等待凭据预热 + 专区首屏单次请求完成 + 目标专区与板块确定）。 */
+    val isColdStartReady: Boolean = false,
+    /** 冷启动首屏加载错误（超时或网络异常）；非 null 时首屏渲染错误重试卡片。 */
+    val coldStartError: String? = null,
     val categories: List<FeedCategory> = listOf(FeedCategory("all", "全部")),
     val selectedCategory: FeedCategory = FeedCategory("all", "全部"),
     /** 顶栏专区切换器分组（「快捷」恒含全部/关注，「我的专区」遵循首页设置排序与隐藏）。 */
@@ -144,6 +150,20 @@ class HomeFeedViewModel(
         )
     )
     val uiState: StateFlow<HomeFeedUiState> = _uiState.asStateFlow()
+
+    private val _isColdStartReady = MutableStateFlow(false)
+    /** 冷启动首屏是否已就绪（供首屏门禁挂起渲染与解闩）。 */
+    val isColdStartReady: StateFlow<Boolean> = _isColdStartReady.asStateFlow()
+
+    private val _coldStartError = MutableStateFlow<String?>(null)
+    /** 冷启动专区拉取失败时的错误文案；非空时渲染重试卡片。 */
+    val coldStartError: StateFlow<String?> = _coldStartError.asStateFlow()
+
+    /** 最近一次已用于同步专区的有效登录令牌。 */
+    private var lastSyncedToken: String? = null
+
+    /** 冷启动首屏异步请求任务；支持重试取消与重建。 */
+    private var coldStartJob: Job? = null
 
     /**
      * 专区子板块会话控制器（深模块）。
@@ -356,25 +376,46 @@ class HomeFeedViewModel(
                 }
 
                 if (coldStartResolvedTabKey != null) {
-                    if (categoryChanged) syncBoards(scope)
-                    // 单区冷启动落定（恢复 z{nodeId} 或不可用回落 all）：解闩恰好一次首屏请求
-                    session.resumeInitialLoad()
+                    if (categoryChanged && scope is ZoneQueryScope.Single) {
+                        val job = syncBoards(scope)
+                        job?.join()
+                    } else if (categoryChanged) {
+                        syncBoards(scope)
+                    }
+                    markColdStartReady()
                 } else if (categoryChanged) {
                     syncBoards(scope)
                 }
             }
         }
 
-        // 启动时立即同步一次专区与设置
-        viewModelScope.launch {
-            zoneRepository.getZoneHomeTabs()
-            focusZonesLoaded.value = true
-        }
-
         setupAccountState()
+        initColdStart()
+    }
 
-        // 冷启动偏好只在预热落定后读取
-        viewModelScope.launch {
+    fun retryColdStart() {
+        initColdStart()
+    }
+
+    private fun markColdStartReady() {
+        _coldStartError.value = null
+        _isColdStartReady.value = true
+        _uiState.update { it.copy(isColdStartReady = true, coldStartError = null) }
+        session.resumeInitialLoad()
+    }
+
+    private fun initColdStart() {
+        coldStartJob?.cancel()
+        coldStartJob = viewModelScope.launch {
+            _coldStartError.value = null
+            _uiState.update { it.copy(coldStartError = null) }
+
+            // 1. 严格等待会话预热完毕（离开 Prewarming 态），确知是否有有效 utoken
+            val initialSessionState = userSession.state.first { it !is SessionState.Prewarming }
+            val currentToken = (initialSessionState as? SessionState.Authenticated)?.token
+            lastSyncedToken = currentToken
+
+            // 2. 读取持久化偏好
             viewPreferencesManager.awaitPreheat()
             if (!userSelectedCategory) {
                 savedTabKey = viewPreferencesManager.getInitialFeedZoneTabKey()
@@ -385,10 +426,23 @@ class HomeFeedViewModel(
                 session.dispatch(ZoneBoardIntent.SelectSubType(savedSubType))
             }
             savedSelectionReady.value = true
-            if (!coldStartTabResolved && zoneTabKeyNodeId(savedTabKey) == null) {
-                coldStartTabResolved = true
-                // 落盘一级为聚合态（all/follow/缺失）：落盘值即最终值，读盘完成即解闩首屏
-                session.resumeInitialLoad()
+
+            // 3. 有界超时（5 秒）发起恰好一次专区首页数据请求
+            val result = runCatching {
+                withTimeout(5000L) {
+                    zoneRepository.getZoneHomeTabs()
+                }
+            }
+
+            val isSuccess = result.isSuccess && result.getOrNull()?.isSuccess == true
+            if (isSuccess) {
+                focusZonesLoaded.value = true
+            } else {
+                val errorMsg = result.exceptionOrNull()?.message
+                    ?: result.getOrNull()?.exceptionOrNull()?.message
+                    ?: "网络连接异常，无法加载专区"
+                _coldStartError.value = errorMsg
+                _uiState.update { it.copy(coldStartError = errorMsg) }
             }
         }
     }
@@ -435,7 +489,7 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
         session.updateScope(scope)
         // 用户已显式选定专区：无需等待冷启动落定，立即解闩防 loading 悬挂
-        session.resumeInitialLoad()
+        markColdStartReady()
         val memoryKey = homeBoardMemoryKey(scope, firstBoard)
         boardScrollMemories[memoryKey]?.let { saved ->
             session.dispatch(ZoneBoardIntent.SaveScrollPosition(firstBoard, saved.index, saved.offset))
@@ -459,7 +513,7 @@ class HomeFeedViewModel(
         viewModelScope.launch { persistBoardSelection() }
         session.dispatch(ZoneBoardIntent.SelectBoard(board))
         // 用户已显式切换板块：立即解闩防 loading 悬挂（落定前点击的极窄竞态兜底）
-        session.resumeInitialLoad()
+        markColdStartReady()
         if (board == ZoneBoard.Album) {
             syncAlbumCategories(current.zoneScope)
         }
@@ -599,6 +653,9 @@ class HomeFeedViewModel(
     fun refresh() {
         resetScrollPosition()
         fetchUnreadMessages()
+        viewModelScope.launch {
+            zoneRepository.getZoneHomeTabs()
+        }
         session.dispatch(ZoneBoardIntent.Refresh())
     }
 
@@ -645,6 +702,7 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
         session.updateScope(scope)
         session.dispatch(ZoneBoardIntent.SelectSubType(defaultSubType))
+        markColdStartReady()
         syncBoards(scope)
     }
 
@@ -656,16 +714,20 @@ class HomeFeedViewModel(
 
     private fun setupAccountState() {
         viewModelScope.launch {
-            var lastToken: String? = null
             var profileRefreshRequested = false
+            var initialTokenConsumed = false
             userSession.state.collect { state ->
                 when (state) {
                     is SessionState.Authenticated -> {
-                        val tokenChanged = state.token != lastToken
+                        val tokenChanged = state.token != lastSyncedToken
                         if (tokenChanged) {
-                            lastToken = state.token
+                            val isInitial = !initialTokenConsumed
+                            initialTokenConsumed = true
+                            lastSyncedToken = state.token
                             profileRefreshRequested = false
-                            launch { zoneRepository.getZoneHomeTabs() }
+                            if (!isInitial) {
+                                launch { zoneRepository.getZoneHomeTabs() }
+                            }
                             fetchUnreadMessages()
                         }
                         _uiState.update { it.copy(userAvatar = state.profile?.header) }
@@ -675,12 +737,12 @@ class HomeFeedViewModel(
                         }
                     }
                     SessionState.Unauthenticated -> {
-                        lastToken = null
+                        initialTokenConsumed = true
+                        lastSyncedToken = null
                         profileRefreshRequested = false
                         _uiState.update { it.copy(userAvatar = null, unreadMessageCount = 0) }
                     }
                     SessionState.Prewarming -> {
-                        lastToken = null
                         profileRefreshRequested = false
                     }
                 }
@@ -699,10 +761,10 @@ class HomeFeedViewModel(
         }
     }
 
-    private fun syncBoards(scope: ZoneQueryScope) {
+    private fun syncBoards(scope: ZoneQueryScope): Job? {
         boardsJob?.cancel()
-        if (scope !is ZoneQueryScope.Single) return
-        boardsJob = viewModelScope.launch {
+        if (scope !is ZoneQueryScope.Single) return null
+        val job = viewModelScope.launch {
             val result = zoneRepository.getZoneInfo(scope.nodeId, reportVisit = false)
             if (_uiState.value.zoneScope != scope) return@launch
             val info = result.getOrNull()
@@ -738,6 +800,8 @@ class HomeFeedViewModel(
                 syncAlbumCategories(scope)
             }
         }
+        boardsJob = job
+        return job
     }
 
     private fun syncAlbumCategories(scope: ZoneQueryScope) {

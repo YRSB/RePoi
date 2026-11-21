@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -128,6 +129,73 @@ fun HomeFeedScreen(
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 消息中心内的已读操作只改服务端计数，首页快照会失效；
+    // 返回首页时重拉一次，红点不残留陈旧值（issue #195）。
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshUnreadMessages()
+        onPauseOrDispose { }
+    }
+
+    if (!uiState.isColdStartReady) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            val error = uiState.coldStartError
+            if (error != null) {
+                ZoneErrorPlaceholder(
+                    message = error.ifBlank { "网络连接异常，无法加载专区" },
+                    onRetry = { viewModel.retryColdStart() },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp)
+                )
+            } else {
+                PoiLoadingView(
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    } else {
+        HomeFeedReadyContent(
+            modifier = modifier,
+            uiState = uiState,
+            viewModel = viewModel,
+            onActionClick = onActionClick,
+            onNavigateToAlbum = onNavigateToAlbum,
+            onNavigateToResaleDetail = onNavigateToResaleDetail,
+            onNavigateToHobby = onNavigateToHobby,
+            onEntityClick = onEntityClick,
+            onNavigateToSearch = onNavigateToSearch,
+            onNavigateToZoneBrowse = onNavigateToZoneBrowse,
+            onNavigateToZoneSettings = onNavigateToZoneSettings,
+            onNavigateToMessage = onNavigateToMessage,
+            onNavigateToPost = onNavigateToPost,
+            onNavigateToUser = onNavigateToUser,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeFeedReadyContent(
+    modifier: Modifier = Modifier,
+    uiState: HomeFeedUiState,
+    viewModel: HomeFeedViewModel,
+    onActionClick: ((ActionItem) -> Unit)? = null,
+    onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
+    onNavigateToResaleDetail: ((Long) -> Unit)? = null,
+    onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
+    onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
+    onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
+    onNavigateToZoneBrowse: (() -> Unit)? = null,
+    onNavigateToZoneSettings: (() -> Unit)? = null,
+    onNavigateToMessage: (() -> Unit)? = null,
+    onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
+    onNavigateToUser: ((Long) -> Unit)? = null,
+) {
     val session = viewModel.session
     val activeSnapshot by session.activeSnapshot.collectAsStateWithLifecycle()
     val hobbyCategoryTree by viewModel.hobbyCategoryTree.collectAsStateWithLifecycle()
@@ -140,12 +208,6 @@ fun HomeFeedScreen(
     var zoneSwitcherExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(useZoneSwitcherDropdown) {
         zoneSwitcherExpanded = false
-    }
-    // 消息中心内的已读操作只改服务端计数，首页快照会失效；
-    // 返回首页时重拉一次，红点不残留陈旧值（issue #195）。
-    LifecycleResumeEffect(Unit) {
-        viewModel.refreshUnreadMessages()
-        onPauseOrDispose { }
     }
     val onCloseZoneSwitcher = { zoneSwitcherExpanded = false }
     val onSelectZoneTab: (String) -> Unit = { tabKey ->
@@ -308,14 +370,14 @@ fun HomeFeedScreen(
             (-fraction * currentFilterHeightPx).coerceIn(-currentFilterHeightPx, 0f)
     }
 
-    LaunchedEffect(pagerState, boards) {
-        if (boards.isNotEmpty()) {
-            val target = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
-            if (pagerState.currentPage != target) pagerState.scrollToPage(target)
-        }
+    val currentBoards by rememberUpdatedState(boards)
+    val currentSelectedBoard by rememberUpdatedState(uiState.selectedBoard)
+
+    LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            boards.getOrNull(page)?.let { board ->
-                if (board != uiState.selectedBoard) viewModel.selectBoard(board)
+            val board = currentBoards.getOrNull(page)
+            if (board != null && board != currentSelectedBoard && !pagerState.isScrollInProgress) {
+                viewModel.selectBoard(board)
             }
         }
     }
@@ -687,7 +749,7 @@ private fun HomeBoardPage(
 
             errorEmpty -> {
                 ZoneErrorPlaceholder(
-                    message = errorMessage ?: "数据加载失败",
+                    message = errorMessage.ifBlank { "数据加载失败" },
                     onRetry = { if (isCurrent) session.dispatch(ZoneBoardIntent.RetryInitial(board)) },
                     modifier = Modifier
                         .align(Alignment.Center)

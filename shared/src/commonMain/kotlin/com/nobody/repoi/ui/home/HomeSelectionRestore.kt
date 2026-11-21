@@ -68,7 +68,7 @@ internal fun zoneTabKeyNodeId(tabKey: String?): Long? =
  *
  * 规则：
  * - 缺失、空串、非法值 → `all`；
- * - 上次为 `follow` → `all`（关注集合随账号变化，冷启动恢复易落入空态，按规格回落）；
+ * - 上次为 `follow` 且在 [availableTabKeys] 中 → 恢复「关注」（#212：由既有关注空态兜底，不强制回落）；
  * - 上次为 `z{nodeId}` 且仍在 [availableTabKeys] 中 → 恢复该专区；
  * - 其余（专区已不可用）→ `all`。
  *
@@ -82,7 +82,6 @@ fun resolveInitialTabKey(
     val saved = savedTabKey?.trim().orEmpty()
     if (saved.isEmpty()) return ZONE_TAB_KEY_ALL
     if (saved == ZONE_TAB_KEY_ALL) return ZONE_TAB_KEY_ALL
-    if (saved == ZONE_TAB_KEY_FOLLOW) return ZONE_TAB_KEY_ALL
     return saved.takeIf { it in availableTabKeys } ?: ZONE_TAB_KEY_ALL
 }
 
