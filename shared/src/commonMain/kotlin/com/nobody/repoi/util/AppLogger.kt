@@ -7,14 +7,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.nobody.repoi.platform.installUncaughtExceptionHook
 
-/**
- * 应用内日志收集器（KMP 移植）：内存环形缓冲 + Kermit 输出。
- *
- * - `android.util.Log` → Kermit（Logcat 仍可见，JVM 侧走 stdout 无崩溃）；
- * - SimpleDateFormat → [DateTimeFormats]（不可变，无线程安全问题）；
- * - 设备/版本头 → [AppInfo] expect；
- * - 导出目录 → `cacheDirPath()/poishelf-logs`（见 `AppDirs`）。
- */
 object AppLogger {
 
     private const val LOGCAT_TAG = "PoiShelf"
@@ -47,8 +39,7 @@ object AppLogger {
     }
 
     private fun record(level: String, scope: String, message: String, throwable: Throwable? = null) {
-        // record 允许同步调用；用 tryLock 快速路径，失败则丢弃（日志不阻塞业务），
-        // 且仅在成功获取锁后才执行时间戳与字符串插值，竞争失败时不分配临时对象。
+
         if (bufferMutex.tryLock()) {
             try {
                 val suffix = throwable?.let { " 异常=${it.message}" } ?: ""
@@ -61,11 +52,6 @@ object AppLogger {
         }
     }
 
-    /**
-     * 安装全局崩溃捕获：先记入缓冲再交还系统默认处理。
-     *
-     * 平台钩子见 `installUncaughtExceptionHook`（common 无 `Thread` API）。
-     */
     fun installCrashHandler() {
         installUncaughtExceptionHook { threadName, throwable ->
             try {
@@ -80,13 +66,6 @@ object AppLogger {
         }
     }
 
-    /**
-     * 将缓冲日志连同设备与版本头写入缓存目录文本并返回内容。
-     * 仅保留最近 [KEEP_FILES] 个文件避免占用空间。
-     *
-     * KMP 版返回文件字节 + 文件名（调用方经 FileKit 落盘/分享），
-     * 避免 common 持有 java.io.File。
-     */
     suspend fun exportLogBytes(): Pair<String, ByteArray> {
         val version = "${AppInfo.versionName}(${AppInfo.versionCode})"
         val header = buildString {

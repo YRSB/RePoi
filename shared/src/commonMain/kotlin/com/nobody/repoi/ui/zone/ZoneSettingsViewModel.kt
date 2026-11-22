@@ -38,7 +38,6 @@ class ZoneSettingsViewModel(
                 val hiddenSet = settings.hiddenZoneIds.toSet()
                 val orderList = settings.customOrder
 
-                // 根据排序规则重新组织展示列表
                 val orderedZones = when (settings.sort) {
                     "custom" -> {
                         val zoneMap = focusList.associateBy { it.nodeId }

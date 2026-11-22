@@ -46,17 +46,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * M3 注意：高级多维筛选参数数据类唯一定义归属 M2
- * `ui/item/list/components/HobbyAdvancedFilterParam.kt`，
- * 本文件不再重复声明（CI Redeclaration 修复）。
- */
-
-/**
- * 自适应高级多维筛选抽屉：
- * 宽屏/平板（宽度 >= 600dp）使用 ModalSideSheet 侧边抽屉，手机窄屏使用 ModalBottomSheet 底部抽屉。
- * 选项采用 FlowRow 流式网格布局，杜绝单行横滑手势冲突。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HobbyFilterAdaptiveSheet(
@@ -122,7 +111,7 @@ private fun HobbyFilterSheetContent(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // 顶栏标题与可选关闭按钮
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -148,14 +137,13 @@ private fun HobbyFilterSheetContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 滚动筛选区块
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. 性别 (单选)
+
             val sexList = listOf(null to "不限") + FilterLabels.sexOrder.map { it to (FilterLabels.sexNames[it] ?: it.toString()) }
             FlowFilterSection(
                 title = "性别",
@@ -165,7 +153,6 @@ private fun HobbyFilterSheetContent(
                 label = { it.second }
             )
 
-            // 2. 属性 (多选)
             val specsList = FilterLabels.specsOrder.map { it to (FilterLabels.specsNames[it] ?: it) }
             FlowFilterSection(
                 title = "属性",
@@ -181,7 +168,6 @@ private fun HobbyFilterSheetContent(
                 label = { it.second }
             )
 
-            // 3. 比例 (单选)
             val scaleList = listOf(null to "不限") + FilterLabels.scaleOrder.map { code ->
                 code to (FilterLabels.scaleName(code) ?: code)
             }
@@ -193,7 +179,6 @@ private fun HobbyFilterSheetContent(
                 label = { it.second }
             )
 
-            // 4. 观感 (单选)
             val r18List = listOf(null to "不限") + FilterLabels.r18Order.map { it to (FilterLabels.r18Names[it] ?: it.toString()) }
             FlowFilterSection(
                 title = "观感",
@@ -206,7 +191,6 @@ private fun HobbyFilterSheetContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 底部重置与确认按钮
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -257,9 +241,6 @@ private fun HobbyFilterSheetContent(
     }
 }
 
-/**
- * 流式筛选选项区块封装
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> FlowFilterSection(

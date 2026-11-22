@@ -17,13 +17,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * ExHobby 图包仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ExHobbyRepositoryTest`（逐用例；Mockito `mock(ExHobbyApiService)` →
- * MockEngine 背后的真实 [ExHobbyApi]；`verify(times(n))` → 本地请求计数；
- * JUnit4 → kotlin.test）。
- */
 class ExHobbyRepositoryTest {
 
     private val json = Json {
@@ -59,7 +52,6 @@ class ExHobbyRepositoryTest {
         assertEquals(2, result1.getOrThrow().size)
         assertEquals("2024/01/pic1.jpg", result1.getOrThrow()[0].path)
 
-        // 第二次请求应命中内存缓存，不再重复调用网络
         val result2 = repository.getPictures(100L, 1)
         assertTrue(result2.isSuccess)
         assertEquals(2, result2.getOrThrow().size)
@@ -112,14 +104,11 @@ class ExHobbyRepositoryTest {
         repository.getPictures(100L, 1)
         assertEquals(1, engine.calls)
 
-        // 清除指定 item 缓存
         repository.clearCache(100L)
 
-        // 再次获取应重新调用网络
         repository.getPictures(100L, 1)
         assertEquals(2, engine.calls)
 
-        // 清除所有缓存
         repository.clearCache(null)
         repository.getPictures(100L, 1)
         assertEquals(3, engine.calls)
@@ -131,31 +120,24 @@ class ExHobbyRepositoryTest {
         engine.next = { """[{"path":"2024/01/pic.jpg"}]""" }
         val repository = ExHobbyRepository(engine.api())
 
-        // 连续拉取 30 页（填满容量上限）
         for (page in 1..30) {
             repository.getPictures(100L, page)
         }
         assertEquals(30, engine.calls)
 
-        // 再次访问第 1 页应命中缓存
         repository.getPictures(100L, 1)
         assertEquals(30, engine.calls)
 
-        // 访问第 31 页，触发淘汰最早插入的第 1 页
         repository.getPictures(100L, 31)
         assertEquals(31, engine.calls)
 
-        // 此时第 1 页已被逐出，再次访问第 1 页应触发新的网络请求 (calls = 32)
-        // 重新插入第 1 页后，当时最早的第 2 页被逐出，而第 3 页至第 31 页以及新插入的第 1 页仍在缓存中
         repository.getPictures(100L, 1)
         assertEquals(32, engine.calls)
 
-        // 访问未被逐出的第 3 页与第 31 页，应命中缓存
         repository.getPictures(100L, 3)
         repository.getPictures(100L, 31)
         assertEquals(32, engine.calls)
 
-        // 验证因重新插入第 1 页而被逐出的第 2 页确实不再处于缓存中
         repository.getPictures(100L, 2)
         assertEquals(33, engine.calls)
     }

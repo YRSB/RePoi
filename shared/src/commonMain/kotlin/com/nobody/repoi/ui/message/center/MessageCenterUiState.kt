@@ -3,9 +3,6 @@ package com.nobody.repoi.ui.message.center
 import com.nobody.repoi.data.remote.model.MessageContactItem
 import com.nobody.repoi.data.remote.model.PushCountCategory
 
-/**
- * 消息中心主页 UI 状态。
- */
 data class MessageCenterUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,

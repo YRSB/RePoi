@@ -33,12 +33,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-// ── 通用状态组件 ──────────────────────────────────────────
-// 骨架屏已下线：8 个子页首屏统一用 PoiLoadingView（居中加载指示器）
-
-/**
- * 底部流式分页指示器。
- */
 internal fun LazyGridScope.renderPagingFooter(
     isPaging: Boolean,
     hasMore: Boolean,
@@ -108,10 +102,6 @@ internal fun LazyGridScope.renderPagingFooter(
     }
 }
 
-/**
- * 空状态展示。
- */
-
 @Composable
 internal fun EmptyCollectView(
     title: String,
@@ -148,9 +138,6 @@ internal fun EmptyCollectView(
     }
 }
 
-/**
- * 加载失败错误状态展示。
- */
 @Composable
 internal fun ErrorCollectView(
     errorMessage: String,
@@ -181,7 +168,3 @@ internal fun ErrorCollectView(
         }
     }
 }
-
-/**
- * 空状态展示。
- */

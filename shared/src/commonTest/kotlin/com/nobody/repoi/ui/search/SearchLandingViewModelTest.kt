@@ -21,11 +21,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
-/**
- * 搜索落地页独立 ViewModel 状态机单元测试（Turbine + Kotest）。
- *
- * 验证搜索历史读写与删除、热词异步拉取与刷新、输入草稿变迁与 300ms 防抖联想建议过滤。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchLandingViewModelTest {
 
@@ -81,25 +76,21 @@ class SearchLandingViewModelTest {
         advanceUntilIdle()
 
         viewModel.uiState.test {
-            // 初始状态
+
             awaitItem().searchHistory shouldBe emptyList()
 
-            // 1. 添加 "手办"
             viewModel.onSearch("手办")
             advanceUntilIdle()
             awaitItem().searchHistory shouldContainExactly listOf("手办")
 
-            // 2. 添加 "黏土人"（排在最前）
             viewModel.onSearch("黏土人")
             advanceUntilIdle()
             awaitItem().searchHistory shouldContainExactly listOf("黏土人", "手办")
 
-            // 3. 删除单个 "手办"
             viewModel.onRemoveHistory("手办")
             advanceUntilIdle()
             awaitItem().searchHistory shouldContainExactly listOf("黏土人")
 
-            // 4. 清空全部
             viewModel.onClearHistory()
             advanceUntilIdle()
             awaitItem().searchHistory shouldBe emptyList()
@@ -127,11 +118,9 @@ class SearchLandingViewModelTest {
         viewModel.uiState.value.keyword shouldBe "初音"
         viewModel.uiState.value.suggestions shouldBe emptyList()
 
-        // 200ms 尚未满足 300ms 防抖门槛
         advanceTimeBy(200L)
         viewModel.uiState.value.suggestions shouldBe emptyList()
 
-        // 累计达 350ms，触发联想拉取
         advanceTimeBy(150L)
         advanceUntilIdle()
         viewModel.uiState.value.suggestions shouldContainExactly listOf("初音未来", "初音手办", "初音韶华")
@@ -145,12 +134,11 @@ class SearchLandingViewModelTest {
         viewModel.onKeywordChange("初")
         advanceTimeBy(100L)
 
-        // 100ms 时快速输入新词，重置防抖计时
         viewModel.onKeywordChange("初音")
         viewModel.uiState.value.keyword shouldBe "初音"
 
         advanceTimeBy(200L)
-        // 距第二次输入仅 200ms，联想不应过早派发
+
         viewModel.uiState.value.suggestions shouldBe emptyList()
 
         advanceTimeBy(150L)
@@ -168,7 +156,6 @@ class SearchLandingViewModelTest {
         advanceUntilIdle()
         viewModel.uiState.value.suggestions shouldContainExactly listOf("初音未来", "初音手办", "初音韶华")
 
-        // 输入变空白，立刻清空建议
         viewModel.onKeywordChange("")
         viewModel.uiState.value.keyword shouldBe ""
         viewModel.uiState.value.suggestions shouldBe emptyList()
@@ -194,7 +181,6 @@ class SearchLandingViewModelTest {
         val (viewModel, _, mockApi) = setup()
         advanceUntilIdle()
 
-        // 切换 mock 返回内容（使用 routeWhenSuspend 覆盖初始普通路由）
         mockApi.routeWhenSuspend(
             predicate = { path, _, _ -> path.endsWith("/api/search/hotword") },
             body = { _, _, _ -> mockApi.ok("""{"list":[{"word":"雪初音","count":20}]}""") }
@@ -218,7 +204,7 @@ class SearchLandingViewModelTest {
                 initialCategory = 10000
             )
         )
-        // 无需等待 300ms 防抖，直接拉取联想
+
         advanceUntilIdle()
 
         viewModel.uiState.value.keyword shouldBe "初音"
@@ -234,11 +220,9 @@ class SearchLandingViewModelTest {
         viewModel.initParam(SearchNavParam(initialKeyword = "初音"))
         advanceUntilIdle()
 
-        // 用户更改为 "樱初音"
         viewModel.onKeywordChange("樱初音")
         viewModel.uiState.value.keyword shouldBe "樱初音"
 
-        // 再次触发 initParam（如重组或配置变迁）不应覆写当前草稿
         viewModel.initParam(SearchNavParam(initialKeyword = "初音"))
         viewModel.uiState.value.keyword shouldBe "樱初音"
     }

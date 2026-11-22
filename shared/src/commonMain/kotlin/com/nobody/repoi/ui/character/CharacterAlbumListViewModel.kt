@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.AlbumData
 
-/**
- * 角色相关相册列表 ViewModel。
- */
 class CharacterAlbumListViewModel(
     private val repository: CharacterDetailRepository
 ) : ViewModel() {

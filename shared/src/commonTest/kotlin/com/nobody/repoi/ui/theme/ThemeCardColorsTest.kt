@@ -55,7 +55,7 @@ class ThemeCardColorsTest {
         assertEquals(0, getThemeCardCacheSize())
         warmUpThemeCardColors()
         val staticSeedCount = ThemeSeed.entries.count { it != ThemeSeed.Dynamic }
-        val expectedMinCount = staticSeedCount * 2 // TonalSpot and Expressive
+        val expectedMinCount = staticSeedCount * 2
         assertTrue(
             getThemeCardCacheSize() >= expectedMinCount,
             "预热后缓存项数量应至少包含静态种子数 * 预热样式数"

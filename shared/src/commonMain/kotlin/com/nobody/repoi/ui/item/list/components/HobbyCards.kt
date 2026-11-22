@@ -24,10 +24,6 @@ import com.nobody.repoi.ui.common.card.PoiListCard
 import com.nobody.repoi.ui.common.card.PoiPosterCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
 
-/**
- * 周边网格封面卡片（自适应多列网格）
- * 基于 Material 3 与 PoiPosterCard 深基元规范
- */
 @Composable
 fun HobbyGridCard(
     item: HobbyItemSummary,
@@ -52,10 +48,6 @@ fun HobbyGridCard(
     )
 }
 
-/**
- * 周边单列图文详情卡片（适配 Hpoi 官方列表项布局 item_hobby_list.xml）
- * 基于 Material 3 与 PoiListCard 深基元规范
- */
 @Composable
 fun HobbyListCard(
     item: HobbyItemSummary,
@@ -83,7 +75,7 @@ fun HobbyListCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // 第 1 行：厂商 与 发售（等宽 2 列）
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -102,7 +94,6 @@ fun HobbyListCard(
                 )
             }
 
-            // 第 2 行：定价 与 评分（等宽 2 列）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -124,10 +115,6 @@ fun HobbyListCard(
     }
 }
 
-/**
- * 官方条目列表属性胶囊徽章项（对应 item_hobby_list 中的 txt_em_* 与 txt_val_*）
- * 遵循 M3 颜色系统与排版规范，杜绝写死色值
- */
 @Composable
 fun HpoiInfoBadgeItem(
     label: String,
@@ -138,7 +125,7 @@ fun HpoiInfoBadgeItem(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 标签小徽章：固定 36.dp 宽，ExtraSmallShape 圆角，surfaceContainerHigh 浅阶容器
+
         Surface(
             modifier = Modifier.width(36.dp),
             shape = MaterialTheme.shapes.extraSmall,
@@ -154,7 +141,6 @@ fun HpoiInfoBadgeItem(
             )
         }
 
-        // 数值内容
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,

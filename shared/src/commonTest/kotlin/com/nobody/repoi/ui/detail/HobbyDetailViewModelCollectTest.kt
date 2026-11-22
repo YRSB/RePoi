@@ -21,16 +21,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 手办详情收藏链路 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailViewModelCollectTest`（逐用例；Mockito 仓储/代理 mock →
- * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；旧事件广播桩 →
- * 真实状态驱动（写仓储后由 `observeCollectState` 状态流推送）；
- * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- *
- * 调度器三件套：`Dispatchers.setMain` + `runTest(testDispatcher)` + `MockApi.api(testDispatcher)`。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HobbyDetailViewModelCollectTest {
 
@@ -73,10 +63,6 @@ class HobbyDetailViewModelCollectTest {
         assertFalse(viewModel.uiState.value.isFavorite)
     }
 
-    /**
-     * 状态流联动：其他入口改写收藏仓储状态池后，详情页爱心与计数自动跟随，
-     * 不再依赖任何事件总线广播。
-     */
     @Test
     fun collectStateFlow_syncsFavoriteAndCountDelta() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
@@ -90,7 +76,6 @@ class HobbyDetailViewModelCollectTest {
         assertFalse(viewModel.uiState.value.isFavorite)
         assertEquals(0, viewModel.uiState.value.collectCountDelta)
 
-        // 外部保存收藏（写仓储状态池）→ 详情页自动变为已收藏，delta 相对网络基线 +1
         env.collectMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         env.collectRepository.saveCollect(
             100L, CollectData(id = 100L, state = CollectConstants.STATE_BUY)
@@ -100,7 +85,6 @@ class HobbyDetailViewModelCollectTest {
         assertTrue(viewModel.uiState.value.isFavorite)
         assertEquals(1, viewModel.uiState.value.collectCountDelta)
 
-        // 外部取消收藏 → 详情页自动回退为未收藏，delta 回到基线 0
         env.collectMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         env.collectRepository.deleteCollect(
             100L, CollectData(id = 100L, state = CollectConstants.STATE_BUY)
@@ -122,7 +106,6 @@ class HobbyDetailViewModelCollectTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isFavorite)
 
-        // 加载新条目，该条目接口返回未收藏 (null)
         env.stubBasics(nodeId = 200L, itemId = 60000L)
         env.collectMock.enqueue(env.collectMock.ok("""{}"""))
 
@@ -143,15 +126,10 @@ class HobbyDetailViewModelCollectTest {
         viewModel.loadDetail(DetailNavParam(itemId = 59570L))
         advanceUntilIdle()
 
-        // 失败不误报为未收藏，保持初始态
         assertFalse(viewModel.uiState.value.isFavorite)
         assertNull(viewModel.uiState.value.currentCollectData)
     }
 
-    /**
-     * 编辑页「未收藏 → 添加收藏」经同一状态池推送详情页：爱心亮起，计数基线改由服务端快照提供、
-     * 本地 delta 归零，代数只在保存成功后推进 1 代（加载时的 refresh 不推进）。
-     */
     @Test
     fun collectEditAddFromEmpty_thenDetailReadsFavoriteAndServerCountBase() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
@@ -185,15 +163,11 @@ class HobbyDetailViewModelCollectTest {
         assertEquals(CollectConstants.STATE_CARE, env.collectRepository.observeCollectState(100L).value?.state)
         assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
         assertTrue(detail.uiState.value.isFavorite)
-        // 写后基线来自服务端 collectCount 总和（此处桩返回空统计，总和 0），delta 归零
+
         assertEquals(0L, detail.uiState.value.collectCountBase)
         assertEquals(0, detail.uiState.value.collectCountDelta)
     }
 
-    /**
-     * 编辑页「已收藏 care → 改档 buy → 取消收藏」的全过程：
-     * 详情档位跟随状态池，每次写后计数基线都改由服务端快照提供、delta 归零，代数累计 +2。
-     */
     @Test
     fun collectEditTierChangeThenDelete_thenDetailReadsNewTierAndServerCountBase() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
@@ -242,10 +216,6 @@ class HobbyDetailViewModelCollectTest {
         assertEquals(0, detail.uiState.value.collectCountDelta)
     }
 
-    /**
-     * 写后服务端基线：编辑页保存成功后拉取 `hobby/collectCount`，五分类总和作为详情页展示基数，
-     * 本地乐观 delta 归零；详情页 ViewModel 未重建也能立即看到更新。
-     */
     @Test
     fun collectEditSave_refreshesDetailCountBaseFromServerAndZeroesDelta() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
@@ -272,7 +242,6 @@ class HobbyDetailViewModelCollectTest {
         edit.initData(CollectEditNavParam(itemId = 59570L, nodeId = 100L))
         advanceUntilIdle()
 
-        // 写后服务端人数 35+3+0+3+0=41，作为详情页新基线
         env.collectMock.replaceRoute(
             "collectCount",
             env.collectMock.ok("""{"collect":{"care":35,"want":3,"preorder":0,"buy":3,"resell":0}}""")
@@ -290,7 +259,6 @@ class HobbyDetailViewModelCollectTest {
         assertTrue(paths.any { it?.contains("hobby/collectCount") == true })
     }
 
-    /** 计数请求失败：不刷新基线，详情页保留写后的乐观 delta（旧行为）。 */
     @Test
     fun collectEditSave_whenCountRequestFails_keepsOptimisticDelta() = runTest(testDispatcher) {
         val env = HobbyDetailEnv(backgroundScope, dispatcher = testDispatcher)
@@ -319,7 +287,6 @@ class HobbyDetailViewModelCollectTest {
         edit.saveCollect()
         advanceUntilIdle()
 
-        // 保存本身成功；计数请求失败不覆盖快照，详情仍按乐观 delta 展示
         assertTrue(edit.uiState.value.saveSuccess)
         assertTrue(detail.uiState.value.isFavorite)
         assertNull(detail.uiState.value.collectCountBase)

@@ -26,12 +26,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 封面新鲜度仓储测试。
- *
- * 覆盖关键契约：缓存命中不请求、失败可重试、空封面进负缓存且不落盘、详情页沉淀优先于接口、
- * 冷启动从真实测试存储文件预热、1000 条容量 FIFO 淘汰、500ms 防抖落盘与批量合并。
- */
 class CoverFreshnessRepositoryTest {
 
     private val hobbyCover = "2026/11/new_hobby.jpg"
@@ -67,7 +61,6 @@ class CoverFreshnessRepositoryTest {
         }
     }
 
-    /** 模拟冷启动：在同一份真实 DataStore 上重建仓储实例，只依赖公开接口观察恢复结果。 */
     private fun TestScope.repositoryOver(
         preferences: DataStore<Preferences>,
         hobbyMock: MockApi = MockApi(),
@@ -126,7 +119,6 @@ class CoverFreshnessRepositoryTest {
             env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow(),
         )
 
-        // 已缓存地址在服务端再次失效（404）：穿透正缓存重新回源
         env.hobbyMock.replaceRoute(
             "api/item/get",
             env.hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}"""),
@@ -206,7 +198,6 @@ class CoverFreshnessRepositoryTest {
             env.repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow()
         )
 
-        // 服务端此时已有封面，但负缓存窗口未过：forceRefresh 也不得穿透，避免空白封面请求风暴
         env.hobbyMock.replaceRoute(
             "api/item/get",
             env.hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}"""),
@@ -346,7 +337,7 @@ class CoverFreshnessRepositoryTest {
         )
 
         repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
-        // 永久有效：跨过旧实现的 30 分钟窗口（甚至跨天）后仍是同一份缓存
+
         now += 365L * 24L * 60L * 60L * 1000L
         val cached = repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
 
@@ -372,7 +363,6 @@ class CoverFreshnessRepositoryTest {
 
         assertEquals(null, repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
 
-        // 窗口内即使服务端已有封面，也仍在负缓存里，不发请求
         hobbyMock.replaceRoute(
             "api/item/get",
             hobbyMock.ok("""{"itemData":{"id":100,"nodeId":100,"itemId":59570,"cover":"$hobbyCover"}}""")
@@ -380,7 +370,6 @@ class CoverFreshnessRepositoryTest {
         assertEquals(null, repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY).getOrThrow())
         assertEquals(1, hobbyMock.requestCount)
 
-        // 越过 10 分钟负缓存窗口后必须重新探测
         now += 10L * 60L * 1000L + 1
         assertEquals(
             hobbyCover,
@@ -416,7 +405,6 @@ class CoverFreshnessRepositoryTest {
         owner.cancel()
         advanceUntilIdle()
 
-        // 在途占位必须已清理：否则后续调用会一直等在已取消 owner 的 deferred 上
         val retry = async {
             repository.freshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY)
         }
@@ -427,8 +415,6 @@ class CoverFreshnessRepositoryTest {
         assertEquals(hobbyCover, retry.await().getOrThrow())
         assertEquals(2, hobbyMock.requestCount, "取消后应允许重新发起请求")
     }
-
-    // ------------------------------------------------------------------ 持久化与容量
 
     @Test
     fun getCachedCover_isSynchronousPureMemoryRead() = runTest {
@@ -511,7 +497,7 @@ class CoverFreshnessRepositoryTest {
         for (id in 1L..1000L) {
             env.repository.rememberFreshCover(id, CoverFreshnessRepository.EntityType.HOBBY, "covers/$id.jpg")
         }
-        // 覆写最旧条目：应视为最近使用而移到队尾
+
         env.repository.rememberFreshCover(1L, CoverFreshnessRepository.EntityType.HOBBY, "covers/1-new.jpg")
         env.repository.rememberFreshCover(1001L, CoverFreshnessRepository.EntityType.HOBBY, "covers/1001.jpg")
 
@@ -601,7 +587,6 @@ class CoverFreshnessRepositoryTest {
             "负缓存只保留在内存，绝不能落盘",
         )
 
-        // 负缓存未落盘：重建仓储（相当于进程重启）后不得再拦截请求
         val retryMock = MockApi()
         retryMock.route(
             "api/item/get",
@@ -631,7 +616,6 @@ class CoverFreshnessRepositoryTest {
         before.ensureWarmed()
         assertNotNull(before.getCachedCover(59570L, CoverFreshnessRepository.EntityType.HOBBY))
 
-        // clear() 是终态：挂起返回即已落盘清空，不再依赖 501ms 防抖推进
         env.repository.clear()
         prefs.awaitPendingWrites()
 
@@ -668,7 +652,6 @@ class CoverFreshnessRepositoryTest {
         advanceUntilIdle()
         assertEquals(1, hobbyMock.requestCount, "回源请求应已在途")
 
-        // 登出：在途回源尚未返回时清空
         repository.clear()
         gate.complete(Unit)
         advanceUntilIdle()
@@ -690,14 +673,12 @@ class CoverFreshnessRepositoryTest {
     @Test
     fun persist_retriesAfterWarmReadFailure_andStillWrites() = runTest {
         val inner = TestDataStore.coverFreshnessPrefs()
-        // 初始化预热与首次落盘尝试（persistSnapshot 的 ensureWarmed）各消耗一次读盘失败，
-        // 因此落盘必须依赖有界重试才能成功。
+
         val flaky = FlakyDataStore(inner, failures = 2)
         val env = Env(backgroundScope, preferences = flaky)
 
         env.repository.rememberFreshCover(59570L, CoverFreshnessRepository.EntityType.HOBBY, hobbyCover)
 
-        // 第一个防抖窗口：预热读盘失败，落盘被放弃但信号未丢弃
         advanceTimeBy(501)
         advanceUntilIdle()
         inner.awaitPendingWrites()
@@ -706,7 +687,6 @@ class CoverFreshnessRepositoryTest {
             "预热未落定时不应写盘（等待重试）",
         )
 
-        // 后续窗口：重试读到磁盘后落盘成功（无重试逻辑时该断言会失败）
         assertEquals(
             hobbyCover,
             awaitPersistedCover(
@@ -720,10 +700,6 @@ class CoverFreshnessRepositoryTest {
     }
 }
 
-/**
- * 可注入读盘失败的 DataStore 包装：前 [failures] 次 `data` 收集抛 [IOException]，
- * 其余全部委托真实 TestDataStore（写入始终委托，保证落盘可观察）。
- */
 private class FlakyDataStore(
     private val delegate: DataStore<Preferences>,
     private val failures: Int,

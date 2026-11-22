@@ -25,29 +25,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * 网格海报卡基元 (PoiPosterCard)
- *
- * 承载手办、周边及通用多列网格呈现的竖版海报基元。
- *
- * 封装核心能力：
- * 1. 黄金比例纵横比控制（手办默认 9:13，相册瀑布流等可配置为 null 由内容自适应撑开）；
- * 2. 底部抗眩光渐变遮罩（防文字看不清）与发售时间/信息浮层；
- * 3. 右上角状态/热度徽章标准锚点；
- * 4. 原生支持 [onLongClick] 与多选浮层槽位 [selectionOverlay]。
- *
- * @param onClick 单击回调
- * @param modifier 外部修饰符
- * @param onLongClick 长按回调（非空时启用 combinedClickable）
- * @param aspectRatio 卡片纵横比（默认 9:13 黄金海报；传 null 时由封面自适应高度）
- * @param shape 卡片外形，默认 MaterialTheme.shapes.small
- * @param badgeText 右上角徽章文本（非空时自动采用标准半透明深色微胶囊呈现）
- * @param footerText 底部信息文本（非空时自动叠加抗眩光渐变遮罩居中呈现）
- * @param badge 自定义右上角徽章槽位（若提供则覆盖 [badgeText]）
- * @param footer 自定义底部信息槽位（若提供则覆盖 [footerText]）
- * @param selectionOverlay 多选模式浮层槽位（如半透明遮罩与勾选图标）
- * @param cover 封面内容（通常传入铺满的 [com.nobody.repoi.ui.common.PoiAsyncImage]）
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PoiPosterCard(
@@ -123,10 +100,9 @@ private fun PosterContent(
     selectionOverlay: (@Composable BoxScope.() -> Unit)?
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. 底层封面
+
         cover()
 
-        // 2. 右上角徽章锚点
         if (badge != null) {
             badge()
         } else if (!badgeText.isNullOrBlank()) {
@@ -149,7 +125,6 @@ private fun PosterContent(
             }
         }
 
-        // 3. 底部信息浮层（带防眩光渐变）
         if (footer != null) {
             footer()
         } else if (!footerText.isNullOrBlank()) {
@@ -173,7 +148,6 @@ private fun PosterContent(
             }
         }
 
-        // 4. 多选模式浮层
         selectionOverlay?.invoke(this)
     }
 }

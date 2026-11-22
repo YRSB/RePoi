@@ -27,14 +27,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 个人中心 ViewModel 测试。
- *
- * 鉴权与档案驱动全部经 [FakeUserSession]：状态流同步演进，无冷启动等待；
- * 全量聚合走真实 [UserRepository] + [MockApi]（fellow/orderStatic/collect/top/album/checkIn/mp），
- * 未读通知走真实 [MessageRepository]。会话档案刷新由 `fake.refreshProfileResult`
- * 提供，不请求 `/api/user/self`。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProfileViewModelTest {
 
@@ -143,9 +135,8 @@ class ProfileViewModelTest {
         assertEquals(1234, state.userMp)
         assertTrue(state.hasUnreadNotice)
 
-        // 档案已随会话就绪：不触发额外刷新，也不请求 /api/user/self
         assertEquals(0, env.session.refreshProfileCalls)
-        // 8 个聚合请求 + 1 个未读计数；任何 /api/user/self 请求都会破坏该计数
+
         assertEquals(9, env.mock.requestCount)
     }
 
@@ -155,7 +146,6 @@ class ProfileViewModelTest {
         env.session.refreshProfileResult = Result.success(profile)
         advanceUntilIdle()
 
-        // 预热阶段不发起任何请求，也不误判为访客态加载
         assertEquals(0, env.mock.requestCount)
         assertFalse(env.viewModel.uiState.value.isLoggedIn)
         assertFalse(env.viewModel.uiState.value.isLoading)
@@ -168,7 +158,7 @@ class ProfileViewModelTest {
         assertEquals("手办达人", state.profile?.displayName)
         assertEquals(120, state.fellow?.fanCount)
         assertEquals(1234, state.userMp)
-        // 档案缺失时经会话刷新补齐（不走 /api/user/self）
+
         assertEquals(1, env.session.refreshProfileCalls)
     }
 

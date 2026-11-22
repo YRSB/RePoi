@@ -5,9 +5,6 @@ import com.nobody.repoi.util.PriceFormatter
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * 厂商主体响应 (api/company/v2/get)
- */
 @Serializable
 data class CompanyDetailPayload(
     val company: CompanyData? = null
@@ -42,21 +39,18 @@ data class CompanyData(
     val otherInfo: String? = null,
     val state: String? = null
 ) {
-    /** 优先显示中文名，若无则显示日文/外文名 */
+
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 
-    /** 副标题（若有外文名且与主标题不同） */
     val subName: String?
         get() = name?.takeIf { it.isNotBlank() && it != displayName }
 
-    /** 格式化评分（四舍五入保留一位小数，如 4.4） */
     val ratingScoreText: String
         get() = if (hobbyRating > 0.0) {
             PriceFormatter.formatFixed(hobbyRating, 1)
         } else "--"
 
-    /** 纯文本详情介绍（去除 HTML 标签，转换换行符） */
     val detailPlainText: String
         get() {
             if (detail.isNullOrBlank()) return ""
@@ -71,7 +65,6 @@ data class CompanyData(
                 .trim()
         }
 
-    /** 解析 otherInfo JSON 字符串获取结构化扩展信息 (如地区、推特等) */
     val parsedOtherInfo: List<CompanyOtherInfoItem>
         get() {
             val jsonStr = otherInfo ?: return emptyList()
@@ -82,18 +75,13 @@ data class CompanyData(
             }
         }
 
-    /** 地区信息 */
     val region: String?
         get() = parsedOtherInfo.firstOrNull { it.key == "地区" }?.value
 
-    /** 推特信息 */
     val twitterUrl: String?
         get() = parsedOtherInfo.firstOrNull { it.key?.contains("推特", ignoreCase = true) == true || it.key?.contains("twitter", ignoreCase = true) == true }?.value
 }
 
-/**
- * 厂商动态列表响应 (api/user-action/company/list)
- */
 @Serializable
 data class CompanyActionPayload(
     val list: List<CompanyActionItem>? = null
@@ -112,7 +100,7 @@ data class CompanyActionItem(
     val relateItem: CompanyActionRelateItem? = null,
     val user: CompanyActionUser? = null
 ) {
-    /** 提取动态分类名称，如“开订时间”、“出荷延期”、“制作决定”等 */
+
     val actionTitle: String
         get() {
             val msg = actionMessage ?: ""
@@ -128,9 +116,6 @@ data class CompanyActionItem(
             }
         }
 
-    /**
-     * 转换为全平台统一的动态模型 [ActionItem]，以便无缝复用动态页与关注页的 [ActionCard] 现有组件与样式。
-     */
     fun toActionItem(): ActionItem {
         val cleanComment = (actionMessage ?: actionComment)
             ?.replace(Regex("<[^>]+>"), "")
@@ -211,9 +196,6 @@ data class CompanyActionUser(
     val header: String? = null
 )
 
-/**
- * 厂商系列响应 (api/company/series)
- */
 @Serializable
 data class CompanySeriesPayload(
     val seriesList: List<CompanySeriesItem>? = null
@@ -234,9 +216,6 @@ data class CompanySeriesItem(
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 }
 
-/**
- * 厂商标签响应 (api/company/tag/display)
- */
 @Serializable
 data class CompanyTagPayload(
     val list: List<CompanyTagItem>? = null
@@ -254,18 +233,12 @@ data class CompanyTagItem(
         get() = name ?: tagName ?: tagText ?: ""
 }
 
-/**
- * 厂商我的印象与投票聚合数据 (api/company/tag/myVotes)
- */
 @Serializable
 data class CompanyMyVotesData(
     val allTags: List<CompanyTagVoteItem> = emptyList(),
     val userVotes: List<CompanyUserVoteItem> = emptyList()
 )
 
-/**
- * 候选印象标签项 (allowScoring 为 1 时表示星级打分项，为 0 时表示普通印象标签)
- */
 @Serializable
 data class CompanyTagVoteItem(
     val id: Long = 0L,
@@ -275,12 +248,8 @@ data class CompanyTagVoteItem(
     val isScoreTag: Boolean get() = allowScoring == 1
 }
 
-/**
- * 用户已投票记录 (包含普通标签选择或星级评分)
- */
 @Serializable
 data class CompanyUserVoteItem(
     val tagId: Long = 0L,
     val score: Double? = null
 )
-

@@ -7,9 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * `JsonRefResolver` KMP 移植版（原 `JsonRefResolverTest` 逐用例对齐，JUnit4 → kotlin.test）。
- */
 class JsonRefResolverTest {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -80,7 +77,7 @@ class JsonRefResolverTest {
 
     @Test
     fun danglingRef_keepsOriginalNode() {
-        // 必须存在至少一个 @id，否则 resolveRefs 会在空索引处提前返回，悬空引用分支不可达
+
         val element = json.parseToJsonElement(
             """{"target":{"@id":"h1","name":"A"},"relateItem":{"@ref":"missing"}}"""
         )

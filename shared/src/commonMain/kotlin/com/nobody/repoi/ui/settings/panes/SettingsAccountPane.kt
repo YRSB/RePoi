@@ -56,11 +56,6 @@ private fun accountBindingIcon(title: String): DrawableResource = when (title) {
     else -> PoiIcons.Outlined.AccountCircle
 }
 
-/**
- * 账号与安全详情 Pane：承载个人信息入口、账号安全与第三方绑定状态、Token 导出与退出登录。
- *
- * 遵循 Zhihu-Hyperion 的 EmptyState 范式：未登录时展示居中 EmptyState 占位卡片与「立即登录」按钮。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsAccountPane(
@@ -231,11 +226,6 @@ fun SettingsAccountPane(
     }
 }
 
-/**
- * Token 导出安全弹窗：警示横幅 + 脱敏只读令牌 + 显隐切换 + 一键复制。
- *
- * 复制走跨平台剪贴板并经全局消息条反馈，不在弹窗内保留明文状态。
- */
 @Composable
 private fun TokenExportDialog(
     token: String,
@@ -329,9 +319,6 @@ private fun TokenExportDialog(
     )
 }
 
-/**
- * 令牌脱敏展示：保留首尾各 4 位原文，中间以 `••••••••` 遮蔽；过短令牌整体遮蔽。
- */
 internal fun maskToken(token: String): String {
     if (token.isBlank()) return "暂无可用令牌，请重新登录"
     if (token.length <= 8) return "••••••••"

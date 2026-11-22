@@ -36,11 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 自定义轻量搜索顶栏
- * 放弃 Material 3 原生厚重 SearchBar，还原通栏紧凑无框设计。
- * 支持编辑态与只读结果态；只读结果态仅保留过滤按钮，点击搜索区回到编辑态。
- */
 @Composable
 fun SearchTopBar(
     query: String,
@@ -71,7 +66,7 @@ fun SearchTopBar(
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 返回按键
+
             IconButton(onClick = onBackClick) {
                 Icon(
                     painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
@@ -80,7 +75,6 @@ fun SearchTopBar(
                 )
             }
 
-            // 输入区域
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -150,7 +144,6 @@ fun SearchTopBar(
                 }
             }
 
-            // 清除按键 (仅在可编辑态且有内容时显示)
             if (!readOnly && query.isNotEmpty()) {
                 IconButton(
                     onClick = onClearClick,
@@ -165,7 +158,6 @@ fun SearchTopBar(
                 }
             }
 
-            // 结果态筛选按键
             if (showFilterButton) {
                 IconButton(
                     onClick = onFilterClick,
@@ -188,7 +180,6 @@ fun SearchTopBar(
                 }
             }
 
-            // 搜索按键 (仅在可编辑态显示放大镜)
             if (!readOnly) {
                 IconButton(
                     onClick = {
@@ -209,7 +200,6 @@ fun SearchTopBar(
             }
         }
 
-        // 搜索输入框下方分隔线
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             thickness = 0.5.dp,

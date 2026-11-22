@@ -6,14 +6,6 @@ import coil3.request.CachePolicy
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 
-/**
- * 损坏磁盘缓存自动恢复拦截器。
- *
- * 当本地磁盘缓存因网络中断、反爬拦截或系统崩溃写入了截断/损坏的数据时，
- * Android 原生 ImageDecoder 会抛出解码异常（如 "unimplemented Input contained an error"）。
- * 本拦截器捕获该异常后，自动从 [DiskCache] 抹除脏缓存条目，并立即以 [CachePolicy.WRITE_ONLY]
- * 重新向远端发起网络请求，实现对用户完全透明的自愈恢复。
- */
 class CorruptCacheRecoveryInterceptor(
     private val diskCache: DiskCache
 ) : Interceptor {

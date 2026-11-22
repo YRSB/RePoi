@@ -19,11 +19,6 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 遵循 Material 3 Expressive 规范的标准空状态占位组件。
- *
- * 参考 Zhihu-Hyperion 的 EmptyState 范式，包含原生居中大图标、主标题、说明文案与操作按钮。
- */
 @Composable
 fun EmptyState(
     icon: DrawableResource,

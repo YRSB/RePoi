@@ -65,7 +65,6 @@ fun SeriesDetailScreen(
         viewModel.loadDetail(navParam)
     }
 
-    // 评论互动一次性提示（点赞/回复结果）
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -187,7 +186,7 @@ fun SeriesDetailScreen(
                         PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
-                    // ── 区块 0：系列主体头部 ──
+
                     if (series != null) {
                         item(key = "section_header") {
                         SeriesHeaderSection(
@@ -199,7 +198,6 @@ fun SeriesDetailScreen(
                     }
                 }
 
-                // ── 区块 1：周边手办 (3x3 纯图九宫格) ──
                 item(key = "section_hobbys") {
                     SeriesHobbysSection(
                         hobbys = uiState.hobbys,
@@ -233,7 +231,6 @@ fun SeriesDetailScreen(
                     )
                 }
 
-                // ── 区块 2：子系列 ──
                 item(key = "section_sub_series") {
                     SeriesSubSeriesSection(
                         subSeriesList = uiState.subSeries,
@@ -253,7 +250,6 @@ fun SeriesDetailScreen(
                     )
                 }
 
-                // ── 区块 3：相关系列 ──
                 item(key = "section_relate_series") {
                     SeriesRelateSeriesSection(
                         relateSeriesList = uiState.relateSeries,
@@ -273,7 +269,6 @@ fun SeriesDetailScreen(
                     )
                 }
 
-                // ── 区块 4：相关相册 ──
                 item(key = "section_albums") {
                     SeriesAlbumsSection(
                         albums = uiState.albums,
@@ -305,7 +300,6 @@ fun SeriesDetailScreen(
                     )
                 }
 
-                // ── 区块 5：在售周边 ──
                 item(key = "section_goods") {
                     SeriesGoodsSection(
                         goodsList = uiState.goods,
@@ -328,7 +322,6 @@ fun SeriesDetailScreen(
     }
 }
 
-    // 系列详细信息抽屉
     if (showInfoSheet) {
         SeriesInfoBottomSheet(
             series = uiState.series,
@@ -336,7 +329,6 @@ fun SeriesDetailScreen(
         )
     }
 
-    // 4. 屏蔽确认弹窗
     if (showMaskConfirmDialog) {
         val isCurrentlyMasked = uiState.isMasked
         AlertDialog(

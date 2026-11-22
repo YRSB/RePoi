@@ -12,7 +12,7 @@ actual suspend fun shareLogFile(fileName: String, text: String) {
     val dir = File(context.cacheDir, "poishelf-logs").apply { mkdirs() }
     val file = File(dir, fileName)
     file.writeText(text)
-    // 仅保留最近 5 个
+
     dir.listFiles()
         ?.sortedByDescending { it.lastModified() }
         ?.drop(5)

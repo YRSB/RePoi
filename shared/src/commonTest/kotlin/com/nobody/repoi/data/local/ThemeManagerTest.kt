@@ -14,16 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 主题管理器测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ThemeManagerTest`（逐用例；JUnit4 → kotlin.test，
- * Robolectric → [TestDataStore] 真实 DataStore 隔离目录；
- * legacy 字节扫描已在 shared 删除，不在此覆盖）。
- *
- * 六维配置已合并为单一 `settings: StateFlow<ThemeSettings?>`：
- * `null` 表示首次读盘未完成，因此每个用例都先 [awaitSettings] 再断言。
- */
 class ThemeManagerTest {
 
     private fun manager(): ThemeManager = ThemeManager(TestDataStore.themePrefs())
@@ -34,7 +24,6 @@ class ThemeManagerTest {
 
         val resolved = manager.awaitSettings()
 
-        // 落定后所有字段都必须有值，且与无持久化配置时的平台默认值一致
         assertEquals(defaultThemeSettings(), resolved)
     }
 
@@ -171,7 +160,6 @@ class ThemeManagerTest {
         }
         val manager = ThemeManager(dataStore)
 
-        // 遗留布尔标志只作为一次性迁移来源，统一收敛到 paletteStyle（issue #82 顺带清理）
         assertEquals(PaletteStyle.Expressive, manager.awaitSettings().paletteStyle)
     }
 

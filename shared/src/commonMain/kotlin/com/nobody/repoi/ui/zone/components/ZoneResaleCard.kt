@@ -40,15 +40,6 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 专区二手交易卡片（参考首页动态 ActionCard 交易样式重构）。
- *
- * 布局层次：
- * - 左侧：固定 96dp 宽度的自适应比例海报，纯净展示、圆角防抖动
- * - 右侧 Header：卖家头像、昵称、出物徽章、相对时间与柔和分割线
- * - 右侧 Body：交易描述正文、价格微胶囊（高亮强调）、成色胶囊与地区胶囊
- * - 右侧 Footer：关联手办条目名称沉底展示与私信/更多操作按钮
- */
 @Composable
 fun ZoneResaleCard(
     item: ResaleSearchItem,
@@ -59,8 +50,7 @@ fun ZoneResaleCard(
     onMoreClick: (() -> Unit)? = null
 ) {
     val imageViewer = LocalImageViewer.current
-    // 海报来源分两类：优先关联手办主封面（cover/n/），缺失时回退卖家实物图（resale/n/）。
-    // 两者由管道按分类裁决变体，这里只给原始相对路径，缺省/失败态交给基元
+
     val coverPath = item.displayCover
     val coverCategory = if (!item.hobbyCover.isNullOrBlank()) MediaCategory.HOBBY else MediaCategory.RESALE
 
@@ -85,8 +75,7 @@ fun ZoneResaleCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：自适应海报（宽定死 96dp，纯净无遮挡）──
-            // 比例由基元自适应撑开（纵向钳制走管道 0.4 下界），保留旧版顶部对齐语义
+
             PoiAsyncImage(
                 path = coverPath,
                 category = coverCategory,
@@ -103,7 +92,6 @@ fun ZoneResaleCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // ── 【右侧栏】：Header (卖家信息) + Body (正文与参数胶囊) + Footer (沉底手办信息与操作) ──
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -111,18 +99,18 @@ fun ZoneResaleCard(
                     .padding(vertical = 1.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 上半部内容区
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // 1. 卖家用户信息行（头像 + 昵称 + 出物徽章 + 相对发布时间）
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // 左侧：头像 + 昵称
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -147,7 +135,7 @@ fun ZoneResaleCard(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
                                 )
-                                // 头像走管道 AVATAR 分类（head/n/ 标准档），空路径由基元兜底缺省图
+
                                 PoiAsyncImage(
                                     path = item.user?.header,
                                     category = MediaCategory.AVATAR,
@@ -168,7 +156,6 @@ fun ZoneResaleCard(
                             )
                         }
 
-                        // 右侧：出物徽章 + 相对时间
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -201,12 +188,10 @@ fun ZoneResaleCard(
                         }
                     }
 
-                    // 柔和分割线
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 1.dp)
                     )
 
-                    // 2. 描述正文（最多 3 行）
                     val detailText = item.cleanDetail.trim().ifBlank { null }
                     if (detailText != null) {
                         Text(
@@ -220,13 +205,12 @@ fun ZoneResaleCard(
                         )
                     }
 
-                    // 3. 关键交易参数胶囊（价格 + 成色 + 地点）
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 价格胶囊（高亮强调）
+
                         Surface(
                             shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -253,7 +237,6 @@ fun ZoneResaleCard(
                             }
                         }
 
-                        // 成色胶囊
                         val purityText = item.purityStr?.trim()?.ifBlank { null }
                         if (purityText != null) {
                             Surface(
@@ -283,7 +266,6 @@ fun ZoneResaleCard(
                             }
                         }
 
-                        // 地区胶囊
                         val location = item.location?.trim()?.ifBlank { null }
                         if (location != null) {
                             Surface(
@@ -316,7 +298,6 @@ fun ZoneResaleCard(
                     }
                 }
 
-                // 4. 底部沉底栏（左侧关联手办条目名称 + 右侧私信/更多操作）
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -353,7 +334,6 @@ fun ZoneResaleCard(
                         Spacer(modifier = Modifier.weight(1f))
                     }
 
-                    // 右侧查看实物图、私信与更多操作按钮
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp)

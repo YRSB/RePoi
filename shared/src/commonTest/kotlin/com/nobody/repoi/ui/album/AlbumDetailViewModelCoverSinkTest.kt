@@ -40,14 +40,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 相册详情页封面沉淀测试。
- *
- * 契约：详情接口返回的 `cover` 必须写入 [CoverFreshnessRepository]，并以
- * `actualAlbumId` 为键，使历史页的相册按条回源直接命中、零额外请求。
- *
- * 调度器三件套：`Dispatchers.setMain` + `runTest(testDispatcher)` + `MockApi.api(testDispatcher)`。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumDetailViewModelCoverSinkTest {
 
@@ -140,9 +132,6 @@ class AlbumDetailViewModelCoverSinkTest {
         assertEquals(requestsAfterLoad, env.albumMock.requestCount, "命中沉淀后不应再请求详情接口")
     }
 
-    /**
-     * 工单 #117 AC：相册详情页沉淀必须经 500ms 防抖落盘，冷启动重建仓储后仍能命中。
-     */
     @Test
     fun loadDetail_sinksCoverAndPersistsAfterDebounce() = runTest(testDispatcher) {
         val env = Env(testDispatcher, backgroundScope)

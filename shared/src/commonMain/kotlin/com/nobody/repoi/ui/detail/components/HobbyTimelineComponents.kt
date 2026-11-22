@@ -36,13 +36,6 @@ import com.nobody.repoi.data.remote.model.HobbyTimelineItem
 import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.theme.largeCard
 
-/**
- * 手办详情页单流中的发售情报时间轴内联折叠卡片。
- * 遵循单流规范，免弹窗打断：
- * - 情报条数 == 1 时：直接平铺为单条情报卡片，隐藏点线导轨与圆点，保持界面平整；
- * - 情报条数 == 2 时：展示完整的双节点时间轴树（首尾导轨连线）；
- * - 情报条数 > 2 时：默认折叠仅展示最新 1 条摘要并提供「展开全部 (N) ▼」，点击后通过 animateContentSize() 平滑展开完整时间轴树。
- */
 @Composable
 fun HobbyTimelineSection(
     timeline: List<HobbyTimelineItem>,
@@ -50,7 +43,6 @@ fun HobbyTimelineSection(
 ) {
     if (timeline.isEmpty()) return
 
-    // 当情报数大于 2 时支持展开/收起折叠态
     val canExpand = timeline.size > 2
     var isExpanded by rememberSaveable { mutableStateOf(false) }
 
@@ -60,7 +52,7 @@ fun HobbyTimelineSection(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // 标题行
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -92,7 +84,6 @@ fun HobbyTimelineSection(
             }
         }
 
-        // 核心时间轴主卡片（自带平滑高度过渡动画）
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,10 +100,10 @@ fun HobbyTimelineSection(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (timeline.size == 1 || (canExpand && !isExpanded)) {
-                    // 单条记录（无连线上下文）或折叠态：直接平铺为整洁的无导轨卡片
+
                     TimelineCollapsedItem(item = timeline.first())
                 } else {
-                    // 多条记录且展开（或条数刚好为 2）：展示包含左侧点线导轨的时间轴树
+
                     timeline.forEachIndexed { index, item ->
                         TimelineNodeItem(
                             item = item,
@@ -126,17 +117,11 @@ fun HobbyTimelineSection(
     }
 }
 
-/**
- * 折叠状态下的单条情报卡片内部摘要。
- */
 @Composable
 private fun TimelineCollapsedItem(item: HobbyTimelineItem) {
     TimelineItemContent(item = item)
 }
 
-/**
- * 时间轴事件项的核心文本内容（事件类型 Chip + 发生日期 + 备注说明）。
- */
 @Composable
 private fun TimelineItemContent(
     item: HobbyTimelineItem,
@@ -182,9 +167,6 @@ private fun TimelineItemContent(
     }
 }
 
-/**
- * 竖向时间轴单个节点项（左侧导轨连线 + 圆点 + 右侧内容卡片）。
- */
 @Composable
 private fun TimelineNodeItem(
     item: HobbyTimelineItem,
@@ -196,14 +178,14 @@ private fun TimelineNodeItem(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
-        // 左侧导轨：上连线 + 圆点 + 下连线
+
         Column(
             modifier = Modifier
                 .width(24.dp)
                 .fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 上半部连线（首个节点隐藏）
+
             Box(
                 modifier = Modifier
                     .width(2.dp)
@@ -214,7 +196,6 @@ private fun TimelineNodeItem(
                     )
             )
 
-            // 圆点：首个最新节点强化双层光环，历史节点为中性实心点
             if (isFirst) {
                 Box(
                     modifier = Modifier
@@ -233,7 +214,6 @@ private fun TimelineNodeItem(
                 )
             }
 
-            // 下半部连线（末尾节点隐藏）
             Box(
                 modifier = Modifier
                     .width(2.dp)
@@ -247,7 +227,6 @@ private fun TimelineNodeItem(
 
         Spacer(modifier = Modifier.width(6.dp))
 
-        // 右侧内容卡片
         Card(
             modifier = Modifier
                 .weight(1f)

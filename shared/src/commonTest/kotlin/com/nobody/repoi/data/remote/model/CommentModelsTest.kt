@@ -3,9 +3,6 @@ package com.nobody.repoi.data.remote.model
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 评论模型数据清洗测试，覆盖评论与回复的纯文本清洗逻辑。
- */
 class CommentModelsTest {
 
     @Test

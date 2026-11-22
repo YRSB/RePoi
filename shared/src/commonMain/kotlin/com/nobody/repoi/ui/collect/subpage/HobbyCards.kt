@@ -42,67 +42,32 @@ import com.nobody.repoi.ui.common.card.PoiThumbnail
 import com.nobody.repoi.ui.item.list.components.HpoiInfoBadgeItem
 import com.nobody.repoi.util.PriceFormatter
 
-// ── 周边卡片字段映射矩阵 ────────────────────────────────────
-
-/**
- * 字段缺失时的占位符。
- *
- * 原版 `y1.c()` 取不到值时返回空串（`HobbyListAdapter` 直接把空串塞进 TextView）。
- * PoiShelf 统一显示「-」，避免同一行里有的位有值有的位空白造成视觉跳动，
- * 同时满足「取不到值不得崩溃」的要求。
- */
 private const val HOBBY_FIELD_PLACEHOLDER = "-"
 
-/**
- * 周边卡片可渲染的微标签字段全集。
- *
- * 文案与取值严格对齐原版 `ui/hobby/y1.java`：
- * - 文案表 `y1.b()` → `strings.xml:566-579` 的 `hobby_label_*`
- * - 取值表 `y1.c()` → 逐字段读 `companyName` / `moneyString` / `releaseDate` /
- *   `rating ÷ ratingCount` / `collection.orderMoney` / `collection.orderWay` /
- *   `collection.state` / `collection.orderTime` / `collection.buyNum`
- *
- * @param withPrefixOnGrid 网格卡右上角徽章是否带字段名前缀。
- * 原版 `HobbyGridAdapter.f()` 明确把 `collectState`、`price` 两个字段排除在前缀之外。
- */
 internal enum class HobbyCardField(val label: String, val withPrefixOnGrid: Boolean = true) {
-    /** 厂商 */
+
     COMPANY("厂商"),
 
-    /** 定价 */
     PRICE("定价", withPrefixOnGrid = false),
 
-    /** 发售 */
     RELEASE("发售"),
 
-    /** 评分（rating ÷ ratingCount，保留 2 位小数） */
     RATING("评分"),
 
-    /** 途径（本人预定的入手渠道） */
     ORDER_WAY("途径"),
 
-    /** 补款（预定档的订金） */
     ORDER_PRICE("补款"),
 
-    /** 入手（有过档的入手金额） */
     BUY_PRICE("入手"),
 
-    /** 入手（含件数前缀，如「2件300¥」） */
     BUY_PRICE_AND_COUNT("入手"),
 
-    /** 日亚（Amazon 相对定价的溢价百分比） */
     SELLER("日亚"),
 
-    /** 时间（有过档的入手时间） */
     BUY_TIME("时间"),
 
-    /** 状态（收藏状态文案） */
     COLLECT_STATE("状态", withPrefixOnGrid = false);
 
-    /**
-     * 取该字段在指定条目上的展示值。
-     * 任何分支都不做强制解包，模型字段缺失一律回落「-」。
-     */
     fun value(item: UserCollectHobbyItem): String = when (this) {
         COMPANY -> item.companyName.orEmpty().ifBlank { HOBBY_FIELD_PLACEHOLDER }
         PRICE -> item.displayPriceText.ifBlank { HOBBY_FIELD_PLACEHOLDER }
@@ -112,34 +77,22 @@ internal enum class HobbyCardField(val label: String, val withPrefixOnGrid: Bool
         ORDER_PRICE -> item.formattedOrderMoneyText ?: HOBBY_FIELD_PLACEHOLDER
         BUY_PRICE -> item.formattedOrderMoneyText ?: HOBBY_FIELD_PLACEHOLDER
         BUY_PRICE_AND_COUNT -> formatBuyPriceAndCount(item)
-        // PoiShelf 的收藏列表响应模型未回传原版 `seller` 对象（Amazon 溢价信息），
-        // 该位固定显示占位符，待数据层补齐 `seller` 后即可自动生效。
+
         SELLER -> HOBBY_FIELD_PLACEHOLDER
         BUY_TIME -> formatBuyTime(item.actualOrderTime)
         COLLECT_STATE -> item.collectStateText
     }
 }
 
-/**
- * 评分展示值：原版 `y1.c("rating")` 对 `rating < 0.001` 直接输出 `"0.00"`，
- * 否则按 `rating / ratingCount` 保留 2 位小数。
- */
 private fun formatRating(item: UserCollectHobbyItem): String =
     if (item.rating < 0.001) "0.00" else PriceFormatter.formatFixed(item.averageRating, 2)
 
-/**
- * 「入手」字段（原版 `buyPriceAndCount`）：金额 + 件数前缀。
- * 原版逻辑为 `max(buyNum, 1)`，只有件数大于 1 时才拼「N件」。
- */
 private fun formatBuyPriceAndCount(item: UserCollectHobbyItem): String {
     val amount = item.formattedOrderMoneyText ?: return HOBBY_FIELD_PLACEHOLDER
     val count = maxOf(item.collection?.buyNum ?: 0, 1)
     return if (count > 1) "${count}件$amount" else amount
 }
 
-/**
- * 入手时间展示值，对齐原版 `y1.c("buyTime")` 的 `yyyy/M/d` 格式（不补零）。
- */
 private fun formatBuyTime(raw: String?): String {
     val datePart = raw?.trim()?.substringBefore(' ')?.takeIf { it.isNotBlank() }
         ?: return HOBBY_FIELD_PLACEHOLDER
@@ -150,14 +103,6 @@ private fun formatBuyTime(raw: String?): String {
     return "${parts[0]}/$month/$day"
 }
 
-/**
- * 列表卡 4 个微标签的取值矩阵，严格照原版 `UserCollectHobbyFragment.java:399-407`：
- * - 预定 + 本人 → 发售 / 定价 / 途径 / 补款
- * - 已入 + 本人 → 入手 / 定价 / 途径 / 日亚
- * - 有过 + 本人 → 入手 / 定价 / 途径 / 时间
- * - 全部档（`collectState` 为空串）→ 厂商 / 定价 / 发售 / 状态
- * - 其余（关注 / 想买 / 有过，以及预定的他人视角）→ 厂商 / 定价 / 发售 / 评分
- */
 internal fun hobbyListFields(collectState: String, isSelf: Boolean): List<HobbyCardField> = when {
     isSelf && collectState == CollectStateOption.PREORDER ->
         listOf(HobbyCardField.RELEASE, HobbyCardField.PRICE, HobbyCardField.ORDER_WAY, HobbyCardField.ORDER_PRICE)
@@ -175,16 +120,6 @@ internal fun hobbyListFields(collectState: String, isSelf: Boolean): List<HobbyC
         listOf(HobbyCardField.COMPANY, HobbyCardField.PRICE, HobbyCardField.RELEASE, HobbyCardField.RATING)
 }
 
-/**
- * 网格卡右上角徽章字段，严格照原版 `UserCollectHobbyFragment.java:427-445`：
- * - 预定 → 补款
- * - 已入 → 本人显示入手，他人显示定价
- * - 全部档（`collectState` 为空串）→ 状态
- * - 其余（关注 / 想买 / 有过，以及任何未知档位）→ 评分
- *
- * 原版 `HobbyGridAdapter` 构造期的默认徽章是「点击量(hits)」，但收藏页每次装载后
- * 都会走上面的重算分支，故本函数不产出该兜底值。
- */
 internal fun hobbyGridBadgeField(collectState: String, isSelf: Boolean): HobbyCardField = when (collectState) {
     CollectStateOption.PREORDER -> HobbyCardField.ORDER_PRICE
     CollectStateOption.BUY -> if (isSelf) HobbyCardField.BUY_PRICE else HobbyCardField.PRICE
@@ -192,16 +127,6 @@ internal fun hobbyGridBadgeField(collectState: String, isSelf: Boolean): HobbyCa
     else -> HobbyCardField.RATING
 }
 
-// ── 空态 ──────────────────────────────────────────────────
-
-/**
- * 周边页专用空态。
- *
- * 复用了 `EmptyCollectView` 的视觉语言，但额外支持副标题与自定义图标：
- * - 「未收藏周边~」需要引导用户去详情页收藏；
- * - 「用户已隐藏内容」是对端用户主动隐藏的语义（服务端返回「隐藏」字样的错误），
- *   不能沿用「去详情页收藏」的引导。
- */
 @Composable
 internal fun HobbyEmptyState(
     icon: DrawableResource,
@@ -243,18 +168,6 @@ internal fun HobbyEmptyState(
     }
 }
 
-// ── 卡片 ──────────────────────────────────────────────────
-
-/**
- * 周边网格卡（9:13 海报，基于 PoiPosterCard 深基元）。
- *
- * 右上角徽章按收藏状态自适应（见 [hobbyGridBadgeField]），底部叠加发售日期
- * （原版网格卡的 `titleType` 恒为 `release`）。多选态下叠加半透明遮罩与勾选角标。
- *
- * @param isSelectionEnabled 是否允许长按进入多选（对齐原版仅 `isSelf` 时才挂 `onCancelCollect`）。
- * @param selectionMode 当前是否处于多选态，决定是否叠加遮罩与勾选角标。
- * @param isSelected 是否已被加入多选集合（存**外层收藏节点 id**）。
- */
 @Composable
 internal fun HobbyCollectGridCard(
     item: UserCollectHobbyItem,
@@ -297,11 +210,6 @@ internal fun HobbyCollectGridCard(
     )
 }
 
-/**
- * 周边列表卡（缩略图 + 标题 + 4 个自适应微标签的两行两列，基于 PoiListCard 深基元）。
- *
- * 4 个微标签的取值矩阵见 [hobbyListFields]；多选态下左侧缩略图叠加勾选角标。
- */
 @Composable
 internal fun HobbyCollectListCard(
     item: UserCollectHobbyItem,
@@ -343,7 +251,7 @@ internal fun HobbyCollectListCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // 4 个微标签：两行两列等宽，取值随收藏状态自适应
+
             fields.chunked(2).forEach { rowFields ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -357,7 +265,7 @@ internal fun HobbyCollectListCard(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    // 奇数个字段时补一个等宽占位，保持两列对齐
+
                     repeat(2 - rowFields.size) {
                         Box(modifier = Modifier.weight(1f))
                     }
@@ -367,11 +275,6 @@ internal fun HobbyCollectListCard(
     }
 }
 
-/**
- * 多选态遮罩与勾选角标。
- *
- * @param cornerOnly 列表卡缩略图只需角标、不需要整块压暗时置 true。
- */
 @Composable
 private fun SelectionOverlay(
     isSelected: Boolean,

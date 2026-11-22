@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.ExHobbyImageItem
 
-/**
- * ExHobby 扩展图库二级列表页面 UI 状态。
- */
 data class ExHobbyListUiState(
     val items: List<ExHobbyImageItem> = emptyList(),
     val isLoading: Boolean = false,
@@ -71,18 +68,12 @@ class ExHobbyListViewModel(
         }
     }
 
-    /**
-     * 初始加载第 1 页。
-     */
     fun loadInitial(itemId: Long) {
         if (_uiState.value.items.isNotEmpty() || _uiState.value.isLoading) return
         currentItemId = itemId
         loader.loadInitial()
     }
 
-    /**
-     * 下拉刷新重置列表。
-     */
     fun refresh(itemId: Long) {
         if (_uiState.value.isRefreshing) return
         currentItemId = itemId
@@ -90,17 +81,11 @@ class ExHobbyListViewModel(
         loader.refresh()
     }
 
-    /**
-     * 错误重试。
-     */
     fun retry(itemId: Long) {
         currentItemId = itemId
         loader.retry()
     }
 
-    /**
-     * 触底追加或全屏画廊静默追加下一页。
-     */
     fun loadMore(itemId: Long, isSilent: Boolean = false) {
         val state = _uiState.value
         if (!state.hasMore || state.isAppending || state.isLoading || state.isRefreshing) return
@@ -109,9 +94,6 @@ class ExHobbyListViewModel(
         loader.loadMore(isSilent = isSilent)
     }
 
-    /**
-     * 全屏画廊翻页临近末尾时静默预加载下一页。
-     */
     fun loadMoreSilently(itemId: Long) {
         loadMore(itemId, isSilent = true)
     }

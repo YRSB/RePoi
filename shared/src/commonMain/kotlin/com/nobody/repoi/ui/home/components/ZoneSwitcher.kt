@@ -44,15 +44,8 @@ import com.nobody.repoi.ui.home.ZoneSwitcherGroup
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/** 顶栏锚点的无障碍文案；即可点区域的唯一语义标签。 */
 private const val ZONE_SWITCHER_CONTENT_DESCRIPTION = "切换专区"
 
-/**
- * 顶栏专区切换器锚点：`当前专区名 + 展开箭头`，整块可点。
- *
- * - 专区名单行省略，长名不会撑破顶栏；
- * - 最小触控高度 48dp，语义为按钮，contentDescription = 「切换专区」。
- */
 @Composable
 internal fun ZoneSwitcherAnchor(
     currentTitle: String,
@@ -86,13 +79,6 @@ internal fun ZoneSwitcherAnchor(
     }
 }
 
-/**
- * 切换器内容：底部抽屉与宽屏下拉菜单共用同一份分组与选中态。
- *
- * 分区（如「快捷」「我的专区」）以分组标题 + 换行 Chip 网格呈现，单选语义
- * （[selectableGroup] + [Role.RadioButton]）；尾部两个动作区分层级——主按钮「浏览全部专区」
- * 用 primary 容器色，次级「首页设置」用 tonal 容器色，两者都有背景色但视觉权重不同。
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ZoneSwitcherContent(
@@ -178,11 +164,6 @@ internal fun ZoneSwitcherContent(
     }
 }
 
-/**
- * 紧凑屏（< 840dp）专区切换器：`ModalBottomSheet`。
- *
- * 最大高度约为窗口的 70%，超出部分内部滚动；遮罩与返回手势由 ModalBottomSheet 自带。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ZoneSwitcherSheet(
@@ -199,7 +180,7 @@ internal fun ZoneSwitcherSheet(
     )
     val density = LocalDensity.current
     val windowHeightPx = LocalWindowInfo.current.containerSize.height
-    // 容器尺寸尚未就绪时退回不限高，避免抽屉高度为 0。
+
     val maxContentHeight: Dp = if (windowHeightPx > 0) {
         with(density) { (windowHeightPx * 0.7f).toDp() }
     } else {
@@ -225,11 +206,6 @@ internal fun ZoneSwitcherSheet(
     }
 }
 
-/**
- * 宽屏（≥ 840dp）专区切换器：锚定在标题锚点下方的 `DropdownMenu`。
- *
- * 菜单自身负责外点关闭与超高滚动，因此内容不再包一层滚动容器。
- */
 @Composable
 internal fun ZoneSwitcherDropdown(
     currentTitle: String,
@@ -252,8 +228,7 @@ internal fun ZoneSwitcherDropdown(
             onDismissRequest = { onExpandedChange(false) },
             shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            // 菜单按内容取宽：两个等宽动作按钮需要约 96dp 文案宽，240dp 时各约 52dp，
-            // 「浏览全部专区」/「首页设置」会被压成两行，宽屏下拉只剩这一种呈现。
+
             modifier = Modifier.widthIn(min = 360.dp)
         ) {
             ZoneSwitcherContent(

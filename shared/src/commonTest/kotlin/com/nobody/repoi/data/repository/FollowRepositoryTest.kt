@@ -10,9 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 关注动态与社交好友仓储测试（KMP commonTest 移植）。
- */
 class FollowRepositoryTest {
 
     private fun setup(tokenProvider: (() -> String)? = null): Pair<MockApi, FollowRepository> {
@@ -125,7 +122,6 @@ class FollowRepositoryTest {
     fun updateFriend_followAndUnfollow_postsCorrectState() = runTest {
         val (mock, repository) = setup()
 
-        // 关注：isFollow = true -> state = 0
         mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
         val followResult = repository.updateFriend(userId = 99999L, isFollow = true)
         assertTrue(followResult.isSuccess)
@@ -137,7 +133,6 @@ class FollowRepositoryTest {
         assertEquals("99999", followForm["userId"])
         assertEquals("0", followForm["state"])
 
-        // 取关：isFollow = false -> state = 5
         mock.enqueue("""{"success":true,"code":200,"msg":"ok"}""")
         val unfollowResult = repository.updateFriend(userId = 99999L, isFollow = false)
         assertTrue(unfollowResult.isSuccess)

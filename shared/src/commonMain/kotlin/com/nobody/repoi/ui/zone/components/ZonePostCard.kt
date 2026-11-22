@@ -40,9 +40,6 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 专区讨论分类下的帖子卡片（风格对齐信息流 ActionCard，严格限制配图高度）。
- */
 @Composable
 fun ZonePostCard(
     post: PostItem,
@@ -68,12 +65,12 @@ fun ZonePostCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. 用户信息头部行：头像、昵称、等级徽章、板块标签、时间
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 用户头像（head/s/ 缩略档，缺省由基元兜底）
+
                 PoiAsyncImage(
                     path = post.userHeader,
                     category = MediaCategory.AVATAR,
@@ -89,7 +86,6 @@ fun ZonePostCard(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // 昵称与时间
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -124,7 +120,6 @@ fun ZonePostCard(
                     }
                 }
 
-                // 右上角所属板块/论坛标签
                 if (!post.forumName.isNullOrBlank()) {
                     Surface(
                         shape = MaterialTheme.shapes.extraSmall,
@@ -140,7 +135,6 @@ fun ZonePostCard(
                 }
             }
 
-            // 2. 帖子标题
             if (post.title.isNotBlank()) {
                 Text(
                     text = post.title,
@@ -152,7 +146,6 @@ fun ZonePostCard(
                 )
             }
 
-            // 3. 正文纯文本摘要
             if (post.displayContent.isNotBlank()) {
                 Text(
                     text = post.displayContent,
@@ -163,18 +156,16 @@ fun ZonePostCard(
                 )
             }
 
-            // 4. 图片缩略图（对齐首页动态卡片排版规范：统一规整矩阵，Crop充满杜绝上下左右留白）
             val picList = post.picList
             if (picList.isNotEmpty()) {
-                // 查看器取原图地址（帖子无 raw 目录，管道已强制降级 posts/n/）
+
                 val allRawUrls = picList.map {
                     MediaPipeline.Default.resolveRawUrl(it, MediaCategory.POST)
                 }
 
                 if (picList.size == 1) {
                     val picPath = picList[0]
-                    // 单张图对齐首页动态信息流海报规范：固定高度 150dp，宽度由基元按图片真实比例撑开
-                    // （比例上下界由管道统一钳制，Crop 充满彻底杜绝留白）
+
                     Box(
                         modifier = Modifier
                             .height(150.dp)
@@ -190,16 +181,14 @@ fun ZonePostCard(
                             category = MediaCategory.POST,
                             purpose = ImagePurpose.CARD_STANDARD,
                             contentDescription = "帖子配图",
-                            // 注意：adaptiveRatio = true 依赖 aspectRatio 在「高度已定、宽度未定」的约束下反推宽度。
-                            // 此处必须保留 height(150.dp)，不得改为 fillMaxSize()——后者会锁死宽度，
-                            // 使 aspectRatio 失效并退化为整行铺满。
+
                             modifier = Modifier.height(150.dp),
                             adaptiveRatio = true,
                             fallbackRatio = 0.75f
                         )
                     }
                 } else {
-                    // 多张附图（最多展示3张）：对齐首页动态卡片附图矩阵，统一 104dp 正方形并使用 Crop 充满，彻底杜绝留白
+
                     val displayPics = picList.take(3)
                     val remainingCount = picList.size - 3
 
@@ -227,7 +216,6 @@ fun ZonePostCard(
                                     modifier = Modifier.fillMaxSize()
                                 )
 
-                                // 若多于 3 张，在第 3 张图上展示半透明浮层 +N 提示
                                 if (index == 2 && remainingCount > 0) {
                                     Box(
                                         modifier = Modifier
@@ -249,7 +237,6 @@ fun ZonePostCard(
                 }
             }
 
-            // 5. 底栏指示器（图片张数 + 评论数）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

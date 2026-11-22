@@ -58,12 +58,10 @@ fun VendorDetailScreen(
     val textSharing = rememberTextSharing()
     val imageViewer = LocalImageViewer.current
 
-    // 初始化加载
     LaunchedEffect(navParam) {
         viewModel.loadDetail(navParam)
     }
 
-    // 评论互动一次性提示（点赞/回复结果）
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -72,7 +70,6 @@ fun VendorDetailScreen(
         }
     }
 
-    // 印象打分与投票一次性提示
     val impressionMessage = uiState.impressionMessage
     LaunchedEffect(impressionMessage) {
         if (impressionMessage != null) {
@@ -84,10 +81,8 @@ fun VendorDetailScreen(
     var commentUserId by remember { mutableStateOf(viewModel.currentCommentUserId) }
     LaunchedEffect(Unit) { commentUserId = viewModel.resolveCommentUserId() }
 
-    // 屏蔽确认弹窗
     var showMaskConfirmDialog by rememberSaveable { mutableStateOf(false) }
 
-    // 厂商详细信息抽屉
     var showInfoSheet by rememberSaveable { mutableStateOf(false) }
 
     when {
@@ -199,7 +194,7 @@ fun VendorDetailScreen(
                         PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
-                    // ── 区块 0：厂商主体头部（封面+评分微标、中英文名、简介折叠、标签）──
+
                     item(key = "section_header") {
                     VendorHeaderSection(
                         company = company,
@@ -212,7 +207,6 @@ fun VendorDetailScreen(
                     )
                 }
 
-                // ── 区块 1：动态（最新动向卡片）──
                 item(key = "section_action") {
                     VendorActionSection(
                         actions = uiState.actions,
@@ -226,7 +220,6 @@ fun VendorDetailScreen(
                     )
                 }
 
-                // ── 区块 2：品牌标签 ──
                 item(key = "section_tags") {
                     VendorTagsSection(
                         tags = uiState.tags,
@@ -243,7 +236,6 @@ fun VendorDetailScreen(
                     )
                 }
 
-                // ── 区块 3：产品（3x3 九宫格）──
                 item(key = "section_products") {
                     VendorProductsSection(
                         products = uiState.products,
@@ -269,7 +261,6 @@ fun VendorDetailScreen(
                     )
                 }
 
-                // ── 区块 4：旗下系列 ──
                 item(key = "section_series") {
                     VendorSeriesSection(
                         seriesList = uiState.series,
@@ -295,7 +286,6 @@ fun VendorDetailScreen(
     }
 }
 
-    // 屏蔽确认弹窗
     if (showMaskConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showMaskConfirmDialog = false },
@@ -327,7 +317,6 @@ fun VendorDetailScreen(
         )
     }
 
-    // ── 我的印象打分与品牌标签底部抽屉 ──
     VendorImpressionBottomSheet(
         visible = uiState.isImpressionSheetVisible,
         isLoading = uiState.isImpressionLoading,
@@ -341,7 +330,6 @@ fun VendorDetailScreen(
         onDismiss = { viewModel.dismissImpressionSheet() }
     )
 
-    // ── 厂商详细信息底部抽屉 (方案 B) ──
     VendorInfoBottomSheet(
         company = uiState.company,
         visible = showInfoSheet,

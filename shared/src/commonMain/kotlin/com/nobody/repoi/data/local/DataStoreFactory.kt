@@ -5,13 +5,6 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import okio.Path.Companion.toPath
 
-/**
- * DataStore 路径 lambda 工厂（PodAura `createDataStore` 同形）。
- *
- * Android 实际传入 `filesDir`；JVM 传入应用数据目录（见 `AppDirs`）。
- * 文件名保持 `<name>.preferences_pb`（AGP `preferencesDataStore` 约定），
- * 保证 Android 端升级后数据连续。
- */
 fun createDataStore(dirPath: () -> String, fileName: String): DataStore<Preferences> =
     PreferenceDataStoreFactory.createWithPath(
         produceFile = { dirPath().toPath().resolve(fileName) },
@@ -23,6 +16,5 @@ object DataStoreFiles {
     const val SEARCH_HISTORY_PREFS = "search_history_prefs.preferences_pb"
     const val VIEW_PREFS = "view_prefs.preferences_pb"
 
-    /** 封面新鲜度映射（`<type>:<id>` → 相对路径）；独立文件，与用户配置严格隔离。 */
     const val COVER_FRESHNESS = "cover_freshness.preferences_pb"
 }

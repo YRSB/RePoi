@@ -10,9 +10,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/**
- * 搜索历史管理器（KMP 移植：构造器改取 `DataStore<Preferences>` + `Json`）。
- */
 class SearchHistoryManager(
     private val dataStore: DataStore<Preferences>,
     private val json: Json,

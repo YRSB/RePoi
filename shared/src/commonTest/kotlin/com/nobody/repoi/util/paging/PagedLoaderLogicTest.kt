@@ -9,16 +9,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 分页加载器纯逻辑测试（W4-W5 pure-logic；KMP commonTest）。
- *
- * - 零 Main 调度器依赖：loader scope 取 runTest 自身 TestScope 前台作用域
- *   （`runTest scope@{ ... scope = this@scope ... }`；与生产 `viewModelScope`
- *   同为普通 CoroutineScope），`advanceUntilIdle` 可靠排空；刻意不用
- *   `backgroundScope`（其作业不受 `advanceUntilIdle` 排空，跨用例泄漏）。
- * - 零网络/仓储/DataStore：fetcher 为纯内存假页。
- * - 类名刻意避开 `*ViewModel*Test`（M7 quarantine filter 仅放行非 VM 测试）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PagedLoaderLogicTest {
 

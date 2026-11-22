@@ -8,13 +8,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 系列详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `SeriesDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito `mock(CollectRepository)` →
- * 真实 CollectRepository 背后独立 MockApi 队列；JUnit4 → kotlin.test）。
- */
 class SeriesDetailRepositoryTest {
 
     private fun setup(): Triple<MockApi, MockApi, SeriesDetailRepository> {

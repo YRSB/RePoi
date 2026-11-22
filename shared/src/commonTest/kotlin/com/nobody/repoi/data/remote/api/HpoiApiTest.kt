@@ -22,10 +22,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 客户端网络管道深接缝测试：经 MockEngine 驱动真实 HpoiApi，验证洁净载荷、
- * 白名单、异常分流、在途令牌快照透传与候选验权旁路，不触及私有解包函数。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HpoiApiTest {
 

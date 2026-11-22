@@ -60,13 +60,6 @@ import com.nobody.repoi.util.paging.LoadStage
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 厂商全量动态二级页面。
- *
- * 样式体系严格与 PoiShelf 首页动态 (`HomeFeedScreen`) 和关注动态 (`FollowScreen`) 保持一致：
- * 采用 [rememberFeedStaggeredGridColumns] 自适应瀑布流网格布局，动态条目统一使用 [ActionCard]，
- * 初始加载态采用 [PoiLoadingView]，全屏大图接入 [LocalImageViewer]，路由跳转统一经由 `onActionClick` 由宿主单点接线。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VendorActionsScreen(
@@ -115,7 +108,7 @@ fun VendorActionsScreen(
                         }
                     },
                     actions = {
-                        // 右侧品类筛选按钮与下拉菜单
+
                         Box {
                             IconButton(onClick = { viewModel.toggleCategoryMenu(true) }) {
                                 Icon(
@@ -169,7 +162,6 @@ fun VendorActionsScreen(
                     )
                 )
 
-                // 7 个动态分类 Tab
                 SecondaryScrollableTabRow(
                     selectedTabIndex = uiState.selectedTabIndex,
                     edgePadding = 16.dp,
@@ -229,7 +221,6 @@ fun VendorActionsScreen(
                 else -> {
                     val gridState = rememberLazyStaggeredGridState()
 
-                    // 触底加载防重检测（与 FollowScreen 保持一致）
                     val shouldLoadMore by remember {
                         derivedStateOf {
                             val lastVisibleItemIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -270,7 +261,6 @@ fun VendorActionsScreen(
                             )
                         }
 
-                        // 底部加载更多或错误提示
                         item(span = StaggeredGridItemSpan.FullLine) {
                             when {
                                 pagedState.stage == LoadStage.Appending -> {
@@ -324,9 +314,6 @@ fun VendorActionsScreen(
     }
 }
 
-/**
- * 空状态。
- */
 @Composable
 private fun VendorActionsEmptyState(tabName: String) {
     Box(
@@ -355,9 +342,6 @@ private fun VendorActionsEmptyState(tabName: String) {
     }
 }
 
-/**
- * 错误重试状态。
- */
 @Composable
 private fun VendorActionsErrorState(
     errorMessage: String,

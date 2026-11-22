@@ -28,15 +28,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 首页二手板块单测（issue #160 验收标准）。
- *
- * 覆盖：懒加载（首次切到才请求）、三作用域参数（全部省略 `zones` / 单区 nodeId / 关注态隐藏且零请求）、
- * 出售求购与成色切换的重置重载、游标分页去重追加、切走再切回状态保留、错误重试。
- *
- * 请求参数的事实依据：`docs/research/aggregate-api-verification.md` §3/§4.3/§5
- * （二手 `zones` 多值是交集语义 → 关注聚合不可用、必须隐藏；`homeScope` 对二手无意义不得发送）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeFeedResaleBoardTest {
 
@@ -49,8 +40,7 @@ class HomeFeedResaleBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
-        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
@@ -98,7 +88,6 @@ class HomeFeedResaleBoardTest {
     private fun resalePageJson(items: List<Pair<Long, String?>>, type: Int = 1): String =
         """{"success":true,"code":200,"msg":"ok","data":{"list":[${items.joinToString(",") { resaleItemJson(it.first, it.second, type) }}]}}"""
 
-    /** 按请求体 `type` / `lastTime` 路由二手列表（页大小 24）。 */
     private fun Env.stubResalePages(
         type: Int = 1,
         pages: Map<String?, List<Pair<Long, String?>>>,
@@ -114,7 +103,6 @@ class HomeFeedResaleBoardTest {
         )
     }
 
-    /** 单专区 `api/zone/info` 路由（首页据此装配二级板块）。 */
     private fun Env.stubZoneInfo(nodeId: Long, tabs: List<String>) {
         val tabsJson = tabs.joinToString(",") { type -> "\"$type\"" }
         zoneMock.routeWhen(
@@ -137,7 +125,6 @@ class HomeFeedResaleBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含二手，但未切过去之前零请求
         assertTrue(ZoneBoard.Resale in viewModel.uiState.value.boards)
         assertEquals(0, env.resaleMock.requestCount)
 
@@ -151,7 +138,7 @@ class HomeFeedResaleBoardTest {
         assertEquals(ResaleBoardOptions.DEFAULT_TYPE.toString(), form["type"])
         assertEquals(ResaleBoardOptions.PAGE_SIZE.toString(), form["pageSize"])
         assertEquals("1", form["state"])
-        // 全部作用域：省略 zones / homeScope 等聚合参数
+
         assertFalse(form.containsKey("zones"))
         assertFalse(form.containsKey("homeScope"))
 
@@ -198,13 +185,11 @@ class HomeFeedResaleBoardTest {
         viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
 
-        // 不在板块列表中的板块选择被忽略，且不发起任何二手请求
         viewModel.selectBoard(ZoneBoard.Resale)
         advanceUntilIdle()
 
-        // 断言必须读动作之后的状态：动作前快照恒为旧值，无法证伪「不可用板块被写进 selectedBoard」
         val state = viewModel.uiState.value
-        // 关注聚合：zones 逗号串实测为交集语义 → 二手板块必须隐藏（不展示「暂不支持」占位）
+
         assertTrue(ZoneBoard.Resale !in state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         assertEquals(0, env.resaleMock.requestCount)
@@ -238,7 +223,6 @@ class HomeFeedResaleBoardTest {
         val form = env.resaleMock.lastRequest().formEntries()
         assertEquals("2", form["type"])
 
-        // 非法类型被忽略，不发起请求
         val before = env.resaleMock.requestCount
         viewModel.selectResaleType(99)
         advanceUntilIdle()
@@ -280,7 +264,7 @@ class HomeFeedResaleBoardTest {
     fun resalePagination_appendsDistinctNextPageWithCursor() = runTest(testDispatcher) {
         val env = env()
         val firstPage = (1L..24L).map { it to "2026-10-24 12:00:00" }
-        // 第二页含重复项 24，验证宿主按二手 id 去重；非整页 → hasMore=false
+
         env.stubResalePages(
             pages = mapOf(
                 null to firstPage,
@@ -304,7 +288,7 @@ class HomeFeedResaleBoardTest {
         assertEquals(25, page2.resale.items.size)
         assertEquals(listOf(24L, 25L), page2.resale.items.ids().takeLast(2))
         assertFalse(page2.resale.hasMore)
-        // 游标 = 上一批末条 addDate
+
         assertEquals(
             "2026-10-24 12:00:00",
             env.resaleMock.lastRequest().formEntries()["lastTime"]
@@ -330,7 +314,7 @@ class HomeFeedResaleBoardTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneBoard.Resale, state.selectedBoard)
-        // 切走再切回：不重复请求，状态（items / 成色）保留
+
         assertEquals(requestCount, env.resaleMock.requestCount)
         assertEquals("9", state.resale.purity)
         assertTrue(state.resale.isLoaded)
@@ -339,7 +323,7 @@ class HomeFeedResaleBoardTest {
     @Test
     fun resaleRetryAfterFailure_reloadsFirstPage() = runTest(testDispatcher) {
         val env = env()
-        // FIFO 响应：首次失败（业务失败码 → 仓储抛 ApiException），重试成功
+
         env.resaleMock.enqueue(
             env.resaleMock.failure(500, "网络异常"),
             resalePageJson(listOf(61L to "2026-10-24 12:00:00"))
@@ -353,7 +337,6 @@ class HomeFeedResaleBoardTest {
         assertEquals("网络异常", failed.resale.errorMessage)
         assertEquals(0, failed.resale.items.size)
 
-        // 重试成功：错误清除、列表就绪
         viewModel.retrySelectedBoard()
         advanceUntilIdle()
 

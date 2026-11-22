@@ -7,12 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 顶栏专区切换器分组纯逻辑测试。
- *
- * 覆盖：#154 验收标准中的「快捷组恒含全部/关注」「我的专区按 default/recent/custom 排序」
- * 「hiddenZoneIds 过滤」「showAll=false 仍含全部」「空关注时关注仍出现」。
- */
 class ZoneSwitcherGroupsTest {
 
     private fun zone(nodeId: Long, name: String = "专区$nodeId") =
@@ -39,7 +33,7 @@ class ZoneSwitcherGroupsTest {
 
     @Test
     fun quickGroup_keepsAllEvenWhenShowAllDisabled() {
-        // showAll=false：分类列表不再包含「全部」，但切换器「快捷」组必须仍有该入口。
+
         val settings = ZoneTabsSettings(showAll = false)
         val categories = buildFeedCategories(listOf(zone(100)), settings)
         assertTrue(categories.none { it.tabKey == "all" })
@@ -101,7 +95,7 @@ class ZoneSwitcherGroupsTest {
         )
 
         assertEquals(listOf("all", "follow", "z100", "z300"), categories.map { it.tabKey })
-        // 「关注」聚合的 zoneIds 同样不含被隐藏专区
+
         assertEquals("100,300", categories.first { it.tabKey == "follow" }.zoneIds)
     }
 

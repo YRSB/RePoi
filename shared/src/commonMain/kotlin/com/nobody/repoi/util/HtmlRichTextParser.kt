@@ -10,15 +10,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 
-/**
- * HTML 富文本转 Compose AnnotatedString 解析器（KMP 通用实现，无需 HtmlCompat）。
- *
- * 手写子集解析（ksoup 不在 catalog）：b/strong、i/em、u、s/strike/del、font color、
- * a[href]、br/p 换行。未知标签剥除保留文本。行为对齐原版：
- * - 双 `<br>` 折叠为单换行；
- * - 末尾多余换行/空白清理；
- * - 链接经 [normalizeUrl] 规范化后加 `LinkAnnotation.Url`。
- */
 object HtmlRichTextParser {
 
     fun parse(
@@ -28,9 +19,7 @@ object HtmlRichTextParser {
         linkUnderline: Boolean = false,
     ): AnnotatedString {
         if (html.isNullOrBlank()) return AnnotatedString("")
-        // 统一预处理：
-        // 1. 还原服务端返回的转义 HTML 标签（如 &lt;a href="..."&gt;、&lt;/a&gt;、&lt;br/&gt;），并解码标签属性中的实体引号
-        // 2. 双换行折叠（与原版一致）
+
         val prepared = html
             .replace(Regex("(?i)&lt;(/?[a-z][a-z0-9]*(?:\\s+.*?|/?)?)&gt;")) { match ->
                 val tagContent = match.groupValues[1].replace("&quot;", "\"").replace("&apos;", "'")
@@ -95,9 +84,6 @@ object HtmlRichTextParser {
         }
     }
 
-    /**
-     * 规范化超链接，补充缺失的 http/https 协议头或 Hpoi 相对路径。
-     */
     fun normalizeUrl(rawUrl: String): String {
         val trimmed = rawUrl.trim()
         if (trimmed.isBlank()) return ""
@@ -128,7 +114,6 @@ object HtmlRichTextParser {
         data class Link(val url: String) : SegKind
     }
 
-    // 上方 Kind 枚举为历史占位，实际使用 SegKind；保留以最小化行数变更。
     private fun tokenize(html: String): List<Segment> {
         val out = mutableListOf<Segment>()
         var bold = 0; var italic = 0; var underline = 0; var strike = 0
@@ -139,7 +124,7 @@ object HtmlRichTextParser {
 
         var i = 0
         val text = StringBuilder()
-        // 对齐 HtmlCompat：空白节点跟随前一个输出字符折叠，初值视作 '\n'（丢弃开头空白）。
+
         var lastChar = '\n'
         fun flush() {
             if (text.isEmpty()) return
@@ -156,7 +141,7 @@ object HtmlRichTextParser {
                 color != null -> SegKind.Colored(color)
                 else -> SegKind.Plain
             }
-            // 链接内仍可叠加粗斜体？原版 HtmlCompat 取 span 叠加；此处简化：链接优先。
+
             out.add(Segment(segText, kind))
         }
 
@@ -188,7 +173,6 @@ object HtmlRichTextParser {
             return count
         }
 
-        // 对齐 HtmlCompat.appendNewlines：把尾部换行补齐到 minCount，开头不补。
         fun ensureNewlines(minCount: Int) {
             flush()
             if (out.isEmpty()) return
@@ -240,7 +224,7 @@ object HtmlRichTextParser {
                         }
                     }
                     else -> {
-                        // 未知标签剥除保留文本。
+
                     }
                 }
                 i = close + 1
@@ -258,7 +242,7 @@ object HtmlRichTextParser {
             }
         }
         flush()
-        // 合并相邻同 kind（压缩 spans）。
+
         if (out.isEmpty()) return out
         val merged = mutableListOf<Segment>()
         for (seg in out) {

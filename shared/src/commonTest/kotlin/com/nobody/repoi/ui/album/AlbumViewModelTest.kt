@@ -21,15 +21,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 相册列表 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `AlbumViewModelTest`（逐用例；Mockito `mock(AlbumRepository/TokenManager)` →
- * 真实 AlbumRepository 背后 [MockApi] MockEngine + [FakeUserSession] 会话替身；
- * `stubRecommendPage(page, items, hasMore)` → routeWhen 按表单
- * (order+page) 匹配；`java.time.LocalDateTime` → kotlinx-datetime；
- * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumViewModelTest {
 
@@ -73,7 +64,7 @@ class AlbumViewModelTest {
     private fun MockApi.stubPraiseTop(type: String, bodies: List<String>) {
         var call = 0
         routeWhen(
-            // M7 fix-2：getPraiseTop 为 GET + query——按 query["type"] 精确匹配。
+
             predicate = { path, _, query ->
                 path.contains("api/item/praise/top") &&
                     (type.isEmpty() || query["type"] == type)
@@ -119,7 +110,7 @@ class AlbumViewModelTest {
     fun loadMore_appendsAndDedups() = runTest(testDispatcher) {
         val mock = MockApi()
         mock.stubTabsOk()
-        // 满页（24 条）触发 hasMore=true，第二页去重追加
+
         val page1 = (1L..24L).toList()
         mock.stubAlbums(order = "top", page = 1, bodies = listOf(pageJson(page1)))
         mock.stubAlbums(order = "top", page = 2, bodies = listOf(pageJson(listOf(24L, 25L, 26L))))

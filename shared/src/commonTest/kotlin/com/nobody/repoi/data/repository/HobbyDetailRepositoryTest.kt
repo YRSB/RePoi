@@ -7,13 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 手办详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；`server.dispatcher` → [MockApi.route]；
- * JUnit4 → kotlin.test）。
- */
 class HobbyDetailRepositoryTest {
 
     private fun setup(): Pair<MockApi, HobbyDetailRepository> {
@@ -98,7 +91,7 @@ class HobbyDetailRepositoryTest {
     @Test
     fun getRelatedHobbies_excludesCurrentHobbyWhenItemIdDiffersFromNodeId() = runTest {
         val (mock, repository) = setup()
-        // 当前条目: nodeId = 5483525, itemId = 59570
+
         mock.route(
             "api/hobby/group",
             """{"success":true,"code":200,"msg":"ok","data":{"groups":[{"typeName":"同款","items":[{"id":5483525,"itemId":59570,"nameCN":"当前手办"},{"id":201,"itemId":201,"nameCN":"同款不同色"}]}]}}"""
@@ -114,7 +107,7 @@ class HobbyDetailRepositoryTest {
         assertEquals(2, list.size)
         assertEquals(201L, list[0].actualItemId)
         assertEquals(202L, list[1].actualItemId)
-        // 验证当前条目无论是按 nodeId(5483525) 还是 itemId(59570) 均已被彻底过滤
+
         assertTrue(list.none { it.actualItemId == 59570L || it.id == 5483525L })
     }
 

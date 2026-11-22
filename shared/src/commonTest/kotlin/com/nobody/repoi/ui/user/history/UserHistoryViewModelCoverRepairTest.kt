@@ -23,12 +23,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * 浏览历史封面按条修复测试。
- *
- * 场景：历史接口返回的 `cover` 是写入快照（可能已被服务端重新落盘 → 404），
- * 封面加载失败后应回详情接口取当前封面，并且**只替换失败的那一行**。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserHistoryViewModelCoverRepairTest {
 
@@ -64,7 +58,6 @@ class UserHistoryViewModelCoverRepairTest {
             dispatcher = dispatcher,
         )
 
-        /** 冷启动预热需真实 DataStore I/O；在推平虚拟调度器前显式等待，避免测试与读盘竞态。 */
         suspend fun warmUp() = coverFreshnessRepository.ensureWarmed()
 
         val viewModel = UserHistoryViewModel(
@@ -87,7 +80,6 @@ class UserHistoryViewModelCoverRepairTest {
         cover: String = oldCover,
     ) = stubHistoryRows(HistoryRow(rowId = rowId, itemId = itemId, cover = cover))
 
-    /** 按 `itemType` 分组注册历史列表桩：手办与相册 loader 共用路径，仅表单字段不同。 */
     private fun Env.stubHistoryRows(vararg rows: HistoryRow) {
         rows.groupBy { it.itemType }.forEach { (itemType, group) ->
             val readList = group.joinToString(",") { row ->
@@ -178,8 +170,6 @@ class UserHistoryViewModelCoverRepairTest {
             advanceUntilIdle()
             assertEquals(freshCover, env.viewModel.uiState.value.hobbyState.items.single().cover)
 
-            // 清空缓存模拟「服务端快照仍是旧路径且本地无沉淀」（冷启动/登出后）：
-            // 成功若占用失败额度，第 3 次修复就会被永久放弃
             env.coverFreshnessRepository.clear()
             env.viewModel.refresh(UserHistoryCategory.HOBBY)
             advanceUntilIdle()
@@ -214,14 +204,11 @@ class UserHistoryViewModelCoverRepairTest {
         env.warmUp()
         advanceUntilIdle()
 
-        // 逐次调用之间必须推平调度器：并发失败会被 `CoverFreshnessRepository` 的单飞合并成一个请求，
-        // 那样测到的是去重而不是「次数上限」
         repeat(5) {
             env.viewModel.onCoverLoadFailed(rowId = 123L, detailId = 59570L, category = UserHistoryCategory.HOBBY)
             advanceUntilIdle()
         }
 
-        // MAX_COVER_REPAIR_ATTEMPTS = 2：超过上限后不再打详情接口
         assertEquals(2, env.detailMock.requestCount)
     }
 
@@ -245,7 +232,6 @@ class UserHistoryViewModelCoverRepairTest {
         env.warmUp()
         advanceUntilIdle()
 
-        // 详情页曾沉淀过封面；但它随后也在服务端失效（404），此时必须穿透该正缓存重新回源
         env.coverFreshnessRepository.rememberFreshCover(
             id = 59570L,
             type = CoverFreshnessRepository.EntityType.HOBBY,
@@ -260,9 +246,6 @@ class UserHistoryViewModelCoverRepairTest {
         assertEquals(1, env.detailMock.requestCount, "404 必须穿透已沉淀的正缓存重新回源")
     }
 
-    /**
-     * 工单 #117 AC：404 强制穿透成功后就地重绘，并同步落盘，冷启动仍为新封面。
-     */
     @Test
     fun coverLoadFailed_forceRefresh_persistsNewCoverForColdStart() = runTest(testDispatcher) {
         val prefs = TestDataStore.coverFreshnessPrefs()
@@ -320,9 +303,6 @@ class UserHistoryViewModelCoverRepairTest {
         )
     }
 
-    /**
-     * 工单 #116 AC：冷启动预置持久化缓存后，分页装载直接呈现新封面，详情接口零请求。
-     */
     @Test
     fun coldStart_persistedCache_rendersFreshCoverWithoutDetailRequest() = runTest(testDispatcher) {
         val prefs = TestDataStore.coverFreshnessPrefs()

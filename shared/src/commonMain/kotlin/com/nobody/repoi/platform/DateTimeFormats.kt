@@ -10,12 +10,6 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-/**
- * M2 common datetime helpers (kotlinx-datetime 0.8.0).
- *
- * Replaces SimpleDateFormat/Calendar call sites in ported data-layer code.
- * All formatting is manual (zero-padded) so behavior is identical on both targets.
- */
 @OptIn(ExperimentalTime::class)
 object DateTimeFormats {
 
@@ -48,36 +42,18 @@ object DateTimeFormats {
             hms(dt.hour, dt.minute, dt.second).replace(":", "")
     }
 
-    /**
-     * Epoch 毫秒 → "yyyy-MM-dd"（系统时区）。
-     *
-     * 替换 `SimpleDateFormat("yyyy-MM-dd").format(Date(millis))` 调用点；
-     * 秒级时间戳（< 1e11）按秒换算，与原版 `ts < 1e11 → * 1000` 语义一致。
-     */
     fun ymdFromMillis(millis: Long, timeZone: TimeZone = TimeZone.currentSystemDefault()): String {
         val ms = if (millis < 100_000_000_000L) millis * 1000L else millis
         val date: LocalDate = Instant.fromEpochMilliseconds(ms).toLocalDateTime(timeZone).date
         return ymd(date.year, date.month.number, date.day)
     }
 
-    /**
-     * Epoch 毫秒 → "HH:mm"（系统时区）。
-     *
-     * 替换 `SimpleDateFormat("HH:mm").format(Date(millis))` 调用点（消息时间戳等）；
-     * 秒级时间戳（< 1e11）按秒换算，与 `ymdFromMillis` 语义一致。
-     * 注意：与 `nowHm` 的差异在于本函数格式化给定时刻而非当前时刻。
-     */
     fun hmFromMillis(millis: Long, timeZone: TimeZone = TimeZone.currentSystemDefault()): String {
         val ms = if (millis < 100_000_000_000L) millis * 1000L else millis
         val dt: LocalDateTime = Instant.fromEpochMilliseconds(ms).toLocalDateTime(timeZone)
         return hms(dt.hour, dt.minute, null)
     }
 
-    /**
-     * Multi-pattern parse for server date strings ("yyyy-MM-dd HH:mm:ss",
-     * "yyyy-MM-dd HH:mm", "yyyy-MM-dd", "yyyy/MM/dd HH:mm:ss").
-     * Returns epoch millis, or null when nothing matches (same fallback as before).
-     */
     fun parseServerDateTime(content: String): Long? {
         val text = content.trim()
         if (text.isEmpty()) return null
@@ -140,6 +116,5 @@ object DateTimeFormats {
     }
 }
 
-/** Current time as epoch millis (SystemClock.uptimeMillis replacement for debounce logic). */
 @OptIn(ExperimentalTime::class)
 fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()

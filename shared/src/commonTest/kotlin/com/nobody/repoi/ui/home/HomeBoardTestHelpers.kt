@@ -19,13 +19,6 @@ import com.nobody.repoi.ui.board.ZoneBoardFilters
 import com.nobody.repoi.ui.board.ZoneBoardPageView
 import com.nobody.repoi.ui.board.itemCount
 
-/**
- * 测试环境专用适配层：将 [HomeFeedUiState.currentBoardSnapshot] 桥接为存量单测断言格式。
- *
- * 生产代码已完全切至深模块 [com.nobody.repoi.ui.board.session.ZoneBoardSession]，
- * 本文件仅位于 commonTest，避免存量断言样板代码散落或污染 commonMain。
- */
-
 val HomeFeedUiState.items: List<ActionItem>
     get() = (currentBoardSnapshot.content as? ZoneBoardContent.Action)?.items ?: actionItems
 

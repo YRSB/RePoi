@@ -68,10 +68,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-// ─────────────────────────────────────────────────────────────
-// 区块 0：角色档案综合头部 (CharacterHeaderSection)
-// ─────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CharacterHeaderSection(
@@ -101,13 +97,13 @@ internal fun CharacterHeaderSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 封面与基础资料
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 角色封面（详情主图档位，走 cover/n/，点击可查看原图大图）
+
                 Box(
                     modifier = Modifier
                         .width(105.dp)
@@ -125,7 +121,6 @@ internal fun CharacterHeaderSection(
                     )
                 }
 
-                // 角色标题与元信息徽章
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -149,7 +144,6 @@ internal fun CharacterHeaderSection(
                         )
                     }
 
-                    // 性别与生日等属性
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -185,7 +179,6 @@ internal fun CharacterHeaderSection(
                         }
                     }
 
-                    // 统计行（热度与收藏）
                     if (character != null) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -212,7 +205,6 @@ internal fun CharacterHeaderSection(
                 }
             }
 
-            // 属性/分区标签列表
             if (zones.isNotEmpty() || isZonesLoading) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -232,7 +224,6 @@ internal fun CharacterHeaderSection(
                 }
             }
 
-            // 角色背景与详细介绍（带平滑展开折叠）
             if (intro.isNotBlank()) {
                 Column(
                     modifier = Modifier
@@ -265,10 +256,6 @@ internal fun CharacterHeaderSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 2：登场作品 (CharacterWorksSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun CharacterWorksSection(
@@ -386,7 +373,6 @@ internal fun CharacterWorksSection(
                                     )
                                 }
 
-                                // 演职员胶囊数量较少，用 Row 直铺避免懒加载开销
                                 if (work.validPerformers.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Row(
@@ -443,7 +429,7 @@ private fun PerformerPill(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                // 演职员头像沿用旧 getCoverSmallUrlOrDefault 的 cover/s/ 档位（HOBBY THUMBNAIL）
+
                 PoiAsyncImage(
                     path = performer.pCover,
                     category = MediaCategory.HOBBY,
@@ -461,10 +447,6 @@ private fun PerformerPill(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 3：周边手办 (CharacterHobbysSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun CharacterHobbysSection(
@@ -580,10 +562,6 @@ private fun CharacterHobbyCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 4：相关相册 (CharacterAlbumsSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun CharacterAlbumsSection(
     albums: List<AlbumData>,
@@ -653,7 +631,7 @@ private fun CharacterAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
@@ -676,8 +654,7 @@ private fun CharacterAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
-                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+
                 PoiAsyncImage(
                     path = album.cover,
                     category = MediaCategory.ALBUM,
@@ -689,7 +666,6 @@ private fun CharacterAlbumCard(
                 )
             }
 
-            // 右上角半透明浮层点赞徽标（与相关相册页完全一致的 ExtraSmallShape 与 padding）
             val praiseCount = album.praiseCount ?: 0L
             if (praiseCount > 0L) {
                 Surface(
@@ -723,9 +699,6 @@ private fun CharacterAlbumCard(
     }
 }
 
-/**
- * 角色相关相册「查看更多」卡片（等高且正方形比例，样式与手办 ExHobby 保持一致）。
- */
 @Composable
 private fun AlbumMoreTile(
     onMoreClick: () -> Unit,
@@ -758,10 +731,6 @@ private fun AlbumMoreTile(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 5：推荐要素 (CharacterRelevantSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun CharacterRelevantSection(
@@ -834,7 +803,7 @@ private fun CharacterRelevantCard(
                     .clip(MaterialTheme.shapes.small)
                     .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
             ) {
-                // 方形小缩略图沿用旧 getCoverSmallUrlOrDefault 的 cover/s/ 档位
+
                 PoiAsyncImage(
                     path = item.cover,
                     category = MediaCategory.HOBBY,
@@ -864,10 +833,6 @@ private fun CharacterRelevantCard(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 状态占位组件 (错误重试)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun CharacterErrorState(
@@ -904,10 +869,6 @@ internal fun CharacterErrorState(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部悬浮操作栏 (CharacterFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun CharacterFloatingActionBar(
     collectCount: Long,
@@ -921,7 +882,7 @@ internal fun CharacterFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 收藏角色
+
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
@@ -933,19 +894,17 @@ internal fun CharacterFloatingActionBar(
             iconTint = if (isCollected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 评论主操作（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+
                 isProminent = false
             )
         }
 
-        // 3. 分享次级操作
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,

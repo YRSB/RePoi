@@ -9,11 +9,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 评论点赞与回复纯列表变换测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `CommentMutationsTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class CommentMutationsTest {
 
     private fun user(nickname: String) = CommentUser(id = 1L, userId = 11L, nickname = nickname)
@@ -45,19 +40,18 @@ class CommentMutationsTest {
 
     @Test
     fun hasMoreReplies_usesReplyCountNotPreviewSize() {
-        // 服务端只给了 3 条预览但总数 7 条：需要展示“共7条回复”
+
         val item = comment(id = 1L, replyCount = 7, replys = listOf(reply(1L), reply(2L), reply(3L)))
         assertTrue(CommentMutations.hasMoreReplies(item))
-        // 总数恰好为 3 条：预览已完全覆盖，不展示“共 X 条回复”
+
         val three = comment(id = 2L, replyCount = 3, replys = listOf(reply(1L), reply(2L), reply(3L)))
         assertFalse(CommentMutations.hasMoreReplies(three))
-        // 总数小于 3 条：不展示
+
         val full = comment(id = 3L, replyCount = 2, replys = listOf(reply(1L), reply(2L)))
         assertFalse(CommentMutations.hasMoreReplies(full))
-        // 无回复：不展示
+
         assertFalse(CommentMutations.hasMoreReplies(comment(id = 4L, replyCount = 0, replys = emptyList())))
 
-        // replyCount = 2, 但 replys 中包含 2 条正常与 2 条已屏蔽（原始 size = 4 > 3），过滤后有效仅 2 条，不应展示“更多”
         val itemWithShielded = comment(
             id = 5L,
             replyCount = 2,
@@ -77,7 +71,7 @@ class CommentMutationsTest {
         val praised = CommentMutations.applyPraise(comments, 1L)
         assertTrue(praised.first().praiseState)
         assertEquals(4, praised.first().praiseCount)
-        // 再次取反即回滚
+
         val rolledBack = CommentMutations.applyPraise(praised, 1L)
         assertFalse(rolledBack.first().praiseState)
         assertEquals(3, rolledBack.first().praiseCount)
@@ -99,7 +93,7 @@ class CommentMutationsTest {
         val merged = CommentMutations.applyExternalUpdate(comments, updated)
         assertEquals(2, merged.first().reply)
         assertEquals(1, merged.first().replys?.size)
-        // 未知 id 不改动原列表
+
         val untouched = CommentMutations.applyExternalUpdate(comments, comment(id = 99L, replyCount = 5, replys = emptyList()))
         assertEquals(comments, untouched)
     }
@@ -107,7 +101,7 @@ class CommentMutationsTest {
     @Test
     fun applyExternalUpdate_mergesRepliesWithoutDroppingPreview() {
         val comments = listOf(comment(id = 1L, replyCount = 3, replys = listOf(reply(1L), reply(2L), reply(3L))))
-        // 服务端回写仅带总数与点赞态、子评论为空时，原有预览不得被冲掉
+
         val updated = comment(id = 1L, replyCount = 4, replys = emptyList())
             .copy(praiseState = true, praiseCount = 5)
         val merged = CommentMutations.applyExternalUpdate(comments, updated)
@@ -165,14 +159,14 @@ class CommentMutationsTest {
     @Test
     fun filterShieldedComments_removesShieldedRootsAndFiltersSubReplies() {
         val comments = listOf(
-            // 主楼已屏蔽（文本匹配），下挂子回复应随整楼级联移除
+
             CommentItem(
                 id = 1L,
                 content = "(已屏蔽)",
                 reply = 2,
                 replys = listOf(reply(11L), reply(12L))
             ),
-            // 主楼已屏蔽（isMask == 1），下挂子回复应随整楼级联移除
+
             CommentItem(
                 id = 2L,
                 content = "正常文字",
@@ -180,7 +174,7 @@ class CommentMutationsTest {
                 reply = 1,
                 replys = listOf(reply(21L))
             ),
-            // 正常主楼，下挂 1 条已屏蔽子回复与 2 条正常子回复
+
             CommentItem(
                 id = 3L,
                 content = "正常主楼内容",
@@ -195,7 +189,6 @@ class CommentMutationsTest {
 
         val filtered = CommentMutations.filterShieldedComments(comments)
 
-        // 仅保留正常主楼 3L，且其子评论中的 32L (已屏蔽) 被剔除
         assertEquals(1, filtered.size)
         val remaining = filtered.single()
         assertEquals(3L, remaining.id)

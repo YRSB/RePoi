@@ -41,9 +41,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 手办/周边搜索结果横向卡片（基于 PoiListCard 深基元）
- */
 @Composable
 fun HobbySearchCard(
     item: SearchResultItem,
@@ -108,16 +105,13 @@ fun HobbySearchCard(
     }
 }
 
-/**
- * 相册双列瀑布流卡片（MD3 Expressive 规范）
- */
 @Composable
 fun AlbumStaggeredCard(
     item: SearchResultItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面（含官方缺省吉祥物）沿用历史 17:24 纯文本卡，有封面由基元按真实比例撑开
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(item.cover)
 
     ElevatedCard(
@@ -126,7 +120,7 @@ fun AlbumStaggeredCard(
         shape = MaterialTheme.shapes.small
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // 封面图片区（自适应比例瀑布流）
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +133,7 @@ fun AlbumStaggeredCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // 相册封面走 MediaCategory.ALBUM：管道统一裁决到保留纵横比的 cover/sr/
+
                     PoiAsyncImage(
                         path = item.cover,
                         category = MediaCategory.ALBUM,
@@ -151,7 +145,6 @@ fun AlbumStaggeredCard(
                     )
                 }
 
-                // 右上角半透明浮层点赞徽标
                 if (item.praiseCountText.isNotBlank()) {
                     Surface(
                         color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
@@ -182,7 +175,6 @@ fun AlbumStaggeredCard(
                 }
             }
 
-            // 底部文字信息区
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -199,7 +191,6 @@ fun AlbumStaggeredCard(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // 作者头像 + 昵称 + 相对发布时间
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -210,7 +201,7 @@ fun AlbumStaggeredCard(
                         modifier = Modifier.weight(1f, fill = false),
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        // 作者头像：head/s/ 缩略档（16dp），空路径与失败态由基元兜底
+
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
@@ -249,10 +240,6 @@ fun AlbumStaggeredCard(
     }
 }
 
-/**
- * 通用实体卡片（厂商、作品、系列、角色/要素、人物）
- * 基于 PoiListCard 深基元
- */
 @Composable
 fun GeneralSearchCard(
     item: SearchResultItem,
@@ -287,9 +274,6 @@ fun GeneralSearchCard(
     }
 }
 
-/**
- * 用户搜索结果卡片
- */
 @Composable
 fun SearchUserCard(
     user: SearchUserItem,

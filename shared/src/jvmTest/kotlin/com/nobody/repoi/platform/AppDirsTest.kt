@@ -7,12 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-/**
- * JVM / 桌面端应用目录解析测试（AppDirs.jvm）。
- *
- * 验证桌面环境下的用户主目录 .poishelf/cache 与 .poishelf/files 路径解析、
- * 目录自动创建以及两者的空间隔离性。
- */
 class AppDirsTest {
 
     @Test

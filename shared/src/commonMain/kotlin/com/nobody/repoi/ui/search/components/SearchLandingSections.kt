@@ -39,10 +39,6 @@ import com.nobody.repoi.data.remote.model.HotwordItem
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 实时联想建议列表
- * 匹配输入的文字高亮为主题色，点击直接搜索
- */
 @Composable
 fun SearchSuggestionsList(
     suggestions: List<String>,
@@ -99,11 +95,6 @@ fun SearchSuggestionsList(
     }
 }
 
-/**
- * 搜索历史模块
- * 包含“搜索历史”标题与右侧清空按钮、流式标签。
- * 支持单击搜索、长按删除（无弹窗确认）、一键清空全部（无弹窗确认），chip 内部无多余删除按钮。
- */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchHistorySection(
@@ -119,7 +110,7 @@ fun SearchHistorySection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 标题行：搜索历史 + 右侧清空 (去掉原先多余的时钟与排序图标)
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -132,7 +123,6 @@ fun SearchHistorySection(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // 清空按钮 (带列表图标 + 清空文本，点击直接清空，无弹窗)
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
@@ -155,7 +145,6 @@ fun SearchHistorySection(
             }
         }
 
-        // 搜索历史标签流 (无内部删除图标，单击搜索，长按直接删除)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -172,10 +161,6 @@ fun SearchHistorySection(
     }
 }
 
-/**
- * 大家在找模块 (原搜索发现/热词推荐)
- * 包含刷新按钮、流式 chip 展示大家在找列表，样式和搜索历史同款。
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EveryoneSearchingSection(
@@ -189,7 +174,7 @@ fun EveryoneSearchingSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 标题行：大家在找 + 右侧刷新
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -238,7 +223,7 @@ fun EveryoneSearchingSection(
                 )
             }
         } else if (hotwords.isNotEmpty()) {
-            // 流式 chip 排布 (和搜索历史同款)
+
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -255,12 +240,6 @@ fun EveryoneSearchingSection(
     }
 }
 
-/**
- * 搜索标签 Chip 组件 (搜索历史与大家在找通用)
- *
- * 显式固定 32.dp 容器高度，内部文本垂直居中并配置单行省略，
- * 解决因西文字符 (Latin) 与中文字符 (CJK) 采用不同系统回退字体时行高度量 (font metrics) 不一致导致的 Chip 高度高低不齐问题。
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SearchTagChip(
@@ -291,9 +270,6 @@ private fun SearchTagChip(
     }
 }
 
-/**
- * 兼容旧命名的别名函数，委托至 EveryoneSearchingSection
- */
 @Composable
 fun SearchDiscoverySection(
     hotwords: List<HotwordItem>,

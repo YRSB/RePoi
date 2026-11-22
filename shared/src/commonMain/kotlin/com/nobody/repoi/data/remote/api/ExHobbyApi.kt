@@ -8,12 +8,6 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import kotlinx.serialization.json.Json
 
-/**
- * ExHobby 扩展图库端点（`ExHobbyApiService` 的 Ktor 等价实现）。
- *
- * 返回裸 JSON 数组（无 envelope），`type` 固定 "all"。
- * 独立 client：Cookie `is18=yes` + UA `okhttp/4.9.0`（见 networkModule）。
- */
 class ExHobbyApi(
     private val client: HttpClient,
     private val json: Json,

@@ -58,7 +58,7 @@ data class ProfileUiState(
         get() {
             val lastTime = checkInStatus?.checkInLastTime ?: return false
             if (lastTime <= 0L) return false
-            // 兼容秒级 (10位) 与毫秒级 (13位) 时间戳，避免服务端下发秒级时解析为 1970 年
+
             val timeMillis = if (lastTime < 100_000_000_000L) lastTime * 1000L else lastTime
             val tz = TimeZone.currentSystemDefault()
             val last = Instant.fromEpochMilliseconds(timeMillis).toLocalDateTime(tz).date
@@ -77,7 +77,6 @@ class ProfileViewModel(
     private val followRepository: FollowRepository
 ) : ViewModel() {
 
-    /** 已触发过全量加载的令牌；令牌变化才允许再次进入加载，避免状态抖动重复请求。 */
     private var loadedToken: String? = null
 
     private val _uiState = MutableStateFlow(
@@ -122,7 +121,7 @@ class ProfileViewModel(
                     }
                     state.copy(fellow = curFellow.copy(friendCount = updatedFriendCount))
                 }
-                // 后台静默对齐服务端最新关注统计，保证最终一致性
+
                 val currentUid = userSession.currentUserId
                 if (currentUid > 0L) {
                     followRepository.getFellowCount(currentUid).onSuccess { freshFellow ->
@@ -149,7 +148,6 @@ class ProfileViewModel(
                 )
             }
 
-            // 档案解析收敛到持有会话的 ViewModel，仓储只消费传入档案；失败只解析一次并可见
             val profileResult = if (isRefresh) {
                 userSession.refreshProfile()
             } else {
@@ -167,7 +165,7 @@ class ProfileViewModel(
                 }
                 return@launch
             }
-            // 异步获取未读通知数
+
             launch {
                 messageRepository.getUnreadPushCount()
                     .onSuccess { pushCategory ->
@@ -196,7 +194,7 @@ class ProfileViewModel(
                     )
                 }
             }.onFailure { e ->
-                // 令牌失效自愈已重置为未认证时，不再向访客态写入错误
+
                 if (!userSession.isAuthenticated) return@onFailure
                 _uiState.update {
                     it.copy(
@@ -209,9 +207,6 @@ class ProfileViewModel(
         }
     }
 
-    /**
-     * 快捷切换浅色/深色主题。
-     */
     fun toggleTheme(isDarkCurrently: Boolean) {
         viewModelScope.launch {
             val nextMode = if (isDarkCurrently) ThemeMode.LIGHT else ThemeMode.DARK
@@ -219,9 +214,6 @@ class ProfileViewModel(
         }
     }
 
-    /**
-     * 每日打卡签到。
-     */
     fun checkIn() {
         if (!userSession.isAuthenticated || _uiState.value.isCheckingIn || _uiState.value.isSignedInToday) return
         viewModelScope.launch {
@@ -239,7 +231,7 @@ class ProfileViewModel(
                         infoMessage = "签到成功！已连续签到 ${nextDays} 天"
                     )
                 }
-                // 异步联动刷新最新魔力值积分
+
                 val updatedMp = userRepository.getUserMp().getOrNull()
                 if (updatedMp != null) {
                     _uiState.update { it.copy(userMp = updatedMp) }

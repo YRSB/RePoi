@@ -16,29 +16,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * issue #82 回归测试：**动态主题下「色彩风格 / 色彩标准」必须生效**。
- *
- * 背景：修复前 [PoiShelfTheme] 的动态分支直接采用平台给出的
- * `dynamicLightColorScheme` / `dynamicDarkColorScheme`，`paletteStyle` 与
- * `specVersion` 只在静态种子分支被读取，导致用户在动态主题下切换这两项毫无反应。
- *
- * 为什么放在 `jvmTest`：平台取色由 `expect/actual` 承担，JVM 恒为 `null`，
- * 无法在 commonTest 覆盖。修复同时引入了 `systemSchemeProvider` 注入缝，
- * 使这条真实决策链路第一次变得可测——这正是诊断中标记的"可测性缺口"。
- *
- * 断言：
- * 1. **灵敏度**：8 种 (风格 × 标准) 组合必须产出不止一种配色；
- * 2. **无回归**：默认组合（TonalSpot + SPEC_2021）的主色必须等于平台壁纸主色，
- *    也就是说没动过设置的用户，主色不会跳变。
- *
- * 修复前的等价实测见 `shared/build/diagnose-82/Probe82.java` 步骤 [1]：
- * 8 种组合的 distinct outputs = 1（完全忽略设置）。
- *
- * 注：`runComposeUiTest` 的 v2 新 API 改用 `StandardTestDispatcher`，会改变
- * `mutableIntStateOf` 驱动的重组时序；这里只需「改状态 → 等空闲 → 读配色」的同步语义，
- * 故沿用旧 API，与 `PoiAsyncImageLayoutTest` 的处理保持一致。
- */
 @OptIn(ExperimentalTestApi::class)
 class ThemeDynamicRegressionTest {
 
@@ -56,10 +33,6 @@ class ThemeDynamicRegressionTest {
         ColorSpec.SpecVersion.SPEC_2025,
     )
 
-    /**
-     * 平台侧"Monet 取色"的替身：material-kolor 以壁纸主色 + TonalSpot + SPEC_2021 推导，
-     * 与 Android 12+ 的 `dynamicLightColorScheme(context)` 同族。
-     */
     @Composable
     private fun fakePlatformScheme(darkTheme: Boolean = false): ColorScheme = seedColorScheme(
         seedColor = Color(wallpaperArgb),
@@ -106,7 +79,6 @@ class ThemeDynamicRegressionTest {
             "动态主题下切换色彩风格/标准必须改变配色，实际 ${combos.size} 种组合只有 ${distinct.size} 种输出：$observed",
         )
 
-        // 无回归：默认组合的主色必须等于平台壁纸主色（tone 40 由种子直接决定）
         val defaultIndex = combos.indexOf(PaletteStyle.TonalSpot to ColorSpec.SpecVersion.SPEC_2021)
         val expectedPrimary = assertNotNull(platformPrimary, "未捕获平台配色")
         assertEquals(
@@ -129,7 +101,7 @@ class ThemeDynamicRegressionTest {
                 themeSeed = ThemeSeed.Lotus,
                 paletteStyle = candidates[index.intValue],
                 specVersion = ColorSpec.SpecVersion.SPEC_2025,
-                // 静态种子分支不应触碰平台取色
+
                 systemSchemeProvider = { error("静态种子分支不得调用平台取色") },
             ) {
                 val scheme = MaterialTheme.colorScheme

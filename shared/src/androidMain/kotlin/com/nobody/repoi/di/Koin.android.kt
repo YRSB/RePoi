@@ -6,10 +6,6 @@ import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
-/**
- * 平台 DataStore 模块（android）：`filesDir` + 同名 `.preferences_pb`，
- * 保证 Android 端从原生版升级后数据连续。
- */
 actual val dataStoreModule: Module
     get() = module {
         single(named("user_prefs")) {

@@ -27,7 +27,7 @@ class ZoneBrowseViewModel(
     val uiState: StateFlow<ZoneBrowseUiState> = _uiState.asStateFlow()
 
     init {
-        // 响应式监听关注列表变化（如在专区详情页关注/取关）
+
         viewModelScope.launch {
             zoneRepository.focusZonesFlow.collect { focusList ->
                 _uiState.update { it.copy(focusZones = focusList) }

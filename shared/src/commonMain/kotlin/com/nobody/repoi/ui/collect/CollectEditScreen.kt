@@ -86,12 +86,6 @@ import com.nobody.repoi.platform.nowMillis
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/** 收藏日期格式化：`yyyy-MM-dd` 经由 [DateTimeFormats.ymdFromMillis]（KMP datetime，无 SDF 单例）。 */
-
-/**
- * 收藏管理与编辑主界面。
- * 驱动 5 态互斥切换、入手信息动态展示、评分与标签选择、保存与取消收藏全生命周期。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectEditScreen(
@@ -102,12 +96,10 @@ fun CollectEditScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 初始化加载数据
     LaunchedEffect(param) {
         viewModel.initData(param)
     }
 
-    // 操作结果副作用分发：静默返回，由目标页面的响应式流驱动视觉反馈
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             onBack()
@@ -208,7 +200,7 @@ fun CollectEditScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // 1. 条目头部微缩卡片
+
                 if (uiState.loadFailed) {
                     item(key = "load_error") {
                         CollectCardSection {
@@ -239,7 +231,6 @@ fun CollectEditScreen(
                     )
                 }
 
-                // 2. 5 种互斥分类状态卡片选择栏
                 item(key = "state_selector") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -256,7 +247,6 @@ fun CollectEditScreen(
                     }
                 }
 
-                // 3. 评分面板 (0..5 星级)
                 item(key = "rating_panel") {
                     CollectRatingSection(
                         rating = uiState.rating,
@@ -265,7 +255,6 @@ fun CollectEditScreen(
                     )
                 }
 
-                // 4. 入手/动态详情区（根据 selectedState 动态展开）
                 item(key = "order_info_panel") {
                     AnimatedVisibility(
                         visible = uiState.selectedState in listOf(
@@ -294,7 +283,6 @@ fun CollectEditScreen(
                     }
                 }
 
-                // 5. 标签区（我的标签 + 热门备选标签池）
                 item(key = "tags_panel") {
                     CollectTagsSection(
                         myTags = uiState.myTags,
@@ -305,7 +293,6 @@ fun CollectEditScreen(
                     )
                 }
 
-                // 6. 评价简评输入框
                 item(key = "comment_panel") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -335,7 +322,6 @@ fun CollectEditScreen(
                     }
                 }
 
-                // 7. 底部主操作区
                 item(key = "actions") {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -397,9 +383,6 @@ fun CollectEditScreen(
         }
     }
 
-    // ── 弹窗集合 ──
-
-    // 1. 日期选择器弹窗
     if (uiState.showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = runCatching {
@@ -429,7 +412,6 @@ fun CollectEditScreen(
         }
     }
 
-    // 2. 添加标签弹窗
     if (uiState.showAddTagDialog) {
         var inputTag by remember { mutableStateOf("") }
         AlertDialog(
@@ -464,7 +446,6 @@ fun CollectEditScreen(
         )
     }
 
-    // 3. 取消收藏二次确认对话框
     if (uiState.showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.setDeleteConfirmDialogVisible(false) },
@@ -493,7 +474,6 @@ fun CollectEditScreen(
         )
     }
 
-    // 4. 删除已有标签二次确认对话框
     if (uiState.showDeleteTagDialog && uiState.tagToDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissDeleteTagDialog() },
@@ -516,10 +496,6 @@ fun CollectEditScreen(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 子组件：条目头部摘要卡片 (CollectItemHeader)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun CollectItemHeader(
@@ -591,10 +567,6 @@ private fun CollectItemHeader(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 子组件：5 态分类网格 (CollectStateGrid)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun CollectStateGrid(
     selectedState: String,
@@ -658,10 +630,6 @@ private fun CollectStateGrid(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 子组件：评分星级面板 (CollectRatingSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun CollectRatingSection(
@@ -730,10 +698,6 @@ private fun CollectRatingSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 子组件：入手/预订详情表单 (CollectOrderDetailsSection)
-// ─────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CollectOrderDetailsSection(
@@ -780,7 +744,6 @@ private fun CollectOrderDetailsSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // 1. 日期选择
             OutlinedCard(
                 onClick = onOrderTimeClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -815,7 +778,6 @@ private fun CollectOrderDetailsSection(
                 }
             }
 
-            // 2. 金额与币种选择
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -832,7 +794,6 @@ private fun CollectOrderDetailsSection(
                     singleLine = true
                 )
 
-                // 币种下拉选择
                 var currencyExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = currencyExpanded,
@@ -845,12 +806,12 @@ private fun CollectOrderDetailsSection(
                         readOnly = true,
                         label = { Text("币种") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
-                        // KMP CMP 1.12.1：menuAnchor() 无 AnchorType 参数（material3 旧 ExposedDropdownMenu API 已更名）。
+
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                         shape = MaterialTheme.shapes.medium,
                         singleLine = true
                     )
-                    // KMP CMP 1.12.1：旧 ExposedDropdownMenu 更名为 DropdownMenu（同 Box 作用域 API）。
+
                     androidx.compose.material3.DropdownMenu(
                         expanded = currencyExpanded,
                         onDismissRequest = { currencyExpanded = false }
@@ -868,7 +829,6 @@ private fun CollectOrderDetailsSection(
                 }
             }
 
-            // 3. 入手途径
             OutlinedTextField(
                 value = orderWay,
                 onValueChange = onOrderWayChange,
@@ -879,7 +839,6 @@ private fun CollectOrderDetailsSection(
                 singleLine = true
             )
 
-            // 4. 购买数量（仅已入状态支持）
             if (isBuy) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -921,7 +880,6 @@ private fun CollectOrderDetailsSection(
                 }
             }
 
-            // 5. 入手形式 Chips（已入与有过支持）
             if (isBuy || isResell) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
@@ -952,10 +910,6 @@ private fun CollectOrderDetailsSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 子组件：标签管理面板 (CollectTagsSection)
-// ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -999,7 +953,6 @@ private fun CollectTagsSection(
                 }
             }
 
-            // 我的已有标签列表
             if (myTags.isNotEmpty()) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1035,7 +988,6 @@ private fun CollectTagsSection(
                 )
             }
 
-            // 热门推荐标签池
             if (suggestedTags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -1071,7 +1023,6 @@ private fun CollectTagsSection(
     }
 }
 
-// 收敛多处卡片容器样板，避免形状与层级分散定义
 @Composable
 private fun CollectCardSection(
     modifier: Modifier = Modifier,

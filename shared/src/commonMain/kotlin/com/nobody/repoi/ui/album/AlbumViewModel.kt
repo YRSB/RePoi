@@ -210,7 +210,7 @@ class AlbumViewModel(
                     isFollowEmpty = true
                 )
             }
-            // 关注分区为空时保持空态，不发起列表请求
+
             return
         }
         _uiState.update {

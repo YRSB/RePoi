@@ -10,18 +10,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * 通用泛型翻页控制器。
- *
- * 接管并发锁、在途请求取消、稳定键去重追加、首尾错误恢复以及局部列表变动，
- * 隔离业务 ViewModel 与底层分页状态机细节。
- *
- * @param scope 协程作用域（通常传入 viewModelScope）
- * @param initialKey 首屏翻页初始键
- * @param keySelector 稳定键提取器，用于去重追加（返回 null 表示不对该项去重）
- * @param nextKeyProvider 计算下一页请求键的函数，返回 null 表示没有下一页
- * @param fetcher 挂起拉取函数，返回封装批次数据的 Result<PageChunk<T>>
- */
 open class KeyedListLoader<T, Key>(
     protected val scope: CoroutineScope,
     protected val initialKey: Key,
@@ -42,11 +30,6 @@ open class KeyedListLoader<T, Key>(
 
     private var activeJob: Job? = null
 
-    /**
-     * 首屏初始装载。
-     *
-     * @param clearItems 是否在发起请求前清空现有列表（默认清空）
-     */
     fun loadInitial(clearItems: Boolean = true) {
         cancelActiveJob()
         currentKey = initialKey
@@ -62,11 +45,6 @@ open class KeyedListLoader<T, Key>(
         executeFetch(key = initialKey, isRefresh = false, isAppend = false)
     }
 
-    /**
-     * 下拉刷新。
-     *
-     * 保持现有列表条目可见，成功后用新数据替换并重置页码与键值。
-     */
     fun refresh() {
         cancelActiveJob()
         currentKey = initialKey
@@ -80,14 +58,6 @@ open class KeyedListLoader<T, Key>(
         executeFetch(key = initialKey, isRefresh = true, isAppend = false)
     }
 
-    /**
-     * 加载更多。
-     *
-     * 受到并发状态守卫约束：当前正在初始装载、刷新或加载更多，或 hasMore 为 false，
-     * 以及首屏尚未加载成功（处于首屏错误状态）时直接丢弃调用。
-     *
-     * @param isSilent 是否为全屏画廊等场景的静默预加载（不触发列表底部可见加载指示器）
-     */
     fun loadMore(isSilent: Boolean = false) {
         val snapshot = _state.value
         if (snapshot.stage != LoadStage.Idle || !snapshot.hasMore) return
@@ -108,9 +78,6 @@ open class KeyedListLoader<T, Key>(
         executeFetch(key = nextKey, isRefresh = false, isAppend = true)
     }
 
-    /**
-     * 智能重试：自动识别失败阶段并重新发起请求。
-     */
     fun retry() {
         val snapshot = _state.value
         when {
@@ -127,55 +94,34 @@ open class KeyedListLoader<T, Key>(
         }
     }
 
-    /**
-     * 本地列表原子转换。
-     */
     fun mutateItems(transform: (List<T>) -> List<T>) {
         _state.update { it.copy(items = transform(it.items)) }
     }
 
-    /**
-     * 本地更新匹配谓词的条目。
-     */
     fun updateItem(predicate: (T) -> Boolean, transform: (T) -> T) {
         mutateItems { list ->
             list.map { item -> if (predicate(item)) transform(item) else item }
         }
     }
 
-    /**
-     * 本地移除匹配谓词的条目。
-     */
     fun removeItem(predicate: (T) -> Boolean) {
         mutateItems { list ->
             list.filterNot(predicate)
         }
     }
 
-    /**
-     * 直接重置列表条目（内置稳定键去重）。
-     */
     fun setItems(items: List<T>) {
         _state.update { it.copy(items = deduplicate(items)) }
     }
 
-    /**
-     * 手动更新是否还有下一页。
-     */
     fun setHasMore(hasMore: Boolean) {
         _state.update { it.copy(hasMore = hasMore) }
     }
 
-    /**
-     * 清理所有错误提示。
-     */
     fun clearError() {
         _state.update { it.copy(initialError = null, appendError = null) }
     }
 
-    /**
-     * 取消在途请求并重置状态机为闲置。
-     */
     fun reset(clearItems: Boolean = true) {
         cancelActiveJob()
         currentKey = initialKey

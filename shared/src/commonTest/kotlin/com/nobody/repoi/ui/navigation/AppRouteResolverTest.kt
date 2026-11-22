@@ -12,20 +12,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/**
- * 统一路由解析器测试（纯 JVM，无 Compose/平台副作用）。
- *
- * 第 1 段为旧版动态分流器与链接调度器用例的无损平移（断言对象统一为 [RouteTarget]）；
- * 第 2 段补全 9 类站内 URL、站外伪装路径、空白与非法 ID 边界；
- * 第 3 段覆盖 resolveAction 全部分类区间、ID 回退与用户回退。
- */
 class AppRouteResolverTest {
-
-    // ── 1. 旧版分流器用例平移 ────────────────────────────────────────────
 
     @Test
     fun `resolveAction - company or vendor resolves to Vendor destination`() {
-        // 1. 通过 itemType = "company"
+
         val vendor1 = vendorParam(
             ActionItem(
                 id = 1L,
@@ -43,7 +34,6 @@ class AppRouteResolverTest {
         assertEquals("Good Smile Company", vendor1.initialName)
         assertEquals("/cover/gsc.jpg", vendor1.initialCover)
 
-        // 2. 通过 itemType = "vendor"
         val vendor2 = vendorParam(
             ActionItem(
                 id = 2L,
@@ -58,7 +48,6 @@ class AppRouteResolverTest {
         assertEquals(201L, vendor2.companyId)
         assertEquals("ALTER", vendor2.initialName)
 
-        // 3. 通过 categoryId = 40000
         val vendor3 = vendorParam(
             ActionItem(
                 id = 3L,
@@ -76,7 +65,7 @@ class AppRouteResolverTest {
 
     @Test
     fun `resolveAction - charactar with categoryId 40100 resolves to Character not Vendor`() {
-        // 真机复现：角色条目 categoryId=40100 曾被厂商区间误吞导致厂商详情加载失败
+
         val elementItem = ActionItem(
             id = 40922987L,
             relateItem = RelateItem(
@@ -231,8 +220,6 @@ class AppRouteResolverTest {
         assertEquals("条目信息暂未就绪：未知厂商", notice.message)
     }
 
-    // ── 2. URL 解析：9 类站内实体 ────────────────────────────────────────
-
     @Test
     fun `resolveUrl - hobby and item urls resolve to HobbyDetailNavKey`() {
         val urls = listOf(
@@ -386,7 +373,6 @@ class AppRouteResolverTest {
             assertEquals(666L, key.param.userId, "userId for $url")
         }
 
-        // 验证非法后缀（如 123abc）不会被吞为 123，回退到 External
         val malformed = "/user/home?userId=123abc"
         assertEquals(RouteTarget.External(malformed), AppRouteResolver.resolveUrl(malformed))
     }
@@ -402,8 +388,6 @@ class AppRouteResolverTest {
         val character = assertIs<CharacterNavKey>(urlKey("CHARACTER/42"))
         assertEquals(42L, character.param.characterId)
     }
-
-    // ── 2b. 站外 / 伪装 / 空白 / 非法 ID ────────────────────────────────
 
     @Test
     fun `resolveUrl - external urls fall back to External preserving trimmed input`() {
@@ -433,8 +417,6 @@ class AppRouteResolverTest {
         assertEquals(RouteTarget.External("/hobby/12abc"), AppRouteResolver.resolveUrl("/hobby/12abc"))
     }
 
-    // ── 3. resolveAction：全分类区间 / ID 回退 / 用户回退 ────────────────
-
     @Test
     fun `resolveAction - album classification by category range and actionType`() {
         for (categoryId in listOf(60000, 70000, 79999)) {
@@ -457,7 +439,6 @@ class AppRouteResolverTest {
         assertEquals(2L, param.companyId)
         assertEquals(1L, param.companyNodeId)
 
-        // 40100 属于角色区间，绝不能落入厂商
         val character = characterParam(actionOf(RelateItem(id = 1L, itemId = 2L, categoryId = 40100)))
         assertEquals(2L, character.characterId)
     }
@@ -576,8 +557,6 @@ class AppRouteResolverTest {
         val hobby = AppRouteResolver.resolveAction(actionOf(RelateItem(id = 0L, itemId = 0L)))
         assertEquals(RouteTarget.Notice("条目信息暂未就绪：手办详情"), hobby)
     }
-
-    // ── helpers ──────────────────────────────────────────────────────────
 
     private fun actionOf(relate: RelateItem): ActionItem = ActionItem(id = 1L, relateItem = relate)
 

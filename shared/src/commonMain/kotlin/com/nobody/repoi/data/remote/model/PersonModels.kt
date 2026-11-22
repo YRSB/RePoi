@@ -3,9 +3,6 @@ package com.nobody.repoi.data.remote.model
 import com.nobody.repoi.util.DefaultJson
 import kotlinx.serialization.Serializable
 
-/**
- * 人物主体响应 (api/person/get)
- */
 @Serializable
 data class PersonDetailPayload(
     val result: PersonDetailResult = PersonDetailResult()
@@ -37,15 +34,13 @@ data class PersonData(
     val hobbyRating: Double = 0.0,
     val hobbyCount: Int = 0
 ) {
-    /** 优先显示中文名，若无则显示日文/外文名 */
+
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 
-    /** 副标题（若有外文名且与主标题不同） */
     val subName: String?
         get() = name?.takeIf { it.isNotBlank() && it != displayName }
 
-    /** 性别文案：1 男、2 女，其余未知 */
     val sexText: String
         get() = when (sex) {
             1 -> "男"
@@ -53,7 +48,6 @@ data class PersonData(
             else -> "未知"
         }
 
-    /** 生日文案，有效年月日组合展示，全无则未知 */
     val birthdayText: String
         get() {
             val map = birthdayMap ?: return "未知"
@@ -66,7 +60,6 @@ data class PersonData(
             return parts.joinToString("").ifBlank { "未知" }
         }
 
-    /** 解析 otherInfo JSON 字符串获取结构化扩展信息 */
     val parsedOtherInfo: List<CompanyOtherInfoItem>
         get() {
             val jsonStr = otherInfo ?: return emptyList()
@@ -77,7 +70,6 @@ data class PersonData(
             }
         }
 
-    /** 纯文本详情介绍（去除 HTML 标签） */
     val detailPlainText: String
         get() {
             if (detail.isNullOrBlank()) return ""
@@ -101,10 +93,6 @@ data class PersonBirthday(
     val season: Int = 0
 )
 
-/**
- * 人物参与作品响应 (api/person/works/get)
- * 出演角色 (api/person/character/get) 同形复用
- */
 @Serializable
 data class PersonWorksPayload(
     val worksList: List<PersonWorksEntry> = emptyList()
@@ -129,14 +117,11 @@ data class PersonWorksItem(
     val nameCN: String? = null,
     val cover: String? = null
 ) {
-    /** 优先显示中文名，若无则显示原名 */
+
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 }
 
-/**
- * 人物参与周边响应 (api/person/hobby/get)
- */
 @Serializable
 data class PersonHobbyPayload(
     val hobby: List<PersonHobbyEntry> = emptyList()
@@ -157,7 +142,7 @@ data class PersonHobbyItem(
     val nameCN: String? = null,
     val cover: String? = null
 ) {
-    /** 优先显示中文名，若无则显示原名 */
+
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 }

@@ -29,15 +29,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 首页分享（相册）板块单测（issue #157 验收标准）。
- *
- * 覆盖：懒加载（首次切到才请求）、三作用域请求参数（`zones` 并集 / 单区 nodeId / 全站省略）、
- * 6 档排序与分类切换的重置重载、分页去重追加、切走再切回状态保留、空关注短路。
- *
- * 请求参数的事实依据：`docs/research/aggregate-api-verification.md` §3/§4.3/§5
- * （相册 `zones` 为并集，三种作用域均可用；`homeScope` 对相册无意义，不得发送）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeFeedAlbumBoardTest {
 
@@ -50,8 +41,7 @@ class HomeFeedAlbumBoardTest {
 
     @AfterTest
     fun tearDownMain() {
-        // 排空仍排在 Main 上的任务（StandardTestDispatcher 的 context 无 Job，cancelChildren 是空操作），
-        // 避免续体在 resetMain() 之后恢复并污染下一个测试。
+
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
@@ -103,7 +93,6 @@ class HomeFeedAlbumBoardTest {
     private fun albumPageJson(ids: List<Long>): String =
         """{"success":true,"code":200,"msg":"ok","data":{"page":1,"list":[${ids.joinToString(",") { albumItem(it) }}]}}"""
 
-    /** 按页码路由相册列表（页大小 24；整页才 `hasMore`）。 */
     private fun Env.stubAlbumPages(pages: Map<Int, List<Long>>) {
         albumMock.routeWhen(
             predicate = { path, _, _ -> path.contains("api/album/list") },
@@ -114,7 +103,6 @@ class HomeFeedAlbumBoardTest {
         )
     }
 
-    /** 单专区 `api/zone/info` 路由（首页据此装配二级板块）。 */
     private fun Env.stubZoneInfo(nodeId: Long, tabs: List<String>) {
         val tabsJson = tabs.joinToString(",") { type -> "\"$type\"" }
         zoneMock.routeWhen(
@@ -144,7 +132,6 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 聚合态二级 Tab 自动包含分享/讨论/产品/二手/实体板块，但未切过去之前零请求
         assertEquals(
             listOf(
                 ZoneBoard.Action, ZoneBoard.Album, ZoneBoard.Posts, ZoneBoard.Hobby, ZoneBoard.Resale,
@@ -166,7 +153,7 @@ class HomeFeedAlbumBoardTest {
         assertEquals(AlbumBoardOptions.DEFAULT_ORDER, form["order"])
         assertEquals("1", form["page"])
         assertEquals(AlbumBoardOptions.PAGE_SIZE.toString(), form["pageSize"])
-        // 全部作用域：省略 zones / category / homeScope
+
         assertFalse(form.containsKey("zones"))
         assertFalse(form.containsKey("category"))
         assertFalse(form.containsKey("homeScope"))
@@ -190,7 +177,6 @@ class HomeFeedAlbumBoardTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // #156 冷启动把落盘的 follow 回落「全部」，因此运行期显式切到关注
         viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
         viewModel.selectBoard(ZoneBoard.Album)
@@ -199,7 +185,7 @@ class HomeFeedAlbumBoardTest {
         val form = env.albumMock.lastRequest().formEntries()
         assertEquals("100,200", form["zones"])
         assertFalse(form.containsKey("homeScope"))
-        // 聚合态不提供分类候选（原版仅单专区展示分类入口）
+
         assertTrue(viewModel.uiState.value.albumCategoryOptions.isEmpty())
         assertTrue(viewModel.uiState.value.albumSelectedCategory == null)
     }
@@ -224,11 +210,10 @@ class HomeFeedAlbumBoardTest {
         viewModel.selectBoard(ZoneBoard.Album)
         advanceUntilIdle()
 
-        // 首屏相册列表：单专区 zones=nodeId
         val albumRequest = env.albumMock.takeRequest()
         assertEquals("/api/album/list", albumRequest.encodedPath)
         assertEquals("100", albumRequest.formEntries()["zones"])
-        // 分类候选：单专区专用接口，itemType=album
+
         val categoriesRequest = env.albumMock.takeRequest()
         assertEquals("/api/zone/categories", categoriesRequest.encodedPath)
         assertEquals("100", categoriesRequest.queryParameter("nodeId"))
@@ -240,7 +225,6 @@ class HomeFeedAlbumBoardTest {
             state.albumCategoryOptions
         )
 
-        // 切分类：清列表 + 回第一页 + 带 category 重新请求
         viewModel.selectAlbumCategory(60100)
         advanceUntilIdle()
         val filtered = env.albumMock.lastRequest()
@@ -250,7 +234,6 @@ class HomeFeedAlbumBoardTest {
         assertEquals("1", filteredForm["page"])
         assertEquals(60100, viewModel.uiState.value.currentBoardFilters.albumCategory)
 
-        // 切回全部分类：省略 category 参数
         viewModel.selectAlbumCategory(null)
         advanceUntilIdle()
         val allCategories = env.albumMock.lastRequest().formEntries()
@@ -286,7 +269,6 @@ class HomeFeedAlbumBoardTest {
         assertEquals("picCount", form["order"])
         assertEquals("1", form["page"])
 
-        // 非法排序键被忽略，不发请求
         val before = env.albumMock.requestCount
         viewModel.selectAlbumOrder("bogus")
         advanceUntilIdle()
@@ -297,7 +279,7 @@ class HomeFeedAlbumBoardTest {
     fun albumPagination_appendsDistinctNextPage() = runTest(testDispatcher) {
         val env = env()
         val firstPage = (1L..24L).toList()
-        // 第二页含重复项 24，验证宿主按 targetAlbumId 去重；非整页 → hasMore=false
+
         env.stubAlbumPages(mapOf(1 to firstPage, 2 to listOf(24L, 25L, 26L)))
         val viewModel = env.viewModel()
         advanceUntilIdle()
@@ -339,7 +321,7 @@ class HomeFeedAlbumBoardTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneBoard.Album, state.selectedBoard)
-        // 切走再切回：不重复请求，状态（items / 排序）保留
+
         assertEquals(requestCount, env.albumMock.requestCount)
         assertEquals("hits", state.albumSelectedOrder)
         assertTrue(state.isAlbumLoaded)
@@ -347,7 +329,7 @@ class HomeFeedAlbumBoardTest {
 
     @Test
     fun albumPagination_allDuplicatePage_stopsPaging() = runTest(testDispatcher) {
-        // 服务端末页可能整页重复返回已展示条目：去重后没有新增即判定到底，避免无限翻页
+
         val env = env()
         val firstPage = (1L..24L).toList()
         env.stubAlbumPages(mapOf(1 to firstPage, 2 to firstPage))
@@ -401,7 +383,7 @@ class HomeFeedAlbumBoardTest {
         val env = env()
         val viewModel = env.viewModel()
         advanceUntilIdle()
-        // #156 冷启动会回落 follow，这里模拟运行期显式切到「关注」且未关注任何专区
+
         viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.zoneScope.isFollowEmpty)

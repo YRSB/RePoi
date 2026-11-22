@@ -22,9 +22,6 @@ import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
 import com.nobody.repoi.ui.works.WorksNavParam
 
-/**
- * 强类型导航入栈语义扩展函数集：收敛全局页面跳转逻辑，消除重复样板代码。
- */
 fun NavBackStack<NavKey>.navigateToDetail(itemId: Long) = add(HobbyDetailNavKey(itemId))
 fun NavBackStack<NavKey>.navigateToDetail(param: DetailNavParam) = add(HobbyDetailNavKey(param))
 fun NavBackStack<NavKey>.navigateToAlbum(param: AlbumNavParam) = add(AlbumDetailNavKey(param))
@@ -47,12 +44,6 @@ fun NavBackStack<NavKey>.navigateToCharacterWorksList(param: CharacterWorksListN
 fun NavBackStack<NavKey>.navigateToWorksCollectEdit(param: WorksCollectEditNavParam) = add(WorksCollectEditNavKey(param))
 fun NavBackStack<NavKey>.navigateToSeries(param: SeriesNavParam) = add(SeriesDetailNavKey(param))
 
-/**
- * 实体卡片点击分发到对应详情页（厂商/系列/作品/角色/人物）。
- *
- * 参数构造与专区详情 `ZoneDetailScreen.handleEntityClick` 保持逐字一致（两屏同一跳转语义）；
- * 首页经 `ZoneBoardPane` 的 `onEntityClick(board, item)` 回调进入本函数。
- */
 fun NavBackStack<NavKey>.navigateToEntityDetail(board: ZoneBoard, item: ZoneEntityItem) {
     val targetId = item.targetId
     when (board) {
@@ -131,14 +122,6 @@ fun NavBackStack<NavKey>.navigateToSearchResult(
     )
 )
 
-/**
- * 提交搜索结果并执行单根栈深度收敛（ADR-0019 契约）：
- * 1. 若当前栈顶为 [SearchNavKey]，且紧邻的前一个条目为 [SearchResultNavKey]（从结果页二次拉起落地页重搜），
- *    原子弹出临时 [SearchNavKey] 与旧 [SearchResultNavKey]，并压入新 [SearchResultNavKey]。
- * 2. 若当前栈顶为 [SearchNavKey] 但前一个条目不是 [SearchResultNavKey]（从普通入口进入落地页发起首搜），
- *    保持底层页面与 [SearchNavKey]，直接压入新 [SearchResultNavKey]（侧滑可返回输入现场）。
- * 3. 无论重搜多少轮，搜索结果页在单根栈中最多只存在 1 个，彻底消除无限膨胀。
- */
 fun NavBackStack<NavKey>.commitSearchResult(param: SearchResultNavParam = SearchResultNavParam()) {
     if (size >= 2 && last() is SearchNavKey && this[size - 2] is SearchResultNavKey) {
         removeLastOrNull()
@@ -208,10 +191,6 @@ fun NavBackStack<NavKey>.navigateToMessageChat(targetUserId: Long, targetUserNam
 fun NavBackStack<NavKey>.navigateToMessageBlock() = add(MessageBlockNavKey())
 fun NavBackStack<NavKey>.navigateToSettingsShieldList() = add(SettingsShieldListNavKey())
 
-/**
- * 为 [RePoiNavigator] 提供与 [NavBackStack] 完全对齐的强类型语义跳转扩展，
- * 保证各页面触发跳转时，新页面永远压入全局根栈 [RePoiNavigator.rootBackStack] 栈顶。
- */
 fun RePoiNavigator.navigateToDetail(itemId: Long) = currentBackStack.navigateToDetail(itemId)
 fun RePoiNavigator.navigateToDetail(param: DetailNavParam) = currentBackStack.navigateToDetail(param)
 fun RePoiNavigator.navigateToAlbum(param: AlbumNavParam) = currentBackStack.navigateToAlbum(param)
@@ -253,9 +232,6 @@ fun RePoiNavigator.navigateToSearchResult(
     companyName: String? = null
 ) = currentBackStack.navigateToSearchResult(keyword, category, companyNodeId, companyName)
 
-/**
- * 为 [RePoiNavigator] 提供搜索结果提交与栈收敛扩展。
- */
 fun RePoiNavigator.commitSearchResult(param: SearchResultNavParam = SearchResultNavParam()) =
     currentBackStack.commitSearchResult(param)
 
@@ -306,14 +282,6 @@ fun RePoiNavigator.navigateToMessageBlock() = currentBackStack.navigateToMessage
 
 private const val NAV_LOG_SCOPE = "导航"
 
-/**
- * 执行统一路由目标 [RouteTarget] 的副作用落点：
- * - [RouteTarget.Internal] 压入全局根栈；
- * - [RouteTarget.External] 空白静默返回，非空交由 [uriHandler] 打开，失败提示；
- * - [RouteTarget.Notice] 直接透传提示文案。
- *
- * 全部分支统一写入应用日志“导航”域，便于排查跳转问题。
- */
 fun RePoiNavigator.navigate(target: RouteTarget, uriHandler: UriHandler, onMessage: (String) -> Unit) {
     when (target) {
         is RouteTarget.Internal -> {
@@ -340,14 +308,8 @@ fun RePoiNavigator.navigate(target: RouteTarget, uriHandler: UriHandler, onMessa
     }
 }
 
-/**
- * 解析动态流动作并执行跳转。
- */
 fun RePoiNavigator.navigateAction(actionItem: ActionItem, uriHandler: UriHandler, onMessage: (String) -> Unit) =
     navigate(AppRouteResolver.resolveAction(actionItem), uriHandler, onMessage)
 
-/**
- * 解析富文本超链接并执行跳转。
- */
 fun RePoiNavigator.navigateUrl(url: String, uriHandler: UriHandler, onMessage: (String) -> Unit) =
     navigate(AppRouteResolver.resolveUrl(url), uriHandler, onMessage)

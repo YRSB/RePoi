@@ -37,10 +37,6 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 
-/**
- * 角色/要素维基详情页 (CharacterDetailScreen)。
- * 严格遵循单流 LazyColumn、自适应双窗格、悬浮胶囊底栏与多阶段加载规范。
- */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterDetailScreen(
@@ -66,12 +62,10 @@ fun CharacterDetailScreen(
     val textSharing = rememberTextSharing()
     val imageViewer = LocalImageViewer.current
 
-    // 初始化多阶段加载
     LaunchedEffect(navParam) {
         viewModel.loadDetail(navParam)
     }
 
-    // 评论互动一次性提示
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -83,7 +77,6 @@ fun CharacterDetailScreen(
     var commentUserId by remember { mutableStateOf(viewModel.currentCommentUserId) }
     LaunchedEffect(Unit) { commentUserId = viewModel.resolveCommentUserId() }
 
-    // 分享角色
     val character = uiState.character
     val onShareCharacter: () -> Unit = {
         val characterName = character?.displayName?.ifBlank { null } ?: navParam.initialName ?: "角色"
@@ -195,7 +188,7 @@ fun CharacterDetailScreen(
                         PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
-                    // ── 区块 0：角色综合档案卡 ──
+
                     item(key = "section_header") {
                     CharacterHeaderSection(
                         character = character,
@@ -215,7 +208,6 @@ fun CharacterDetailScreen(
                     )
                 }
 
-                // ── 区块 1：登场作品 ──
                 if (uiState.isWorksLoading || uiState.works.isNotEmpty()) {
                     item(key = "section_works") {
                         CharacterWorksSection(
@@ -267,7 +259,6 @@ fun CharacterDetailScreen(
                     }
                 }
 
-                // ── 区块 2：周边手办 ──
                 if (uiState.isHobbysLoading || uiState.hobbys.isNotEmpty()) {
                     item(key = "section_hobbys") {
                         CharacterHobbysSection(
@@ -302,7 +293,6 @@ fun CharacterDetailScreen(
                     }
                 }
 
-                // ── 区块 3：相关相册 ──
                 if (uiState.isAlbumsLoading || uiState.albums.isNotEmpty()) {
                     item(key = "section_albums") {
                         CharacterAlbumsSection(
@@ -341,7 +331,6 @@ fun CharacterDetailScreen(
                     }
                 }
 
-                // ── 区块 4：推荐要素 ──
                 if (uiState.isRelevantLoading || uiState.relevantCharacters.isNotEmpty()) {
                     item(key = "section_relevant") {
                         CharacterRelevantSection(

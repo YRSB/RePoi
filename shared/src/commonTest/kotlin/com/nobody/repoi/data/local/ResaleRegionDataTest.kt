@@ -4,12 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 二手地区静态数据纯逻辑测试（W4-W5 pure-logic；KMP commonTest）。
- *
- * `ResaleRegionData` 为纯内存静态区划表（无协程/网络/DataStore）；
- * ID 取自本文件第一手区划行。
- */
 class ResaleRegionDataTest {
 
     @Test

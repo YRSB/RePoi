@@ -22,7 +22,6 @@ actual val supportsDynamicColor: Boolean = isWallpaperColorAvailable()
 actual val isDynamicSeedAvailable: Boolean
     get() = isWallpaperColorAvailable()
 
-
 @Composable
 actual fun dynamicPoiShelfColorScheme(darkTheme: Boolean): ColorScheme? {
     if (!supportsDynamicColor) return null

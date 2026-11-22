@@ -46,7 +46,7 @@ data class HobbyListUiState(
     val loadMoreError: String? = null,
     val showFilterSheet: Boolean = false
 ) {
-    /** 是否有高级筛选条件生效（用于顶栏徽标指示） */
+
     val hasAdvancedFilters: Boolean
         get() = sex != null || !specs.isNullOrBlank() || !scale.isNullOrBlank() || r18 != null
 }

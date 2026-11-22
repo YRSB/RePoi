@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.HobbyAlbumItem
 
-/**
- * 手办相关相册列表 ViewModel。
- */
 class HobbyAlbumListViewModel(
     private val repository: HobbyDetailRepository
 ) : ViewModel() {
@@ -74,9 +71,6 @@ class HobbyAlbumListViewModel(
         loader.loadInitial()
     }
 
-    /**
-     * 切换相册排序（最热、最新、最多图）。
-     */
     fun selectOrder(order: HobbyAlbumSortOrder) {
         if (_uiState.value.selectedOrder == order && _uiState.value.albums.isNotEmpty()) {
             return

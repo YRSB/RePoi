@@ -11,12 +11,6 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 
-/**
- * 全局导航根容器：单根栈 `[MainNavKey, 二级页...]` 的页面分发。
- *
- * 栈底 [MainNavKey] 承载主界面（底栏 + 5 个 Tab 首屏，其 decorated entries 由调用方计算后传入），
- * 二级页面平铺压入同一栈并整屏覆盖主界面；返回完全交由 Nav3 原生出栈。
- */
 @Composable
 fun AppNavDisplay(
     rootBackStack: NavBackStack<NavKey>,
@@ -28,8 +22,7 @@ fun AppNavDisplay(
     modifier: Modifier = Modifier,
 ) {
     val onBack: () -> Unit = remember(navigator) { { navigator.pop() } }
-    // 调用方每次重组都会新建 onLoginSuccess；若作为 remember 键，entryProvider 会在每次导航期
-    // 重组时重建，抵消缓存收益。改为「最新值」引用，仅按稳定键记忆 provider。
+
     val latestOnLoginSuccess = rememberUpdatedState(onLoginSuccess)
 
     val entryProvider: (NavKey) -> NavEntry<NavKey> = remember(

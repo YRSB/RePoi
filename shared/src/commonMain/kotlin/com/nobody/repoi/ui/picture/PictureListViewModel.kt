@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 通用图片列表页面 UI 状态。
- */
 data class PictureListUiState(
     val items: List<PicItem> = emptyList(),
     val isLoading: Boolean = false,
@@ -73,45 +70,28 @@ class PictureListViewModel(
         }
     }
 
-    /**
-     * 初始加载第 1 页。
-     */
     fun loadInitial(param: PictureListNavParam) {
         if (_uiState.value.items.isNotEmpty() || _uiState.value.isLoading) return
         currentParam = param
         loader.loadInitial()
     }
 
-    /**
-     * 下拉刷新重置列表。
-     */
     fun refresh(param: PictureListNavParam) {
         if (_uiState.value.isRefreshing) return
         currentParam = param
         loader.refresh()
     }
 
-    /**
-     * 错误重试。
-     */
     fun retry(param: PictureListNavParam) {
         currentParam = param
         loader.retry()
     }
 
-    /**
-     * 触底追加或静默追加下一页。
-     *
-     * @param isSilent true 时为全屏画廊静默预加载，不触发列表底部旋转指示器；false 时为普通列表触底加载。
-     */
     fun loadMore(param: PictureListNavParam, isSilent: Boolean = false) {
         currentParam = param
         loader.loadMore(isSilent = isSilent)
     }
 
-    /**
-     * 全屏画廊翻页临近末尾时静默预加载下一页。
-     */
     fun loadMoreSilently(param: PictureListNavParam) {
         loadMore(param, isSilent = true)
     }

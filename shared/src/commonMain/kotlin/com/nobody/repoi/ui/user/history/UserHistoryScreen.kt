@@ -112,14 +112,12 @@ fun UserHistoryScreen(
         pageCount = { categories.size }
     )
 
-    // 选择态下沉：屏级持有选择集合快照，叶子经 provider 按需读取，避免全列表重组
     val selectedIdsSnapshot = remember { mutableStateOf(emptySet<Long>()) }
     selectedIdsSnapshot.value = uiState.selectedIds
     val isSelectedProvider: (Long) -> Boolean = remember {
         { id -> selectedIdsSnapshot.value.contains(id) }
     }
 
-    // 同步 Pager 手势滑动与 ViewModel 分类选中
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { pageIndex ->
             val targetCategory = categories.getOrNull(pageIndex) ?: UserHistoryCategory.HOBBY
@@ -127,7 +125,6 @@ fun UserHistoryScreen(
         }
     }
 
-    // 处理一次性消息提示
     LaunchedEffect(uiState.userMessage) {
         val msg = uiState.userMessage
         if (!msg.isNullOrBlank()) {
@@ -183,7 +180,7 @@ fun UserHistoryScreen(
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 顶部分类 Tab
+
                 PrimaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -236,7 +233,6 @@ fun UserHistoryScreen(
                 }
             }
 
-            // 底部多选悬浮操作栏
             AnimatedVisibility(
                 visible = uiState.isManageMode,
                 enter = slideInVertically { it } + fadeIn(),
@@ -362,9 +358,6 @@ private fun HistoryTabContent(
     }
 }
 
-/**
- * 手办历史流（黄金比例 9:13 紧凑海报网格与日期吸顶）。
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HobbyHistoryGridContent(
@@ -484,9 +477,6 @@ private fun HobbyHistoryGridContent(
     }
 }
 
-/**
- * 相册历史流（与应用内相册一致的自适应瀑布流 StaggeredGrid）。
- */
 @Composable
 private fun AlbumHistoryStaggeredGridContent(
     tabState: HistoryTabState,
@@ -583,9 +573,6 @@ private fun AlbumHistoryStaggeredGridContent(
     }
 }
 
-/**
- * 粘性吸顶日期标题栏。
- */
 @Composable
 private fun HistoryDateHeader(
     title: String,
@@ -606,9 +593,6 @@ private fun HistoryDateHeader(
     }
 }
 
-/**
- * 手办历史海报网格卡片（黄金比例 9:13 紧凑海报展示，基于 [PoiPosterCard] 深基元）。
- */
 @Composable
 private fun HobbyHistoryGridCard(
     item: UserHistoryItem,
@@ -619,7 +603,7 @@ private fun HobbyHistoryGridCard(
     onCoverLoadFailed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 选择态在叶子内部读取，选中变化时仅本卡片重组
+
     val isSelected = isSelectedProvider()
 
     PoiPosterCard(
@@ -670,16 +654,13 @@ private fun HobbyHistoryGridCard(
                 purpose = ImagePurpose.CARD_STANDARD,
                 contentDescription = item.actualTitle,
                 modifier = Modifier.fillMaxSize(),
-                // 历史接口的 cover 是写入快照，可能已被服务端重新落盘：失败时按条回源修复
+
                 onError = onCoverLoadFailed
             )
         }
     )
 }
 
-/**
- * 相册历史瀑布流卡片（对齐应用内其他相册卡片视觉风格，基于 [PoiCaptionGridCard] 深基元）。
- */
 @Composable
 private fun AlbumHistoryWaterfallCard(
     item: UserHistoryItem,
@@ -690,7 +671,7 @@ private fun AlbumHistoryWaterfallCard(
     onCoverLoadFailed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 选择态在叶子内部读取，选中变化时仅本卡片重组
+
     val isSelected = isSelectedProvider()
 
     PoiCaptionGridCard(
@@ -698,8 +679,7 @@ private fun AlbumHistoryWaterfallCard(
         onLongClick = onLongClick,
         modifier = modifier,
         cover = {
-            // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/；
-            // 高度交给基元的自适应纵横比撑开，失败态由基元渲染破损图标
+
             PoiAsyncImage(
                 path = item.actualCover,
                 category = MediaCategory.ALBUM,
@@ -708,7 +688,7 @@ private fun AlbumHistoryWaterfallCard(
                 modifier = Modifier.fillMaxWidth(),
                 adaptiveRatio = true,
                 fallbackRatio = 1.0f,
-                // 历史接口的 cover 是写入快照，可能已被服务端重新落盘：失败时按条回源修复
+
                 onError = onCoverLoadFailed
             )
         },
@@ -757,7 +737,7 @@ private fun AlbumHistoryWaterfallCard(
         },
         overlay = if (isManageMode) {
             {
-                // 管理模式遮罩与勾选图标
+
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -795,9 +775,6 @@ private fun AlbumHistoryWaterfallCard(
     )
 }
 
-/**
- * 浏览历史空状态页面。
- */
 @Composable
 private fun HistoryEmptyView(
     category: UserHistoryCategory,

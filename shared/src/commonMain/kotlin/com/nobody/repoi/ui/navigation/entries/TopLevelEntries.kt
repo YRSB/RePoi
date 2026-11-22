@@ -24,9 +24,6 @@ internal val TopLevelTransitionMetadata: Map<String, Any> = metadata {
     }
 }
 
-/**
- * 注册顶层 5 个主 Tab 路由（动态、条目、相册、关注、我的）。
- */
 fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
     entry<HomeNavKey>(metadata = TopLevelTransitionMetadata) {
         val uriHandler = LocalUriHandler.current
@@ -106,4 +103,3 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
         )
     }
 }
-

@@ -148,7 +148,7 @@ fun ZoneBrowseScreen(
                             bottom = 24.dp + innerPadding.calculateBottomPadding()
                         )
                     ) {
-                        // Section 1: 我关注的
+
                         item(key = "section_focus") {
                             Text(
                                 text = "我关注的",
@@ -203,7 +203,6 @@ fun ZoneBrowseScreen(
                             }
                         }
 
-                        // Section 2+: 各业务分组
                         uiState.groups.forEachIndexed { groupIndex, group ->
                             if (group.zones.isNotEmpty()) {
                                 item(key = "group_header_${group.name}_$groupIndex") {
@@ -258,9 +257,6 @@ fun ZoneBrowseScreen(
     }
 }
 
-/**
- * 单个专区圆形/圆角展示卡片（4 列网格）。
- */
 @Composable
 private fun ZoneItemCard(
     zone: ZoneItem,

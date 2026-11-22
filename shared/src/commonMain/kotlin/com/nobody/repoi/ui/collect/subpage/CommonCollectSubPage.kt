@@ -46,39 +46,15 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-// ── 通用实体子页（厂商/系列/角色/人物） ─────────────────────
-
-/** 原版空态文案 `R.string.text_empty_collect_item` */
 internal const val COLLECT_EMPTY_TEXT = "未收藏内容"
 
-/** 原版「用户已隐藏内容」空态文案 `R.string.text_empty_user_hide` */
 internal const val COLLECT_CONTENT_HIDDEN_TEXT = "该用户已设为隐藏此内容"
 
-/**
- * 通用 4 页网格列数：`StaggeredGridCells.Adaptive(140.dp)`。
- *
- * 横屏 / 平板会自动加列；列表形态用 `Adaptive(420.dp)`（与条目页「查看更多」一致）。
- */
 @Composable
 internal fun rememberCommonCollectGridColumns(): StaggeredGridCells {
     return remember { StaggeredGridCells.Adaptive(minSize = 140.dp) }
 }
 
-/**
- * 通用 4 页（厂商 / 系列 / 角色 / 人物）子页。
- *
- * 对标原版 `UserCollectItemSubPageFragment.java`：
- * - 顶部 2 档二级排序 Tab（收藏时间 `actionDate` / 人气 `collect`）；
- * - 右上角 `btn_action_view` 网格 ↔ 列表双模切换（列表恒定单列，网格为瀑布流）；
- * - 下拉刷新 + 触底分页 + 空态 / 错误态 / 「用户已隐藏内容」空态。
- *
- * @param commonOrder 当前 2 档排序 key
- * @param isListView true = 列表单列，false = 网格瀑布流
- * @param onSeriesSubPageClick 系列页 `itemType=="series" && pageState==1` 时的专属路由回调，
- *        缺省时回落到 [onItemClick]
- * @param onCharacterClick 角色页点击回调（§2.6 P0：原版有跳转，PoiShelf 曾是 `else -> Unit`），
- *        缺省时回落到 [onItemClick]
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CommonCollectSubPage(
@@ -96,15 +72,10 @@ internal fun CommonCollectSubPage(
     onCharacterClick: ((UserCollectCommonItem) -> Unit)? = null,
     onRetry: () -> Unit
 ) {
-    // 保存键绑定（统一入口见 rememberKeyedLazyGridState / rememberKeyedLazyStaggeredGridState）：
-    // 切换排序时网格 / 列表两态各自以全新的位置重建自动回顶；
-    // 排序不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复各自形态下的滚动位置。
+
     val listState = rememberKeyedLazyGridState("common_list", commonOrder)
     val gridState = rememberKeyedLazyStaggeredGridState("common_grid", commonOrder)
 
-    // 触底分页：单个布尔派生收敛滚动位置判断，空列表、已到底时不触发。
-    // 以两个状态实例 + 视图形态为 remember 键：排序变化会重建状态，
-    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
     val shouldLoadMore by remember(listState, gridState, isListView) {
         derivedStateOf {
             val totalCount = if (isListView) {
@@ -121,15 +92,12 @@ internal fun CommonCollectSubPage(
         }
     }
 
-    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
-    // 缺这个键就只会翻一页。
     LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
         }
     }
 
-    // 点击分流：系列专属路由 > 角色页专属回调 > 通用回调
     val handleItemClick: (UserCollectCommonItem) -> Unit = { target ->
         when {
             target.isSeriesDetailRoute() && onSeriesSubPageClick != null -> onSeriesSubPageClick(target)
@@ -139,7 +107,7 @@ internal fun CommonCollectSubPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部：2 档二级排序 Tab + 网格/列表切换（原版 btn_action_view）
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -182,9 +150,7 @@ internal fun CommonCollectSubPage(
                 }
 
                 isListView -> {
-                    // 列表用 Adaptive(420.dp)：手机 1 列、横屏/平板自动 2 列，
-                    // 与条目页「查看更多」(HobbyListScreen) 一致。
-                    // 早前用 LazyColumn，构造上永远只能 1 列，横屏下大片留白。
+
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 420.dp),
                         state = listState,
@@ -257,9 +223,6 @@ internal fun CommonCollectSubPage(
     }
 }
 
-/**
- * 通用 4 页的流式分页脚（列表 / 网格两模共用一个实现）。
- */
 @Composable
 private fun CommonCollectPagingFooter(
     isPaging: Boolean,

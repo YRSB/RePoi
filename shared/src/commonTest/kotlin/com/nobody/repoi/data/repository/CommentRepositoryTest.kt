@@ -6,12 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 评论互动仓储契约单测：子评论详情分页、点赞切换、回复发表。
- *
- * 通过 [MockApi] 驱动真实 HpoiApi；令牌失效与评论未命中的判定已下沉到客户端网络管道，
- * 本测试只校验仓储对外可观察的 `Result<T>` 语义。
- */
 class CommentRepositoryTest {
 
     private fun setup(token: String = "utoken-test"): Pair<MockApi, CommentRepository> {
@@ -82,16 +76,16 @@ class CommentRepositoryTest {
         val exception = result.exceptionOrNull() as ApiException
         assertEquals(400, exception.code)
         assertEquals("楼层不存在", exception.message)
-        // 讨论楼层失败后不得静默回落常规评论接口
+
         assertEquals(1, mock.requestCount)
     }
 
     @Test
     fun getReplies_fallbackToDiscussOnDeletedComment() = runTest {
         val (mock, repository) = setup()
-        // 第一次调用通用接口失败（-900 该评论已被删除）
+
         mock.enqueue(mock.failure(-900, "该评论已被删除"))
-        // 自动降级自愈调用 discuss 接口成功
+
         mock.enqueue(
             """{"success":true,"code":-1,"msg":"","data":{"discuss":{"id":36213759,"floor":7,"replyCount":1,"content":"自愈主楼"},"discussReplyList":[{"id":39647123,"content":"自愈回复","user":{"id":100,"nickname":"Alice"}}]}}"""
         )

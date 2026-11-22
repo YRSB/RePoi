@@ -60,12 +60,8 @@ import com.nobody.repoi.util.resolveMediaDisplayInfo
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
 
-/**
- * 左侧海报槽位的测试探针：仅用于 JVM Compose 布局约束断言（ADR-0016 / ADR-0021），无用户可见语义。
- */
 internal const val ActionCardPosterTag = "action_card_poster"
 
-/** 相册海报槽位的首帧回退比例：4:3（约 72dp 高），居于 16:9 与 1:1 之间，最小化首帧落差。 */
 private const val AlbumPosterFallbackRatio = 4f / 3f
 
 @Composable
@@ -84,7 +80,6 @@ fun ActionCard(
     val displayExtraImages = mediaInfo.displayExtraImages
     val allRawUrls = mediaInfo.allRawUrls
 
-    // 状态判定：当无用户信息或为官方出荷/预定等事件（actionType=401）时，切换为官方情报自适应模式
     val isOfficialNotice = actionItem.user == null || actionItem.actionType == 401
     val firstRelateData = actionItem.relateData?.firstOrNull()
     val price = firstRelateData?.price?.trim()?.ifBlank { null }
@@ -112,33 +107,23 @@ fun ActionCard(
             parsedText.equals(relateItem?.name, ignoreCase = true) ||
             parsedText.equals(relateItem?.nameCN, ignoreCase = true))
 
-    // 左侧海报槽位分类分流（ADR-0016 / ADR-0021）：
-    // - 相册传图类：宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐；
-    // - 手办/周边：9:13 黄金刚性定框（宽 96dp，ContentScale.Fit 居中，零裁切零跳变）；
-    // - 其余实体（厂商/角色/作品/系列/人物等，含未知类型）：1:1 正方形，贴合其方形封面，避免 9:13 竖框的上下白边。
-    // 相册分支的横图/方图落在右侧约 134dp 的高度包络线内，卡片外框由右侧锚定；超长竖图则自然撑高卡片。
-    // 相册判定与 AppRouteResolver 的分类区间对齐（60000..79999），避免缺 itemType 的相册
-    // 掉进手办/实体分支；RelateItem.isAlbum 自身只覆盖 60000..69999。
     val relateCategoryId = relateItem?.categoryId ?: 0
     val isAlbumAction = relateItem?.isAlbum == true ||
         relateCategoryId in 60000..79999 ||
         actionItem.actionType == 3 ||
         actionItem.actionType == 103 ||
         actionItem.actionType == 104
-    // 非相册槽位的刚性比例；null 表示交给相册照片的真实比例
+
     val posterAspectRatio: Float? = when {
         isAlbumAction -> null
         actionItem.resolvePosterShape() == ActionPosterShape.SQUARE -> 1f
         else -> 9f / 13f
     }
 
-    // 附图来自 pic/ 家族（MediaCategory 无 pic 槽位），先用扩展 resolvePictureUrl 解析成绝对 URL，
-    // 再交给基元通用重载直通 Coil；缩略档位对齐旧 getPicSmallUrl 的 pic/s/
     val extraImageUrls = remember(displayExtraImages) {
         displayExtraImages.map { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.THUMBNAIL) }
     }
 
-    // 🎨 M3 Expressive 卡片容器：采用 surfaceContainerLow 与标准水波纹交互
     ElevatedCard(
         onClick = { onActionClick?.invoke(actionItem) },
         enabled = onActionClick != null,
@@ -158,11 +143,11 @@ fun ActionCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
-            // ── 【左侧栏】：分类分流海报（手办 9:13 刚性定框；非手办实体 1:1；相册传图宽 96dp、高度随照片比例无上限撑开；相册无图时展示纯文本卡片）──
+
             if (shouldShowLeftCover) {
                 if (mediaInfo.isAlbumNoCover) {
                     val albumTitle = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name ?: ""
-                    // 相册无图沿用 9:13 黄金比例纯文本卡（圆角由 AlbumTextCover 自身裁剪）
+
                     AlbumTextCover(
                         title = albumTitle,
                         modifier = Modifier
@@ -171,7 +156,7 @@ fun ActionCard(
                         textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
                     )
                 } else {
-                    // 点击优先级由基元保证：传了 onClick 就不再触发全屏查看器，避免双触发
+
                     val posterModifier = Modifier
                         .width(96.dp)
                         .then(
@@ -204,7 +189,6 @@ fun ActionCard(
                 Spacer(modifier = Modifier.width(12.dp))
             }
 
-            // ── 【右侧栏】：Header (用户信息/官方情报) + Body (二选一：文本/参数 或 附图) + Footer (沉底手办信息与互动数据) ──
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -212,29 +196,27 @@ fun ActionCard(
                     .padding(vertical = 1.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 上半部内容区
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (isOfficialNotice) {
-                        // 1. 官方情报专属头部 (📢 情报速递 + 状态徽章 + 相对时间)
+
                         OfficialNoticeHeader(actionItem = actionItem)
                     } else {
-                        // 1. 玩家用户信息区 (头像 + 昵称 + 等级 + 签名 + 时间/动作)
+
                         UserFeedHeader(
                             actionItem = actionItem,
                             fallbackAvatarUrl = fallbackAvatarUrl,
                             onActionClick = onActionClick
                         )
 
-                        // 柔和分割线
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 1.dp)
                         )
                     }
 
-                    // 2. Body 内容区（二选一互斥排版：有附图展示精致矩阵，高度严格受限防止撑爆卡片；否则展示正文与参数）
                     if (displayExtraImages.isNotEmpty()) {
                         Row(
                             modifier = Modifier
@@ -303,7 +285,6 @@ fun ActionCard(
                             )
                         }
 
-                        // 官方情报价格与出荷日参数胶囊 (仅在官方情报模式存在时展示)
                         if (isOfficialNotice && (!price.isNullOrBlank() || !detail.isNullOrBlank())) {
                             NoticeParamChips(
                                 price = price,
@@ -321,7 +302,6 @@ fun ActionCard(
                     }
                 }
 
-                // 3. 底部条目信息与互动数据行 (手办名 + 💬 讨论数 + ♡ 收藏数) ── 始终沉底对齐
                 ActionCardBottomStats(
                     relateItem = relateItem,
                     mainComment = if (isCommentSameAsFigure) null else mainComment
@@ -331,9 +311,6 @@ fun ActionCard(
     }
 }
 
-/**
- * 官方情报卡片专属头部：展示「📢 情报速递」微晶标签、预定/出荷状态徽章与右侧发布时间。
- */
 @Composable
 private fun OfficialNoticeHeader(
     actionItem: ActionItem,
@@ -362,9 +339,6 @@ private fun OfficialNoticeHeader(
     }
 }
 
-/**
- * 「情报速递」微胶囊标识。
- */
 @Composable
 private fun OfficialBulletBadge() {
     Surface(
@@ -400,9 +374,6 @@ private data class StatusBadgeStyle(
     val contentColor: Color
 )
 
-/**
- * 官方预定/出荷/延期/再版专属动态状态徽章。
- */
 @Composable
 private fun ActionStatusBadge(actionItem: ActionItem) {
     val style = when (actionItem.actionType) {
@@ -465,9 +436,6 @@ private fun ActionStatusBadge(actionItem: ActionItem) {
     }
 }
 
-/**
- * 官方情报参数胶囊：展示手办定价与出荷时间。
- */
 @Composable
 private fun NoticeParamChips(
     price: String?,
@@ -533,9 +501,6 @@ private fun ParamChip(
     }
 }
 
-/**
- * 普通玩家动态头部：头像、昵称、等级徽章、个性签名与时间动作。
- */
 @Composable
 private fun UserFeedHeader(
     actionItem: ActionItem,
@@ -546,7 +511,7 @@ private fun UserFeedHeader(
     val user = actionItem.user
     val targetUserId = user?.actualUserId ?: 0L
     val isUserClickable = onActionClick != null && targetUserId > 0L
-    // 头像/昵称复用动作回调：relateItem 置空后解析器落到作者用户页
+
     val onAuthorClick: () -> Unit = { onActionClick?.invoke(actionItem.copy(relateItem = null)) }
 
     Row(
@@ -554,7 +519,7 @@ private fun UserFeedHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val userAvatar = user?.header?.ifBlank { null }
-        // 外部传入的绝对地址优先（时间线数据可能缓存完整头像 URL），否则交回管道按 AVATAR 缩略档裁决
+
         val hasFallback = fallbackAvatarUrl?.isNotBlank() == true
         Box(
             modifier = Modifier
@@ -599,7 +564,7 @@ private fun UserFeedHeader(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // 第一行：用户名与等级徽章（左），时间（右）
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -644,7 +609,6 @@ private fun UserFeedHeader(
                 )
             }
 
-            // 第二行：个性签名（左），操作类型（右）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -676,9 +640,6 @@ private fun UserFeedHeader(
     }
 }
 
-/**
- * 卡片底部通用行：手办名称沉底对齐与讨论数、收藏数。
- */
 @Composable
 private fun ActionCardBottomStats(
     relateItem: RelateItem?,
@@ -714,7 +675,6 @@ private fun ActionCardBottomStats(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // 右侧：讨论数 💬 与 收藏数 ♡
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -791,9 +751,6 @@ private fun formatRelativeTime(timeStr: String?): String {
         }
     }
 }
-
-// 与关注流游标解析一致，兼容服务端日期字符串，避免原样显示绝对时间
-// （KMP：`parseActionDateToTimestamp` 已由 [DateTimeFormats.parseServerDateTime] 替代，语义相同。）
 
 @FormFactorPreviews
 @Composable

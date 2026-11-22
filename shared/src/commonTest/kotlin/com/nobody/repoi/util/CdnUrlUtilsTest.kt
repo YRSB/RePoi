@@ -5,11 +5,6 @@ package com.nobody.repoi.util
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Hpoi 资源 CDN URL 静态补全工具测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `CdnUrlUtilsTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class CdnUrlUtilsTest {
 
     @Test
@@ -230,7 +225,6 @@ class CdnUrlUtilsTest {
         assertEquals("https://res.e39x.com/pic/n/2024/05/abc12345.jpg", CdnUrlUtils.getExHobbyFullUrl("pic/n/$rel"))
         assertEquals("https://res.e39x.com/pic/n/2024/05/abc12345.jpg", CdnUrlUtils.getExHobbyFullUrl("/pic/s/$rel"))
 
-        // http / blanks
         assertEquals("https://external.domain.com/pic.jpg", CdnUrlUtils.getExHobbyThumbUrl("https://external.domain.com/pic.jpg"))
         assertEquals("https://external.domain.com/pic.jpg", CdnUrlUtils.getExHobbyFullUrl("https://external.domain.com/pic.jpg"))
         assertEquals("", CdnUrlUtils.getExHobbyThumbUrl(null))
@@ -249,11 +243,9 @@ class CdnUrlUtilsTest {
         assertEquals(expected, CdnUrlUtils.getBannerUrl("bnr/n/$relPath"))
         assertEquals(expected, CdnUrlUtils.getBannerUrl("bnr/raw/$relPath"))
 
-        // getRawBannerUrl 应该同样解析为 bnr/n/，防止请求 404 的 bnr/raw/ 目录
         assertEquals(expected, CdnUrlUtils.getRawBannerUrl(relPath))
         assertEquals(expected, CdnUrlUtils.getRawBannerUrl("bnr/raw/$relPath"))
 
-        // 空值与绝对路径安全处理
         assertEquals("", CdnUrlUtils.getBannerUrl(null))
         assertEquals("", CdnUrlUtils.getBannerUrl("   "))
         assertEquals("", CdnUrlUtils.getRawBannerUrl(null))

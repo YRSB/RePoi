@@ -26,9 +26,6 @@ class SearchRepository(
         historyManager.clearAll()
     }
 
-    /**
-     * 全局主搜 (POST api/search)
-     */
     suspend fun search(
         category: Int,
         itemType: String,
@@ -70,9 +67,6 @@ class SearchRepository(
         api.getElementAttributes(categoryId).attributeList.orEmpty()
     }
 
-    /**
-     * 用户类目独立搜索 (POST api/search/user)
-     */
     suspend fun searchUsers(
         keyword: String,
         page: Int = 1,
@@ -85,16 +79,10 @@ class SearchRepository(
         ) ?: UserSearchPayload(userList = emptyList())
     }
 
-    /**
-     * 获取指定分类下的热词 (POST api/search/hotword)
-     */
     suspend fun getHotwords(category: Int): Result<List<HotwordItem>> = runCatching {
         api.getHotwords(category).list.orEmpty()
     }
 
-    /**
-     * 输入关键词实时联想词 (POST api/search/auto/fill)
-     */
     suspend fun getAutoFill(category: Int, keyword: String): Result<List<String>> = runCatching {
         val trimmed = keyword.trim()
         if (trimmed.isBlank()) return@runCatching emptyList()

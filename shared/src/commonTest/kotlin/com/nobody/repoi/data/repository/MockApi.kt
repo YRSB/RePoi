@@ -24,17 +24,6 @@ import com.nobody.repoi.data.remote.plugin.installCommonParams
 import kotlinx.serialization.json.Json
 import kotlin.test.assertTrue
 
-/**
- * commonTest MockEngine 脚手架：等价替代 Retrofit `MockWebServer`。
- *
- * - `enqueue(vararg bodies)`：按序返回 JSON 响应体（`Content-Type: application/json`）。
- * - `takeRequest()`：返回按序捕获的请求；[RecordedHttpRequest] 提供
- *   `encodedPath` / `queryParameter` / `formEntries` / `bodyContains` 断言面，
- *   与原 MockWebServer `RecordedRequest` 用法一一对应。
- * - 响应解码走真实 [HpoiApi.decodeRefAware]（无需 ContentNegotiation 插件）。
- * - `api(dispatcher)`：引擎默认跑真实线程（`Dispatchers.IO`），`runTest` 的虚拟时间推不动，
- *   ViewModel 测试必须传入 `testDispatcher`，否则请求零发出且间歇性挂起；纯仓储测试可省略。
- */
 class MockApi {
 
     private data class Queued(val status: HttpStatusCode, val body: String)
@@ -65,26 +54,15 @@ class MockApi {
         bodies.add(Queued(status, body))
     }
 
-    /**
-     * 按请求路径片段路由（等价 `MockWebServer.dispatcher`）：
-     * 若 routes 非空且命中，按命中响应；否则回落 FIFO 队列。
-     */
     fun route(pathFragment: String, body: String, status: HttpStatusCode = HttpStatusCode.OK) {
         routes.add(pathFragment to Queued(status, body))
     }
 
-    /**
-     * 替换同路径片段路由：首条命中的旧响应会被移除，测试中途切换服务端行为用此方法。
-     * 直接二次 `route` 不生效（`firstOrNull` 永远命中首条）。
-     */
     fun replaceRoute(pathFragment: String, body: String, status: HttpStatusCode = HttpStatusCode.OK) {
         routes.removeAll { (fragment, _) -> fragment == pathFragment }
         routes.add(pathFragment to Queued(status, body))
     }
 
-    /**
-     * 强类型路由注册：自动将 [data] 序列化为 JSON 字符串，避免手写原始字符串引入 schema 偏差。
-     */
     inline fun <reified T> routeJson(
         pathFragment: String,
         data: T,
@@ -93,9 +71,6 @@ class MockApi {
         route(pathFragment, json.encodeToString(data), status)
     }
 
-    /**
-     * 强类型路由替换：替换同路径片段路由为 [data] 的序列化结果。
-     */
     inline fun <reified T> replaceRouteJson(
         pathFragment: String,
         data: T,
@@ -104,16 +79,10 @@ class MockApi {
         replaceRoute(pathFragment, json.encodeToString(data), status)
     }
 
-    /**
-     * 包装为 Hpoi 标准 CommonResponse 结构并序列化为 JSON。
-     */
     inline fun <reified T> okJson(data: T, msg: String = "ok", code: Int = 200): String {
         return """{"success":true,"code":$code,"msg":"$msg","data":${json.encodeToString(data)}}"""
     }
 
-    /**
-     * 注册标准 CommonResponse 强类型响应。
-     */
     inline fun <reified T> routeCommonResponse(
         pathFragment: String,
         data: T,
@@ -124,9 +93,6 @@ class MockApi {
         route(pathFragment, okJson(data, msg, code), status)
     }
 
-    /**
-     * 替换标准 CommonResponse 强类型响应。
-     */
     inline fun <reified T> replaceRouteCommonResponse(
         pathFragment: String,
         data: T,
@@ -137,14 +103,6 @@ class MockApi {
         replaceRoute(pathFragment, okJson(data, msg, code), status)
     }
 
-    /**
-     * 按请求谓词路由（等价“按请求体内容分发”的 Dispatcher 用法）：
-     * 命中时返回对应响应；未命中回落 path 路由/FIFO。
-     *
-     * M7 fix-2：新增 `query` 第三谓词/响应入参（GET 查询串；`request.url.parameters`
-     * 单值映射）。既有 2 入参调用点经默认值保持编译兼容；GET 路由改用 `query[...]`
-     * 匹配（`encodedPath` 不含查询串，`formOf` 对 GET 恒为空）。
-     */
     fun routeWhen(
         predicate: (path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean,
         body: (path: String, form: Map<String, String>, query: Map<String, String>) -> String,
@@ -153,7 +111,6 @@ class MockApi {
         predicateRoutes.add(Triple(predicate, body, status))
     }
 
-    /** 2 入参兼容重载：POST 表单谓词（GET 查询恒为空，调用方无需改动）。 */
     fun routeWhen(
         predicate: (path: String, form: Map<String, String>) -> Boolean,
         body: (path: String, form: Map<String, String>) -> String,
@@ -168,11 +125,6 @@ class MockApi {
         )
     }
 
-    /**
-     * 挂起谓词路由：body 可 `await()` 门控，确定性复现慢响应后到竞态。
-     * 同步 `routeWhen` 内用 `runBlocking` 等门会堵死测试调度线程导致 hang，严禁。
-     * 优先级高于同步谓词路由与 path 路由。
-     */
     fun routeWhenSuspend(
         predicate: (path: String, form: Map<String, String>, query: Map<String, String>) -> Boolean,
         body: suspend (path: String, form: Map<String, String>, query: Map<String, String>) -> String,
@@ -187,10 +139,6 @@ class MockApi {
     fun failure(code: Int, msg: String): String =
         """{"success":false,"code":$code,"msg":"$msg","data":null}"""
 
-    /**
-     * 构造接入深接缝的 API 桩：默认收集 4001 在途令牌失效通知。
-     * [tokenProvider] 非空时安装公共参数插件以写入在途快照；[onTokenExpired] 供会话测试复用通知。
-     */
     fun api(
         dispatcher: CoroutineDispatcher? = null,
         tokenProvider: (() -> String)? = null,
@@ -237,12 +185,10 @@ class MockApi {
         }
     }
 
-    /** 断言网络管道已用指定在途令牌驱动过失效自愈。 */
     fun assertTokenExpiredNotified(expectedToken: String) {
         assertTrue(expectedToken in expiredTokens, "期望收到令牌 $expectedToken 的失效通知，实际为 $expiredTokens")
     }
 
-    /** 断言整个用例期间未触发任何令牌失效通知（用于候选验权旁路）。 */
     fun assertNoTokenExpiredNotified() {
         assertTrue(expiredTokens.isEmpty(), "不应触发令牌失效通知，实际为 $expiredTokens")
     }
@@ -255,11 +201,6 @@ class MockApi {
     fun takeRequest(): RecordedHttpRequest =
         RecordedHttpRequest(requests.getAndUpdate { it.drop(1) }.first())
 
-    /**
-     * 最近一次记录的请求（不消费 FIFO 队列）。
-     *
-     * 断言「最近一次请求的参数」用；[takeRequest] 按先进先出取，多次请求后只能拿到最早那条。
-     */
     fun lastRequest(): RecordedHttpRequest =
         RecordedHttpRequest(requests.value.last())
 
@@ -271,7 +212,6 @@ class RecordedHttpRequest internal constructor(private val request: HttpRequestD
     val method: String
         get() = request.method.value
 
-    /** 原始 path 含查询串（MockWebServer `request.path` 语义；无查询时不带 `?`）。 */
     val path: String?
         get() {
             val p = request.url.encodedPath
@@ -289,16 +229,11 @@ class RecordedHttpRequest internal constructor(private val request: HttpRequestD
 
     fun header(name: String): String? = request.headers[name]
 
-    /** POST form 字段（`FormDataContent.formData` 还原；非 form 请求返回空 map）。 */
     fun formEntries(): Map<String, String> {
         val content = request.body as? FormDataContent ?: return emptyMap()
         return content.formData.entries().associate { (key, values) -> key to (values.firstOrNull().orEmpty()) }
     }
 
-    /**
-     * 原生 form 编码正文（含百分号转义，如 `releaseStart=2026-09-01+00%3A00%3A00`）。
-     * 供需要验证 URL 编码形态的断言使用。
-     */
     fun formBodyText(): String {
         val content = request.body as? FormDataContent ?: return ""
         return content.formData.entries().joinToString("&") { (key, values) ->

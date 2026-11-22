@@ -45,30 +45,10 @@ import com.nobody.repoi.ui.collect.components.SelectionBottomBar
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.foundation.shape.CircleShape
 
-// ── 相册子页（key=70000）────────────────────────────────────
-
-/** 原版相册页空态文案 `R.string.text_empty_collect_album` */
 internal const val COLLECT_ALBUM_EMPTY_TEXT = "暂无相册~"
 
-/** 「我创建的」档空态文案（与收藏档区分，避免暗示「没有收藏」） */
 internal const val COLLECT_CREATED_ALBUM_EMPTY_TEXT = "暂无创建的相册~"
 
-
-/**
- * 收藏页「相册」子页（category key=70000，接口 `api/collect/album-v2`）。
- *
- * 对标原版 `UserCollectSubPagerFragment` + `UserCollectAlbumFragment`：
- * - 顶部 3 档二级排序 Tab（发布时间 / 收藏时间 / 点赞量），等价于原版 `MagicIndicator`；
- * - 长按卡片（封面/标题/头像任一处）进入多选，底部 `SelectionBottomBar`（全选/取消/取消收藏N）；
- * - 批量取消收藏提交**外层收藏节点 id**（`UserCollectAlbumItem.id`），提交前二次确认。
- *
- * @param currentOrder 当前排序档（`addTime` / `actionDate` / `praiseCount`）
- * @param albumType 相册语料档位（`fav` = 我收藏的 / `upload` = 我创建的），见 [AlbumTypeOption]；仅由深链指定，页内不提供切换入口
- * @param isSelectionMode 是否处于多选模式
- * @param selectedIds 已选中的**外层收藏节点 id**集合
- * @param isSelf 是否浏览自己的收藏（批量取消收藏仅本人可用）
- * @param isCancellingBatch 批量取消收藏请求进行中（用于确认按钮 loading 与防重复提交）
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AlbumCollectSubPage(
@@ -90,16 +70,9 @@ internal fun AlbumCollectSubPage(
     onCancelCollect: () -> Unit,
     onRetry: () -> Unit
 ) {
-    // 保存键绑定（统一入口见 rememberKeyedLazyStaggeredGridState）：
-    // 切换排序（或深链档位不同）时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
-    // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
-    //
-    // albumType 必须进键：`fav`（我收藏的）走 `api/collect/album-v2`，`upload`（我创建的）走
-    // `api/album/user-v2`，两套语料内容与分页语义不同（深链可指定，页内不再提供切换入口）；
-    // 漏掉该维度会让两种语料共用滚动位置并互相串位。
+
     val gridState = rememberKeyedLazyStaggeredGridState("album_staggered", albumType, currentOrder)
-    // 以 gridState 为 remember 键：排序变化时上面会重建 LazyStaggeredGridState，
-    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
+
     val shouldLoadMore by remember(gridState) {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
@@ -109,21 +82,17 @@ internal fun AlbumCollectSubPage(
         }
     }
 
-    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
-    // 缺这个键就只会翻一页。
     LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
         }
     }
 
-    // 批量取消收藏二次确认（仅本人可见，对齐原版 isSelf 门控）
     var showCancelConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // 顶部 3 档二级排序 Tab（等价原版 UserCollectSubPagerFragment）
             CollectOrderTabRow(
                 titles = CollectAlbumPictureOrderTabs,
                 selected = currentOrder,
@@ -142,7 +111,7 @@ internal fun AlbumCollectSubPage(
 
                     subPageData.errorMessage != null && subPageData.items.isEmpty() -> {
                         if (subPageData.isContentHidden) {
-                            // 「用户已隐藏内容」独立空态（与通用 4 页共用同一文案常量）
+
                             EmptyCollectView(title = COLLECT_CONTENT_HIDDEN_TEXT)
                         } else {
                             ErrorCollectView(errorMessage = subPageData.errorMessage, onRetry = onRetry)
@@ -150,7 +119,7 @@ internal fun AlbumCollectSubPage(
                     }
 
                     subPageData.items.isEmpty() -> {
-                        // 「我创建的」与「我收藏的」是两份不同语料，空态文案各自独立
+
                         EmptyCollectView(
                             title = if (albumType == AlbumTypeOption.UPLOAD) {
                                 COLLECT_CREATED_ALBUM_EMPTY_TEXT
@@ -185,10 +154,10 @@ internal fun AlbumCollectSubPage(
                                     isSelected = item.id in selectedIds,
                                     isSelectionMode = isSelectionMode,
                                     onClick = {
-                                        // 多选模式下点击切换选中，否则进入相册详情
+
                                         if (isSelectionMode) onToggleSelect(item.id) else onItemClick(item)
                                     },
-                                    // 长按任意子区域（封面/标题/头像）进入多选
+
                                     onLongClick = { onToggleSelect(item.id) },
                                     albumType = albumType
                                 )
@@ -252,7 +221,6 @@ internal fun AlbumCollectSubPage(
             }
         }
 
-        // 多选模式底部悬浮操作条（全选 / 取消 / 取消收藏N）
         if (isSelectionMode) {
             SelectionBottomBar(
                 selectedCount = selectedIds.size,
@@ -265,7 +233,6 @@ internal fun AlbumCollectSubPage(
         }
     }
 
-    // 批量取消收藏二次确认（仅本人可见）
     if (showCancelConfirm) {
         AlertDialog(
             onDismissRequest = { showCancelConfirm = false },
@@ -299,7 +266,3 @@ internal fun AlbumCollectSubPage(
         )
     }
 }
-
-/**
- * 收藏相册瀑布流骨架相关实现已下线：收藏页统一改用 [PoiLoadingView]（居中加载指示器）。
- */

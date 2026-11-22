@@ -5,11 +5,6 @@ import com.nobody.repoi.data.remote.model.CollectCountData
 import com.nobody.repoi.data.remote.model.CollectData
 import com.nobody.repoi.data.remote.model.CollectTagItem
 
-/**
- * 码点长度（`String.codePointCount(0, length)` 的 common 等价实现）。
- *
- * 代理对计 1（跳过低代理），与原版截断口径一致。
- */
 internal fun String.codePointLength(): Int {
     var count = 0
     var i = 0
@@ -21,17 +16,12 @@ internal fun String.codePointLength(): Int {
     return count
 }
 
-/**
- * 收藏管理与编辑界面 UI 状态机。
- * 遵循单向数据流 (UDF)，所有字段具有默认值。
- */
 data class CollectEditUiState(
     val itemId: Long = 0L,
     val nodeId: Long = 0L,
     val name: String? = null,
     val cover: String? = null,
 
-    // 页面整体加载与保存状态
     val isLoading: Boolean = true,
     val loadFailed: Boolean = false,
     val isSaving: Boolean = false,
@@ -40,40 +30,34 @@ data class CollectEditUiState(
     val saveSuccess: Boolean = false,
     val deleteSuccess: Boolean = false,
 
-    // 初始收藏状态数据（保留原始信息以便取消收藏时提交）
     val initialCollectData: CollectData? = null,
     val isAlreadyCollected: Boolean = false,
 
-    // 5 种分类人数统计数据
     val countData: CollectCountData = CollectCountData(),
 
-    // 备选推荐标签池
     val suggestedTags: List<String> = emptyList(),
 
-    // ── 当前表单编辑态 ──
-    val selectedState: String = CollectConstants.STATE_CARE, // care, want, preorder, buy, resell
-    val rating: Int = 0, // 0..5
-    val orderTime: String = "", // yyyy-MM-dd
-    val orderWay: String = "", // 途径
-    val orderMoney: String = "", // 金额
-    val orderMoneyCurrency: String = "rmb", // rmb, yen, dollar, euro, hkd
-    val buyNum: Int = 1, // 数量
-    val orderForm: Int = 1, // 1: 预定, 2: 现货, 3: 二手, 4: 赠品, 0: 其他
+    val selectedState: String = CollectConstants.STATE_CARE,
+    val rating: Int = 0,
+    val orderTime: String = "",
+    val orderWay: String = "",
+    val orderMoney: String = "",
+    val orderMoneyCurrency: String = "rmb",
+    val buyNum: Int = 1,
+    val orderForm: Int = 1,
     val myTags: List<String> = emptyList(),
     val comment: String = "",
 
-    // 控制 UI 弹窗
     val showDatePicker: Boolean = false,
     val showAddTagDialog: Boolean = false,
     val showDeleteConfirmDialog: Boolean = false,
     val tagToDelete: String? = null,
     val showDeleteTagDialog: Boolean = false
 ) {
-    // 按码点计数，与输入截断口径保持一致（common 无 `String.codePointCount`，手动跳过低代理）。
+
     val commentLength: Int
         get() = comment.codePointLength()
 
-    // 金额仅在预定/已入/有过态校验，空白视为未填
     val isOrderMoneyValid: Boolean
         get() {
             if (selectedState != CollectConstants.STATE_PREORDER &&
@@ -83,7 +67,7 @@ data class CollectEditUiState(
             if (orderMoney.isBlank()) return true
             return orderMoney.toDoubleOrNull() != null
         }
-    /** 转换为提交给 API 的 CollectData，根据 5 种状态严格清洗入库字段，避免脏数据提交 */
+
     fun toCollectData(): CollectData {
         val base = (initialCollectData ?: CollectData()).copy(
             state = selectedState,

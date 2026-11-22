@@ -20,11 +20,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
-/**
- * 评论详情与回复 ViewModel 状态机单元测试（Turbine + Kotest）。
- *
- * 验证主楼数据挂载、输入草稿变更、回复目标设定与取消回复等交互。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentDetailViewModelTest {
 
@@ -143,7 +138,6 @@ class CommentDetailViewModelTest {
             mockApi.ok("""{"comment":{"id":2001,"content":"(已屏蔽)"},"replies":[{"id":1,"content":"正常回复"}]}""")
         )
 
-        // 快照本身为已屏蔽，初始渲染态主楼和子回复均应清空
         val snapshot = CommentItem(id = 2001L, content = "(已屏蔽)")
         val param = CommentDetailNavParam(commentId = 2001L, relateNodeId = 500L, snapshot = snapshot)
 
@@ -240,7 +234,6 @@ class CommentDetailViewModelTest {
         viewModel.uiState.value.replies.size shouldBe 10
         viewModel.uiState.value.hasMore shouldBe true
 
-        // 下一页包含屏蔽回复与正常回复
         mockApi.replaceRoute(
             "api/comment/getreply",
             mockApi.ok(
@@ -257,7 +250,6 @@ class CommentDetailViewModelTest {
         viewModel.loadNextPage()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // 仅正常12被追加，11被过滤
         val ids = viewModel.uiState.value.replies.map { it.id }
         ids shouldBe (1L..10L).toList() + listOf(12L)
     }

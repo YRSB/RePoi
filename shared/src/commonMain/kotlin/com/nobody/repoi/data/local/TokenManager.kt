@@ -19,18 +19,6 @@ import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-/**
- * 管理登录令牌 `utoken` 与用户信息的本地持久化。
- *
- * KMP 移植：构造器改取 `DataStore<Preferences>`（平台模块按同名
- * `user_prefs.preferences_pb` 提供），替代 `Context.preferencesDataStore`。
- * 内存镜像经 `kotlin.concurrent.atomics` 实现（common 无 `@Volatile`）。
- *
- * 可见性：本适配器为 [com.nobody.repoi.data.session.UserSessionImpl] 的内部实现细节，
- * 仅由 [com.nobody.repoi.data.session.createUserSession] 组合根构造，
- * 不注册为可独立注入的单例，也不再作为公开接缝（ADR-0005 单一鉴权出口）。
- * `prewarmOnCreate` 仅供测试替身关闭真实 DataStore 预读。
- */
 @OptIn(ExperimentalAtomicApi::class)
 internal open class TokenManager(
     private val dataStore: DataStore<Preferences>,
@@ -66,8 +54,7 @@ internal open class TokenManager(
     private val prewarmJob: Job? = if (prewarmOnCreate) {
         scope.launch {
             runCatching {
-                // 冷启动预热：从 DataStore 一次性恢复内存镜像。
-                // 不使用持续 collect，避免与本地写入产生异步时序竞态或覆写测试替身。
+
                 val prefs = dataStore.data.first()
                 if (localWriteRef.load()) return@runCatching
                 if (tokenRef.load().isEmpty()) prefs[TOKEN_KEY]?.let { tokenRef.store(it) }
@@ -113,7 +100,6 @@ internal open class TokenManager(
         }
     }
 
-    // M7: open 化以便 commonTest 替身统计 4001 过期清 token 调用（行为无变化）。
     open suspend fun clearToken() {
         localWriteRef.store(true)
         currentToken = ""

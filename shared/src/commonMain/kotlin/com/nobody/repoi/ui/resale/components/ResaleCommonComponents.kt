@@ -41,13 +41,6 @@ import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 外部链接跳转与剪贴板统一处理工具。
- *
- * KMP 移植说明：原生 `Context.getSystemService(CLIPBOARD_SERVICE)` +
- * `Intent(ACTION_VIEW)` 双轨改为 Compose `LocalClipboard` +
- * `LocalUriHandler`；调用方改为 composable 内 `rememberExternalLinkOpener()`。
- */
 @Composable
 fun rememberExternalLinkOpener(): (String) -> Unit {
     val clipboard = LocalClipboard.current
@@ -72,13 +65,6 @@ fun rememberExternalLinkOpener(): (String) -> Unit {
     } }
 }
 
-/**
- * 二手卡片三点更多操作弹窗（截图 2 规范）：
- * - 同款二手
- * - 外部链接（存在外链时展示，否则隐去）
- * - 举报
- * - 取消
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResaleMoreBottomSheet(
@@ -99,7 +85,7 @@ fun ResaleMoreBottomSheet(
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
         ) {
-            // 1. 同款二手
+
             ListItem(
                 headlineContent = { Text("同款二手") },
                 leadingContent = {
@@ -111,7 +97,6 @@ fun ResaleMoreBottomSheet(
                 }
             )
 
-            // 2. 外部链接（仅在外链存在时展示）
             if (item.hasExternalLink) {
                 val link = item.link.orEmpty()
                 ListItem(
@@ -133,7 +118,6 @@ fun ResaleMoreBottomSheet(
                 )
             }
 
-            // 3. 举报
             ListItem(
                 headlineContent = { Text("举报") },
                 leadingContent = {
@@ -149,7 +133,6 @@ fun ResaleMoreBottomSheet(
                 }
             )
 
-            // 4. 取消
             ListItem(
                 headlineContent = { Text("取消", color = MaterialTheme.colorScheme.outline) },
                 leadingContent = {
@@ -167,9 +150,6 @@ fun ResaleMoreBottomSheet(
     }
 }
 
-/**
- * 二手举报理由输入对话框。
- */
 @Composable
 fun ResaleReportDialog(
     isSubmitting: Boolean,
@@ -224,9 +204,6 @@ fun ResaleReportDialog(
     )
 }
 
-/**
- * 具有下拉展开指示箭头的 FilterChip，对齐项目设计系统令牌。
- */
 @Composable
 fun FilterDropdownChip(
     label: String,

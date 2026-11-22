@@ -29,10 +29,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 统一的用户圆形头像组件。
- * 具备 URL 容错及网络加载失败（404 等）自动降级展示默认人像矢量图的能力。
- */
 @Composable
 fun UserAvatar(
     avatarUrl: String?,

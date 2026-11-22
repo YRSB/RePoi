@@ -9,31 +9,19 @@ import com.nobody.repoi.data.remote.model.PicItem
 import com.nobody.repoi.data.remote.model.RelatedAlbumItem
 import com.nobody.repoi.data.remote.model.RelatedHobbyItem
 
-/**
- * 相册详情多端点聚合数据仓储。
- */
 class AlbumDetailRepository(
     private val api: HpoiApi
 ) {
 
-    /**
-     * 获取相册详情基础数据 (api/album/detail)。
-     */
     suspend fun getAlbumDetail(albumId: Long, itemId: Long? = null): Result<AlbumData> = runCatching {
         api.getAlbumDetail(albumId = albumId, itemId = itemId).album
             ?: throw ApiException(-1, "未找到相册详情数据")
     }
 
-    /**
-     * 获取相册分类与属性标签 (api/item/tags)。
-     */
     suspend fun getAlbumTags(albumId: Long): Result<List<String>> = runCatching {
         api.getTags(albumId = albumId).tags.orEmpty().mapNotNull { it.tagText.ifBlank { null } }
     }
 
-    /**
-     * 获取相册原画图集列表 (api/pic/list/relate-v2)。
-     */
     suspend fun getAlbumPictures(
         albumId: Long,
         itemId: Long? = null,
@@ -51,9 +39,6 @@ class AlbumDetailRepository(
         ).list.orEmpty()
     }
 
-    /**
-     * 获取相册关联手办列表 (api/item/relate/hobby)。
-     */
     suspend fun getRelatedHobbies(
         albumId: Long,
         itemType: String = "album",
@@ -66,9 +51,6 @@ class AlbumDetailRepository(
         ).hobbys.orEmpty()
     }
 
-    /**
-     * 获取同款/相关相册列表 (api/album/relate/album)。
-     */
     suspend fun getRelatedAlbums(
         albumId: Long,
         page: Int = 1,
@@ -81,10 +63,6 @@ class AlbumDetailRepository(
         ).list.orEmpty()
     }
 
-    /**
-     * 获取相册评论列表 (api/comment/get)。
-     * @param type 为 null 时拉取最新评论，"hot_top" 拉取热门神评。
-     */
     suspend fun getComments(
         nodeId: Long,
         type: String? = null,
@@ -101,23 +79,14 @@ class AlbumDetailRepository(
         if (error is CommentNotFoundException) emptyList() else throw error
     }
 
-    /**
-     * 查询相册点赞状态 (api/item/likeInfo)。
-     */
     suspend fun getAlbumLikeInfo(albumId: Long): Result<Boolean> = runCatching {
         api.getAlbumLikeInfo(nodeId = albumId, itemType = "album").praiseState
     }
 
-    /**
-     * 相册点赞 (api/item/praise/add)。
-     */
     suspend fun praiseAlbumAdd(albumId: Long): Result<Unit> = runCatching {
         api.praiseAlbumAdd(id = albumId, itemType = "album")
     }
 
-    /**
-     * 取消相册点赞 (api/item/praise/del)。
-     */
     suspend fun praiseAlbumDel(albumId: Long): Result<Unit> = runCatching {
         api.praiseAlbumDel(id = albumId, itemType = "album")
     }

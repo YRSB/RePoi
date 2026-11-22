@@ -4,9 +4,6 @@ import com.nobody.repoi.util.DefaultJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * 系列主体响应 (api/item/get-v2?itemId=...&itemType=series)
- */
 @Serializable
 data class SeriesDetailPayload(
     @SerialName("itemData") val itemData: SeriesData? = null
@@ -40,11 +37,9 @@ data class SeriesData(
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 
-    /** 副标题（若有外文名且与主标题不同） */
     val subName: String?
         get() = name?.takeIf { it.isNotBlank() && it != displayName }
 
-    /** 解析 otherInfo JSON 字符串获取结构化扩展信息 */
     val parsedOtherInfo: List<CompanyOtherInfoItem>
         get() {
             val jsonStr = otherInfo ?: return emptyList()
@@ -70,9 +65,6 @@ data class SeriesData(
         }
 }
 
-/**
- * 系列子系列 / 相关系列响应 (api/series/link/series?seriesId=...&isChild=1|2)
- */
 @Serializable
 data class SeriesLinkPayload(
     val list: List<SeriesLinkItem>? = null
@@ -100,17 +92,11 @@ data class SeriesLinkItem(
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 }
 
-/**
- * 系列关联相册响应 (api/series/album?seriesId=...)
- */
 @Serializable
 data class SeriesAlbumPayload(
     val album: List<AlbumData>? = null
 )
 
-/**
- * 系列在售商品推荐响应 (api/goods/tb/more-v2?nodeId=...)
- */
 @Serializable
 data class SeriesGoodsPayload(
     val list: List<SeriesGoodsItem>? = null
@@ -126,9 +112,6 @@ data class SeriesGoodsItem(
     val link: String? = null
 )
 
-/**
- * 系列社区/论坛响应 (api/series/forum?seriesId=...)
- */
 @Serializable
 data class SeriesForumPayload(
     val forum: SeriesForumInfo? = null,

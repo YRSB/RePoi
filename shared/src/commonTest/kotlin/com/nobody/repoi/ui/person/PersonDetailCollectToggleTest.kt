@@ -24,12 +24,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 人物详情收藏切换一致性测试：覆盖添加、取消、失败回滚与重复切换四条链路，
- * 同时断言公开 UIState、CollectRepository 状态池与收藏变更代数。
- * 人物的基线 originalCollected 来自详情接口的 isAddFav 字段（加载时不写状态池）。
- * 类名刻意不含 `ViewModel`，避免被既有测试过滤误伤。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PersonDetailCollectToggleTest {
 
@@ -63,7 +57,7 @@ class PersonDetailCollectToggleTest {
         assertEquals(0, viewModel.uiState.value.collectCountDelta)
         assertNull(collectRepository.observeCollectState(321L).value)
         val generationBefore = collectRepository.collectMutationGeneration.value
-        // 丢弃首屏阶段已消费的请求，保证下面断言只针对切换收藏
+
         collectMock.drainPaths()
 
         viewModel.toggleCollect()
@@ -140,13 +134,12 @@ class PersonDetailCollectToggleTest {
 
     @Test
     fun toggleCollect_repeatedKeepsDeltaWithinOneOfServerBaseline() = runTest(testDispatcher) {
-        // 未收藏基线：添加→取消→添加，增量必须为 +1 / 0 / +1，不得逐次累加
+
         runRepeatedSequence(initialCollected = false)
-        // 已收藏基线：取消→添加→取消，增量必须为 -1 / 0 / -1
+
         runRepeatedSequence(initialCollected = true)
     }
 
-    /** 消费并丢弃已排队的请求记录（首屏加载阶段可能预热其他端点）。 */
     private fun MockApi.drainPaths() {
         repeat(requestCount) { takeRequest() }
     }
@@ -204,7 +197,6 @@ class PersonDetailCollectToggleTest {
         }
     }
 
-
     @Test
     fun toggleCollect_refreshesCountBaseFromServer() = runTest(testDispatcher) {
         val detailMock = MockApi()
@@ -227,7 +219,6 @@ class PersonDetailCollectToggleTest {
         viewModel.toggleCollect()
         advanceUntilIdle()
 
-        // 写成功后基线改由服务端计数提供（五分类之和），本地 delta 归零
         assertEquals(46, viewModel.uiState.value.collectCountBase)
         assertEquals(0, viewModel.uiState.value.collectCountDelta)
         assertTrue(viewModel.uiState.value.isCollected)

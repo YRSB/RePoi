@@ -18,13 +18,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
-/**
- * 条目首页仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ItemRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；按体分发 Dispatcher → [MockApi.routeWhen]；
- * `java.time.LocalDate` → kotlinx-datetime；JUnit4 → kotlin.test）。
- */
 class ItemRepositoryTest {
 
     private fun setup(): Pair<MockApi, ItemRepository> {
@@ -120,8 +113,6 @@ class ItemRepositoryTest {
         assertEquals("参数错误", error.message)
     }
 
-    // ==================== 产品板块按作用域取数（#159 验收） ====================
-
     @Test
     fun queryHobbyBoard_singleZone_sendsZonesWithoutHomeScope() = runTest {
         val (mock, repository) = setup()
@@ -137,7 +128,7 @@ class ItemRepositoryTest {
         val request = mock.takeRequest()
         assertEquals("/api/hobby/query-v2", request.encodedPath)
         val form = request.formEntries()
-        // 单专区：zones = nodeId，绝不携带 homeScope（非空 homeScope 会覆盖 zones 变全站）
+
         assertEquals("33476094", form["zones"])
         assertFalse(form.containsKey("homeScope"))
         assertEquals("1", form["page"])
@@ -155,7 +146,7 @@ class ItemRepositoryTest {
 
         assertTrue(result.isSuccess)
         val form = mock.takeRequest().formEntries()
-        // 全部聚合：省略 zones（等价全站），也不发 homeScope
+
         assertFalse(form.containsKey("zones"))
         assertFalse(form.containsKey("homeScope"))
         assertEquals("1", form["page"])
@@ -188,7 +179,7 @@ class ItemRepositoryTest {
         val form = mock.takeRequest().formEntries()
         assertEquals("3", form["page"])
         assertEquals("24", form["pageSize"])
-        // 分类优先取子分类
+
         assertEquals("1", form["category"])
         assertEquals("rating", form["order"])
         assertEquals("2026", form["releaseYear"])
@@ -205,7 +196,6 @@ class ItemRepositoryTest {
         val (mock, repository) = setup()
         mock.enqueue(hobbyListJson("默认筛选"))
 
-        // 高级筛选的「不限」哨兵（sex/r18 = -1、scale = "0"）与空关键字/空属性不得下发
         val result = repository.queryHobbyBoard(
             scope = ZoneQueryScope.All,
             filters = ZoneHobbyFilter(sex = -1, r18 = -1, specs = " ", scale = "0", releaseYear = 0, releaseMonth = 0)
@@ -213,7 +203,7 @@ class ItemRepositoryTest {
         assertTrue(result.isSuccess)
 
         val form = mock.takeRequest().formEntries()
-        // 正向基线：参数整体丢失（或响应解码失败）时下面的「缺席」断言会全部误绿
+
         assertEquals("1", form["page"])
         assertEquals(HOBBY_BOARD_PAGE_SIZE.toString(), form["pageSize"])
         assertEquals(HOBBY_DEFAULT_CATEGORY_ID.toString(), form["category"])

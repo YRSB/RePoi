@@ -58,13 +58,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-// ─────────────────────────────────────────────────────────────
-
-
-// ─────────────────────────────────────────────────────────────
-// 区块 0：主体综合资料卡 (PersonHeaderSection)
-// ─────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PersonHeaderSection(
@@ -99,7 +92,7 @@ internal fun PersonHeaderSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 头像与基本资料
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -154,7 +147,6 @@ internal fun PersonHeaderSection(
                         )
                     }
 
-                    // 属性胶囊（性别、生日）
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -190,7 +182,6 @@ internal fun PersonHeaderSection(
                         }
                     }
 
-                    // 统计数据（收藏数、周边数）
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Text(
                             text = "收藏 ${person?.collect ?: 0}",
@@ -206,7 +197,6 @@ internal fun PersonHeaderSection(
                 }
             }
 
-            // 社交平台外链胶囊（推特等）
             if (!twitterUrl.isNullOrBlank()) {
                 Surface(
                     shape = CircleShape,
@@ -234,7 +224,6 @@ internal fun PersonHeaderSection(
                 }
             }
 
-            // 简介内容（支持折叠/展开）
             if (intro.isNotBlank()) {
                 Column(
                     modifier = Modifier
@@ -263,10 +252,6 @@ internal fun PersonHeaderSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 1：参与周边 (精选九宫格, PersonHobbiesSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun PersonHobbiesSection(
     hobbies: List<PersonHobbyEntry>,
@@ -285,7 +270,7 @@ internal fun PersonHobbiesSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题 + 查看更多 ›
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -323,7 +308,7 @@ internal fun PersonHobbiesSection(
                     )
                 }
             } else {
-                // 自适应网格（手机3列，折叠屏4列，宽屏6列）
+
                 AdaptiveChunkedGrid(
                     items = hobbies,
                     maxRows = 3,
@@ -349,7 +334,6 @@ internal fun PersonHobbiesSection(
                                 )
                             }
 
-                            // 职责微标（如 原型师、原画、涂装）
                             val job = entry.jobName.firstOrNull()
                             if (!job.isNullOrBlank()) {
                                 Surface(
@@ -372,7 +356,6 @@ internal fun PersonHobbiesSection(
                     }
                 }
 
-                // 若内容丰富，底部提供显式的更多条目入口
                 if (hobbies.size >= 9) {
                     Box(
                         modifier = Modifier
@@ -394,10 +377,6 @@ internal fun PersonHobbiesSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 2：参与作品 (PersonWorksSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun PersonWorksSection(
@@ -512,10 +491,6 @@ internal fun PersonWorksSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 3：出演角色 (PersonCharactersSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun PersonCharactersSection(
     characters: List<PersonWorksEntry>,
@@ -629,10 +604,6 @@ internal fun PersonCharactersSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部常驻悬浮操作胶囊 (PersonFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun PersonFloatingActionBar(
     collectCount: Long,
@@ -646,7 +617,7 @@ internal fun PersonFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 收藏人物（只显示数字）
+
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
@@ -658,19 +629,17 @@ internal fun PersonFloatingActionBar(
             iconTint = if (isCollected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 评论（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+
                 isProminent = false
             )
         }
 
-        // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,
@@ -679,10 +648,6 @@ internal fun PersonFloatingActionBar(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 状态占位组件 (错误重试)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun PersonErrorState(

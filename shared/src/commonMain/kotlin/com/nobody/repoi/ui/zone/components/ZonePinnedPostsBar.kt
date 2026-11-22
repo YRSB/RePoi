@@ -36,16 +36,6 @@ import com.nobody.repoi.data.remote.model.PostItem
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 专区讨论置顶贴条目展示栏。
- *
- * 遵循 Material 3 Expressive 设计规范与交互契约：
- * 1. 采用 M3 ElevatedCard 容器（surfaceContainerLow 搭配 1dp 标高与 CardShape 圆角），与信息流卡片阶梯深度一致；
- * 2. 置顶标签采用 M3 语义化 Primary Tonal 徽章（primaryContainer 底色 + onPrimaryContainer 高对比度文字），克制典雅且完美自适应深浅色与动态取色；
- * 3. 默认展示前 2 条置顶条目；当置顶贴数量超过 2 条时，第 2 条右侧展示下拉三角形折叠箭头；
- * 4. 点击折叠箭头可平滑展开剩余置顶项（最多 5 项），展开后最后一项右侧呈现向上折叠箭头，支持再次收起；
- * 5. 点击具体置顶条目跳转至帖子详情。
- */
 @Composable
 fun ZonePinnedPostsBar(
     pinnedPosts: List<PostItem>,
@@ -68,7 +58,7 @@ fun ZonePinnedPostsBar(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // 前 2 条常驻展示项
+
             val primaryPosts = pinnedPosts.take(2)
             primaryPosts.forEachIndexed { index, post ->
                 val showToggle = hasMore && index == 1 && !isExpanded
@@ -89,7 +79,6 @@ fun ZonePinnedPostsBar(
                 }
             }
 
-            // 超过 2 条的折叠展示项（第 3~5 项）
             if (hasMore) {
                 AnimatedVisibility(
                     visible = isExpanded,
@@ -139,7 +128,7 @@ private fun PinnedPostRow(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // “置顶” M3 Primary Tonal 徽章
+
         Box(
             modifier = Modifier
                 .clip(MaterialTheme.shapes.extraSmall)
@@ -156,7 +145,6 @@ private fun PinnedPostRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // 置顶贴标题
         Text(
             text = post.title,
             style = MaterialTheme.typography.bodyMedium,
@@ -167,7 +155,6 @@ private fun PinnedPostRow(
             modifier = Modifier.weight(1f)
         )
 
-        // 展开/收起小三角形指示箭头
         if (showToggle) {
             Box(
                 modifier = Modifier

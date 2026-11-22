@@ -9,11 +9,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 表情/贴纸输入工具测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `EmojiInputTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class EmojiInputTest {
 
     @Test

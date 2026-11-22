@@ -13,15 +13,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 专区仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ZoneRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi（含按路径分发 `route`，等价 Dispatcher）；
- * Mockito `mock(ViewPreferencesManager)` → 真实 ViewPreferencesManager
- *（[TestDataStore] 隔离目录；`getCached*Json()` 生产默认即 null，与桩语义一致）；
- * JUnit4 → kotlin.test）。
- */
 class ZoneRepositoryTest {
 
     private fun setup(): Pair<MockApi, ZoneRepository> {
@@ -33,7 +24,7 @@ class ZoneRepositoryTest {
     @Test
     fun getZoneHomeTabs_success_updatesFlows() = runTest {
         val (mock, repository) = setup()
-        // 对齐生产真实抓包/逆向格式：hiddenZoneIds 与 customOrder 为 Long 数组 []
+
         val mockBody = """
             {
                 "success": true,
@@ -70,7 +61,6 @@ class ZoneRepositoryTest {
         assertEquals(100L, payload.focusZones?.first()?.nodeId)
         assertEquals("手办", payload.focusZones?.first()?.displayName)
 
-        // 验证 Flow 是否同步更新
         assertEquals(1, repository.focusZonesFlow.value.size)
         assertEquals(100L, repository.focusZonesFlow.value.first().nodeId)
         assertEquals("recent", repository.settingsFlow.value.sort)
@@ -80,7 +70,7 @@ class ZoneRepositoryTest {
     @Test
     fun getZoneInfo_success_returnsZoneInfoPayload() = runTest {
         val (mock, repository) = setup()
-        // 对齐生产真实逆向格式：内层嵌套 zone 实体
+
         mock.route(
             "api/zone/home-tabs/visited",
             """{"success":true,"code":200,"msg":"ok"}"""
@@ -168,8 +158,7 @@ class ZoneRepositoryTest {
 
     @Test
     fun getZoneInfo_withReportVisitDisabled_skipsVisitedRequest() = runTest {
-        // 访问上报是 fire-and-forget：必须把上报作用域与请求引擎都放到虚拟调度器上，
-        // 否则「未上报」断言取决于真实线程时序（可能永远为真，回归时也检测不到）。
+
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val mock = MockApi()
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
@@ -196,12 +185,10 @@ class ZoneRepositoryTest {
             """.trimIndent()
         )
 
-        // 首页只借用 tabs 装配二级板块，不是「进入专区」：不得上报访问记录
         val result = repository.getZoneInfo(100L, reportVisit = false)
         assertTrue(result.isSuccess)
         assertEquals(2, result.getOrThrow().tabs.size)
 
-        // 只应发出一次 api/zone/info；若误上报访问会多出一次请求
         assertEquals(1, mock.requestCount)
         val recorded = mock.takeRequest()
         assertTrue(recorded.path!!.contains("api/zone/info"))
@@ -210,8 +197,7 @@ class ZoneRepositoryTest {
 
     @Test
     fun getZoneInfo_defaultReportsVisitExactlyOnce() = runTest {
-        // 正例：专区详情走默认 reportVisit = true，删除上报分支或把默认值改成 false 必须让本用例失败
-        // （否则「最近访问」排序会静默失效且无回归网）。
+
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val mock = MockApi()
         val preferences = ViewPreferencesManager(TestDataStore.viewPrefs())
@@ -251,7 +237,7 @@ class ZoneRepositoryTest {
     @Test
     fun toggleFocus_follow_and_unfollow_updatesFlow() = runTest {
         val (mock, repository) = setup()
-        // 1. 模拟关注成功
+
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"focus":true,"count":10}}"""
         )
@@ -261,7 +247,6 @@ class ZoneRepositoryTest {
         assertEquals(1, repository.focusZonesFlow.value.size)
         assertEquals(100L, repository.focusZonesFlow.value.first().nodeId)
 
-        // 2. 模拟取消关注成功
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"focus":false,"count":9}}"""
         )
@@ -276,15 +261,12 @@ class ZoneRepositoryTest {
         assertNull(ZoneRepository.formatZoneIconUrl(null))
         assertNull(ZoneRepository.formatZoneIconUrl(""))
 
-        // 以 zone/ 开头
         val zoneUrl = ZoneRepository.formatZoneIconUrl("zone/figure.png")
         assertEquals("https://rfx.hpoi.net/gk/zone/figure.png", zoneUrl)
 
-        // 非 zone/ 开头
         val normalUrl = ZoneRepository.formatZoneIconUrl("cover.png")
         assertEquals("https://rfx.hpoi.net/gk/cover/s/cover.png", normalUrl)
 
-        // 完整 http url 原样返回
         val httpUrl = ZoneRepository.formatZoneIconUrl("https://example.com/icon.png")
         assertEquals("https://example.com/icon.png", httpUrl)
     }
@@ -293,11 +275,9 @@ class ZoneRepositoryTest {
     fun formatZoneCoverUrl_rules() {
         assertNull(ZoneRepository.formatZoneCoverUrl(null))
 
-        // 以 zone/ 开头
         val zoneCover = ZoneRepository.formatZoneCoverUrl("zone/banner.jpg")
         assertEquals("https://rfx.hpoi.net/gk/zone/banner.jpg", zoneCover)
 
-        // 非 zone/ 开头
         val normalCover = ZoneRepository.formatZoneCoverUrl("banner.jpg")
         assertEquals("https://rfx.hpoi.net/gk/cover/n/banner.jpg", normalCover)
     }
@@ -383,7 +363,7 @@ class ZoneRepositoryTest {
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)
         assertEquals("/api/zone/items", recorded.encodedPath)
-        // 单专区：作用域只通过 zones 表达，不再发旧 nodeId 参数
+
         assertEquals("100", recorded.queryParameter("zones"))
         assertNull(recorded.queryParameter("nodeId"))
         assertEquals("company", recorded.queryParameter("itemType"))
@@ -400,7 +380,7 @@ class ZoneRepositoryTest {
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
         assertEquals("/api/zone/items", recorded.encodedPath)
-        // 全部聚合：省略 zones 即等价全站；纪律要求绝不携 homeScope（非空会覆盖 zones）
+
         assertNull(recorded.queryParameter("zones"))
         assertNull(recorded.queryParameter("homeScope"))
         assertEquals("works", recorded.queryParameter("itemType"))
@@ -418,7 +398,7 @@ class ZoneRepositoryTest {
 
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
-        // 关注聚合实测为并集：zones=逗号串可用
+
         assertEquals("11,22", recorded.queryParameter("zones"))
         assertNull(recorded.queryParameter("homeScope"))
         assertEquals("series", recorded.queryParameter("itemType"))
@@ -442,7 +422,7 @@ class ZoneRepositoryTest {
     @Test
     fun getZoneHomeTabs_tokenExpiredNotifiesSessionSelfHealing() = runTest {
         val mock = MockApi()
-        // 专区首页流遇 4001 由深管道通知会话，不再静默失败
+
         mock.enqueue(mock.failure(4001, "登录已过期"))
         val repository = ZoneRepository(
             api = mock.api(tokenProvider = { "tok-zone" }),

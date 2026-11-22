@@ -60,9 +60,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 角色专属相关相册列表页面。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterAlbumListScreen(
@@ -130,7 +127,6 @@ fun CharacterAlbumListScreen(
                     else -> {
                         val staggeredGridState = rememberLazyStaggeredGridState()
 
-                        // 触底加载更多监听
                         val shouldLoadMore by remember {
                             derivedStateOf {
                                 val layoutInfo = staggeredGridState.layoutInfo
@@ -204,16 +200,13 @@ fun CharacterAlbumListScreen(
         }
     }
 
-/**
- * 角色相册卡片（自适应长宽比瀑布流）。
- */
 @Composable
 private fun CharacterAlbumStaggeredCard(
     album: AlbumData,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：路径为空或官方缺省吉祥物（none.jpg）时沿用历史 17:24 纯文本卡
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     ElevatedCard(
@@ -222,7 +215,7 @@ private fun CharacterAlbumStaggeredCard(
         shape = MaterialTheme.shapes.small
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // 封面图片区：有图时高度由 PoiAsyncImage 的自适应纵横比撑开，无图时固定 17:24
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -235,7 +228,7 @@ private fun CharacterAlbumStaggeredCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/
+
                     PoiAsyncImage(
                         path = album.cover,
                         category = MediaCategory.ALBUM,
@@ -247,7 +240,6 @@ private fun CharacterAlbumStaggeredCard(
                     )
                 }
 
-                // 右上角半透明浮层点赞徽标
                 val praiseCount = album.praiseCount ?: 0L
                 if (praiseCount > 0L) {
                     Surface(
@@ -279,7 +271,6 @@ private fun CharacterAlbumStaggeredCard(
                 }
             }
 
-            // 底部文字信息区
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -296,7 +287,6 @@ private fun CharacterAlbumStaggeredCard(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // 作者头像 + 昵称
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -308,7 +298,7 @@ private fun CharacterAlbumStaggeredCard(
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     ) {
-                        // 头像走 head/ 家族方形缩略档，外层 16dp 圆形裁切
+
                         PoiAsyncImage(
                             path = album.user?.header,
                             category = MediaCategory.AVATAR,
@@ -331,9 +321,6 @@ private fun CharacterAlbumStaggeredCard(
     }
 }
 
-/**
- * 错误重试占位界面。
- */
 @Composable
 private fun CharacterAlbumListError(
     errorMessage: String,
@@ -378,9 +365,6 @@ private fun CharacterAlbumListError(
     }
 }
 
-/**
- * 空数据占位界面。
- */
 @Composable
 private fun CharacterAlbumListEmpty(
     modifier: Modifier = Modifier

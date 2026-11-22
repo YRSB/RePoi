@@ -44,20 +44,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 首页动态 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HomeFeedViewModelTest`（逐用例；Mockito 三 mock →
- * 真实 HomeRepository + 真实 ZoneRepository + 真实 ViewPreferencesManager，
- * 全部背后 [MockApi]/[TestDataStore]；
- * `stubFeed(categoryId,subType,lastTime,zoneNodeId,zoneIds)` →
- * [MockApi.routeWhen] 按体匹配（`verify getHomeFeed(...)` →
- * `takeRequest().formEntries()` 断言；`clearInvocations/verifyNoInteractions` →
- * `requestCount` 差值断言）；`focusZonesFlow/settingsFlow` 直接设值 →
- * 真实 ZoneRepository 驱动（`getZoneHomeTabs` 首屏 payload /
- * `toggleFocus` / `updateSettings`）；`MainDispatcherRule` →
- * `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeFeedViewModelTest {
 
@@ -70,9 +56,7 @@ class HomeFeedViewModelTest {
 
     @AfterTest
     fun tearDownMain() {
-        // StandardTestDispatcher 的 context 不含 Job，CoroutineContext.cancelChildren() 在这里是空操作
-        // （无法取消 ViewModel 自建 SupervisorJob 下的协程）。改为排空仍排在 Main 上的任务，
-        // 再交还平台 dispatcher，避免续体在 reset 之后恢复并污染下一个测试。
+
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
@@ -89,7 +73,7 @@ class HomeFeedViewModelTest {
         val dispatcher: CoroutineDispatcher,
     ) {
         val feedRequests: Int get() = feedMock.requestCount
-        /** 讨论接口（`api/posts/search`）请求次数；由 [stubPosts] 的谓词计数。 */
+
         var postsRequests: Int = 0
         val userSession = FakeUserSession("utoken-test")
         val messageRepository = MessageRepository(accountMock.api(dispatcher))
@@ -116,26 +100,24 @@ class HomeFeedViewModelTest {
     ): Env {
         val feedMock = MockApi()
         val zoneMock = MockApi()
-        // 专区 tabs 首屏：默认空聚焦 + showAll，供 VM init 静默同步消费
+
         zoneMock.route(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
         )
-        // 内存 DataStore：无真实文件 IO 与后台写协程，避免续体在 resetMain() 之后恢复污染
-        // 后续用例（docs/testing.md「DataStore 测试」约定 ViewModel 测试默认用内存实例）。
+
         val preferences = ViewPreferencesManager(TestDataStore.inMemory())
         preferences.setFeedZoneTabKey(savedTabKey)
         preferences.setFeedCategory(savedCategoryId)
         preferences.setFeedSubType(savedSubType)
         if (savedBoardKey.isNotEmpty()) preferences.setFeedZoneBoard(savedBoardKey)
-        // 访问上报走注入的虚拟调度器作用域：`advanceUntilIdle()` 后即可确定性观测，
-        // 不再依赖真实 IO 线程（否则「未上报」断言永远是假阴性）。
+
         val zoneRepository = ZoneRepository(
             api = zoneMock.api(testDispatcher),
             viewPreferencesManager = preferences,
             visitReportScope = CoroutineScope(testDispatcher + SupervisorJob())
         )
-        // 分享板块（#157）默认空响应路由：未切到分享板块时不会发出请求
+
         val albumMock = MockApi()
         albumMock.route(
             "api/album/list",
@@ -145,13 +127,13 @@ class HomeFeedViewModelTest {
             "api/zone/categories",
             """{"success":true,"code":200,"msg":"ok","data":{"visible":true,"categories":[]}}"""
         )
-        // 二手板块（#160）默认空响应路由：未切到二手板块时不会发出请求
+
         val resaleMock = MockApi()
         resaleMock.route(
             "api/resale/search",
             """{"success":true,"code":200,"msg":"ok","data":{"list":[]}}"""
         )
-        // 产品板块（#159）默认空响应路由：未切到产品板块时不会发出请求
+
         val hobbyMock = MockApi()
         hobbyMock.route(
             "api/hobby/query-v2",
@@ -193,8 +175,7 @@ class HomeFeedViewModelTest {
         zoneIds: String? = null,
         items: List<ActionItem>,
     ) {
-        // M7 fix-2：getActionList 为 GET + query——按 query 映射匹配（encodedPath
-        // 不含查询串；MockApi.routeWhen 第三入参透传 request.url.parameters）。
+
         feedMock.routeWhen(
             predicate = { path, _, query ->
                 path.contains("api/user-action/list-v3") &&
@@ -230,15 +211,13 @@ class HomeFeedViewModelTest {
     }
 
     private fun Env.lastFeedForm(): Map<String, String> {
-        // M7 fix-2：GET 请求无 POST form——按 queryParameter 逐键读取查询串。
-        // 断言对象是「最近一次」请求；takeRequest 是 FIFO，多次请求后只能取到最早那条。
+
         val recorded = feedMock.lastRequest()
         return listOf("categoryId", "subType", "lastTime", "zoneNodeId", "zoneIds", "pageSize")
             .mapNotNull { key -> recorded.queryParameter(key)?.let { key to it } }
             .toMap()
     }
 
-    /** 首屏专区 tabs 路由：把指定专区放进「我的专区」，供 `savedTabKey=z{nodeId}` 解析到真实分类。 */
     private fun Env.stubFocusedZone(nodeId: Long, name: String = "手办") {
         zoneMock.replaceRoute(
             "api/zone/home-tabs",
@@ -246,7 +225,6 @@ class HomeFeedViewModelTest {
         )
     }
 
-    /** 单专区 `api/zone/info` 路由（首页据此装配二级板块）。 */
     private fun Env.stubZoneInfo(
         nodeId: Long,
         tabs: List<String>,
@@ -267,12 +245,6 @@ class HomeFeedViewModelTest {
         )
     }
 
-    /**
-     * 讨论接口（`api/posts/search`）路由与计数。
-     *
-     * 注意：讨论请求经 `ZoneRepository` 发出，而本测试的 `ZoneRepository` 背后是 [Env.zoneMock]，
-     * 因此必须挂在 zoneMock 上（挂 feedMock 会让请求落到「无路由 → 500」并误判）。
-     */
     private fun Env.stubPosts(
         zoneNodeId: Long? = null,
         order: String = "upd",
@@ -301,7 +273,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun initialLoad_usesSavedFiltersAndParsesCursor() = runTest(testDispatcher) {
-        // 老用户落盘的是旧键 all：启动时应归一为 allInfo 再渲染与请求
+
         val env = env(savedTabKey = "all", savedSubType = "all")
         env.stubFeed(
             categoryId = 0,
@@ -435,7 +407,7 @@ class HomeFeedViewModelTest {
 
         val viewModel = env.viewModel()
         advanceUntilIdle()
-        // 旧键 all 无论从何处传入，都不得原样发给接口（服务端会静默回落「推荐」）
+
         viewModel.selectSubType("all")
         advanceUntilIdle()
 
@@ -448,8 +420,7 @@ class HomeFeedViewModelTest {
     @Test
     fun resetFilters_restoresDefaultsAndPersists() = runTest(testDispatcher) {
         val env = env(savedTabKey = "z100", savedSubType = "all")
-        // 首屏 tabs 即带 z100 聚焦（init 静默同步消费）。route() 是追加式、首条命中优先，
-        // 二次声明同路径不会生效，必须用 replaceRoute()。
+
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[{"nodeId":100,"nameCN":"手办"}]}}"""
@@ -539,7 +510,7 @@ class HomeFeedViewModelTest {
     fun loadNextPage_deduplicatesOverlappingItems() = runTest(testDispatcher) {
         val env = env()
         env.stubFeed(items = listOf(item(1, "100"), item(2, "90")))
-        // 下一页与首页存在重叠条目（2/90），应被去重，仅追加真正的新条目
+
         env.stubFeed(lastTime = 90L, items = listOf(item(2, "90"), item(3, "80")))
 
         val viewModel = env.viewModel()
@@ -611,10 +582,8 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 初始仅有全部与关注
         assertEquals(2, viewModel.uiState.value.categories.size)
 
-        // 模拟用户关注了手办专区 (nodeId = 100)
         env.zoneMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"focus":true}}""")
         env.zoneRepository.toggleFocus(100L, "手办", "figure.jpg")
         advanceUntilIdle()
@@ -641,7 +610,7 @@ class HomeFeedViewModelTest {
         env.zoneRepository.toggleFocus(100L, "手办")
         env.zoneMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"focus":true}}""")
         env.zoneRepository.toggleFocus(200L, "模型")
-        // 隐藏模型专区 (nodeId = 200)
+
         env.zoneMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         env.zoneRepository.updateSettings(
             showAll = true, sort = "recent", hiddenZoneIds = listOf(200L), customOrder = emptyList()
@@ -649,7 +618,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val categories = viewModel.uiState.value.categories
-        // 应仅有 全部、关注、手办（模型已被隐藏剔除）
+
         assertEquals(3, categories.size)
         assertEquals("all", categories[0].tabKey)
         assertEquals("follow", categories[1].tabKey)
@@ -668,7 +637,7 @@ class HomeFeedViewModelTest {
         env.zoneRepository.toggleFocus(100L, "手办")
         env.zoneMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"focus":true}}""")
         env.zoneRepository.toggleFocus(200L, "模型")
-        // 设置自定义排序：将 200 排在 100 前面
+
         env.zoneMock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{}}""")
         env.zoneRepository.updateSettings(
             showAll = false, sort = "custom", hiddenZoneIds = emptyList(), customOrder = listOf(200L, 100L)
@@ -676,7 +645,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         val categories = viewModel.uiState.value.categories
-        // 不展示全部；首先为关注，接着为 模型(200)，最后为 手办(100)
+
         assertEquals(3, categories.size)
         assertEquals("follow", categories[0].tabKey)
         assertEquals("z200", categories[1].tabKey)
@@ -685,7 +654,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedFollow_restoresFollowAndLoadsFeed() = runTest(testDispatcher) {
-        // #212：冷启动允许恢复上次保存的「关注」聚合态，不再硬编码回落「全部」
+
         val env = env(savedTabKey = "follow")
         env.stubFocusedZone(nodeId = 100L)
         env.stubFeed(zoneIds = "100", items = listOf(item(1, "100")))
@@ -702,8 +671,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_waitsForSessionPrewarm_singleRequestWithToken() = runTest(testDispatcher) {
-        // #212 严格单次请求与会话就绪门禁：启动时等待 userSession 离开 Prewarming 态
-        // 仅发起恰好一次 getZoneHomeTabs() 请求，杜绝空 Token 请求与二次请求竞争
+
         val fakeSession = FakeUserSession(SessionState.Prewarming)
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
@@ -711,22 +679,19 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel(customSession = fakeSession)
         advanceUntilIdle()
 
-        // 预热未完成前：不发起专区首屏请求，首屏保持未就绪
         assertEquals(0, env.zoneMock.requestCount, "凭据预热未结束前不得发起专区请求")
         assertFalse(viewModel.isColdStartReady.value, "凭据预热未结束前首屏不得标记就绪")
 
-        // 凭据预热完成
         fakeSession.setState(SessionState.Authenticated(userId = 42L, token = "utoken-verified"))
         advanceUntilIdle()
 
-        // 预热完成后仅发起一次请求
         assertEquals(1, env.zoneMock.requestCount, "预热完成后仅发起恰好一次专区请求")
         assertTrue(viewModel.isColdStartReady.value, "落定后首屏标记就绪")
     }
 
     @Test
     fun coldStart_networkFailure_setsColdStartError_andRetryRecovers() = runTest(testDispatcher) {
-        // #212 异常超时兜底与重试回路
+
         val env = env()
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
@@ -740,7 +705,6 @@ class HomeFeedViewModelTest {
         assertFalse(state.isColdStartReady, "网络失败时首屏不得标记就绪")
         assertEquals("Internal Server Error", state.coldStartError)
 
-        // 模拟网络恢复，触发重试
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":true},"focusZones":[]}}"""
@@ -756,7 +720,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedBoardMemory_notOverwrittenByAction() = runTest(testDispatcher) {
-        // #212 消除 Pager 误写与状态丢失：恢复非首板块时不被第 0 项覆写
+
         val env = env(savedTabKey = "z100", savedBoardKey = "z100|album")
         env.stubFocusedZone(100L)
         env.stubZoneInfo(100L, tabs = listOf("action", "album"))
@@ -772,13 +736,13 @@ class HomeFeedViewModelTest {
         assertEquals("z100", state.selectedCategory.tabKey)
         assertEquals(ZoneBoard.Album, state.selectedBoard)
         assertTrue(state.isColdStartReady)
-        // 验证落盘的二级板块键仍然是 z100|album，没有被反向覆写为 z100|action
+
         assertEquals("z100|album", env.preferences.getInitialFeedZoneBoardKey())
     }
 
     @Test
     fun refreshFeed_triggersZoneHomeTabsRefresh() = runTest(testDispatcher) {
-        // #212 下拉刷新纳入 zoneRepository.getZoneHomeTabs()
+
         val env = env()
         env.stubFeed(items = listOf(item(1, "100")))
         val viewModel = env.viewModel()
@@ -791,11 +755,9 @@ class HomeFeedViewModelTest {
         assertEquals(zoneRequestsBefore + 1, env.zoneMock.requestCount, "下拉刷新应重新拉取专区首页数据")
     }
 
-
     @Test
     fun coldStart_savedSingleZone_restoresWithSingleInitialFeedRequest() = runTest(testDispatcher) {
-        // issue #198：上次停留在单专区时，冷启动恢复落定前不得先在「全部」作用域
-        // 发出注定作废的乐观首屏请求（用户看到加载指示器转两轮 + 信息流闪烁）。
+
         val env = env(savedTabKey = "z100")
         env.stubFocusedZone(nodeId = 100L)
         env.stubZoneInfo(nodeId = 100L, tabs = listOf("action"))
@@ -821,11 +783,9 @@ class HomeFeedViewModelTest {
         )
     }
 
-
     @Test
     fun coldStart_savedNonDefaultSubType_loadsOnceWithSavedSubType() = runTest(testDispatcher) {
-        // issue #198 变体：上次筛选非默认动态子类时，冷启动首屏请求应直接携带
-        // 落盘 subType，不得先按默认 recommend 发出一次再重发。
+
         val env = env(savedTabKey = "all", savedSubType = "comment")
         env.stubFeed(subType = "comment", items = listOf(item(3, "1700000000000")))
 
@@ -844,11 +804,9 @@ class HomeFeedViewModelTest {
         assertEquals("comment", env.lastFeedForm()["subType"])
     }
 
-
     @Test
     fun coldStart_savedDefaults_loadExactlyOnce() = runTest(testDispatcher) {
-        // 回归保护：默认落盘值（全部 + 推荐）冷启动只发一次首屏请求，
-        // 修复不得让最常见路径退化成零请求或双请求。
+
         val env = env()
         env.stubFeed(items = listOf(item(1, "1700000000000")))
 
@@ -872,9 +830,9 @@ class HomeFeedViewModelTest {
         assertEquals(8, viewModel.savedScrollIndex)
         assertEquals(120, viewModel.savedScrollOffset)
         assertEquals(0.75f, viewModel.savedFilterCollapseFraction)
-        // 筛选条横向滚动位置：按板块键独立保存，切走再切回可原样恢复
+
         assertEquals(240, viewModel.scrollMemoryFor(viewModel.currentBoardMemoryKey).filterRowScrollX)
-        // 未记录过的键返回 null，宿主据此区分「没有记忆」与「记忆为 0」
+
         assertNull(viewModel.scrollMemoryOrNull("z999|action"))
 
         viewModel.saveFilterCollapseFraction(1.4f)
@@ -959,7 +917,6 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertEquals(0, viewModel.uiState.value.unreadMessageCount)
 
-        // 预热完成：凭据就绪后才触发未读数拉取
         session.setState(SessionState.Authenticated(userId = 1L, token = "utoken-test"))
         advanceUntilIdle()
 
@@ -974,19 +931,19 @@ class HomeFeedViewModelTest {
 
         env.viewModel(accounts = true)
         advanceUntilIdle()
-        // #212 严格单次请求：启动时等待预热完成，不得在空 Token 状态下提前发送请求
+
         assertEquals(0, env.zoneMock.requestCount)
 
         env.userSession.setState(SessionState.Authenticated(userId = 1L, token = "utoken-test"))
         advanceUntilIdle()
-        // 预热完成后仅发起一次带凭据的请求
+
         assertEquals(1, env.zoneMock.requestCount)
     }
 
     @Test
     fun selectZoneTab_allStillSelectableWhenShowAllDisabled() = runTest(testDispatcher) {
         val env = env()
-        // 设置隐藏「全部」：分类列表不再产出 all，但切换器「快捷·全部」仍需可选中。
+
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
             """{"success":true,"code":200,"msg":"ok","data":{"settings":{"showAll":false},"focusZones":[]}}"""
@@ -997,7 +954,6 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.categories.none { it.tabKey == "all" })
 
-        // 先离开「全部」：selectCategory 对同一 tabKey 早退，否则本用例无法证伪兜底分类逻辑
         viewModel.selectZoneTab(ZONE_TAB_KEY_FOLLOW)
         advanceUntilIdle()
         assertEquals("follow", viewModel.uiState.value.selectedCategory.tabKey)
@@ -1011,7 +967,7 @@ class HomeFeedViewModelTest {
         assertEquals(listOf(1L), state.items.map { it.id })
         assertEquals("all", env.preferences.getInitialFeedZoneTabKey())
         assertEquals(0, env.preferences.getInitialFeedCategoryId())
-        // 只切 tab，不修改「隐藏全部」设置
+
         assertFalse(env.zoneRepository.settingsFlow.value.showAll)
     }
 
@@ -1032,12 +988,10 @@ class HomeFeedViewModelTest {
         assertTrue(state.items.isEmpty())
         assertFalse(state.hasMore)
         assertFalse(state.isInitialLoading)
-        // 未关注任何专区时切「关注」不发请求
+
         assertEquals(before, env.feedRequests)
         assertEquals("follow", env.preferences.getInitialFeedZoneTabKey())
     }
-
-    // ── 二级板块装配（#155 B 阶段） ────────────────────────────────────────
 
     @Test
     fun aggregateBoards_areHomeOrderIntersectedWithImplemented() = runTest(testDispatcher) {
@@ -1048,7 +1002,7 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.All, state.zoneScope)
-        // 聚合态固定顺序 = 能力矩阵的全部聚合列表；10 类均已接入（#155–#161）
+
         assertEquals(ZoneBoardCapability.ALL_BOARDS, state.boards)
         assertEquals(ZoneBoard.HOME_ORDER, state.boards)
         assertEquals(
@@ -1064,10 +1018,10 @@ class HomeFeedViewModelTest {
         assertTrue(ZoneBoard.Posts in state.boards)
         assertTrue(ZoneBoard.Hobby in state.boards)
         assertTrue(state.boards.any { it.isEntity })
-        // 顺序必须与 HOME_ORDER 一致
+
         assertEquals(state.boards.sortedBy { ZoneBoard.HOME_ORDER.indexOf(it) }, state.boards)
         assertEquals(state.boards.first(), state.selectedBoard)
-        // 聚合态不需要 zone/info 请求：只有启动时的 zone/home-tabs
+
         assertEquals(1, env.zoneMock.requestCount)
     }
 
@@ -1084,9 +1038,7 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(listOf(100L)), state.zoneScope)
-        // 关注聚合无多专区通道：讨论（`posts/search` 只认单值 zoneNodeId，逗号串退化为全站）、
-        // 二手（`resale/search` 的 zones 逗号串是交集语义）与产品（需登录态复验 homeScope）都必须隐藏；
-        // 分享与实体 5 类有 zones 并集通道可用。期望值直接取自能力矩阵，防止两处规则漂移。
+
         assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertEquals(
             listOf(
@@ -1104,7 +1056,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun selectZoneTab_fromHiddenBoard_fallsBackToFirstBoard() = runTest(testDispatcher) {
-        // 从「全部」的讨论板块切到「关注」：讨论在关注态被能力矩阵隐藏，选中必须回落到首板块
+
         val env = env()
         env.stubFocusedZone(100L)
         env.stubFeed(items = emptyList())
@@ -1128,7 +1080,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun followScope_actionRequestSendsZoneIdsUnionAndOmitsZoneNodeId() = runTest(testDispatcher) {
-        // 关注聚合动态：zoneIds=逗号串（并集），不得下发 zoneNodeId（单值参数只属单专区）
+
         val env = env()
         env.zoneMock.replaceRoute(
             "api/zone/home-tabs",
@@ -1149,7 +1101,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun followScope_hiddenBoardsNeverRequested() = runTest(testDispatcher) {
-        // 隐藏板块不只「不显示」，还必须零请求：直接调用其加载入口也要被安全闸门拦下
+
         val env = env()
         env.stubFocusedZone(100L)
         env.stubFeed(items = emptyList())
@@ -1163,7 +1115,6 @@ class HomeFeedViewModelTest {
         assertEquals(0, env.hobbyMock.requestCount)
         assertEquals(0, env.resaleMock.requestCount)
 
-        // 不在 boards 中的板块：选择被忽略
         viewModel.selectBoard(ZoneBoard.Posts)
         viewModel.selectBoard(ZoneBoard.Hobby)
         viewModel.selectBoard(ZoneBoard.Resale)
@@ -1178,7 +1129,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun runtimeFollowScope_isFollowWithEmptyZoneIds() = runTest(testDispatcher) {
-        // 运行期切「关注」（冷启动 saved follow 会回落 all，见 coldStart_savedFollow_*）
+
         val env = env()
         env.stubFeed(items = emptyList())
         val viewModel = env.viewModel()
@@ -1190,7 +1141,7 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Follow(emptyList()), state.zoneScope)
         assertTrue(state.zoneScope.isFollowEmpty)
-        // 空关注同样按作用域感知列表隐藏讨论/产品/二手板块（并短路不发请求），分享与实体 5 类保留
+
         assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertEquals(ZoneBoardCapability.homeBoardsFor(state.zoneScope), state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
@@ -1214,10 +1165,10 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 服务端下发 action/album/shop_item/community，客户端只保留白名单内的 action/album
+
         assertEquals(listOf(ZoneBoard.Action, ZoneBoard.Album), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
-        // zone/info 请求带上专区 nodeId
+
         val infoRequest = env.zoneMock.lastRequest()
         assertTrue(infoRequest.encodedPath.orEmpty().contains("api/zone/info"))
         assertEquals("100", infoRequest.queryParameter("nodeId"))
@@ -1240,7 +1191,7 @@ class HomeFeedViewModelTest {
         val paths = buildList {
             repeat(env.zoneMock.requestCount) { add(env.zoneMock.takeRequest().encodedPath.orEmpty()) }
         }
-        // 首页只借用 zone/info 的 tabs，不是「进入专区」：不得上报访问记录污染「最近访问」排序
+
         assertEquals(1, paths.count { it.contains("api/zone/info") })
         assertTrue(paths.none { it.contains("visited") }, "首页不应上报专区访问记录：$paths")
     }
@@ -1261,7 +1212,7 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(ZoneQueryScope.Single(100L), state.zoneScope)
-        // 请求失败回退兜底列表，不崩溃、不出现空 Tab 条
+
         assertEquals(listOf(ZoneBoard.Action), state.boards)
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         assertFalse(state.isInitialLoading)
@@ -1288,7 +1239,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun selectBoard_onlySelectsBoardsInCurrentList() = runTest(testDispatcher) {
-        // 单专区只下发 action：其余已接入板块不在 boards 中，选择必须被忽略
+
         val env = env()
         env.stubFeed(items = emptyList())
         env.stubFeed(zoneNodeId = 100L, zoneIds = "100", items = emptyList())
@@ -1301,22 +1252,18 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf(ZoneBoard.Action), viewModel.uiState.value.boards)
 
-        // 不在当前 boards 中：选择被忽略
         viewModel.selectBoard(ZoneBoard.Hobby)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
         viewModel.selectBoard(ZoneBoard.Album)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
-        // 重复选择当前板块为 no-op
+
         viewModel.selectBoard(ZoneBoard.Action)
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
     }
 
-    // ── 冷启动三级恢复（#156） ─────────────────────────────────────────
-
     @Test
     fun coldStart_savedSingleZone_restoresZoneAndBoardsAfterFocusZonesReady() = runTest(testDispatcher) {
-        // 保存单专区：必须等关注专区数据到达后再判定可用性，不能被首帧空列表误判回落。
-        // 二级落点取**非首板块**（album），才能区分「恢复保存板块」与「回落首板块」。
+
         val env = env(savedTabKey = "z100", savedBoardKey = "z100|album")
         env.stubFocusedZone(100L)
         env.stubZoneInfo(100L, tabs = listOf("action", "album"))
@@ -1329,19 +1276,19 @@ class HomeFeedViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("z100", state.selectedCategory.tabKey)
         assertEquals(100L, state.selectedCategory.nodeId)
-        // 单专区板块 = 服务端 tabs ∩ 白名单；首板块恒为动态（不写死后续票新增的板块）
+
         assertEquals(ZoneBoard.Action, state.boards.first())
         assertTrue(state.boards.all { it in ZoneBoard.CLIENT_WHITELIST })
-        // 恢复保存的二级板块（若恢复逻辑失效会回落首板块 Action）
+
         assertEquals(ZoneBoard.Album, state.selectedBoard)
         assertEquals(listOf(2L), state.items.map { it.id })
-        // 只为恢复后的专区请求内容，未先发「全部」请求（回落误判会留下无 zoneNodeId 的请求）
+
         assertEquals("100", env.lastFeedForm()["zoneNodeId"])
     }
 
     @Test
     fun coldStart_savedUnfollowedZone_fallsBackToAllWithoutZoneRequest() = runTest(testDispatcher) {
-        // 保存的专区已不在关注集合中 → 回落「全部」，且不为不可用专区发任何请求
+
         val env = env(savedTabKey = "z999", savedBoardKey = "z999|hobby")
         env.stubFeed(items = listOf(item(1, "100")))
 
@@ -1353,13 +1300,13 @@ class HomeFeedViewModelTest {
         assertEquals(ZoneBoard.Action, state.selectedBoard)
         assertEquals(listOf(1L), state.items.map { it.id })
         assertNull(env.lastFeedForm()["zoneNodeId"])
-        // 仅启动时的 zone/home-tabs；没有为 z999 请求 zone/info
+
         assertEquals(1, env.zoneMock.requestCount)
     }
 
     @Test
     fun coldStart_savedBoardTypeUnavailable_fallsBackToFirstBoard() = runTest(testDispatcher) {
-        // 前缀匹配但当前板块列表没有 hobby（未接入）→ 回落该专区首板块
+
         val env = env(savedTabKey = "all", savedBoardKey = "all|bogus_board")
         env.stubFeed(items = emptyList())
 
@@ -1374,7 +1321,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedBoardFromOtherZone_fallsBackToFirstBoard() = runTest(testDispatcher) {
-        // 二级键前缀与恢复后的一级 tabKey 不匹配 → 取当前专区首板块
+
         val env = env(savedTabKey = "all", savedBoardKey = "z200|album")
         env.stubFeed(items = emptyList())
 
@@ -1387,7 +1334,7 @@ class HomeFeedViewModelTest {
 
     @Test
     fun coldStart_savedAlbumBoard_restoresBoardAndLazyLoads() = runTest(testDispatcher) {
-        // 冷启动恢复到分享板块（#156 二级恢复 + #157 懒加载）：恢复路径也必须触发首屏请求
+
         val env = env(savedTabKey = "all", savedBoardKey = "all|album")
         env.stubFeed(items = emptyList())
         env.albumMock.replaceRoute(
@@ -1417,7 +1364,6 @@ class HomeFeedViewModelTest {
         viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
         advanceUntilIdle()
 
-        // 切专区写回 feed_zone_board = {tabKey}|{首板块 type}
         assertEquals("z100|action", env.preferences.getInitialFeedZoneBoardKey())
         assertEquals("z100", env.preferences.getInitialFeedZoneTabKey())
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
@@ -1434,7 +1380,6 @@ class HomeFeedViewModelTest {
         viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
         advanceUntilIdle()
 
-        // 该专区服务端 tabs 只含动态/分享：选择不在 boards 中的讨论板块被忽略，也不改写偏好
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
 
@@ -1451,17 +1396,14 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 「全部·动态」记下滚动位置
         viewModel.saveScrollPosition(7, 90)
         assertEquals(7, viewModel.scrollMemoryFor("all|action").index)
 
-        // 切到单专区：落点为该专区首板块，且不覆盖旧作用域记忆
         viewModel.selectCategory(FeedCategory("z100", "手办", 100L, "100"))
         advanceUntilIdle()
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
         assertEquals(HomeBoardScrollMemory(), viewModel.scrollMemoryFor("z100|action"))
 
-        // 切回「全部」：滚动位置切走再切回不丢
         viewModel.selectCategory(FeedCategory("all", "全部"))
         advanceUntilIdle()
         assertEquals(HomeBoardScrollMemory(index = 7, offset = 90), viewModel.scrollMemoryFor("all|action"))
@@ -1481,7 +1423,6 @@ class HomeFeedViewModelTest {
         assertEquals(120, viewModel.savedScrollOffset)
         assertEquals(0.75f, viewModel.savedFilterCollapseFraction)
 
-        // 另一个「作用域 + 板块」键互不覆盖
         viewModel.saveBoardScrollPosition("z100|action", 3, 40)
         assertEquals(HomeBoardScrollMemory(index = 3, offset = 40), viewModel.scrollMemoryFor("z100|action"))
         assertEquals(8, viewModel.scrollMemoryFor("all|action").index)
@@ -1499,7 +1440,7 @@ class HomeFeedViewModelTest {
             "follow:100,200|action",
             homeBoardMemoryKey(ZoneQueryScope.Follow(listOf(100L, 200L)), ZoneBoard.Action)
         )
-        // 关注集合顺序随设置排序变化：键必须归一（去重 + 升序），否则同一作用域会产出多个键
+
         assertEquals(
             "follow:100,200|action",
             homeBoardMemoryKey(ZoneQueryScope.Follow(listOf(200L, 100L, 200L)), ZoneBoard.Action)
@@ -1514,7 +1455,7 @@ class HomeFeedViewModelTest {
             ZoneQueryScope.Follow(listOf(100L, 200L)),
             FeedCategory(tabKey = "follow", name = "关注", zoneIds = "100,200").toZoneQueryScope()
         )
-        // 空关注标记 -1 与非法值不得退化成「假关注集合」（否则会被当成全站）
+
         assertEquals(
             ZoneQueryScope.Follow(emptyList()),
             FeedCategory(tabKey = "follow", name = "关注", zoneIds = "-1").toZoneQueryScope()
@@ -1527,14 +1468,12 @@ class HomeFeedViewModelTest {
             ZoneQueryScope.Single(100L),
             FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100").toZoneQueryScope()
         )
-        // 首帧分类尚未回填 nodeId 时从 tabKey 兜底解析
+
         assertEquals(
             ZoneQueryScope.Single(100L),
             FeedCategory(tabKey = "z100", name = "手办", nodeId = 0L, zoneIds = "").toZoneQueryScope()
         )
     }
-
-    // ── 讨论板块（#158） ────────────────────────────────────────────────
 
     @Test
     fun postsBoard_lazyLoadsOnSelection_andAllScopeOmitsZoneFilter() = runTest(testDispatcher) {
@@ -1544,7 +1483,6 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 懒加载：停在动态板块时绝不请求讨论接口
         assertEquals(0, env.postsRequests)
         assertEquals(ZoneBoardCapability.ALL_BOARDS, viewModel.uiState.value.boards)
 
@@ -1554,7 +1492,7 @@ class HomeFeedViewModelTest {
         assertEquals(1, env.postsRequests)
         val recorded = env.zoneMock.lastRequest()
         assertTrue(recorded.encodedPath.orEmpty().contains("api/posts/search"))
-        // 全部聚合：省略 zone 过滤（不能下发 zones，更不能下发逗号串——会被当作用域过滤）
+
         assertNull(recorded.queryParameter("zoneNodeId"))
         assertNull(recorded.queryParameter("zones"))
         assertEquals("upd", recorded.queryParameter("order"))
@@ -1563,9 +1501,9 @@ class HomeFeedViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(listOf(101L, 102L), state.posts.items.map { it.id })
-        // 聚合态没有置顶语义：不切分置顶帖
+
         assertEquals(emptyList(), state.posts.pinnedPosts)
-        // 内容投影走共享面板快照
+
         assertEquals(state.posts.items, state.postsBoardContent.items)
     }
 
@@ -1580,7 +1518,7 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
 
         viewModel.refresh()
-        // 刷新在途时切排序：loadInitialPosts 取消刷新协程，必须兜底复位刷新态
+
         viewModel.selectPostsOrder("add")
         advanceUntilIdle()
 
@@ -1679,7 +1617,6 @@ class HomeFeedViewModelTest {
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
 
-        // 切走再切回：复用已有状态，不重复请求（滚动/筛选按「作用域 + 板块」记忆）
         assertEquals(1, env.postsRequests)
         assertEquals(listOf(11L, 12L), viewModel.uiState.value.posts.items.map { it.id })
     }
@@ -1689,7 +1626,7 @@ class HomeFeedViewModelTest {
         val env = env()
         env.stubFocusedZone(100L)
         env.stubFeed(items = emptyList())
-        // 计数路由：若关注态误发讨论请求会立刻被断言发现
+
         env.stubPosts(ids = emptyList())
         val viewModel = env.viewModel()
         advanceUntilIdle()
@@ -1702,7 +1639,6 @@ class HomeFeedViewModelTest {
         assertEquals(ZoneBoardCapability.FOLLOW_BOARDS, state.boards)
         assertFalse(ZoneBoard.Posts in state.boards)
 
-        // 直接尝试选中讨论板块：不在当前列表，必须被忽略且不发请求
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
         assertEquals(ZoneBoard.Action, viewModel.uiState.value.selectedBoard)
@@ -1724,7 +1660,6 @@ class HomeFeedViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf(1L, 2L), viewModel.uiState.value.posts.items.map { it.id })
 
-        // 切专区：旧作用域的讨论内容必须作废，切回讨论板块时按新 zoneNodeId 重新取数
         viewModel.selectCategory(
             FeedCategory(tabKey = "z100", name = "手办", nodeId = 100L, zoneIds = "100")
         )
@@ -1745,7 +1680,6 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 验证 session 已由 factory 创建，且 activeSnapshot 正常流转并与 uiState 同步
         val session = viewModel.session
         val activeSnapshot = session.activeSnapshot.value
         assertEquals(ZoneBoard.Action, activeSnapshot.board)
@@ -1763,7 +1697,6 @@ class HomeFeedViewModelTest {
         val viewModel = env.viewModel()
         advanceUntilIdle()
 
-        // 切换到讨论板块，分发至 session 并更新 activeSnapshot
         viewModel.selectBoard(ZoneBoard.Posts)
         advanceUntilIdle()
 

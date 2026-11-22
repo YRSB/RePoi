@@ -18,14 +18,6 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 设置 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `SettingsViewModelTest`（逐用例；Mockito `mock(ViewPreferencesManager)` →
- * 真实 ViewPreferencesManager（[TestDataStore] 隔离目录）；`verify set` →
- * 真实持久化断言；`MainDispatcherRule` → `Dispatchers.setMain`；
- * JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 

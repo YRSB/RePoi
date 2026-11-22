@@ -20,13 +20,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 分类管理器测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `CategoryManagerTest`（逐用例；JUnit4 → kotlin.test，
- * Mockito `mock(HpoiApiService)` → MockEngine 背后的真实 [HpoiApi]，
- * `runBlocking` → `runTest`）。
- */
 class CategoryManagerTest {
 
     private val json = Json {

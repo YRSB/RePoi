@@ -13,8 +13,6 @@ import kotlinx.serialization.json.longOrNull
 import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
 
-// ── 1. 首页信息流 (Action Feed) 模型 ─────────────────────────
-
 @Serializable
 data class ActionListData(
     val list: List<ActionItem>? = null
@@ -62,19 +60,16 @@ data class RelateItem(
     val commentCount: Int = 0,
     val collect: Int = 0
 ) {
-    /** 判定是否为相册类型（通过 itemType 或 categoryId 分类区间 60000..69999） */
+
     val isAlbum: Boolean
         get() = itemType.equals("album", ignoreCase = true) || categoryId in 60000..69999
 
-    /** 相册真实 ID（优先取实体 id，缺失时回退 itemId） */
     val actualAlbumId: Long
         get() = if (id > 0L) id else itemId
 
-    /** 手办真实条目 ID（优先取 itemId，缺失时回退 id） */
     val actualHobbyId: Long
         get() = if (itemId > 0L) itemId else id
 
-    /** 统一解析后的目标 ID */
     val actualId: Long
         get() = if (isAlbum) actualAlbumId else actualHobbyId
 }

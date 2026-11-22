@@ -83,10 +83,6 @@ import kotlinx.coroutines.launch
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 讨论贴详情页。
- * 遵循项目自适应双窗格设计与通用评论体系，提供富文本渲染、大图预览、关联手办导航与回帖互动能力。
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PostDetailScreen(
@@ -246,17 +242,16 @@ fun PostDetailScreen(
                 val isAuthor = detail.user?.effectiveUserId == uiState.currentUserId && uiState.currentUserId > 0L
 
                 ExpressiveFloatingToolbar {
-                // 1. 回帖主按钮
+
                 ExpressiveToolbarButton(
                     onClick = { openTopLevelCommentDialog() },
                     text = "回帖",
                     icon = PoiIcons.AutoMirrored.Filled.Comment,
                     contentDescription = "回帖",
-                    // 回帖是导航类操作，无激活态
+
                     isProminent = false
                 )
 
-                // 2. 评论数按钮（窄屏点击平滑定位到回帖区）
                 ExpressiveToolbarButton(
                     onClick = { scrollToComments() },
                     text = "${uiState.totalCommentCount}",
@@ -265,7 +260,6 @@ fun PostDetailScreen(
                     isProminent = false
                 )
 
-                // 3. 分享操作
                 ExpressiveToolbarButton(
                     onClick = {
                         val title = detail?.title ?: initialTitle ?: "讨论"
@@ -277,7 +271,6 @@ fun PostDetailScreen(
                     isProminent = false
                 )
 
-                // 4. 作者删除操作
                 if (isAuthor) {
                     ExpressiveToolbarButton(
                         onClick = { showDeletePostConfirm = true },
@@ -293,7 +286,6 @@ fun PostDetailScreen(
     }
     ) { scaffoldScope ->
 
-        // ── 1. 初始加载态或错误态 ──
         if (uiState.isInitialLoading && uiState.detail == null) {
             item(key = "post_initial_loading") {
                 PoiLoadingView(modifier = Modifier.fillParentMaxSize())
@@ -309,7 +301,7 @@ fun PostDetailScreen(
         } else {
             val detail = uiState.detail
             if (detail != null) {
-                // ── 2. 主楼卡片：作者头部、标题与正文 ──
+
                 item(key = "post_main_card") {
                     ElevatedCard(
                         shape = MaterialTheme.shapes.large,
@@ -329,7 +321,7 @@ fun PostDetailScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // 2.1 作者信息行
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
@@ -400,7 +392,6 @@ fun PostDetailScreen(
                                 thickness = 0.5.dp
                             )
 
-                            // 2.2 帖子标题
                             Text(
                                 text = detail.title,
                                 style = MaterialTheme.typography.titleLarge,
@@ -409,7 +400,6 @@ fun PostDetailScreen(
                                 lineHeight = 28.sp
                             )
 
-                            // 2.3 帖子富文本正文
                             if (!detail.content.isNullOrBlank()) {
                                 val richText = remember(detail.content, onUrlClick) {
                                     HtmlRichTextParser.parse(
@@ -430,11 +420,9 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ── 3. 帖子配图画廊（自适应瀑布流排版） ──
                 if (detail.picList.isNotEmpty()) {
                     item(key = "post_pics_gallery") {
-                        // 说明：此处位于 Lazy 列表项内，避免 BoxWithConstraints 触发子组合与二次测量，
-                        // 改用窗口断点计算列数（展开屏 3 列、中等屏 2 列，对应原 900dp/480dp 阈值）。
+
                         val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
                         val columns = when {
                             windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND) -> 3
@@ -487,7 +475,6 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ── 4. 关联手办卡片 ──
                 if (detail.relateItem != null && detail.relateItem.itemId > 0L) {
                     item(key = "post_relate_hobby") {
                         PostRelateHobbyCard(
@@ -500,7 +487,6 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ── 5. 所属专区标签 ──
                 if (!detail.zoneIds.isNullOrEmpty()) {
                     item(key = "post_zone_tags") {
                         FlowRow(
@@ -530,9 +516,8 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ── 6. 紧凑模式下的回帖流 ──
                 if (!scaffoldScope.isWidePane) {
-                    // 回帖表头与排序切换栏
+
                     item(key = "compact_comments_header_bar") {
                         Row(
                             modifier = Modifier
@@ -572,7 +557,6 @@ fun PostDetailScreen(
                         }
                     }
 
-                    // 评论流复用
                     commentSectionItems(
                         filterMode = CommentFilterMode.LATEST,
                         onFilterModeChange = { },
@@ -595,9 +579,6 @@ fun PostDetailScreen(
     }
 }
 
-/**
- * 关联手办卡片。
- */
 @Composable
 private fun PostRelateHobbyCard(
     item: PostRelateItem,
@@ -662,9 +643,6 @@ private fun PostRelateHobbyCard(
     }
 }
 
-/**
- * 帖子加载错误卡片。
- */
 @Composable
 private fun PostErrorCard(
     errorMessage: String,
@@ -699,9 +677,6 @@ private fun PostErrorCard(
     }
 }
 
-/**
- * 帖子配图单个卡片，采用固定宽度、真实纵横比自适应高度展示，支持点击大图预览。
- */
 @Composable
 private fun PostPicCard(
     picPath: String,

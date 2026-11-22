@@ -36,7 +36,6 @@ class UserHistoryRepositoryTest {
         albumMock = albumMock,
     )
 
-    /** 模拟冷启动：在真实存储文件上先落盘一条已确认封面，再重建仓储实例。 */
     private suspend fun TestScope.seedPersistedCover(
         preferences: DataStore<Preferences>,
         id: Long,
@@ -118,7 +117,7 @@ class UserHistoryRepositoryTest {
     @Test
     fun getUserHistoryList_hobby_withoutItemId_fallsBackToActualDetailId() = runTest {
         val prefs = TestDataStore.coverFreshnessPrefs()
-        // 手办桩数据没有 itemId（反序列化为 0），只能靠 actualDetailId（nodeId 456）命中
+
         seedPersistedCover(prefs, 456L, CoverFreshnessRepository.EntityType.HOBBY, freshHobbyCover)
 
         val detailMock = MockApi()
@@ -142,7 +141,7 @@ class UserHistoryRepositoryTest {
     @Test
     fun getUserHistoryList_album_withoutNodeId_fallsBackToActualDetailId() = runTest {
         val prefs = TestDataStore.coverFreshnessPrefs()
-        // 相册桩数据既无 nodeId 也无 itemId，只能靠 actualDetailId（id 777）命中
+
         seedPersistedCover(prefs, 777L, CoverFreshnessRepository.EntityType.ALBUM, freshAlbumCover)
 
         val mock = MockApi()

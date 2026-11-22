@@ -63,20 +63,6 @@ import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 同款二手与全站二手市场页（复用专区已有的二手设计体系与规范组件）。
- *
- * 功能契约：
- * 1. 顶栏：返回键、标题居中展示“二手商品”（若指定手办则展示手办标题并带有“同款二手”副标）；
- * 2. 筛选栏：直接位于顶栏下方，横向滑动排列【出售/求购 ▾】、【区域 ▾】、【分类 ▾】、【成色 ▾】四个标准 FilterDropdownChip；
- *    - 类型下拉：支持【全部 / 出售 / 求购】；
- *    - 区域抽屉：参考条目页分类底板，采用双栏级联选择器（支持全国34个省级区划及下辖城市区县）；
- *    - 分类下拉：补齐原版全量周边分类（手办、动漫模型、真实模型、娃娃人偶、毛绒布偶、动漫周边）；
- *    - 成色下拉：补齐原版全量成色（全新未拆、仅拆、无暇、拆摆、有瑕疵、断件少件、垃圾成色、转单、配件/赠品）；
- * 3. 内容流：复用专区打磨成熟的 ZoneResaleCard 资产，支持封面大图查看、私信与三点更多菜单；
- * 4. 悬浮按钮：右下角常驻“+”发布二手 FAB（形状与配色 100% 对齐专区 primaryContainer 与圆角矩形令牌）；
- * 5. 自适应网格：竖屏强制 1 列（对齐平板与手机）、普通横屏平板 2 列、超宽屏（≥1200dp）3 列。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResaleMarketScreen(
@@ -97,7 +83,6 @@ fun ResaleMarketScreen(
         viewModel.init(hobbyId, title)
     }
 
-    // 自适应列数（竖屏强制 1 列、普通横屏平板 2 列、超宽屏 3 列）
     val isLandscape = isLandscapeOrientation()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val columns = remember(adaptiveInfo.windowSizeClass, isLandscape) {
@@ -111,7 +96,6 @@ fun ResaleMarketScreen(
     val gridState = rememberLazyStaggeredGridState()
     val pullRefreshState = rememberPullToRefreshState()
 
-    // 触底自动分页加载
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalItems = gridState.layoutInfo.totalItemsCount
@@ -125,7 +109,6 @@ fun ResaleMarketScreen(
         }
     }
 
-    // 抽屉与弹窗状态
     var showRegionPickerSheet by rememberSaveable { mutableStateOf(false) }
     var activeMoreItem by remember { mutableStateOf<ResaleSearchItem?>(null) }
     var reportTargetItem by remember { mutableStateOf<ResaleSearchItem?>(null) }
@@ -188,7 +171,7 @@ fun ResaleMarketScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding()))
         ) {
-            // ── 1. 四级下拉筛选工具栏（出售/求购 ▾、区域 ▾、分类 ▾、成色 ▾）──
+
             ResaleDropdownFilterBar(
                 currentType = uiState.type,
                 regionLabel = uiState.regionLabel,
@@ -206,7 +189,6 @@ fun ResaleMarketScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-            // ── 2. 二手卡片列表流 ──
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = { viewModel.loadInitial(isRefresh = true) },
@@ -304,7 +286,6 @@ fun ResaleMarketScreen(
                                 )
                             }
 
-                            // 底部触底分页指示器
                             if (uiState.isLoadingMore) {
                                 item(span = StaggeredGridItemSpan.FullLine) {
                                     Box(
@@ -326,7 +307,6 @@ fun ResaleMarketScreen(
         }
     }
 
-    // ── 3. 交易区域双栏级联选择抽屉 ──
     if (showRegionPickerSheet) {
         ResaleRegionPickerSheet(
             selectedRegionId = uiState.regionNodeId,
@@ -337,7 +317,6 @@ fun ResaleMarketScreen(
         )
     }
 
-    // ── 4. 卡片三点底部操作菜单 ──
     val moreItem = activeMoreItem
     if (moreItem != null) {
         ResaleMoreBottomSheet(
@@ -356,7 +335,6 @@ fun ResaleMarketScreen(
         )
     }
 
-    // ── 5. 二手举报对话框 ──
     val reportItem = reportTargetItem
     if (reportItem != null) {
         ResaleReportDialog(
@@ -376,10 +354,6 @@ fun ResaleMarketScreen(
     }
 }
 
-/**
- * 具有展开指示箭头的四级下拉筛选工具栏（出售/求购 ▾、区域 ▾、分类 ▾、成色 ▾）。
- * 采用项目统一的 FilterDropdownChip 组件与横向滚动布局。
- */
 @Composable
 private fun ResaleDropdownFilterBar(
     currentType: Int,
@@ -412,7 +386,7 @@ private fun ResaleDropdownFilterBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. 类型下拉（全部 / 出售 / 求购）
+
         Box {
             val typeLabel = when (currentType) {
                 1 -> "出售"
@@ -473,7 +447,6 @@ private fun ResaleDropdownFilterBar(
             }
         }
 
-        // 2. 区域筛选（点击调起抽屉底板）
         FilterDropdownChip(
             label = regionLabel,
             isSelected = isRegionActive,
@@ -481,7 +454,6 @@ private fun ResaleDropdownFilterBar(
             onClick = onOpenRegionPicker
         )
 
-        // 3. 分类下拉（对齐原版全量周边分类体系）
         Box {
             val isCatSelected = currentCategory != null
             FilterDropdownChip(
@@ -523,7 +495,6 @@ private fun ResaleDropdownFilterBar(
             }
         }
 
-        // 4. 成色下拉（对齐原版全量成色规范体系）
         Box {
             val isPuritySelected = currentPurity != null
             FilterDropdownChip(

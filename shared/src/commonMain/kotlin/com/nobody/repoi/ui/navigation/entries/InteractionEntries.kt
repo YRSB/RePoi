@@ -16,9 +16,6 @@ import com.nobody.repoi.ui.search.SearchLandingScreen
 import com.nobody.repoi.ui.search.SearchNavParam
 import com.nobody.repoi.ui.search.SearchResultScreen
 
-/**
- * 注册搜索中心、手办筛选列表、评论列表/楼中楼、图片查看及 ExHobby 扩展等通用交互路由。
- */
 fun EntryProviderScope<NavKey>.interactionEntries(
     navigator: RePoiNavigator,
     onBack: () -> Unit
@@ -101,4 +98,3 @@ fun EntryProviderScope<NavKey>.interactionEntries(
         )
     }
 }
-

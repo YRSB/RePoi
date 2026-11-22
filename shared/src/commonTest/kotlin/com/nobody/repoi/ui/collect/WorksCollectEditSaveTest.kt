@@ -27,12 +27,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 作品收藏编辑页写侧测试：保存委托 `SaveWorksCollectUseCase`（三态校验 + 标签串清洗），
- * 取消收藏委托 `DeleteWorksCollectUseCase`（worksId 守卫 + 仓储删除）。
- *
- * 类名刻意不含 `ViewModel`，避免受既有 ViewModel 测试过滤规则影响。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WorksCollectEditSaveTest {
 
@@ -63,10 +57,9 @@ class WorksCollectEditSaveTest {
 
         viewModel.initData(WorksCollectEditNavParam(worksId = 66L))
         advanceUntilIdle()
-        // 丢弃 initData 阶段已消费的请求，下面断言只针对保存写入
+
         collectMock.drainPaths()
 
-        // 标签清洗由用例负责：trim 后写入
         assertTrue(viewModel.addTag("  热血  "))
         viewModel.saveCollect()
         advanceUntilIdle()
@@ -107,7 +100,6 @@ class WorksCollectEditSaveTest {
         assertEquals("/api/works/glean/del", collectMock.takeRequest().encodedPath)
     }
 
-    /** 三态依次切换：每次请求 state 参数真实变化，代数逐步 +1，手办状态池不被跨接口污染。 */
     @Test
     fun saveCollect_threeStatesInSequence_advancesGenerationPerSave() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -134,7 +126,6 @@ class WorksCollectEditSaveTest {
                 viewModel.saveCollect()
                 advanceUntilIdle()
 
-                // 写后还会拉一次 collectCount；按路径挑出写请求，不能依赖 FIFO 顺序
                 val recorded = collectMock.drainRequests().first { it.encodedPath == "/api/works/glean/add" }
                 val form = recorded.formEntries()
                 assertEquals("Works", form["itemType"])
@@ -144,12 +135,11 @@ class WorksCollectEditSaveTest {
                 assertEquals(state, viewModel.uiState.value.selectedState)
                 assertTrue(viewModel.uiState.value.isAlreadyCollected)
                 assertEquals((index + 1).toLong(), collectRepository.collectMutationGeneration.value)
-                // 作品走 glean 独立协议，不写手办状态池
+
                 assertNull(collectRepository.observeCollectState(66L).value)
             }
     }
 
-    /** 改档后取消收藏：UI 三态与已收藏标记复位，代数累计 +2，手办状态池仍为空。 */
     @Test
     fun saveThenDeleteCollect_clearsCollectedFlagsAndAdvancesGenerationTwice() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -191,7 +181,6 @@ class WorksCollectEditSaveTest {
         assertNull(collectRepository.observeCollectState(66L).value)
     }
 
-    /** 作品保存网络失败：代数不推进、saveSuccess 为假、errorMessage 有值。 */
     @Test
     fun saveCollect_onNetworkFailure_keepsGenerationAndReportsError() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -223,7 +212,6 @@ class WorksCollectEditSaveTest {
         assertNull(collectRepository.observeCollectState(66L).value)
     }
 
-    /** 作品取消网络失败：已收藏标记保留、代数不推进、errorMessage 有值。 */
     @Test
     fun deleteCollect_onNetworkFailure_keepsGenerationAndReportsError() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -256,11 +244,6 @@ class WorksCollectEditSaveTest {
         assertNull(collectRepository.observeCollectState(66L).value)
     }
 
-
-    /**
-     * 作品写后服务端基线：编辑页保存成功后刷新 `hobby/collectCount`，作品详情页按 worksId
-     * 读取同一快照；作品详情无本地 delta，展示人数直接由服务端快照替换详情接口 collect 字段。
-     */
     @Test
     fun saveCollect_refreshesWorksDetailCountBaseFromServer() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -288,7 +271,6 @@ class WorksCollectEditSaveTest {
         advanceUntilIdle()
         collectMock.drainPaths()
 
-        // 写后服务端人数 12+2+0+1+0=15，作品详情展示基数改由服务端提供
         collectMock.replaceRoute(
             "collectCount",
             collectMock.ok("""{"collect":{"care":12,"want":2,"preorder":0,"buy":1,"resell":0}}""")
@@ -302,7 +284,6 @@ class WorksCollectEditSaveTest {
         assertTrue(collectMock.drainPaths().any { it?.contains("hobby/collectCount") == true })
     }
 
-    /** 计数请求失败：作品详情保留详情接口 collect 字段作为展示基数，写成功语义不变。 */
     @Test
     fun saveCollect_whenCountRequestFails_keepsWorksDetailFallback() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -338,7 +319,6 @@ class WorksCollectEditSaveTest {
         assertEquals(5, detail.uiState.value.works?.collect)
     }
 
-    /** 作品详情测试替身：worksId 与 works.id 一致，便于快照按同一键观察。 */
     private fun newWorksDetailViewModel(collectRepository: CollectRepository): Pair<WorksDetailViewModel, MockApi> {
         val detailMock = MockApi()
         detailMock.route(
@@ -361,12 +341,11 @@ class WorksCollectEditSaveTest {
         )
         return viewModel to detailMock
     }
-    /** 消费并丢弃已排队的请求记录。 */
+
     private fun MockApi.drainPaths(): List<String?> = buildList {
         repeat(requestCount) { add(takeRequest().encodedPath) }
     }
 
-    /** 消费全部排队请求并保留完整记录，供读后计数请求与写请求交错时按路径筛选。 */
     private fun MockApi.drainRequests(): List<RecordedHttpRequest> = buildList {
         repeat(requestCount) { add(takeRequest()) }
     }

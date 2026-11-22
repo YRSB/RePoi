@@ -1,9 +1,5 @@
 package com.nobody.repoi.ui.user.history
 
-/**
- * 用户浏览历史的一级分类项。
- * 遵循原版 Hpoi 支持的手办与相册两大核心类别。
- */
 enum class UserHistoryCategory(
     val itemType: String,
     val label: String

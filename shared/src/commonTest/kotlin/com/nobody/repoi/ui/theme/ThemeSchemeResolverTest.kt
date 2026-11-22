@@ -6,13 +6,6 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * issue #82 的**纯决策**回归测试（commonTest，CI 的 JVM 与 Android-host 双目标都会跑）。
- *
- * 修复前的 bug 本质就是决策错误：动态主题拿到平台配色后直接整份采用，
- * 完全不看 `paletteStyle` / `specVersion`。这里把该决策钉死，
- * 不依赖 Compose 运行时与平台取色实现。
- */
 class ThemeSchemeResolverTest {
 
     private val wallpaperPrimary = Color(0xFF2E6ADB)
@@ -71,8 +64,7 @@ class ThemeSchemeResolverTest {
 
     @Test
     fun spec2025_isDowngradedForStylesWithout2025Implementation() {
-        // material-kolor 6.0.0 对这 5 种风格会静默回退到 2021（实测 48 个颜色角色全等），
-        // 必须显式收敛，否则用户切「色彩标准」毫无反应
+
         val unsupported = listOf(
             PaletteStyle.Rainbow,
             PaletteStyle.FruitSalad,

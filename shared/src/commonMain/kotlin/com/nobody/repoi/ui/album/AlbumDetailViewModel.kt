@@ -30,9 +30,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/**
- * 相册详情路由导航参数。
- */
 @Serializable
 data class AlbumNavParam(
     val albumId: Long,
@@ -40,9 +37,6 @@ data class AlbumNavParam(
     val initialCover: String? = null
 )
 
-/**
- * 相册详情页四阶段状态机模型。
- */
 data class AlbumDetailUiState(
     val albumId: Long = 0L,
     val initialTitle: String? = null,
@@ -50,28 +44,23 @@ data class AlbumDetailUiState(
     val isInitialLoading: Boolean = true,
     val errorMessage: String? = null,
 
-    // 阶段 1：相册核心主信息与分类标签
     val album: AlbumData? = null,
     val tags: List<String> = emptyList(),
 
-    // 阶段 2：高清原图长图流
     val pictures: List<PicItem> = emptyList(),
     val isPicturesLoading: Boolean = false,
     val isLoadingMorePictures: Boolean = false,
     val hasMorePictures: Boolean = true,
     val picturesPage: Int = 1,
 
-    // 阶段 3：关联手办与同款相册
     val isRelatedLoading: Boolean = false,
     val relatedHobbies: List<RelatedHobbyItem> = emptyList(),
     val relatedAlbums: List<RelatedAlbumItem> = emptyList(),
 
-    // ExHobby 扩展图库
     val isExHobbyEnabled: Boolean = true,
     val isExHobbyLoading: Boolean = false,
     val exHobbyPics: List<ExHobbyImageItem> = emptyList(),
 
-    // 阶段 4：评论区（热门神评置顶 + 最新时序流）
     override val isCommentsLoading: Boolean = false,
     override val hotComments: List<CommentItem> = emptyList(),
     override val latestComments: List<CommentItem> = emptyList(),
@@ -82,7 +71,6 @@ data class AlbumDetailUiState(
     override val pendingPraiseIds: Set<Long> = emptySet(),
     override val commentActionMessage: String? = null,
 
-    // 互动操作状态
     val isLiked: Boolean = false,
     val isCollected: Boolean = false,
     val followState: FriendState = FriendState.UNKNOWN,
@@ -92,7 +80,7 @@ data class AlbumDetailUiState(
     val isFollowPending: Boolean = false,
     val praiseCountDelta: Long = 0L,
     val collectCountDelta: Long = 0L,
-    /** 写成功后由服务端计数刷新的基线；null 时回落到相册详情接口的 collect 字段 */
+
     val collectCountBase: Long? = null,
     val interactionActionMessage: String? = null
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
@@ -151,9 +139,9 @@ class AlbumDetailViewModel(
     private var loadCommentsJob: Job? = null
 
     init {
-        // 合并评论详情页回写的主楼更新（点赞/回复）
+
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
-        // 监听全局 ExHobby 扩展图库开关，动态同步状态并按需触发补录
+
         viewModelScope.launch {
             viewPreferencesManager.isExHobbyEnabledFlow.collect { enabled ->
                 _uiState.update { it.copy(isExHobbyEnabled = enabled) }
@@ -165,7 +153,7 @@ class AlbumDetailViewModel(
                 }
             }
         }
-        // 监听登录态变化，登录后自动补录互动状态，退出后重置
+
         viewModelScope.launch {
             userSession.tokenFlow.collect { token ->
                 val currentAlbum = _uiState.value.album
@@ -187,9 +175,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 四阶段渐进式拉取相册详情。
-     */
     fun loadDetail(param: AlbumNavParam) {
         if (_uiState.value.albumId == param.albumId && !_uiState.value.isInitialLoading && _uiState.value.album != null) {
             return
@@ -207,7 +192,6 @@ class AlbumDetailViewModel(
                 errorMessage = null
             )
 
-            // ── 阶段 1：相册基础信息与标签并发拉取 ──
             val albumDeferred = async { repository.getAlbumDetail(param.albumId) }
             val tagsDeferred = async { repository.getAlbumTags(param.albumId) }
 
@@ -236,39 +220,30 @@ class AlbumDetailViewModel(
             }
 
             if (album != null) {
-                // 详情接口每次都给出当前真实封面：顺手沉淀，历史上过期的封面快照可因此直接命中
+
                 coverFreshnessRepository.rememberFreshCover(
                     id = album.actualAlbumId,
                     type = CoverFreshnessRepository.EntityType.ALBUM,
                     cover = album.cover
                 )
 
-                // ── 阶段 2：拉取高清图集第 1 页 ──
                 loadPicturesFirstPage(album.id, album.itemId, album.sortType)
 
-                // ── 阶段 3：后台静默拉取关联手办与同款相册 (Fire-and-Forget) ──
                 loadRelated(album.id, album.itemType)
 
-                // ── 阶段 3.5：后台静默拉取 ExHobby 扩展图库 ──
                 if (_uiState.value.isExHobbyEnabled) {
                     loadExHobby(album.id)
                 }
 
-                // ── 阶段 4：装载评论列表 ──
                 loadComments(album.id)
 
-                // ── 阶段 5：并发拉取互动初始状态 (点赞/收藏/关注) ──
                 loadInteractionStates(album)
 
-                // ── 阶段 6：后台静默上报浏览历史 (Fire-and-Forget) ──
                 recordHistory(album.id)
             }
         }
     }
 
-    /**
-     * 加载相册对应的 ExHobby 扩展图库（首屏静默加载第 1 页）。
-     */
     private fun loadExHobby(albumId: Long) {
         if (!_uiState.value.isExHobbyEnabled) return
         viewModelScope.launch {
@@ -284,9 +259,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 加载高清图集首屏
-     */
     private fun loadPicturesFirstPage(albumId: Long, itemId: Long?, sortType: String?) {
         loadPicturesJob?.cancel()
         loadPicturesJob = viewModelScope.launch {
@@ -318,9 +290,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 触底追加加载下一页图片
-     */
     fun loadNextPicturesPage() {
         val currentState = _uiState.value
         if (currentState.isPicturesLoading || currentState.isLoadingMorePictures || !currentState.hasMorePictures) {
@@ -359,9 +328,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 加载关联手办与同款相册
-     */
     private fun loadRelated(albumId: Long, itemType: String?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRelatedLoading = true) }
@@ -386,9 +352,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 装载相册评论（热门神评 + 最新评论）
-     */
     private fun loadComments(albumId: Long) {
         loadCommentsJob?.cancel()
         loadCommentsJob = viewModelScope.launch {
@@ -396,9 +359,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 上拉触底翻页加载更多评论
-     */
     fun loadNextCommentsPage() {
         val currentState = _uiState.value
         val albumId = currentState.album?.actualAlbumId ?: currentState.albumId
@@ -407,9 +367,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 并发拉取点赞、收藏及作者关注的初始状态（仅登录用户拉取）。
-     */
     private fun loadInteractionStates(album: AlbumData) {
         val currentUserId = userSession.currentUserId
         val authorId = album.authorUserId
@@ -442,9 +399,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 点赞微交互（乐观更新，防抖锁，失败回滚）。
-     */
     fun toggleLike() {
         if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
@@ -499,9 +453,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 收藏微交互（乐观更新，防抖锁，失败回滚）。
-     */
     fun toggleCollect() {
         if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
@@ -527,7 +478,7 @@ class AlbumDetailViewModel(
         }
 
         viewModelScope.launch {
-            // 写侧直接交给自治仓储：成功即更新状态池并推进收藏变更代数
+
             val result = collectRepository.toggleItemCollect(albumId, previousCollected)
 
             result.fold(
@@ -538,7 +489,7 @@ class AlbumDetailViewModel(
                             interactionActionMessage = if (nextCollected) "已收藏该相册 ★" else "已取消收藏"
                         )
                     }
-                    // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+
                     collectRepository.getCollectCount(albumId).onSuccess { count ->
                         _uiState.update { current ->
                             current.copy(
@@ -562,17 +513,11 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 切换主评论点赞状态（乐观更新，失败回滚）。
-     */
     fun toggleCommentPraise(commentId: Long) {
         val nodeId = _uiState.value.album?.actualAlbumId ?: _uiState.value.albumId
         commentDelegate.toggleCommentPraise(viewModelScope, _uiState, commentId, nodeId)
     }
 
-    /**
-     * 发表子评论回复（成功后追加到主楼并广播更新）。
-     */
     suspend fun submitCommentReply(
         commentId: Long,
         target: com.nobody.repoi.data.remote.model.CommentReplyItem?,
@@ -591,9 +536,6 @@ class AlbumDetailViewModel(
     suspend fun deleteComment(comment: CommentItem): Boolean = commentDelegate.deleteMainComment(_uiState, comment.id)
     suspend fun deleteReply(comment: CommentItem, reply: CommentReplyItem): Boolean = commentDelegate.deleteSubReply(_uiState, comment.id, reply.id)
 
-    /**
-     * 发表主楼评论（成功后重拉第一页评论流）。
-     */
     suspend fun submitTopLevelComment(content: String, stickers: List<String>): Boolean {
         val albumId = _uiState.value.album?.actualAlbumId ?: _uiState.value.albumId
         val ok = commentDelegate.postTopLevelComment(_uiState, albumId, content, stickers)
@@ -601,25 +543,16 @@ class AlbumDetailViewModel(
         return ok
     }
 
-    /**
-     * 发表成功后重拉第一页评论流。
-     */
     fun refreshComments() {
         val albumId = _uiState.value.album?.actualAlbumId ?: _uiState.value.albumId
         if (albumId <= 0L) return
         loadComments(albumId)
     }
 
-    /**
-     * 消费评论互动一次性提示文案。
-     */
     fun consumeCommentActionMessage() {
         commentDelegate.consumeCommentActionMessage(_uiState)
     }
 
-    /**
-     * 关注作者（乐观更新，防抖锁，失败回滚）。
-     */
     fun followAuthor() {
         if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
@@ -665,9 +598,6 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 取消关注作者（弹窗确认后调用，乐观更新，防抖锁，失败回滚）。
-     */
     fun unfollowAuthor() {
         if (!userSession.isAuthenticated) {
             _uiState.update { it.copy(interactionActionMessage = "请先登录后再进行操作") }
@@ -713,16 +643,10 @@ class AlbumDetailViewModel(
         }
     }
 
-    /**
-     * 消费互动操作一次性提示文案。
-     */
     fun consumeInteractionActionMessage() {
         _uiState.update { it.copy(interactionActionMessage = null) }
     }
 
-    /**
-     * 后台静默记录相册浏览足迹。
-     */
     private fun recordHistory(albumId: Long) {
         viewModelScope.launch {
             runCatching {

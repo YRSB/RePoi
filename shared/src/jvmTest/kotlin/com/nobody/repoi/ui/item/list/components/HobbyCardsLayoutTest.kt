@@ -22,14 +22,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 手办/周边业务列表卡（[HobbyListCard] 与 [HobbyCollectListCard]）的真实两段式拓扑布局测试。
- *
- * 验证：
- * 1. 单行标题下，第 2 行微标签底部与左侧 68dp 缩略图下边缘严格齐平；
- * 2. 2 行微标签之间行间距保持紧凑 4dp；
- * 3. 消除卡片右下角悬空留白。
- */
 @OptIn(ExperimentalTestApi::class, coil3.annotation.DelicateCoilApi::class)
 class HobbyCardsLayoutTest {
 
@@ -69,7 +61,6 @@ class HobbyCardsLayoutTest {
         val expectedThumbBottom = thumbBounds.bottom.value
         val rowSpacing = row2BadgeBounds.top.value - row1BadgeBounds.bottom.value
 
-        // 第 2 行微标签底部与左侧 68dp 缩略图下边缘严格齐平
         assertEquals(
             expectedThumbBottom,
             row2BadgeBounds.bottom.value,
@@ -77,7 +68,6 @@ class HobbyCardsLayoutTest {
             "第 2 行微标签底部应与缩略图底部齐平（期望 $expectedThumbBottom, 实际 ${row2BadgeBounds.bottom.value}）"
         )
 
-        // 2 行微标签行间距紧凑（容器间距为 4dp，叠合 HpoiInfoBadgeItem 的 Surface 垂直内边距后文本节点间距为 6dp）
         assertEquals(
             6f,
             rowSpacing,
@@ -126,7 +116,6 @@ class HobbyCardsLayoutTest {
 
         val expectedThumbBottom = thumbBounds.bottom.value
 
-        // 第 2 行微标签底部与左侧 68dp 缩略图下边缘严格齐平
         assertEquals(
             expectedThumbBottom,
             row2BadgeBounds.bottom.value,
@@ -134,7 +123,6 @@ class HobbyCardsLayoutTest {
             "收藏卡第 2 行微标签底部应与缩略图底部齐平（期望 $expectedThumbBottom, 实际 ${row2BadgeBounds.bottom.value}）"
         )
 
-        // 2 行微标签行间距紧凑（容器间距为 4dp，叠合 HpoiInfoBadgeItem 的 Surface 垂直内边距后文本节点间距为 6dp）
         val rowSpacing = row2BadgeBounds.top.value - row1BadgeBounds.bottom.value
         assertEquals(
             6f,

@@ -62,9 +62,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 通用图片列表/全集页面。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PictureListScreen(
@@ -81,9 +78,6 @@ fun PictureListScreen(
 
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // 提取所有高清原图链接，供全屏画廊查看：
-    // 画廊消费的是纯 URL 字符串（非 PoiAsyncImage 下游），故此处保留 Pipeline 直调，
-    // 由 `pic/` 家族解析落到 `pic/raw/` 原图档
     val allRawUrls = remember(uiState.items) {
         uiState.items.mapNotNull { pic ->
             pic.imagePath
@@ -94,7 +88,6 @@ fun PictureListScreen(
 
     val imageViewer = LocalImageViewer.current
 
-    // 当列表静默追加新图片时，若画廊正处于打开状态，同步更新画廊图片列表
     LaunchedEffect(allRawUrls) {
         imageViewer.updateImages(allRawUrls)
     }
@@ -102,7 +95,7 @@ fun PictureListScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            // 极简顶栏：返回键 + 居中标题 + 下拉刷新
+
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -156,7 +149,6 @@ fun PictureListScreen(
                 else -> {
                     val staggeredGridState = rememberLazyStaggeredGridState()
 
-                    // 触底加载更多监听
                     val shouldLoadMore by remember {
                         derivedStateOf {
                             val layoutInfo = staggeredGridState.layoutInfo
@@ -187,7 +179,7 @@ fun PictureListScreen(
                             .fillMaxSize()
                             .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
                     ) {
-                        // 瀑布流图片按图片类型复用，避免异构条目互相污染复用池
+
                         itemsIndexed(
                             items = uiState.items,
                             key = { index, pic ->
@@ -199,7 +191,7 @@ fun PictureListScreen(
                                 pic = pic,
                                 index = index,
                                 onClick = {
-                                    // 与画廊列表同源：用同一套 `pic/raw/` 解析结果定位当前图下标
+
                                     val rawUrl = pic.imagePath
                                         ?.let {
                                             MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW)
@@ -222,7 +214,6 @@ fun PictureListScreen(
                             )
                         }
 
-                        // 底部状态指示
                         if (uiState.isAppending || uiState.loadMoreError != null || !uiState.hasMore) {
                             item(
                                 span = StaggeredGridItemSpan.FullLine,
@@ -244,9 +235,6 @@ fun PictureListScreen(
     }
 }
 
-/**
- * 极简瀑布流相片卡片项（100% 对齐 Hpoi 原版使用 `pic/n/` 规格展示，高度按真实纵横比自适应）。
- */
 @Composable
 private fun PictureGridCard(
     pic: PicItem,
@@ -254,8 +242,7 @@ private fun PictureGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 缩略图走 `pic/n/`（`pic/` 家族无 `sr` 档），先解析成绝对 URL 再交给基元通用重载；
-    // 服务端返回的已知宽高优先作为首帧回退比例，避免解码前抖动
+
     val thumbnailUrl = remember(pic.imagePath) {
         MediaPipeline.Default.resolvePictureUrl(pic.imagePath, ImagePurpose.CARD_STANDARD)
     }
@@ -275,7 +262,7 @@ private fun PictureGridCard(
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
-            // 空路径/缺省图由基元直接落官方缺省图，失败态由基元渲染破损图标
+
             PoiAsyncImage(
                 model = thumbnailUrl,
                 contentDescription = "第 ${index + 1} 张图片",
@@ -288,9 +275,6 @@ private fun PictureGridCard(
     }
 }
 
-/**
- * 瀑布流底部加载/提示区。
- */
 @Composable
 private fun PictureListFooter(
     isAppending: Boolean,
@@ -351,10 +335,6 @@ private fun PictureListFooter(
     }
 }
 
-
-/**
- * 错误重试占位界面。
- */
 @Composable
 private fun PictureListError(
     errorMessage: String,
@@ -399,9 +379,6 @@ private fun PictureListError(
     }
 }
 
-/**
- * 空数据占位界面。
- */
 @Composable
 private fun PictureListEmpty(
     modifier: Modifier = Modifier

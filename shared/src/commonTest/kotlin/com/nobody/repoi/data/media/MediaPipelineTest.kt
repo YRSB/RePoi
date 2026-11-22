@@ -6,12 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * [MediaPipeline] 契约测试（纯 JVM，不依赖 Compose / Android）。
- *
- * 覆盖四类用途 × 八个分类的变体映射、404 避坑闭环、缺省图判定、纵横比缓存截断，
- * 并以等价性用例集合逐条锁定过渡期 [CdnUrlUtils] 桥接与管道输出一致。
- */
 class MediaPipelineTest {
 
     private val pipeline: MediaPipeline = MediaPipeline.Default
@@ -19,8 +13,6 @@ class MediaPipelineTest {
     private val relPath = "2026/08/6e29fa23068f4f289179586c28c0a7b7.png"
     private val base = "https://rfx.hpoi.net/gk/"
     private val exBase = "https://res.e39x.com/pic/"
-
-    // -------------------------------------------------- HOBBY：四类用途映射
 
     @Test
     fun resolveUrl_hobby_mapsAllPurposesToCoverVariants() {
@@ -62,7 +54,7 @@ class MediaPipelineTest {
 
     @Test
     fun resolveUrl_hobby_canonicalizesLegacyHpoiAbsoluteUrl() {
-        // 历史快照类列表可能存下多年前的绝对地址：http 明文在 Android 直接被拒，旧域名也可能下线
+
         val plainHttp = "http://rfx.hpoi.net/gk/cover/n/$relPath"
         assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(plainHttp, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
 
@@ -70,11 +62,9 @@ class MediaPipelineTest {
         assertEquals("${base}cover/n/$relPath", pipeline.resolveUrl(legacyHost, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
         assertEquals("${base}cover/raw/$relPath", pipeline.resolveRawUrl(legacyHost, MediaCategory.HOBBY))
 
-        // query 必须保留（服务端以 query 区分版本时不能丢）
         val withQuery = "http://rfx.hpoi.net/gk/cover/n/$relPath?v=2"
         assertEquals("${base}cover/n/$relPath?v=2", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
 
-        // 非 hpoi 域名与非 CDN 路径原样透传，避免误改外部资源
         assertEquals(
             "http://cdn.example.com/cover/n/a.jpg",
             pipeline.resolveUrl("http://cdn.example.com/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
@@ -84,7 +74,6 @@ class MediaPipelineTest {
             pipeline.resolveUrl("http://rfx.hpoi.net/other/cover/n/a.jpg", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
         )
 
-        // 域名按 authority 精确匹配：形似域名、或在 path 中出现 hpoi.net 的外部 URL 不得被改写
         assertEquals(
             "https://not-hpoi.net/gk/cover/n/$relPath",
             pipeline.resolveUrl("https://not-hpoi.net/gk/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
@@ -98,14 +87,12 @@ class MediaPipelineTest {
             )
         )
 
-        // gk/ 只在 query 里时不能当成 CDN 根截断路径
         val gkOnlyInQuery = "https://www.hpoi.net/view?src=gk/cover/n/a.jpg"
         assertEquals(
             gkOnlyInQuery,
             pipeline.resolveUrl(gkOnlyInQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
         )
 
-        // 旧快照可能原样保存大小写混合的绝对地址，marker 匹配忽略大小写但保留原始路径
         assertEquals(
             "${base}cover/n/$relPath",
             pipeline.resolveUrl("http://WWW.HPOI.NET/GK/cover/n/$relPath", MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
@@ -118,8 +105,6 @@ class MediaPipelineTest {
         assertEquals("${base}cover/n/$withQuery", pipeline.resolveUrl(withQuery, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
         assertEquals("${base}cover/sr/$withQuery", pipeline.resolveUrl(withQuery, MediaCategory.ALBUM, ImagePurpose.CARD_STANDARD))
     }
-
-    // -------------------------------------------------- ALBUM：全用途禁 cover/n/
 
     @Test
     fun resolveUrl_album_neverEmitsCoverNormalDirectory() {
@@ -142,8 +127,6 @@ class MediaPipelineTest {
         assertEquals("${base}cover/sr/$relPath", pipeline.resolveUrl(absoluteNormal, MediaCategory.ALBUM, ImagePurpose.CARD_STANDARD))
     }
 
-    // -------------------------------------------------- AVATAR / POST / BANNER
-
     @Test
     fun resolveUrl_avatar_mapsPurposesToHeadVariants() {
         assertEquals("${base}head/s/$relPath", pipeline.resolveUrl(relPath, MediaCategory.AVATAR, ImagePurpose.THUMBNAIL))
@@ -158,7 +141,7 @@ class MediaPipelineTest {
             assertEquals("${base}posts/n/$relPath", pipeline.resolveUrl(relPath, MediaCategory.POST, purpose))
             assertEquals("${base}posts/n/$relPath", pipeline.resolveUrl("posts/raw/$relPath", MediaCategory.POST, purpose))
         }
-        // 全屏原图必须降级：结果不含 /raw/
+
         assertFalse(pipeline.resolveRawUrl(relPath, MediaCategory.POST).contains("/raw/"))
     }
 
@@ -173,7 +156,7 @@ class MediaPipelineTest {
 
     @Test
     fun resolveUrl_postAndBanner_downgradeRawSegmentOfAbsoluteUrl() {
-        // 服务端没有 posts/raw/ 与 bnr/raw/ 目录：绝对 URL 也必须改写，否则线上必然 404
+
         val postRaw = "https://rfx.hpoi.net/gk/posts/raw/$relPath"
         val postNormal = "https://rfx.hpoi.net/gk/posts/n/$relPath"
         assertEquals(postNormal, pipeline.resolveUrl(postRaw, MediaCategory.POST, ImagePurpose.FULLSCREEN_RAW))
@@ -193,7 +176,7 @@ class MediaPipelineTest {
 
     @Test
     fun resolveUrl_postAndBanner_leaveCustomDomainAbsoluteUrlUntouched() {
-        // 自定义域名不含任何已知变体段，替换规则自然不命中
+
         val bannerAbsolute = "https://custom.host/bnr.jpg"
         assertEquals(bannerAbsolute, pipeline.resolveUrl(bannerAbsolute, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD))
         assertEquals(bannerAbsolute, pipeline.resolveRawUrl(bannerAbsolute, MediaCategory.BANNER))
@@ -201,8 +184,6 @@ class MediaPipelineTest {
         val postAbsolute = "https://custom.host/pics/abc.jpg"
         assertEquals(postAbsolute, pipeline.resolveUrl(postAbsolute, MediaCategory.POST, ImagePurpose.FULLSCREEN_RAW))
     }
-
-    // ------------------------------------------------------------ RESALE / ZONE
 
     @Test
     fun resolveUrl_resale_alwaysUsesResaleNormalAndTrims() {
@@ -216,21 +197,19 @@ class MediaPipelineTest {
 
     @Test
     fun resolveUrl_zone_routesByZonePrefixAndPurposeFallback() {
-        // zone/ 前缀：所有用途都直连 CDN 根
+
         ImagePurpose.entries.forEach { purpose ->
             assertEquals("${base}zone/figure.png", pipeline.resolveUrl("zone/figure.png", MediaCategory.ZONE, purpose))
             assertEquals("${base}zone/figure.png", pipeline.resolveUrl("/zone/figure.png", MediaCategory.ZONE, purpose))
         }
-        // 非 zone/ 前缀：图标回退 cover/s/，封面回退 cover/n/
+
         assertEquals("${base}cover/s/cover.png", pipeline.resolveUrl("cover.png", MediaCategory.ZONE, ImagePurpose.THUMBNAIL))
         assertEquals("${base}cover/s/cover.png", pipeline.resolveUrl("cover.png", MediaCategory.ZONE, ImagePurpose.ADAPTIVE_GRID))
         assertEquals("${base}cover/n/banner.jpg", pipeline.resolveUrl("banner.jpg", MediaCategory.ZONE, ImagePurpose.CARD_STANDARD))
         assertEquals("${base}cover/n/banner.jpg", pipeline.resolveUrl("banner.jpg", MediaCategory.ZONE, ImagePurpose.FULLSCREEN_RAW))
-        // 绝对 URL 原样透传
+
         assertEquals("https://example.com/icon.png", pipeline.resolveUrl("https://example.com/icon.png", MediaCategory.ZONE, ImagePurpose.THUMBNAIL))
     }
-
-    // --------------------------------------------------------------- EX_HOBBY
 
     @Test
     fun resolveUrl_exHobby_usesDedicatedDomainAndTwoVariants() {
@@ -238,14 +217,12 @@ class MediaPipelineTest {
         assertEquals("${exBase}n/$relPath", pipeline.resolveUrl(relPath, MediaCategory.EX_HOBBY, ImagePurpose.ADAPTIVE_GRID))
         assertEquals("${exBase}n/$relPath", pipeline.resolveUrl(relPath, MediaCategory.EX_HOBBY, ImagePurpose.CARD_STANDARD))
         assertEquals("${exBase}n/$relPath", pipeline.resolveUrl(relPath, MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW))
-        // 前缀清洗（含残留前导斜杠）
+
         assertEquals("${exBase}s/$relPath", pipeline.resolveUrl("pic/s/$relPath", MediaCategory.EX_HOBBY, ImagePurpose.THUMBNAIL))
         assertEquals("${exBase}n/$relPath", pipeline.resolveUrl("/pic/s/$relPath", MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW))
-        // 外部绝对 URL 原样透传
+
         assertEquals("https://external.domain.com/pic.jpg", pipeline.resolveUrl("https://external.domain.com/pic.jpg", MediaCategory.EX_HOBBY, ImagePurpose.THUMBNAIL))
     }
-
-    // ------------------------------------------------- 用户相片（pic/）家族桥接
 
     @Test
     fun resolvePictureUrl_mapsPurposesToPicVariants() {
@@ -260,30 +237,28 @@ class MediaPipelineTest {
 
     @Test
     fun resolvePictureUrl_defaultImplementationCanBeOverriddenByCustomPipeline() {
-        // 接口默认实现必须真的被覆写方法接管：旧实现的顶层扩展函数会让 receiver 完全失效
+
         val custom = object : MediaPipeline by MediaPipeline.Default {
             override fun resolvePictureUrl(path: String?, purpose: ImagePurpose): String =
                 "custom://${path ?: "null"}/${purpose.name.lowercase()}"
         }
 
         assertEquals("custom://$relPath/thumbnail", custom.resolvePictureUrl(relPath, ImagePurpose.THUMBNAIL))
-        // 未覆写的成员仍委托默认实现
+
         assertEquals(
             "${base}cover/n/$relPath",
             custom.resolveUrl(relPath, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD)
         )
-        // 默认实现自身保持 pic/ 家族规则
+
         assertEquals(
             "${base}pic/n/$relPath",
             MediaPipeline.Default.resolvePictureUrl(relPath, ImagePurpose.CARD_STANDARD)
         )
     }
 
-    // ------------------------------------------------------ 相册缺省占位图（R2-3）
-
     @Test
     fun resolveUrl_albumPlaceholder_neverEmitsCoverNormalDirectory() {
-        // 缺省图走 resolveUrl(DEFAULT_COVER_PATH, ALBUM, purpose)：相册无 cover/n/ 目录，全用途不得命中
+
         ImagePurpose.entries.forEach { purpose ->
             val placeholder = pipeline.resolveUrl(
                 DefaultMediaPipeline.DEFAULT_COVER_PATH,
@@ -301,11 +276,9 @@ class MediaPipelineTest {
             "${base}cover/raw/none.jpg",
             pipeline.resolveUrl(DefaultMediaPipeline.DEFAULT_COVER_PATH, MediaCategory.ALBUM, ImagePurpose.FULLSCREEN_RAW)
         )
-        // 对照：默认缺省封面（非相册路径）确实是 cover/n/none.jpg，正是相册必须绕开的那一档
+
         assertEquals("${base}cover/n/none.jpg", pipeline.getDefaultCoverUrl(ImagePurpose.CARD_STANDARD))
     }
-
-    // ------------------------------------------------------------- 缺省图判定
 
     @Test
     fun isPlaceholder_coversAllPlaceholderBranches() {
@@ -350,8 +323,6 @@ class MediaPipelineTest {
         }
     }
 
-    // ------------------------------------------------------------ 纵横比缓存
-
     @Test
     fun recordAspectRatio_clampsIntoRange() {
         val keyLow = "media-pipeline-test/low"
@@ -372,8 +343,6 @@ class MediaPipelineTest {
         assertNull(pipeline.getAspectRatio("media-pipeline-test/never-recorded"))
     }
 
-    // -------------------------------------------------------------- 契约细节
-
     @Test
     fun resolveRawUrl_equalsFullscreenRawForEveryCategory() {
         MediaCategory.entries.forEach { category ->
@@ -391,14 +360,6 @@ class MediaPipelineTest {
         assertEquals("${base}cover/n/$relPath", MediaPipeline.Default.resolveUrl(relPath, MediaCategory.HOBBY, ImagePurpose.CARD_STANDARD))
     }
 
-    // ------------------------------------- 等价性：与既有 CdnUrlUtils 回归用例逐条一致
-
-    /**
-     * 对 [com.nobody.repoi.util.CdnUrlUtilsTest] 覆盖过的每条输入/期望，断言管道输出一致。
-     * 桥接映射固定：`getCoverSrUrl` → HOBBY/ADAPTIVE_GRID，`getCoverSmallUrl` → HOBBY/THUMBNAIL，
-     * `getCoverUrl` → HOBBY/CARD_STANDARD，`getRawCoverUrl` → resolveRawUrl(HOBBY)，
-     * `getBannerUrl` → BANNER/CARD_STANDARD，`getRawBannerUrl` → resolveRawUrl(BANNER)。
-     */
     @Test
     fun pipeline_matchesCdnUrlUtilsRegressionExpectations() {
         val rel = "2026/08/6e29fa23068f4f289179586c28c0a7b7.png"
@@ -407,7 +368,6 @@ class MediaPipelineTest {
         val nUrl = "${base}cover/n/$rel"
         val rawUrl = "${base}cover/raw/$rel"
 
-        // 期望值全部直接取自 CdnUrlUtilsTest 的字面量，不复用被测实现。
         val coverSrCases = listOf<Pair<String?, String>>(
             rel to srUrl,
             "cover/sr/$rel" to srUrl,
@@ -455,7 +415,6 @@ class MediaPipelineTest {
             assertEquals(expected, pipeline.resolveRawUrl(path, MediaCategory.HOBBY), "cover/raw：$path")
         }
 
-        // 缺省封面（OrDefault）语义：占位符才回退官方缺省图，否则走标准变体（字面量来自 CdnUrlUtilsTest）
         val defaultNormal = "${base}cover/n/none.jpg"
         listOf(null, "", "   ", "null", "none.jpg", "cover/n/none.jpg").forEach { path ->
             assertEquals(
@@ -481,12 +440,10 @@ class MediaPipelineTest {
             equivalentCoverUrlOrDefault("2026/08/real.jpg", ImagePurpose.ADAPTIVE_GRID)
         )
 
-        // 路径清理（字面量来自 CdnUrlUtilsTest.cleanCoverPath_cleansAllPrefixes）
         val sample = "2026/08/sample.png"
         listOf("/$sample", "cover/sr/$sample", "cover/s/$sample", "cover/n/$sample", "cover/raw/$sample", "/cover/sr/$sample")
             .forEach { assertEquals(sample, DefaultMediaPipeline.cleanCoverPath(it), "cleanCoverPath 等价性失败：$it") }
 
-        // 横幅（字面量来自 CdnUrlUtilsTest.getBannerUrl_and_getRawBannerUrl_resolvesToNormalVariant）
         val bannerRel = "2026/08/12d4b839597948b7b6444810137795e6.jpg"
         val bannerExpected = "${base}bnr/n/$bannerRel"
         listOf(bannerRel, "/$bannerRel", "bnr/n/$bannerRel", "bnr/raw/$bannerRel").forEach {
@@ -499,7 +456,6 @@ class MediaPipelineTest {
         assertEquals("https://custom.host/bnr.jpg", pipeline.resolveUrl("https://custom.host/bnr.jpg", MediaCategory.BANNER, ImagePurpose.CARD_STANDARD))
         assertEquals("https://custom.host/bnr.jpg", pipeline.resolveRawUrl("https://custom.host/bnr.jpg", MediaCategory.BANNER))
 
-        // ExHobby（字面量来自 CdnUrlUtilsTest.getExHobbyUrls_handlesPrefixesAndBlanks）
         val exRel = "2024/05/abc12345.jpg"
         val exThumb = "${exBase}s/$exRel"
         val exFull = "${exBase}n/$exRel"
@@ -517,7 +473,6 @@ class MediaPipelineTest {
         assertEquals("", pipeline.resolveUrl("", MediaCategory.EX_HOBBY, ImagePurpose.FULLSCREEN_RAW))
     }
 
-    /** `getCoverUrlOrDefault` 的契约级等价组合（仅使用公开契约方法）。 */
     private fun equivalentCoverUrlOrDefault(path: String?, purpose: ImagePurpose): String =
         if (pipeline.isPlaceholder(path)) {
             pipeline.getDefaultCoverUrl(purpose)

@@ -61,10 +61,6 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * 设置中心顶层容器：基于 Navigation 3 原生自适应体系（rememberListDetailSceneStrategy）实现
- * 双端一致的自适应折叠、原生大顶栏与预测性返回。
- */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -83,8 +79,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
-    // 与根组合共用同一条主题流；设置页比根界面晚出现，通常已落定，
-    // 万一仍为 null 则用平台默认值兜底（此时用户还没改动过任何设置）
+
     val themeSettings by themeManager.settings.collectAsStateWithLifecycle()
     val currentTheme = themeSettings ?: defaultThemeSettings()
     val themeMode = currentTheme.themeMode

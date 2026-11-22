@@ -6,7 +6,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
-/** MockApi 令牌失效取证脚手架的断言契约测试。 */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MockApiTest {
 

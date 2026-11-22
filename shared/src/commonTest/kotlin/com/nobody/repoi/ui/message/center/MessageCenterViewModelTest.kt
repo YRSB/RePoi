@@ -17,15 +17,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * [MessageCenterViewModel] 单元测试：消息中心状态加载、联系人置顶与删除（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `MessageCenterViewModelTest`（逐用例；Mockito `mock(MessageRepository)` →
- * 真实 MessageRepository 背后 [MockApi] MockEngine；`MainDispatcherRule` →
- * `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- * 移植说明：ViewModel `init{}` 即加载，断言前一律先 `enqueue` 再构造 ViewModel，
- * 顺序与原 `when(...).thenReturn` 先桩后构造一致。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MessageCenterViewModelTest {
 

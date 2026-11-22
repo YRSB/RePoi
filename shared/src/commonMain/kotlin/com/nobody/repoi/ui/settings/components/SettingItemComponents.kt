@@ -55,14 +55,6 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 设置分组的小标题。
- *
- * 遵循 Material 3 Expressive 规范，与 [SettingItemGroup] 的标题排版与边距规范完全对齐：
- * - 字体排版：[MaterialTheme.typography.labelLarge]；
- * - 字体颜色：[MaterialTheme.colorScheme.primary]；
- * - 边距对齐：水平起始对齐 24.dp（外层 16.dp + 内层 8.dp），垂直上下内边距各 8.dp。
- */
 @Composable
 fun SettingGroupTitle(
     text: String,
@@ -76,14 +68,6 @@ fun SettingGroupTitle(
     )
 }
 
-/**
- * 设置页的分组容器。
- *
- * 遵循 Material 3 Expressive 规范：
- * 1. 外部裁剪为 [MaterialTheme.shapes.large]（16.dp 圆角）；
- * 2. 组内子项之间使用 [ListItemDefaults.SegmentedGap] 分段微间隙；
- * 3. 动态测量子项高度，在展开/收起动画时平滑收缩间距，避免产生突兀白边。
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingItemGroup(
@@ -159,12 +143,6 @@ fun SettingItemGroup(
     }
 }
 
-/**
- * 标准设置条目。
- *
- * 采用 Material 3 Expressive [SegmentedListItem]，默认容器底色为纯白高光 [MaterialTheme.colorScheme.surface]，
- * 在背景画布为 surfaceContainer 时呈现清晰通透的卡片悬浮质感。
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingItem(
@@ -237,7 +215,7 @@ fun SettingItem(
             content = label
         )
     } else {
-        // 无点击动作时排版为同等尺寸规范的一行，不触发多余的水波纹
+
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -264,11 +242,6 @@ fun SettingItem(
     }
 }
 
-/**
- * 带 Switch 开关的设置条目。
- *
- * 开关带有开启（对勾）和关闭（叉号）图标状态，整行点击与点击 Switch 等价。
- */
 @Composable
 fun SettingSwitchItem(
     title: String,
@@ -319,9 +292,6 @@ fun SettingSwitchItem(
     )
 }
 
-/**
- * [SettingButtonGroup] 的选项定义。
- */
 @Immutable
 data class ButtonGroupOption<T>(
     val value: T,
@@ -329,14 +299,6 @@ data class ButtonGroupOption<T>(
     val icon: DrawableResource? = null
 )
 
-/**
- * Material 3 Expressive 连结式单选按钮组（ButtonGroup）。
- *
- * 采用连结型 [ToggleButton] 与 [ButtonGroupDefaults]，替换传统的 [androidx.compose.material3.SingleChoiceSegmentedButtonRow]：
- * 1. 选项平分宽度并形成平滑连结圆角，所有选项一目了然；
- * 2. 选中项填充主题色 Container 并更圆润饱满，支持可选 Leading Icon 图标指引；
- * 3. 完美兼容 Material 3 Expressive 视觉与触控规范。
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <T> SettingButtonGroup(
@@ -402,14 +364,6 @@ fun <T> SettingButtonGroup(
     }
 }
 
-/**
- * 带 Material 3 Expressive 粗轨细棒刻度滑块的设置条目。
- *
- * 1:1 对标 M3 Expressive 设计规范：
- * 1. 16dp 高度的全胶囊粗轨（带居中对齐刻度圆点）；
- * 2. 4dp 细长垂直圆角手柄（Thumb），比轨道稍微突出，触感清爽；
- * 3. 手柄与已激活/未激活轨道之间具备 6dp 的纯透明物理间隙（Gap），视觉晶莹通透。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingSliderItem(
@@ -507,15 +461,6 @@ fun SettingSliderItem(
     }
 }
 
-
-/**
- * 带 DropdownMenu 下拉菜单的设置条目。
- *
- * 遵循 Material 3 Expressive 规范：
- * 1. 采用 [SegmentedListItem] 排版，右侧展示当前选中项值；
- * 2. 点击整行在条目处呼出带有圆角的 [DropdownMenu]；
- * 3. 选中项采用高亮胶囊背景块与前置对勾图标。
- */
 @Composable
 fun <T> SettingDropdownItem(
     title: String,

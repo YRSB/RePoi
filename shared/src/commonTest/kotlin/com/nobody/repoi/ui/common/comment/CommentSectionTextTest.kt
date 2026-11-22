@@ -8,9 +8,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 评论区富文本与回复关系格式化单测（纯 JVM commonTest）。
- */
 class CommentSectionTextTest {
 
     @Test

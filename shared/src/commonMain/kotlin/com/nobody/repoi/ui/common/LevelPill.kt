@@ -11,7 +11,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 
-// 用户等级徽章（与动态页一致：按等级分档配色，10 级以上展示 MASTER）。
 @Composable
 fun LevelPill(
     level: Int,

@@ -78,12 +78,8 @@ import com.nobody.repoi.ui.theme.sideSheet
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/** 侧边抽屉动画时长常量（毫秒） */
 private const val SIDE_SHEET_ANIMATION_DURATION_MS = 260
 
-/**
- * 周边筛选状态封装（消除参数泥团）
- */
 data class HobbyFilterState(
     val categories: List<CategoryItem> = emptyList(),
     val selectedCategory: Int = HobbyAllCategory.id,
@@ -93,26 +89,16 @@ data class HobbyFilterState(
     val selectedYear: String? = null
 )
 
-/**
- * 相册筛选状态封装
- */
 data class AlbumFilterState(
     val selectedCategory: AlbumSubCategory = AlbumSubCategory.ALL
 )
 
-/**
- * 角色/要素筛选状态封装
- */
 data class ElementsFilterState(
     val selectedCategory: ElementsSubCategory = ElementsSubCategory.ALL,
     val attributePairs: List<Pair<Int, String>> = emptyList(),
     val selectedAttribute: Int = 0
 )
 
-/**
- * 通用 FilterChip 流式区块组件：
- * 消除多处重复的 Column + Title + FlowRow + FilterChip 模板代码
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun <T> FilterChipSection(
@@ -162,10 +148,6 @@ fun <T> FilterChipSection(
     }
 }
 
-/**
- * Material Design 3 Modal Side Sheet 组件：
- * 专为平板与横屏大屏设计，从屏幕右侧平滑滑入，具备背景半透明遮罩与返回键手势关闭。
- */
 @Composable
 fun ModalSideSheet(
     onDismissRequest: () -> Unit,
@@ -217,7 +199,7 @@ fun ModalSideSheet(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // 全额消费抽屉内可滚动视图未消费的剩余滚动位移，防止过滚动事件穿透泄漏至底层
+
                 return available
             }
 
@@ -232,7 +214,7 @@ fun ModalSideSheet(
             .fillMaxSize()
             .zIndex(100f)
     ) {
-        // 1. 全屏半透明遮罩 (Scrim)：全屏铺满压暗背景，抽屉圆角外切角处自然透出暗色遮罩，彻底消除白色直角
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -252,7 +234,6 @@ fun ModalSideSheet(
                 }
         )
 
-        // 2. 右侧抽屉面板：居右停靠浮于遮罩之上，自身消费空白处点击防止击穿到底层遮罩
         Box(
             modifier = modifier
                 .align(Alignment.CenterEnd)
@@ -264,7 +245,7 @@ fun ModalSideSheet(
                 .nestedScroll(sideSheetNestedScrollConnection)
                 .pointerInput(Unit) {
                     detectTapGestures {
-                        // 消费抽屉空白处的点击，防止事件击穿透传到底层遮罩
+
                     }
                 }
                 .background(
@@ -279,10 +260,6 @@ fun ModalSideSheet(
     }
 }
 
-/**
- * 自适应搜索筛选与排序面板：
- * 宽屏/平板使用 Modal Side Sheet（右侧抽屉），窄屏/手机使用 Modal Bottom Sheet（底部抽屉）。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchFilterAdaptiveSheet(
@@ -351,9 +328,6 @@ fun SearchFilterAdaptiveSheet(
     }
 }
 
-/**
- * 筛选与排序统一内容呈现组件（高内聚单 when 分支呈现）
- */
 @Composable
 fun SearchFilterSheetContent(
     selectedTab: SearchTab,
@@ -376,7 +350,7 @@ fun SearchFilterSheetContent(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. 顶部标题栏
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -405,7 +379,6 @@ fun SearchFilterSheetContent(
             }
         }
 
-        // 2. 中间可滚动区域：每个 Tab 内聚定义专属筛选维度
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -416,7 +389,7 @@ fun SearchFilterSheetContent(
         ) {
             when (selectedTab) {
                 SearchTab.HOBBY -> {
-                    // 1. 排序方式
+
                     FilterChipSection(
                         title = "排序方式",
                         items = HobbySortOption.entries,
@@ -425,7 +398,6 @@ fun SearchFilterSheetContent(
                         label = { it.label }
                     )
 
-                    // 2. 周边分类
                     FilterChipSection(
                         title = "周边分类",
                         items = hobbyState.categories,
@@ -434,7 +406,6 @@ fun SearchFilterSheetContent(
                         label = { it.name }
                     )
 
-                    // 3. 制作厂商
                     val companyItems = listOf<SearchCompanyAggregate?>(null) + hobbyState.companies
                     FilterChipSection(
                         title = "制作厂商",
@@ -447,7 +418,6 @@ fun SearchFilterSheetContent(
                         label = { it?.let { c -> "${c.itemName} (${c.docCount})" } ?: "全部厂商" }
                     )
 
-                    // 4. 发售年份
                     val yearItems = listOf<SearchYearAggregate?>(null) + hobbyState.years
                     FilterChipSection(
                         title = "发售年份",
@@ -462,7 +432,7 @@ fun SearchFilterSheetContent(
                 }
 
                 SearchTab.ALBUM -> {
-                    // 1. 排序方式
+
                     FilterChipSection(
                         title = "排序方式",
                         items = AlbumSortOption.entries,
@@ -471,7 +441,6 @@ fun SearchFilterSheetContent(
                         label = { it.label }
                     )
 
-                    // 2. 相册分类
                     FilterChipSection(
                         title = "相册分类",
                         items = AlbumSubCategory.entries,
@@ -482,7 +451,7 @@ fun SearchFilterSheetContent(
                 }
 
                 SearchTab.WORKS_ELEMENT -> {
-                    // 1. 要素分类
+
                     FilterChipSection(
                         title = "要素分类",
                         items = ElementsSubCategory.entries,
@@ -491,7 +460,6 @@ fun SearchFilterSheetContent(
                         label = { it.label }
                     )
 
-                    // 2. 属性筛选
                     val attrItems = listOf(0 to "全部属性") + elementsState.attributePairs
                     FilterChipSection(
                         title = "属性筛选",
@@ -515,9 +483,6 @@ fun SearchFilterSheetContent(
     }
 }
 
-/**
- * 筛选抽屉共用底部固定操作栏（重置 + 完成）
- */
 @Composable
 fun FilterSheetActions(
     onReset: () -> Unit,

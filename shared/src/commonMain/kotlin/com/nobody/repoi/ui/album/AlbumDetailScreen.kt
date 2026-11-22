@@ -147,12 +147,10 @@ fun AlbumDetailScreen(
     val isMediumWidth = windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isWidePane = isExpandedWidth || (isMediumWidth && !windowSizeClass.isHeightAtLeastBreakpoint(HEIGHT_DP_EXPANDED_LOWER_BOUND))
 
-    // 初始化加载
     LaunchedEffect(param.albumId) {
         viewModel.loadDetail(param)
     }
 
-    // 评论互动一次性提示（点赞/回复结果）
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -161,7 +159,6 @@ fun AlbumDetailScreen(
         }
     }
 
-    // 点赞/收藏/关注操作一次性提示
     val interactionActionMessage = uiState.interactionActionMessage
     LaunchedEffect(interactionActionMessage) {
         if (interactionActionMessage != null) {
@@ -170,7 +167,6 @@ fun AlbumDetailScreen(
         }
     }
 
-    // 取消关注二次确认弹窗
     var showUnfollowConfirmDialog by remember { mutableStateOf(false) }
     if (showUnfollowConfirmDialog) {
         AlertDialog(
@@ -201,7 +197,6 @@ fun AlbumDetailScreen(
 
     val imageViewer = LocalImageViewer.current
 
-    // 图片触底追加加载判断
     val shouldLoadMorePictures by remember {
         derivedStateOf {
             val layoutInfo = gridState.layoutInfo
@@ -217,7 +212,6 @@ fun AlbumDetailScreen(
         }
     }
 
-    // 全屏查看器只接受绝对 URL：此处结果直接喂给查看器（非 AsyncImage 下游），故保留管道解析
     val allPictureUrls = remember(uiState.pictures) {
         uiState.pictures.mapNotNull { pic ->
             pic.imagePath?.let { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
@@ -225,7 +219,7 @@ fun AlbumDetailScreen(
     }
 
     when {
-        // 错误重试界面
+
         uiState.errorMessage != null && uiState.album == null -> {
             AlbumErrorState(
                 errorMessage = uiState.errorMessage ?: "加载失败",
@@ -234,7 +228,6 @@ fun AlbumDetailScreen(
             )
         }
 
-        // 正常内容流
         else -> {
             val album = uiState.album
 
@@ -278,7 +271,6 @@ fun AlbumDetailScreen(
                 )
             }
 
-            // 监测瀑布流网格滚动以联动顶部紧凑毛玻璃导航条
             val isScrolledPastHeader by remember {
                 derivedStateOf {
                     gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 240
@@ -358,7 +350,7 @@ fun AlbumDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalItemSpacing = 8.dp
                 ) {
-                // ── 区块 1：相册核心信息展台卡（独占整行）──
+
                 item(key = "section_album_header", span = StaggeredGridItemSpan.FullLine) {
                     AlbumHeaderCard(
                         album = album,
@@ -380,8 +372,6 @@ fun AlbumDetailScreen(
                     )
                 }
 
-                // ── 区块 2：摄影图集瀑布流（自然分栏，按图片类型复用）──
-                // 图片请求上下文由屏级下传，避免逐项查询重复订阅
                 if (uiState.pictures.isNotEmpty()) {
                     itemsIndexed(
                         items = uiState.pictures,
@@ -406,7 +396,7 @@ fun AlbumDetailScreen(
                         PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
                     }
                 } else {
-                    // 加载完毕且无任何图片时的明确空状态提示
+
                     item(key = "pics_empty", span = StaggeredGridItemSpan.FullLine) {
                         Card(
                             modifier = Modifier
@@ -446,7 +436,6 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                // 图片流加载中/已加载全部指示
                 item(key = "pics_footer", span = StaggeredGridItemSpan.FullLine) {
                     Box(
                         modifier = Modifier
@@ -478,7 +467,6 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                // ── 区块 3：关联周边横滑区 ──
                 if (uiState.relatedHobbies.isNotEmpty()) {
                     item(key = "section_related_hobbies", span = StaggeredGridItemSpan.FullLine) {
                         RelatedHobbiesSection(
@@ -496,7 +484,6 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                // ── 区块 4：关联相册横滑区（上下文由屏级下传）──
                 if (uiState.relatedAlbums.isNotEmpty()) {
                     item(key = "section_related_albums", span = StaggeredGridItemSpan.FullLine) {
                         RelatedAlbumsSection(
@@ -508,13 +495,12 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                // ── 区块 4.5：ExHobby 扩展图库横滑流 ──
                 if (uiState.isExHobbyEnabled && uiState.exHobbyPics.isNotEmpty()) {
                     item(key = "section_exhobby", span = StaggeredGridItemSpan.FullLine) {
                         ExHobbyPreviewSection(
                             pics = uiState.exHobbyPics,
                             onPicClick = { index: Int ->
-                                // 查看器消费绝对 URL，保留管道解析（ExHobby 无 raw 档，FULLSCREEN_RAW 落 n/）
+
                                 val allFullUrls = uiState.exHobbyPics.map {
                                     MediaPipeline.Default.resolveUrl(
                                         it.path,
@@ -544,10 +530,6 @@ fun AlbumDetailScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 顶部毛玻璃导航栏 (AlbumTopNavigation)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun AlbumTopNavigation(
     isScrolled: Boolean,
@@ -564,10 +546,6 @@ private fun AlbumTopNavigation(
         modifier = modifier
     )
 }
-
-// ─────────────────────────────────────────────────────────────
-// 相册核心信息展台卡 (AlbumHeaderCard)
-// ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -594,7 +572,7 @@ private fun AlbumHeaderCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 1. 标题
+
             val title = album?.displayName?.ifBlank { null } ?: initialTitle ?: "精美手办相册"
             Text(
                 text = title,
@@ -604,7 +582,6 @@ private fun AlbumHeaderCard(
                 lineHeight = 26.sp
             )
 
-            // 2. 作者微卡行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -614,7 +591,7 @@ private fun AlbumHeaderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // 头像沿用旧 getHeadUrl 的 head/n/ 档位（AVATAR + CARD_STANDARD），失败态由组件承担
+
                     PoiAsyncImage(
                         path = album?.user?.header,
                         category = MediaCategory.AVATAR,
@@ -638,7 +615,6 @@ private fun AlbumHeaderCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
-                            // 等级标
                             val level = album?.user?.level ?: 0
                             if (level > 0) {
                                 Surface(
@@ -656,7 +632,6 @@ private fun AlbumHeaderCard(
                             }
                         }
 
-                        // 统计（浏览量 · 收藏数 · 图集张数）
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -680,7 +655,6 @@ private fun AlbumHeaderCard(
                     }
                 }
 
-                // 关注胶囊按钮（本人时不显示）
                 if (showFollow) {
                     Surface(
                         shape = CircleShape,
@@ -704,7 +678,6 @@ private fun AlbumHeaderCard(
                 }
             }
 
-            // 3. 标签分类流 (Tags Flow)
             if (tags.isNotEmpty()) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -728,7 +701,6 @@ private fun AlbumHeaderCard(
                 }
             }
 
-            // 4. 摄影手记 / 描述说明文案（富文本平铺展示与链接分流）
             val rawHtml = album?.detail?.ifBlank { null }
             val cleanText = album?.detailPlainText?.ifBlank { null }
             val hasContent = !cleanText.isNullOrBlank()
@@ -776,18 +748,13 @@ private fun AlbumHeaderCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 单张全宽原画长图项 (AlbumPictureItem)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun AlbumPictureItem(
     pic: PicItem,
     index: Int,
     onImageClick: (Int) -> Unit
 ) {
-    // 相册图片走 pic/ 家族（MediaCategory 无 pic 槽位），详情页主图用 CARD_STANDARD 落 pic/n/，
-    // 点击后由外层全屏查看器取 raw 档
+
     val pictureRatio = pic.pictureInfo?.let { info ->
         val w = info.width ?: 0
         val h = info.height ?: 0
@@ -807,7 +774,7 @@ private fun AlbumPictureItem(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            // 自适应高度由基元负责：已知尺寸时以服务端宽高比为首帧占位，未知时回退 4:3
+
             PoiAsyncImage(
                 model = MediaPipeline.Default.resolvePictureUrl(pic.imagePath, ImagePurpose.CARD_STANDARD),
                 contentDescription = "相册摄影作品第 ${index + 1} 张",
@@ -819,10 +786,6 @@ private fun AlbumPictureItem(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 关联周边横滑区 (RelatedHobbiesSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun RelatedHobbiesSection(
@@ -880,7 +843,7 @@ private fun RelatedHobbyCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
-        // 方块缩略图：固定尺寸由外层卡片给定，组件只负责填满与缺省/失败态
+
         PoiAsyncImage(
             path = hobby.cover,
             category = MediaCategory.HOBBY,
@@ -890,10 +853,6 @@ private fun RelatedHobbyCard(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 关联相册横滑区 (RelatedAlbumsSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun RelatedAlbumsSection(
@@ -945,7 +904,7 @@ private fun RelatedAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
@@ -968,8 +927,7 @@ private fun RelatedAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
-                // 高度由 adaptiveRatio 按真实比例撑开，替换原先手写的纵横比缓存回写
+
                 PoiAsyncImage(
                     path = album.cover,
                     category = MediaCategory.ALBUM,
@@ -981,7 +939,6 @@ private fun RelatedAlbumCard(
                 )
             }
 
-            // 右上角半透明浮层点赞徽标
             val praiseCount = album.praiseCount ?: 0L
             if (praiseCount > 0L) {
                 Surface(
@@ -1015,10 +972,6 @@ private fun RelatedAlbumCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部常驻悬浮操作胶囊 (AlbumFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun AlbumFloatingActionBar(
     isLiked: Boolean,
@@ -1036,7 +989,7 @@ private fun AlbumFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 点赞（接线 AlbumDetailViewModel.toggleLike，只显示数字）
+
         ExpressiveToolbarButton(
             onClick = onToggleLike,
             text = if (likeCount > 0) "$likeCount" else null,
@@ -1048,7 +1001,6 @@ private fun AlbumFloatingActionBar(
             iconTint = if (isLiked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 收藏（接线 AlbumDetailViewModel.toggleCollect，只显示数字）
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
@@ -1060,19 +1012,17 @@ private fun AlbumFloatingActionBar(
             iconTint = if (isCollected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 3. 评论（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让点赞/收藏这类切换控件着色
+
                 isProminent = false
             )
         }
 
-        // 4. 直达关联手办（若有，纯图标）
         if (hasRelatedHobby) {
             ExpressiveToolbarButton(
                 onClick = onNavigateToRelatedHobby,
@@ -1082,7 +1032,6 @@ private fun AlbumFloatingActionBar(
             )
         }
 
-        // 5. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,
@@ -1091,10 +1040,6 @@ private fun AlbumFloatingActionBar(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 错误重试状态占位
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun AlbumErrorState(

@@ -16,15 +16,6 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.savedstate.serialization.SavedStateConfiguration
 
-/**
- * RePoi 主界面 Tab 状态持有者（全局单根栈拓扑）：
- *
- * 5 个顶层目的地各自持有一条仅含根条目的 [NavBackStack]，经独立的
- * [rememberSaveableStateHolderNavEntryDecorator] 与 [rememberViewModelStoreNavEntryDecorator] 修饰，
- * 保证 Tab 切换时页面 ViewModel、Lazy 列表滚动位置与表单状态全量保留。
- *
- * 二级页面不再压入 Tab 栈，而是压入 [RePoiNavigator.rootBackStack] 并整屏覆盖主界面。
- */
 class RePoiNavigationState(
     val startDestination: AppDestinations = AppDestinations.HOME,
     private val currentDestinationState: MutableState<AppDestinations>,
@@ -32,9 +23,6 @@ class RePoiNavigationState(
 ) {
     var currentDestination: AppDestinations by currentDestinationState
 
-    /**
-     * 将每个 Tab 栈分别用独立的作用域装饰器进行装饰，并返回当前活跃呈现的 Entry 序列。
-     */
     @Composable
     fun toDecoratedEntries(
         entryProvider: (NavKey) -> NavEntry<NavKey>
@@ -55,9 +43,6 @@ class RePoiNavigationState(
     }
 }
 
-/**
- * 创建并记住持久化 [RePoiNavigationState]。
- */
 @Composable
 fun rememberRePoiNavigationState(
     startDestination: AppDestinations = AppDestinations.HOME,

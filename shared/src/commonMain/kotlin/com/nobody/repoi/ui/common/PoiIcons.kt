@@ -4,14 +4,8 @@ import org.jetbrains.compose.resources.DrawableResource
 import repoi.shared.generated.resources.Res
 import repoi.shared.generated.resources.*
 
-/**
- * 集中管理的 Material Symbols Rounded 图标门面（Issue #189）。
- *
- * 替代原先的图标库依赖，以轻量静态矢量资产访问，
- * 彻底消除全量图标库对编译时长、DEX 方法数以及桌面端包体积的开销。
- */
 object PoiIcons {
-    // 基础导航与方向
+
     val ArrowBack: DrawableResource get() = Res.drawable.ic_ms_arrow_back_rounded
     val ArrowForwardIos: DrawableResource get() = Res.drawable.ic_ms_arrow_forward_ios_rounded
     val ArrowDownward: DrawableResource get() = Res.drawable.ic_ms_arrow_downward_rounded
@@ -28,7 +22,6 @@ object PoiIcons {
     val SwapVert: DrawableResource get() = Res.drawable.ic_ms_swap_vert_rounded
     val SyncAlt: DrawableResource get() = Res.drawable.ic_ms_sync_alt_rounded
 
-    // 常用操作与状态
     val Add: DrawableResource get() = Res.drawable.ic_ms_add_rounded
     val AddPhotoAlternate: DrawableResource get() = Res.drawable.ic_ms_add_photo_alternate_rounded
     val Check: DrawableResource get() = Res.drawable.ic_ms_check_rounded
@@ -55,7 +48,6 @@ object PoiIcons {
     val Sort: DrawableResource get() = Res.drawable.ic_ms_sort_rounded
     val Tune: DrawableResource get() = Res.drawable.ic_ms_tune_rounded
 
-    // 收藏、喜好与评分
     val Favorite: DrawableResource get() = Res.drawable.ic_ms_favorite_filled_rounded
     val FavoriteBorder: DrawableResource get() = Res.drawable.ic_ms_favorite_rounded
     val Star: DrawableResource get() = Res.drawable.ic_ms_star_filled_rounded
@@ -65,7 +57,6 @@ object PoiIcons {
     val Bookmarks: DrawableResource get() = Res.drawable.ic_ms_bookmarks_rounded
     val CollectionsBookmark: DrawableResource get() = Res.drawable.ic_ms_collections_bookmark_rounded
 
-    // 用户与认证
     val AccountBox: DrawableResource get() = Res.drawable.ic_ms_account_box_rounded
     val AccountCircle: DrawableResource get() = Res.drawable.ic_ms_account_circle_rounded
     val Person: DrawableResource get() = Res.drawable.ic_ms_person_filled_rounded
@@ -84,7 +75,6 @@ object PoiIcons {
     val Login: DrawableResource get() = Res.drawable.ic_ms_login_rounded
     val Logout: DrawableResource get() = Res.drawable.ic_ms_logout_rounded
 
-    // 社交与消息
     val Comment: DrawableResource get() = Res.drawable.ic_ms_comment_rounded
     val Chat: DrawableResource get() = Res.drawable.ic_ms_chat_rounded
     val ChatBubbleOutline: DrawableResource get() = Res.drawable.ic_ms_chat_bubble_outline_rounded
@@ -98,7 +88,6 @@ object PoiIcons {
     val Send: DrawableResource get() = Res.drawable.ic_ms_send_rounded
     val Campaign: DrawableResource get() = Res.drawable.ic_ms_campaign_rounded
 
-    // 媒体与相册
     val Image: DrawableResource get() = Res.drawable.ic_ms_image_rounded
     val ImageOutlined: DrawableResource get() = Res.drawable.ic_ms_image_outline_rounded
     val BrokenImage: DrawableResource get() = Res.drawable.ic_ms_broken_image_rounded
@@ -109,7 +98,6 @@ object PoiIcons {
     val Movie: DrawableResource get() = Res.drawable.ic_ms_movie_rounded
     val HighQuality: DrawableResource get() = Res.drawable.ic_ms_high_quality_rounded
 
-    // 业务分类与商品
     val Category: DrawableResource get() = Res.drawable.ic_ms_category_rounded
     val CategoryOutlined: DrawableResource get() = Res.drawable.ic_ms_category_outline_rounded
     val Sell: DrawableResource get() = Res.drawable.ic_ms_sell_rounded
@@ -123,7 +111,6 @@ object PoiIcons {
     val Style: DrawableResource get() = Res.drawable.ic_ms_style_rounded
     val DynamicFeed: DrawableResource get() = Res.drawable.ic_ms_dynamic_feed_rounded
 
-    // 设备、设置与主题
     val Settings: DrawableResource get() = Res.drawable.ic_ms_settings_rounded
     val Palette: DrawableResource get() = Res.drawable.ic_ms_palette_rounded
     val DarkMode: DrawableResource get() = Res.drawable.ic_ms_dark_mode_rounded
@@ -136,7 +123,6 @@ object PoiIcons {
     val Storage: DrawableResource get() = Res.drawable.ic_ms_storage_rounded
     val Wallpaper: DrawableResource get() = Res.drawable.ic_ms_wallpaper_rounded
 
-    // 其它与标记
     val Home: DrawableResource get() = Res.drawable.ic_ms_home_filled_rounded
     val HomeOutlined: DrawableResource get() = Res.drawable.ic_ms_home_rounded
     val Info: DrawableResource get() = Res.drawable.ic_ms_info_rounded
@@ -168,7 +154,6 @@ object PoiIcons {
     val MoreVert: DrawableResource get() = Res.drawable.ic_ms_more_vert_rounded
     val SentimentSatisfied: DrawableResource get() = Res.drawable.ic_ms_sentiment_satisfied_rounded
 
-    // 兼容层：对齐旧代码中的 Icons.Filled / Icons.Outlined / Icons.AutoMirrored / Icons.Default
     object Filled {
         val AccountBox: DrawableResource get() = PoiIcons.AccountBox
         val Add: DrawableResource get() = PoiIcons.Add

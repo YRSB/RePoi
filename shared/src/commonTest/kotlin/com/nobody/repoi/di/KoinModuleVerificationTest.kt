@@ -62,12 +62,6 @@ import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import kotlin.test.Test
 
-/**
- * Koin 依赖注入完整性与依赖图验证测试。
- *
- * 验证核心网络模块、管理器模块、仓储模块及无参 ViewModel 的依赖绑定图完整解析，
- * 防止由于构造参数增删遗漏在运行时抛出 NoDefinitionFoundException。
- */
 class KoinModuleVerificationTest {
 
     private val testDataStoreModule = module {
@@ -92,21 +86,18 @@ class KoinModuleVerificationTest {
         try {
             val koin = app.koin
 
-            // 1. 基础工具与 API
             koin.getOrNull<Json>().shouldNotBeNull()
             koin.getOrNull<HpoiApi>().shouldNotBeNull()
             koin.getOrNull<ExHobbyApi>().shouldNotBeNull()
 
-            // 2. 会话接缝与本地状态管理器
             koin.getOrNull<UserSession>().shouldNotBeNull()
-            // 存储适配器不得作为独立单例被解析（ADR-0005 单一鉴权出口）
+
             koin.getOrNull<TokenManager>().shouldBeNull()
             koin.getOrNull<ThemeManager>().shouldNotBeNull()
             koin.getOrNull<SearchHistoryManager>().shouldNotBeNull()
             koin.getOrNull<ViewPreferencesManager>().shouldNotBeNull()
             koin.getOrNull<CategoryManager>().shouldNotBeNull()
 
-            // 3. 全量 Repository 及其交互代理
             koin.getOrNull<CollectRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumRepository>().shouldNotBeNull()
             koin.getOrNull<AlbumDetailRepository>().shouldNotBeNull()
@@ -134,7 +125,6 @@ class KoinModuleVerificationTest {
             koin.getOrNull<ZoneRepository>().shouldNotBeNull()
             koin.getOrNull<CommentInteractionDelegate>().shouldNotBeNull()
 
-            // 4. 保留的收藏写侧 Domain UseCases（factory，共 5 个）
             koin.getOrNull<SaveHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<DeleteHobbyCollectUseCase>().shouldNotBeNull()
             koin.getOrNull<BatchCancelCollectUseCase>().shouldNotBeNull()
@@ -159,7 +149,7 @@ class KoinModuleVerificationTest {
 
         try {
             val koin = app.koin
-            // 验证无需动态 Navigation 参数的核心独立 ViewModel
+
             koin.getOrNull<HomeFeedViewModel>().shouldNotBeNull()
             koin.getOrNull<SearchLandingViewModel>().shouldNotBeNull()
             koin.getOrNull<SearchResultViewModel>().shouldNotBeNull()
@@ -167,16 +157,15 @@ class KoinModuleVerificationTest {
             koin.getOrNull<LoginViewModel>().shouldNotBeNull()
             koin.getOrNull<AlbumViewModel>().shouldNotBeNull()
             koin.getOrNull<FollowViewModel>().shouldNotBeNull()
-            // 规范 §2：无 named 限定符的 VM 必须能用 viewModelOf 解析（9 参与 3 参构造）
+
             koin.getOrNull<AlbumDetailViewModel>().shouldNotBeNull()
             koin.getOrNull<CharacterDetailViewModel>().shouldNotBeNull()
             koin.getOrNull<UserHistoryViewModel>().shouldNotBeNull()
-            // 收藏链路 ViewModel：构造依赖最多（仓储 + UseCase + 偏好 + 会话 + 具名下载 client），
-            // 解析一次即可捕获 Koin 参数漂移（Koin 无编译期校验，否则只在运行期崩溃）
+
             koin.getOrNull<UserCollectViewModel>().shouldNotBeNull()
             koin.getOrNull<PictureGalleryViewModel>().shouldNotBeNull()
             koin.getOrNull<ZoneDetailViewModel>().shouldNotBeNull()
-            // 子板块会话控制器工厂（深模块）
+
             koin.getOrNull<ZoneBoardSession.Factory>().shouldNotBeNull()
         } finally {
             app.close()

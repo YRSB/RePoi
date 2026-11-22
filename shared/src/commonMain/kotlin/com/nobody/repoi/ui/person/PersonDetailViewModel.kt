@@ -19,9 +19,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/**
- * 人物详情页路由导航参数。
- */
 @Serializable
 data class PersonNavParam(
     val personId: Long,
@@ -30,9 +27,6 @@ data class PersonNavParam(
     val initialCover: String? = null
 )
 
-/**
- * 人物详情页渐进式加载 UI 状态机。
- */
 data class PersonDetailUiState(
     val personId: Long = 0L,
     val personNodeId: Long = 0L,
@@ -41,25 +35,20 @@ data class PersonDetailUiState(
     val isInitialLoading: Boolean = true,
     val errorMessage: String? = null,
 
-    // 核心人物主体数据
     val person: PersonData? = null,
     val careerType: Int = 0,
     val isIntroExpanded: Boolean = false,
 
-    // 参与作品与出演角色
     val isWorksLoading: Boolean = false,
     val works: List<PersonWorksEntry> = emptyList(),
     val isCharactersLoading: Boolean = false,
     val characters: List<PersonWorksEntry> = emptyList(),
 
-    // 参与周边
     val isHobbiesLoading: Boolean = false,
     val hobbies: List<PersonHobbyEntry> = emptyList(),
 
-    // 当前 Tab
     val selectedTab: Int = 0,
 
-    // 评论区（热门神评置顶 + 最新无限流）
     override val isCommentsLoading: Boolean = false,
     override val hotComments: List<CommentItem> = emptyList(),
     override val latestComments: List<CommentItem> = emptyList(),
@@ -70,11 +59,10 @@ data class PersonDetailUiState(
     override val pendingPraiseIds: Set<Long> = emptySet(),
     override val commentActionMessage: String? = null,
 
-    // 用户交互状态
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
-    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+
     val collectCountBase: Int? = null
 ) : com.nobody.repoi.ui.common.comment.CommentPagedUiState {
     override fun copyWithComments(
@@ -124,16 +112,13 @@ class PersonDetailViewModel(
     private var loadCommentsJob: Job? = null
 
     init {
-        // 合并评论详情页回写的主楼更新（点赞/回复）
+
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
     }
 
-    /**
-     * 渐进多阶段加载人物详情所有数据。
-     */
     fun loadDetail(param: PersonNavParam) {
         if (_uiState.value.personId == param.personId && !_uiState.value.isInitialLoading && _uiState.value.person != null) {
-            return // 已加载过该人物，保留现有数据
+            return
         }
 
         activeJob?.cancel()
@@ -147,7 +132,6 @@ class PersonDetailViewModel(
                 errorMessage = null
             )
 
-            // ── 阶段 1：首屏核心渲染，拉取人物主体基本信息 ──
             val detailResult = repository.getPersonDetail(param.personId)
             if (detailResult.isFailure) {
                 _uiState.update {
@@ -178,8 +162,6 @@ class PersonDetailViewModel(
                 )
             }
 
-            // ── 阶段 2：并行发起次级各板块网络请求 ──
-            // 2.1 参与作品
             launch {
                 val worksResult = repository.getPersonWorks(param.personId)
                 _uiState.update {
@@ -190,7 +172,6 @@ class PersonDetailViewModel(
                 }
             }
 
-            // 2.2 出演角色
             launch {
                 val charactersResult = repository.getPersonCharacter(param.personId)
                 _uiState.update {
@@ -201,7 +182,6 @@ class PersonDetailViewModel(
                 }
             }
 
-            // 2.3 参与周边
             launch {
                 val hobbiesResult = repository.getPersonHobby(param.personId)
                 _uiState.update {
@@ -212,12 +192,10 @@ class PersonDetailViewModel(
                 }
             }
 
-            // 2.4 评论区（热门置顶 + 最新第 1 页）
             launch {
                 commentDelegate.loadInitialComments(_uiState, nodeId, repository::getComments)
             }
 
-            // 2.5 查询收藏状态，未登录时静默降级为服务端初始值
             launch {
                 val isCollected = repository.getCollectState(nodeId).getOrDefault(result.isAddFav)
                 _uiState.update {
@@ -231,16 +209,10 @@ class PersonDetailViewModel(
         }
     }
 
-    /**
-     * 切换人物详情 Tab。
-     */
     fun onSelectTab(index: Int) {
         _uiState.update { it.copy(selectedTab = index) }
     }
 
-    /**
-     * 翻页追加最新评论流。
-     */
     fun loadNextCommentsPage() {
         val state = _uiState.value
         val nodeId = state.personNodeId
@@ -250,24 +222,15 @@ class PersonDetailViewModel(
         }
     }
 
-    /**
-     * 切换简介展开/折叠状态。
-     */
     fun toggleIntroExpanded() {
         _uiState.update { it.copy(isIntroExpanded = !it.isIntroExpanded) }
     }
 
-    /**
-     * 切换主评论点赞状态（乐观更新，失败回滚）。
-     */
     fun toggleCommentPraise(commentId: Long) {
         val nodeId = _uiState.value.personNodeId
         commentDelegate.toggleCommentPraise(viewModelScope, _uiState, commentId, nodeId)
     }
 
-    /**
-     * 发表子评论回复（成功后追加到主楼并广播更新）。
-     */
     suspend fun submitCommentReply(
         commentId: Long,
         target: com.nobody.repoi.data.remote.model.CommentReplyItem?,
@@ -286,9 +249,6 @@ class PersonDetailViewModel(
     suspend fun deleteComment(comment: CommentItem): Boolean = commentDelegate.deleteMainComment(_uiState, comment.id)
     suspend fun deleteReply(comment: CommentItem, reply: CommentReplyItem): Boolean = commentDelegate.deleteSubReply(_uiState, comment.id, reply.id)
 
-    /**
-     * 发表主楼评论（成功后重拉第一页评论流）。
-     */
     suspend fun submitTopLevelComment(content: String, stickers: List<String>): Boolean {
         val nodeId = _uiState.value.personNodeId
         val ok = commentDelegate.postTopLevelComment(_uiState, nodeId, content, stickers)
@@ -296,9 +256,6 @@ class PersonDetailViewModel(
         return ok
     }
 
-    /**
-     * 发表成功后重拉第一页评论流（与首屏加载同一口径）。
-     */
     fun refreshComments() {
         val nodeId = _uiState.value.personNodeId
         if (nodeId <= 0L) return
@@ -308,19 +265,10 @@ class PersonDetailViewModel(
         }
     }
 
-    /**
-     * 消费评论互动一次性提示文案。
-     */
     fun consumeCommentActionMessage() {
         commentDelegate.consumeCommentActionMessage(_uiState)
     }
 
-    /**
-     * 切换收藏人物状态与计数（乐观更新 + 失败回滚）。
-     *
-     * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
-     * [CollectRepository.toggleItemCollect]，成功即写入收藏仓储状态池并推进变更代数。
-     */
     fun toggleCollect() {
         val state = _uiState.value
         val nodeId = state.personNodeId
@@ -328,7 +276,6 @@ class PersonDetailViewModel(
         val previousCollected = state.isCollected
         val nextCollected = !previousCollected
 
-        // 乐观更新
         _uiState.update {
             it.copy(
                 isCollected = nextCollected,
@@ -339,7 +286,7 @@ class PersonDetailViewModel(
         viewModelScope.launch {
             val result = collectRepository.toggleItemCollect(nodeId, previousCollected)
             if (result.isFailure) {
-                // 失败回滚
+
                 _uiState.update {
                     it.copy(
                         isCollected = previousCollected,
@@ -349,7 +296,7 @@ class PersonDetailViewModel(
                 }
             }
             else {
-                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+
                 collectRepository.getCollectCount(nodeId).onSuccess { count ->
                     _uiState.update { current ->
                         current.copy(

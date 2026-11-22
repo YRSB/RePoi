@@ -2,9 +2,6 @@ package com.nobody.repoi.ui.message.block
 
 import com.nobody.repoi.data.remote.model.BlockItem
 
-/**
- * 黑名单管理页面 UI 状态。
- */
 data class MessageBlockUiState(
     val blockList: List<BlockItem> = emptyList(),
     val isLoading: Boolean = false,

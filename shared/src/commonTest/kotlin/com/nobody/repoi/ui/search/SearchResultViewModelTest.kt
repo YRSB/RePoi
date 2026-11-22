@@ -17,12 +17,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
-/**
- * 专职搜索结果页 [SearchResultViewModel] 状态机与数据流测试。
- *
- * 覆盖：初始参数注入、8 分类按需懒加载、Tab 切换缓存复用、
- * 分页与下拉刷新隔离、独立筛选快照隔离与重置。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchResultViewModelTest {
 
@@ -63,7 +57,6 @@ class SearchResultViewModelTest {
         state.tabStates.getValue(SearchTab.HOBBY).isLoaded shouldBe true
         state.tabStates.getValue(SearchTab.HOBBY).items.size shouldBe 2
 
-        // 其他分类保持未加载懒态
         SearchTab.entries.filter { it != SearchTab.HOBBY }.forEach { tab ->
             state.tabStates.getValue(tab).isLoaded shouldBe false
         }
@@ -110,7 +103,6 @@ class SearchResultViewModelTest {
         advanceUntilIdle()
         env.mock.takeAllRequests()
 
-        // 再次传入相同参数，应幂等跳过
         viewModel.initParam(param)
         advanceUntilIdle()
         env.mock.takeAllRequests().size shouldBe 0
@@ -125,7 +117,6 @@ class SearchResultViewModelTest {
         advanceUntilIdle()
         env.mock.takeAllRequests()
 
-        // Pager 滑入相册可见：懒加载相册，但不改变前台选中分类
         viewModel.onTabVisible(SearchTab.ALBUM)
         advanceUntilIdle()
 
@@ -135,7 +126,6 @@ class SearchResultViewModelTest {
         album.items.size shouldBe 2
         env.mock.takeAllRequests().searchCategories() shouldBe listOf("70000")
 
-        // 再次滑入已加载分类：零网络请求
         viewModel.onTabVisible(SearchTab.ALBUM)
         advanceUntilIdle()
         env.mock.takeAllRequests().searchCategories().size shouldBe 0
@@ -150,7 +140,6 @@ class SearchResultViewModelTest {
         advanceUntilIdle()
         env.mock.takeAllRequests()
 
-        // 切换到相册 Tab
         viewModel.onSelectTab(SearchTab.ALBUM)
         advanceUntilIdle()
 
@@ -163,7 +152,6 @@ class SearchResultViewModelTest {
         val hobbyBefore = viewModel.tabState(SearchTab.HOBBY)
         val albumBefore = viewModel.tabState(SearchTab.ALBUM)
 
-        // 切回周边分类：直接复用缓存，零请求
         viewModel.onSelectTab(SearchTab.HOBBY)
         advanceUntilIdle()
 
@@ -343,7 +331,6 @@ class SearchResultViewModelTest {
         album.order shouldBe "addTime"
         album.category shouldBe AlbumSubCategory.FIGURE
 
-        // 切回周边后派生访问器取的是周边快照
         viewModel.uiState.value.order shouldBe "hits"
         viewModel.uiState.value.selectedCompany shouldBe company
         viewModel.uiState.value.selectedYear shouldBe "2024"
@@ -394,7 +381,6 @@ class SearchResultViewModelTest {
         advanceUntilIdle()
         viewModel.uiState.value.isFilterActive shouldBe true
 
-        // 相册筛选独立生效，不影响周边 Badge
         viewModel.onResetFilters()
         advanceUntilIdle()
         viewModel.uiState.value.isFilterActive shouldBe false
@@ -409,7 +395,6 @@ class SearchResultViewModelTest {
         advanceUntilIdle()
         viewModel.uiState.value.isFilterActive shouldBe false
 
-        // 顶栏按 Pager 当前页取筛选态：selectedTab 是 HOBBY，也须能读到 ALBUM 的快照
         viewModel.uiState.value.orderFor(SearchTab.ALBUM) shouldBe "hits"
         viewModel.uiState.value.isFilterActiveFor(SearchTab.ALBUM) shouldBe true
         viewModel.uiState.value.orderFor(SearchTab.HOBBY) shouldBe ""
@@ -450,7 +435,7 @@ class SearchResultViewModelTest {
         hobby.categoryId shouldBe HobbyAllCategory.id
         hobby.company shouldBe null
         hobby.year shouldBe null
-        // 候选列表保留，避免重置后筛选面板选项消失
+
         hobby.availableCompanies shouldBe listOf(company)
         hobby.availableYears.mapNotNull { it.keyAsString } shouldBe listOf("2024")
 

@@ -21,12 +21,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
-/**
- * Material 3 Expressive 风格的共享轴（Shared Axis）与淡穿（Fade Through）转场规范。
- *
- * 为 Navigation 3 的 NavDisplay 提供标准化的进出场动效与预测性返回手势适配。
- * 遵循 Material Design 规范：错峰 Fade Through（杜绝双页半透明重影）、Emphasized 缓动及双向轴缩放/位移。
- */
 object MaterialSharedAxis {
 
     private val MotionEmphasizedEasing = PathEasing(
@@ -147,9 +141,6 @@ object MaterialSharedAxis {
             }
     }
 
-    /**
-     * X 轴水平共享轴：适用于平级左右并列、水平流程推进或分类标签切换。
-     */
     object X {
         val EnterTransition: EnterTransition
             @Composable get() {
@@ -206,9 +197,6 @@ object MaterialSharedAxis {
             }
     }
 
-    /**
-     * Z 轴纵深缩放共享轴：适用于列表深入详情、多级深入及页面出栈。
-     */
     object Z {
         val EnterTransition: EnterTransition =
             ScaleProvider.EnterTransition + FadeThroughProvider.EnterTransition
@@ -227,9 +215,6 @@ object MaterialSharedAxis {
         val PopTransitionSpec: ContentTransform = PopEnterTransition togetherWith PopExitTransition
     }
 
-    /**
-     * 纯淡穿转场（Fade Through）：适用于顶层 5 个主 Tab 之间的平级切换。
-     */
     object Fade {
         val TransitionSpec: ContentTransform =
             FadeThroughProvider.EnterTransition togetherWith FadeThroughProvider.ExitTransition

@@ -121,7 +121,7 @@ fun ZoneSettingsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 卡片 1：显示「全部」
+
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -158,7 +158,6 @@ fun ZoneSettingsScreen(
                 }
             }
 
-            // 卡片 2：排序方式
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -216,7 +215,6 @@ fun ZoneSettingsScreen(
                 }
             }
 
-            // 卡片 3：关注专区管理
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

@@ -16,15 +16,6 @@ import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEvent
 
-/**
- * RePoi 统一通用导航容器（参考 PodAura 架构范式）：
- *
- * 1. 泛型抽象：解耦具体业务 NavKey，提供开箱即用的 Navigation 3 规范底座；
- * 2. 状态与作用域保持：默认装配 [rememberSaveableStateHolderNavEntryDecorator] 与 [rememberViewModelStoreNavEntryDecorator]；
- * 3. 场景策略扩展：默认挂载 [SinglePaneSceneStrategy]，为未来大屏双窗格多 Pane 演进预留标准化接口；
- * 4. Material 3 Expressive 动效基底：默认配置 [MaterialSharedAxis.Z] 进出场与预测性手势返回动效；
- * 5. 背景色防穿透：通过 [MaterialTheme.colorScheme.background] 彻底规避页面转场过程中的透明重叠与底色穿透闪烁。
- */
 @Composable
 fun <T : Any> RePoiNavDisplay(
     backStack: List<T>,
@@ -63,11 +54,6 @@ fun <T : Any> RePoiNavDisplay(
     entryProvider = entryProvider,
 )
 
-/**
- * 支持已修饰 Entry 列表的 [RePoiNavDisplay] 重载（用于主界面 Tab 首屏）：
- *
- * 接收由独立栈装饰器 [rememberDecoratedNavEntries] 产出的活跃 Entry 序列，无需在此重复挂载装饰器。
- */
 @Composable
 fun <T : Any> RePoiNavDisplay(
     entries: List<NavEntry<T>>,

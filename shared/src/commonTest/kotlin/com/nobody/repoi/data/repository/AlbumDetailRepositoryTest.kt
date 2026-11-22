@@ -7,12 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 相册详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `AlbumDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
- */
 class AlbumDetailRepositoryTest {
 
     private fun setup(): Pair<MockApi, AlbumDetailRepository> {

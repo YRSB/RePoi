@@ -35,12 +35,6 @@ import com.nobody.repoi.ui.search.components.SearchSuggestionsList
 import com.nobody.repoi.ui.search.components.SearchTopBar
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * RePoi 独立搜索落地页。
- *
- * 承载搜索输入框、搜索历史、大家在找热词榜及实时输入联想。
- * 纯净接入 Navigation 3 单根栈，无私有 BackHandler，原生支持 MaterialSharedAxis.Z 与预测性返回手势。
- */
 @Composable
 fun SearchLandingScreen(
     navParam: SearchNavParam = SearchNavParam(),
@@ -52,7 +46,6 @@ fun SearchLandingScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
-    // 判断大屏环境以适配居中与双栏排版（达到 Expanded 宽度时为大屏双栏，其余为小屏单流）
     val isWideScreen = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     DisposableEffect(Unit) {
@@ -116,7 +109,7 @@ fun SearchLandingScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // 输入非空时呈现联想建议列表
+
             if (uiState.keyword.isNotBlank()) {
                 SearchSuggestionsList(
                     suggestions = uiState.suggestions,
@@ -124,7 +117,7 @@ fun SearchLandingScreen(
                     onSelectWord = { handleSubmitSearch(it, false) }
                 )
             } else {
-                // 输入为空时呈现搜索历史面板与大家在找热词流式排布 (支持小屏单列与大屏双栏排布)
+
                 if (isWideScreen && uiState.searchHistory.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

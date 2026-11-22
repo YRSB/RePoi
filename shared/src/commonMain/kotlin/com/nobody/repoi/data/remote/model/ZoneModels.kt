@@ -15,9 +15,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlin.math.roundToInt
 
-/**
- * 单个专区信息条目（用于关注列表、分组专区及首页 Tab 展示）。
- */
 @Serializable
 data class ZoneItem(
     val nodeId: Long = 0L,
@@ -28,33 +25,21 @@ data class ZoneItem(
     val webCover: String? = null,
     val description: String? = null
 ) {
-    /** 优先返回中文名称，若为空则回退到原生名称或“专区” */
+
     val displayName: String
         get() = nameCN?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() } ?: "专区"
 }
 
-/** 兼容旧命名别名 */
 typealias ZoneItemDto = ZoneItem
 
-/**
- * 专区分组（例如「我关注的」、「活动/推荐专区」、「模玩产品」等）。
- */
 @Serializable
 data class ZoneGroup(
     val name: String = "",
     val zones: List<ZoneItem> = emptyList()
 )
 
-/** 兼容旧命名别名 */
 typealias ZoneGroupDto = ZoneGroup
 
-/**
- * 首页动态/相册专区设置。
- * 真实下发结构：
- * - hiddenZoneIds: List<Long>（隐藏专区的 nodeId 数组）
- * - customOrder: List<Long>（自定义排序下的 nodeId 顺序数组）
- * - recentZoneIds: List<Long>（最近访问排序下的 nodeId 顺序数组）
- */
 @Serializable
 data class ZoneTabsSettings(
     val showAll: Boolean = true,
@@ -64,12 +49,8 @@ data class ZoneTabsSettings(
     val recentZoneIds: List<Long> = emptyList()
 )
 
-/** 兼容旧命名别名 */
 typealias ZoneTabsSettingsDto = ZoneTabsSettings
 
-/**
- * api/zone/home-tabs 接口响应 Payload。
- */
 @Serializable
 data class ZoneHomeTabsPayload(
     val settings: ZoneTabsSettings? = null,
@@ -78,9 +59,6 @@ data class ZoneHomeTabsPayload(
     val groups: List<ZoneGroup>? = null
 )
 
-/**
- * 专区详细资料实体（嵌套于 api/zone/info 响应的 "zone" 字段中）。
- */
 @Serializable
 data class ZoneDetailData(
     val nodeId: Long = 0L,
@@ -101,9 +79,6 @@ data class ZoneDetailData(
         get() = description?.takeIf { it.isNotBlank() } ?: desc?.takeIf { it.isNotBlank() }
 }
 
-/**
- * 专区 Tab 项（支持类型、标题与条目统计计数，兼容字符串与对象多态）。
- */
 @Serializable
 data class ZoneTabItem(
     val type: String = "",
@@ -111,9 +86,6 @@ data class ZoneTabItem(
     val count: Long = 0L
 )
 
-/**
- * 专区 Tab 列表反序列化器，兼容空字符串、空对象、字符串数组与对象数组等多态场景。
- */
 object ZoneTabListSerializer : KSerializer<List<ZoneTabItem>> {
     private val delegate = ListSerializer(ZoneTabItem.serializer())
     override val descriptor: SerialDescriptor = delegate.descriptor
@@ -145,19 +117,6 @@ object ZoneTabListSerializer : KSerializer<List<ZoneTabItem>> {
     }
 }
 
-/**
- * api/zone/info 接口响应 Payload。
- * 真实下发结构：
- * {
- *   "zone": { "nodeId": ..., "name": ..., "nameCN": ..., "desc": ..., "cover": ..., "icon": ... },
- *   "focusState": true/false,
- *   "followCount": 1728,
- *   "tabs": [
- *     { "type": "action", "title": "动态", "count": 44 },
- *     ...
- *   ]
- * }
- */
 @Serializable
 data class ZoneInfoPayload(
     val zone: ZoneDetailData? = null,
@@ -170,18 +129,12 @@ data class ZoneInfoPayload(
         get() = zone?.displayName ?: "专区"
 }
 
-/**
- * api/zone/focus 接口响应 Payload（关注/取消关注）。
- */
 @Serializable
 data class ZoneFocusPayload(
     val focus: Boolean = false,
     val count: Long = 0L
 )
 
-/**
- * 专区关联实体条目（厂商、系列、作品、角色、人物列表，api/zone/items）。
- */
 @Serializable
 data class ZoneEntityItem(
     val id: Long = 0L,
@@ -192,15 +145,13 @@ data class ZoneEntityItem(
     val hits: Long = 0L,
     val itemType: String? = null
 ) {
-    /** 目标详情 ID（优先取 itemId，若为 0 回退到 id） */
+
     val targetId: Long
         get() = if (itemId > 0L) itemId else id
 
-    /** 优先返回中文名称，若为空则回退到原生名称 */
     val displayName: String
         get() = nameCN?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() } ?: "未命名"
 
-    /** 浏览热度格式化文本，例如：浏览 12万、浏览 8500 */
     val displayHitsText: String
         get() = when {
             hits >= 10000 -> {
@@ -216,12 +167,8 @@ data class ZoneEntityItem(
         }
 }
 
-/** 实体板块（`api/zone/items`）单页条目数：首页与专区详情共用的协议常量。 */
 const val ENTITY_BOARD_PAGE_SIZE: Int = 20
 
-/**
- * api/zone/items 响应 Payload。
- */
 @Serializable
 data class ZoneItemsPayload(
     val total: Int = 0,

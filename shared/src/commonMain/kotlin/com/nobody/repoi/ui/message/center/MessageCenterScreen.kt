@@ -73,9 +73,6 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * 消息中心主界面：汇聚 6 大通知分类入口与私信联系人列表。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageCenterScreen(
@@ -90,7 +87,6 @@ fun MessageCenterScreen(
     var contactToDelete by remember { mutableStateOf<MessageContactItem?>(null) }
     val listState = rememberLazyListState()
 
-    // 触底分页：屏级派生滚动位置，空列表、已到底、错误态不触发
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalCount = listState.layoutInfo.totalItemsCount
@@ -179,7 +175,7 @@ fun MessageCenterScreen(
                 state = listState,
                 contentPadding = PaddingValues(bottom = 24.dp + innerPadding.calculateBottomPadding())
             ) {
-                // ── 顶部 6 大分类卡片网格 ──────────────────────────────────────────
+
                 item(key = "notification_categories_grid", contentType = "categories_grid") {
                     NotificationCategoriesSection(
                         unreadCounts = uiState.unreadCounts,
@@ -194,7 +190,6 @@ fun MessageCenterScreen(
                     )
                 }
 
-                // ── 私信列表标头 ────────────────────────────────────────────────
                 item(key = "contacts_header", contentType = "contacts_header") {
                     Row(
                         modifier = Modifier
@@ -218,7 +213,6 @@ fun MessageCenterScreen(
                     }
                 }
 
-                // ── 私信会话流 ──────────────────────────────────────────────────
                 if (uiState.isLoading && uiState.contacts.isEmpty()) {
                     item(key = "loading_indicator", contentType = "loading") {
                         Box(
@@ -270,7 +264,6 @@ fun MessageCenterScreen(
                         )
                     }
 
-                    // 分页加载脚：被动展示，不在此触发加载（加载由屏级触底判断驱动）
                     if (uiState.isLoadingMore) {
                         item(key = "contacts_footer_loading", contentType = "loading_footer") {
                             Box(
@@ -288,7 +281,6 @@ fun MessageCenterScreen(
         }
     }
 
-    // 删除私信会话确认弹窗
     contactToDelete?.let { contact ->
         AlertDialog(
             onDismissRequest = { contactToDelete = null },
@@ -313,9 +305,6 @@ fun MessageCenterScreen(
     }
 }
 
-/**
- * 顶部 6 大通知分类入口卡片区域。
- */
 @Composable
 private fun NotificationCategoriesSection(
     unreadCounts: com.nobody.repoi.data.remote.model.PushCountCategory,
@@ -463,9 +452,6 @@ private fun CategoryGridItem(
     }
 }
 
-/**
- * 单条私信联系人卡片项。
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ContactItemCard(
@@ -495,7 +481,7 @@ private fun ContactItemCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 头像
+
             BadgedBox(
                 badge = {
                     if (item.unreadCount > 0) {
@@ -524,7 +510,6 @@ private fun ContactItemCard(
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // 文本区域
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -580,7 +565,6 @@ private fun ContactItemCard(
                 )
             }
 
-            // 选项菜单
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(

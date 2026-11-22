@@ -18,14 +18,6 @@ import androidx.compose.ui.unit.width
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-/**
- * [SearchTabIndicator] 与 Material 3 `ScrollableTabRow` 的布局契约测试（Compose UI，桌面 JVM）。
- *
- * 锁住一个真实踩过的坑：M3 用指示器 Placeable 的**宽度**计算页签内居中偏移
- * `(tabWidth - placeable.width) / 2`，且该偏移允许为负。若指示器返回整行宽度，偏移会变成
- * 大负数，把指示器整体推出屏幕——编译、纯 JVM 单测都发现不了，只有真实布局一次才能暴露。
- * 因此这里断言最高优先级契约：布局宽度必须等于选中页签的内容宽，而不是整行宽度。
- */
 @OptIn(ExperimentalTestApi::class)
 class SearchTabIndicatorLayoutTest {
 

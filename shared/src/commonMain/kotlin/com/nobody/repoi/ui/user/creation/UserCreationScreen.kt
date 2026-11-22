@@ -96,7 +96,6 @@ fun UserCreationScreen(
         UserCreationCategory.entries.size
     }
 
-    // 单向驱动 Pager 滚动：ViewModel 选中项变更且完成初始化后，联动 Pager
     LaunchedEffect(uiState.selectedCategory, uiState.isInitialized) {
         if (uiState.isInitialized) {
             val targetIndex = uiState.selectedCategory.ordinal
@@ -106,7 +105,6 @@ fun UserCreationScreen(
         }
     }
 
-    // 用户滑动手势完成后同步给 ViewModel
     LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress, uiState.isInitialized) {
         if (uiState.isInitialized && !pagerState.isScrollInProgress && pagerState.currentPage != uiState.selectedCategory.ordinal) {
             viewModel.switchCategory(UserCreationCategory.entries[pagerState.currentPage])
@@ -115,14 +113,12 @@ fun UserCreationScreen(
 
     val imageViewer = LocalImageViewer.current
 
-    // 获取当前图片列表所有原始 CDN 路径
     val rawImageUrls = remember(uiState.picState.items) {
         uiState.picState.items.mapNotNull { item ->
             item.actualUrl.takeIf { it.isNotBlank() }?.let { MediaPipeline.Default.resolvePictureUrl(it, ImagePurpose.FULLSCREEN_RAW) }
         }
     }
 
-    // 当列表追加新图片时，若画廊正处于打开状态，同步更新画廊图片列表
     LaunchedEffect(rawImageUrls) {
         imageViewer.updateImages(rawImageUrls)
     }
@@ -157,7 +153,6 @@ fun UserCreationScreen(
                     )
                 )
 
-                // 一级分类 TabRow
                 PrimaryTabRow(
                     selectedTabIndex = uiState.selectedCategory.ordinal,
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -209,7 +204,7 @@ fun UserCreationScreen(
                             isSelectionMode = false,
                             onClick = { onNavigateToAlbum(album.actualAlbumId) },
                             onLongClick = {},
-                            // 投稿页只有「我创建的」语料：无收藏时间，时间列退到发布时间
+
                             albumType = AlbumTypeOption.UPLOAD
                         )
                     }
@@ -265,9 +260,6 @@ fun UserCreationScreen(
     }
 }
 
-/**
- * 用户发布二级分类（相册/图片）通用瀑布流内容容器
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> CreationSubPageContent(
@@ -365,9 +357,6 @@ private fun <T> CreationSubPageContent(
     }
 }
 
-/**
- * 二级排序栏（最新发布 / 最多喜欢）
- */
 @Composable
 private fun CreationOrderBar(
     currentOrder: String,
@@ -403,9 +392,6 @@ private fun CreationOrderBar(
     }
 }
 
-/**
- * 列表触底加载更多指示器
- */
 @Composable
 private fun FooterIndicator(
     isPaging: Boolean,

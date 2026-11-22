@@ -6,11 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 针对 api/resale/search 真实下发报文的反序列化单元测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ResaleSearchModelTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class ResaleSearchModelTest {
 
     private val json = Json {
@@ -79,7 +74,6 @@ class ResaleSearchModelTest {
 
         assertEquals(2, payload.list.size)
 
-        // Item 1: 关联手办条目，且无 pic
         val item1 = payload.list[0]
         assertEquals(40855607L, item1.id)
         assertEquals("¥1950", item1.displayPriceText)
@@ -94,7 +88,6 @@ class ResaleSearchModelTest {
         assertEquals("Fisher", item1.user?.nickname)
         assertEquals(228637L, item1.user?.userId)
 
-        // Item 2: 未关联手办，仅有自定义实物图 pic
         val item2 = payload.list[1]
         assertEquals(9040617L, item2.id)
         assertEquals("¥900", item2.displayPriceText)
@@ -108,7 +101,7 @@ class ResaleSearchModelTest {
 
     @Test
     fun testCoverPriorityWhenBothCoverAndPicExist() {
-        // 对齐 Hpoi 官方：同时存在手办封面与卖家实物图时，卡片封面必须优先展示手办封面
+
         val itemWithBoth = ResaleSearchItem(
             id = 123L,
             price = "820",
@@ -121,9 +114,9 @@ class ResaleSearchModelTest {
                 )
             )
         )
-        // 卡片封面优先展示手办官图
+
         assertEquals("https://rfx.hpoi.net/gk/cover/n/2026/06/hobby_cover.jpg", itemWithBoth.displayCoverUrl)
-        // 卖家附图支持多张逗号分隔并拼装为 resale/n/ 规范路径
+
         assertTrue(itemWithBoth.hasUserPic)
         assertEquals(2, itemWithBoth.userPics.size)
         assertEquals("https://rfx.hpoi.net/gk/resale/n/2026/10/pic1.png", itemWithBoth.userPics[0])

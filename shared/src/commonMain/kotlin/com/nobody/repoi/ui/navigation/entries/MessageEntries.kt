@@ -8,9 +8,6 @@ import com.nobody.repoi.ui.message.chat.MessageChatScreen
 import com.nobody.repoi.ui.message.notice.MessageNoticeScreen
 import com.nobody.repoi.ui.comment.CommentDetailNavParam
 
-/**
- * 注册消息主中心、分类通知、1v1 私信聊天及黑名单管理路由。
- */
 fun EntryProviderScope<NavKey>.messageEntries(
     navigator: RePoiNavigator,
     onBack: () -> Unit
@@ -70,4 +67,3 @@ fun EntryProviderScope<NavKey>.messageEntries(
         )
     }
 }
-

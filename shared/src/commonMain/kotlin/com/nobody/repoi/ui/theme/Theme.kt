@@ -81,13 +81,6 @@ private val LightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
-/**
- * 根主题。
- *
- * [systemSchemeProvider] 是平台壁纸取色的注入缝：生产环境走
- * `expect/actual` 的 [dynamicPoiShelfColorScheme]，`jvmTest` 可注入固定的
- * 假系统配色来验证「动态主题下 style/spec 是否生效」（issue #82 回归）。
- */
 @Composable
 fun PoiShelfTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -104,7 +97,6 @@ fun PoiShelfTheme(
     val (seedPrimary, seedSecondary, seedTertiary) = activeSeed?.toColors()
         ?: Triple(seedArgb?.let { Color(it) }, null, null)
 
-    // 平台取色是 @Composable 调用，必须在组合内直接调用；只取主色作锚点（issue #82）
     val wallpaperPrimary = if (dynamicColor && seedPrimary == null) {
         systemSchemeProvider(darkTheme)?.primary
     } else {
@@ -121,11 +113,11 @@ fun PoiShelfTheme(
         amoled = amoled,
         paletteStyle = paletteStyle,
         specVersion = specVersion,
-        // 兜底配色不经过取色算法，需在此补一次 AMOLED 纯黑
+
         staticFallback = (if (darkTheme) DarkColorScheme else LightColorScheme)
             .let { if (amoled && darkTheme) it.withAmoledBlack() else it }
     )
-    // 交互切换色彩风格 / 标准 / 种子色时弹簧过渡；冷启动首态落定与深浅模式切换均不补间（ADR-0012）
+
     val animatedScheme = colorScheme.animateAsState(darkTheme = darkTheme)
     CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
         MaterialExpressiveTheme(

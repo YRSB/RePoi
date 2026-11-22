@@ -19,15 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * [UserSession] 的唯一实现：内聚凭据预热、登录/登出、档案刷新与 4001 自愈。
- *
- * 时序与并发契约：
- * - 构造即启动内部预热协程；恢复出本地有效凭据后立即发射
- *   [SessionState.Authenticated]，网络档案刷新在后台增量进行，绝不阻塞调用方；
- * - 预热期间外部已通过登录 / 登出改变状态时，预热结果直接放弃，不覆盖新状态；
- * - 所有状态迁移经 [mutex] 串行化；网络请求一律在锁外执行，避免长事务阻塞。
- */
 internal class UserSessionImpl(
     private val api: HpoiApi,
     private val tokenManager: TokenManager,
@@ -50,7 +41,7 @@ internal class UserSessionImpl(
         get() = authenticatedOrNull()?.token.orEmpty()
 
     init {
-        // 预热在内部 scope 内闭环，外部调用方无需等待即可拿到 Prewarming 态。
+
         scope.launch { runCatching { prewarm() } }
     }
 
@@ -112,7 +103,7 @@ internal class UserSessionImpl(
             if (triggeredToken != null && currentToken != triggeredToken) {
                 return@withLock
             }
-            // 幂等：已处于未认证且存储凭据已空时无需重复清理。
+
             if (_state.value == SessionState.Unauthenticated && tokenManager.currentToken.isBlank()) {
                 return@withLock
             }
@@ -123,11 +114,10 @@ internal class UserSessionImpl(
 
     override fun exportActiveToken(): String = currentToken
 
-    /** 冷启动预热：凭据就绪即发射状态，档案刷新移交后台。 */
     private suspend fun prewarm() {
         tokenManager.awaitReady()
         val restored = mutex.withLock {
-            // 预热期间登录 / 登出已改变状态：放弃预热结果，绝不覆盖新状态。
+
             if (_state.value !is SessionState.Prewarming) return@withLock false
             val token = tokenManager.currentToken
             if (token.isBlank()) {
@@ -148,12 +138,10 @@ internal class UserSessionImpl(
         scope.launch { refreshProfileSilently() }
     }
 
-    /** 后台静默刷新：失败/令牌失效均不影响调用方，失效路径内部已自愈。 */
     private suspend fun refreshProfileSilently() {
         runCatching { refreshProfile() }
     }
 
-    /** 把档案写回当前会话；仅当会话令牌未变时生效，避免旧请求覆盖新登录。 */
     private suspend fun applyProfile(token: String, profile: UserProfile) {
         val userName = profile.nickname?.ifBlank { null } ?: profile.userName
         mutex.withLock {
@@ -177,12 +165,6 @@ internal class UserSessionImpl(
     }
 }
 
-/**
- * 会话组合根工厂：[TokenManager] 的唯一构造出口。
- *
- * 存储适配器仅在本文件内被实例化，DI 与其他业务代码只经 [UserSession] 获取会话能力，
- * 从而保证「底层存储适配器零公开泄漏」（ADR-0005）。
- */
 internal fun createUserSession(
     api: HpoiApi,
     dataStore: DataStore<Preferences>,

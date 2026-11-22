@@ -41,48 +41,26 @@ import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * M3 注意：`CommentFeedState` 唯一定义归属 M2 `ui/common/comment/CommentAwareUiState.kt`，
- * 本文件不再重复声明（CI Redeclaration 修复）。
- */
-
-/**
- * 自适应双窗格详情脚手架作用域契约。
- * 向内容插槽、顶栏与悬浮底栏暴露双窗格计算结果、滚动状态及常用辅助动作。
- */
 interface AdaptiveDetailScaffoldScope {
-    /** 当前是否为宽屏双栏形态 */
+
     val isWidePane: Boolean
 
-    /** 左侧主窗格所占权重比例（0.0f ~ 1.0f） */
     val mainPaneWeight: Float
 
-    /** 主窗格列表滚动状态（在 LazyColumn 模式下有效） */
     val listState: LazyListState
 
-    /** 宽屏副栏评论列表滚动状态 */
     val commentPaneState: LazyListState
 
-    /** 当前评论过滤模式（默认 / 热门 / 最新） */
     val commentFilterMode: CommentFilterMode
 
-    /** 评论过滤模式切换动作 */
     val onCommentFilterModeChange: (CommentFilterMode) -> Unit
 
-    /** 主列表是否已滚过头部区域（用于联动顶部导航栏微缩标题呈现） */
     val isScrolledPastHeader: Boolean
 
-    /** 悬浮操作栏是否处于可见状态（默认为常驻呈现） */
     val isFloatingBarVisible: Boolean
 
-    /**
-     * 一键平滑滚动至评论区。
-     * 宽屏模式下滚动右侧副栏评论区至指定位置（默认为顶部）；窄屏模式下若配置了自定义驱动（如异构网格布局），
-     * 则委托该驱动处理，否则明确为空操作（窄屏评论已由独立全屏页面承载，主列表无内嵌评论区）。
-     */
     fun scrollToComments(targetIndex: Int? = null)
 
-    /** 主动拉起主楼评论输入弹窗 */
     fun openTopLevelCommentDialog()
 }
 
@@ -107,7 +85,7 @@ internal class AdaptiveDetailScaffoldScopeImpl(
             } else if (onCustomScrollToCommentsInCompact != null) {
                 onCustomScrollToCommentsInCompact.invoke()
             }
-            // 窄屏且未配置自定义驱动时明确为 no-op，避免退化跳转至任意内容条目或列表末尾
+
         }
     }
 
@@ -116,11 +94,6 @@ internal class AdaptiveDetailScaffoldScopeImpl(
     }
 }
 
-/**
- * 自适应双窗格详情脚手架（底层通用版本）。
- * 托管自适应断点计算、双栏排版、宽屏副栏评论区、滚动触底加载、顶栏对齐与常驻悬浮胶囊。
- * 主窗格接收通用 Composable 插槽，支持相册瀑布流等异构网格布局。
- */
 @Composable
 fun AdaptiveDetailCommentScaffold(
     commentState: CommentFeedState,
@@ -164,7 +137,6 @@ fun AdaptiveDetailCommentScaffold(
         }
     }
 
-    // 翻页滚动检测：仅在宽屏副栏有效（窄屏下评论不在主页单流平铺，由独立全屏评论页负责翻页加载）
     val shouldLoadMoreComments by remember(isWidePane, commentFilterMode, shouldLoadMoreCommentsInCompact) {
         derivedStateOf {
             if (commentFilterMode == CommentFilterMode.HOT) {
@@ -188,7 +160,6 @@ fun AdaptiveDetailCommentScaffold(
         }
     }
 
-    // 头部微缩导航栏触发
     val defaultIsScrolledPastHeader by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 240
@@ -196,7 +167,6 @@ fun AdaptiveDetailCommentScaffold(
     }
     val resolvedIsScrolledPastHeader = isScrolledPastHeader ?: defaultIsScrolledPastHeader
 
-    // 悬浮胶囊常驻静态呈现（移除滚动显隐联动）
     val resolvedIsFloatingBarVisible = isFloatingBarVisible ?: true
 
     val scope = remember(
@@ -229,7 +199,7 @@ fun AdaptiveDetailCommentScaffold(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 1. 双窗格内容层
+
         Row(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
@@ -271,7 +241,6 @@ fun AdaptiveDetailCommentScaffold(
             }
         }
 
-        // 2. 顶部导航栏插槽（自动应用主栏宽度与顶部对齐）
         Box(
             modifier = Modifier
                 .align(if (isWidePane) Alignment.TopStart else Alignment.TopCenter)
@@ -280,7 +249,6 @@ fun AdaptiveDetailCommentScaffold(
             scope.topBar()
         }
 
-        // 3. 悬浮操作底栏插槽（居中常驻悬浮胶囊，自动处理主栏宽度、居中对齐与系统导航栏边距）
         if (resolvedIsFloatingBarVisible) {
             Box(
                 modifier = Modifier
@@ -294,7 +262,6 @@ fun AdaptiveDetailCommentScaffold(
             }
         }
 
-        // 4. 主楼评论发表弹窗
         if (showTopLevelCommentDialog && interaction.onAddComment != null) {
             TopLevelCommentDialog(
                 onDismiss = { showTopLevelCommentDialog = false },
@@ -311,20 +278,10 @@ fun AdaptiveDetailCommentScaffold(
     }
 }
 
-/**
- * 详情页脚手架内边距与尺寸规范默认配置。
- */
 object AdaptiveDetailDefaults {
-    /** 沉浸式大头图详情页默认内边距（如手办详情页），顶部不预留间距以贯通状态栏 */
+
     val ImmersiveContentPadding: PaddingValues = PaddingValues(bottom = 110.dp)
 
-    /**
-     * 常规非沉浸卡片式详情页内容内边距（如厂商、系列、人物、角色等）。
-     * 顶部动态避让系统状态栏与悬浮顶栏（54.dp）并预留呼吸间距，底部预留悬浮胶囊避让区。
-     *
-     * @param topAdditional 悬浮顶栏底边之下的额外留白（默认 10.dp，与卡片外边距和谐呼应）
-     * @param bottom 底部悬浮操作胶囊的避让留白（默认 110.dp）
-     */
     @Composable
     fun nonHeroContentPadding(
         topAdditional: Dp = 10.dp,
@@ -338,13 +295,6 @@ object AdaptiveDetailDefaults {
     }
 }
 
-/**
- * 自适应双窗格详情脚手架（常规详情页推荐）。
- * 专为手办、角色、厂商、系列、人物、作品等 6 个常规单流详情页设计：
- * - 自动在主窗格承载 LazyColumn 并注入 detailContent；
- * - 窄屏模式下仅展示主内容区，通过常驻悬浮栏评论按钮跳转独立全屏评论页；
- * - 宽屏模式下自动将评论区分栏至右侧 SupportingCommentPane。
- */
 @Composable
 fun AdaptiveDetailLazyColumnCommentScaffold(
     commentState: CommentFeedState,

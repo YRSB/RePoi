@@ -26,9 +26,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import com.nobody.repoi.data.remote.model.ActionItem
 
-/**
- * 厂商详情页路由导航参数。
- */
 @Serializable
 data class VendorNavParam(
     val companyId: Long,
@@ -37,9 +34,6 @@ data class VendorNavParam(
     val initialCover: String? = null
 )
 
-/**
- * 厂商详情页渐进式加载 UI 状态机。
- */
 data class VendorDetailUiState(
     val companyId: Long = 0L,
     val companyNodeId: Long = 0L,
@@ -48,26 +42,20 @@ data class VendorDetailUiState(
     val isInitialLoading: Boolean = true,
     val errorMessage: String? = null,
 
-    // 核心厂商主体数据
     val company: CompanyData? = null,
 
-    // 厂商手办最新动态
     val isActionsLoading: Boolean = false,
     val actions: List<CompanyActionItem> = emptyList(),
 
-    // 官方与用户品牌印象标签
     val isTagsLoading: Boolean = false,
     val tags: List<CompanyTagItem> = emptyList(),
 
-    // 代表手办产品 (3x3 九宫格推荐)
     val isProductsLoading: Boolean = false,
     val products: List<RelatedHobbyItem> = emptyList(),
 
-    // 旗下子系列
     val isSeriesLoading: Boolean = false,
     val series: List<CompanySeriesItem> = emptyList(),
 
-    // 评论区（热门神评置顶 + 最新无限流）
     override val isCommentsLoading: Boolean = false,
     override val hotComments: List<CommentItem> = emptyList(),
     override val latestComments: List<CommentItem> = emptyList(),
@@ -78,16 +66,14 @@ data class VendorDetailUiState(
     override val pendingPraiseIds: Set<Long> = emptySet(),
     override val commentActionMessage: String? = null,
 
-    // 用户交互状态
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
-    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+
     val collectCountBase: Long? = null,
     val isMasked: Boolean = false,
     val isIntroExpanded: Boolean = false,
 
-    // 我的印象弹窗交互状态
     val isImpressionSheetVisible: Boolean = false,
     val isImpressionLoading: Boolean = false,
     val isImpressionSubmitting: Boolean = false,
@@ -144,16 +130,13 @@ class VendorDetailViewModel(
     private var loadCommentsJob: Job? = null
 
     init {
-        // 合并评论详情页回写的主楼更新（点赞/回复）
+
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
     }
 
-    /**
-     * 渐进多阶段加载厂商详情所有数据。
-     */
     fun loadDetail(param: VendorNavParam) {
         if (_uiState.value.companyId == param.companyId && !_uiState.value.isInitialLoading && _uiState.value.company != null) {
-            return // 已加载过该厂商，保留现有数据
+            return
         }
 
         activeJob?.cancel()
@@ -167,7 +150,6 @@ class VendorDetailViewModel(
                 errorMessage = null
             )
 
-            // ── 阶段 1：首屏核心渲染，拉取厂商主体基本信息 ──
             AppLogger.i("厂商", "开始加载 companyId=${param.companyId} companyNodeId=${param.companyNodeId}")
             val detailResult = repository.getCompanyDetail(param.companyId)
             if (detailResult.isFailure) {
@@ -197,8 +179,6 @@ class VendorDetailViewModel(
                 )
             }
 
-            // ── 阶段 2：并行发起次级各板块网络请求 ──
-            // 2.1 最新动态
             launch {
                 val actionsResult = repository.getCompanyActions(nodeId)
                 _uiState.update {
@@ -209,7 +189,6 @@ class VendorDetailViewModel(
                 }
             }
 
-            // 2.2 品牌标签
             launch {
                 val tagsResult = repository.getCompanyTags(param.companyId)
                 _uiState.update {
@@ -220,7 +199,6 @@ class VendorDetailViewModel(
                 }
             }
 
-            // 2.3 代表产品 (3x3 九宫格推荐)
             launch {
                 val productsResult = repository.getRelatedHobbies(nodeId, pageSize = 9)
                 _uiState.update {
@@ -231,7 +209,6 @@ class VendorDetailViewModel(
                 }
             }
 
-            // 2.4 旗下系列
             launch {
                 val seriesResult = repository.getCompanySeries(nodeId, page = 1, pageSize = 9)
                 _uiState.update {
@@ -242,12 +219,10 @@ class VendorDetailViewModel(
                 }
             }
 
-            // 2.5 评论区（热门置顶 + 最新第 1 页）
             launch {
                 commentDelegate.loadInitialComments(_uiState, nodeId, repository::getComments)
             }
 
-            // 2.6 查询用户个性化状态 (收藏 & 屏蔽)，未登录时静默降级为 false
             launch {
                 val collectDeferred = async { repository.getCollectState(nodeId) }
                 val maskDeferred = async { repository.getMaskState(nodeId) }
@@ -267,9 +242,6 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 翻页追加最新评论流。
-     */
     fun loadNextCommentsPage() {
         val state = _uiState.value
         val nodeId = state.companyNodeId
@@ -279,12 +251,6 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 切换收藏厂商状态与计数（乐观更新 + 失败回滚）。
-     *
-     * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
-     * [CollectRepository.toggleItemCollect]，成功即写入收藏仓储状态池并推进变更代数。
-     */
     fun toggleCollect() {
         val state = _uiState.value
         val nodeId = state.companyNodeId
@@ -292,7 +258,6 @@ class VendorDetailViewModel(
         val previousCollected = state.isCollected
         val nextCollected = !previousCollected
 
-        // 乐观更新
         _uiState.update {
             it.copy(
                 isCollected = nextCollected,
@@ -303,7 +268,7 @@ class VendorDetailViewModel(
         viewModelScope.launch {
             val result = collectRepository.toggleItemCollect(nodeId, previousCollected)
             if (result.isFailure) {
-                // 失败回滚
+
                 _uiState.update {
                     it.copy(
                         isCollected = previousCollected,
@@ -313,7 +278,7 @@ class VendorDetailViewModel(
                 }
             }
             else {
-                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+
                 collectRepository.getCollectCount(nodeId).onSuccess { count ->
                     _uiState.update { current ->
                         current.copy(
@@ -327,24 +292,15 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 切换屏蔽状态。
-     */
     fun toggleMask() {
         _uiState.update { it.copy(isMasked = !it.isMasked) }
     }
 
-    /**
-     * 切换主评论点赞状态（乐观更新，失败回滚）。
-     */
     fun toggleCommentPraise(commentId: Long) {
         val nodeId = _uiState.value.companyNodeId
         commentDelegate.toggleCommentPraise(viewModelScope, _uiState, commentId, nodeId)
     }
 
-    /**
-     * 发表子评论回复（成功后追加到主楼并广播更新）。
-     */
     suspend fun submitCommentReply(
         commentId: Long,
         target: com.nobody.repoi.data.remote.model.CommentReplyItem?,
@@ -363,9 +319,6 @@ class VendorDetailViewModel(
     suspend fun deleteComment(comment: CommentItem): Boolean = commentDelegate.deleteMainComment(_uiState, comment.id)
     suspend fun deleteReply(comment: CommentItem, reply: CommentReplyItem): Boolean = commentDelegate.deleteSubReply(_uiState, comment.id, reply.id)
 
-    /**
-     * 发表主楼评论（成功后重拉第一页评论流）。
-     */
     suspend fun submitTopLevelComment(content: String, stickers: List<String>): Boolean {
         val nodeId = _uiState.value.companyNodeId
         val ok = commentDelegate.postTopLevelComment(_uiState, nodeId, content, stickers)
@@ -373,9 +326,6 @@ class VendorDetailViewModel(
         return ok
     }
 
-    /**
-     * 发表成功后重拉第一页评论流（与首屏加载同一口径）。
-     */
     fun refreshComments() {
         val nodeId = _uiState.value.companyNodeId
         if (nodeId <= 0L) return
@@ -385,26 +335,16 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 消费评论互动一次性提示文案。
-     */
     fun consumeCommentActionMessage() {
         commentDelegate.consumeCommentActionMessage(_uiState)
     }
 
-    /**
-     * 展开/折叠厂商简介全文。
-     */
     fun toggleIntroExpanded() {
         _uiState.update { it.copy(isIntroExpanded = !it.isIntroExpanded) }
     }
 
     val isLoggedIn: Boolean get() = userSession.isAuthenticated
 
-    /**
-     * 打开“我的印象”打分与标签弹窗。
-     * 若未登录，则回调 onNeedLogin() 并在外部引导跳转登录。
-     */
     fun openImpressionSheet(onNeedLogin: () -> Unit) {
         if (!isLoggedIn) {
             onNeedLogin()
@@ -427,7 +367,6 @@ class VendorDetailViewModel(
                 val scoreMap = mutableMapOf<Long, Double>()
                 val normalSet = mutableSetOf<Long>()
 
-                // 区分评分项与普通标签项的预选状态
                 data.userVotes.forEach { uv ->
                     val isScore = data.allTags.firstOrNull { it.id == uv.tagId }?.isScoreTag == true
                     if (isScore && uv.score != null) {
@@ -457,16 +396,10 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 关闭“我的印象”弹窗。
-     */
     fun dismissImpressionSheet() {
         _uiState.update { it.copy(isImpressionSheetVisible = false) }
     }
 
-    /**
-     * 切换普通印象标签选中状态。
-     */
     fun toggleNormalTag(tagId: Long) {
         _uiState.update {
             val current = it.selectedNormalTagIds
@@ -475,9 +408,6 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 设置星级打分 (1.0 ~ 5.0，若重复点击相同分值则支持取消打分)。
-     */
     fun setScoreVote(tagId: Long, score: Double) {
         _uiState.update {
             val currentScore = it.scoreVotes[tagId]
@@ -491,9 +421,6 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 提交当前用户的印象投票。
-     */
     fun submitImpression() {
         val state = _uiState.value
         val compId = state.companyId
@@ -516,7 +443,7 @@ class VendorDetailViewModel(
                         impressionMessage = "印象提交成功"
                     )
                 }
-                // 实时刷新详情页上的展示标签
+
                 val tagsResult = repository.getCompanyTags(compId)
                 if (tagsResult.isSuccess) {
                     _uiState.update { it.copy(tags = tagsResult.getOrDefault(emptyList())) }
@@ -532,9 +459,6 @@ class VendorDetailViewModel(
         }
     }
 
-    /**
-     * 消费印象操作提示文案。
-     */
     fun consumeImpressionMessage() {
         _uiState.update { it.copy(impressionMessage = null) }
     }

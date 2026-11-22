@@ -20,9 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 讨论贴详情页 UI 状态模型。
- */
 data class PostDetailUiState(
     val detail: PostDetailData? = null,
     val isInitialLoading: Boolean = true,
@@ -33,7 +30,7 @@ data class PostDetailUiState(
     val isLoadingMoreComments: Boolean = false,
     val hasMoreComments: Boolean = true,
     val commentsPage: Int = 1,
-    val order: String = "", // "" 为最新（倒序），"asc" 为最早（正序）
+    val order: String = "",
     val commentsError: String? = null,
     val isDeletingPost: Boolean = false,
     val postDeleted: Boolean = false,
@@ -56,10 +53,6 @@ data class PostDetailUiState(
         )
 }
 
-/**
- * 帖子详情页 ViewModel，负责帖子详情、多图与评论列表单向数据流管理。
- * 当前用户身份由 [UserSession] 提供，不再直接依赖凭据存储。
- */
 class PostDetailViewModel(
     private val postRepository: PostRepository,
     private val stickerRepository: StickerRepository,
@@ -72,10 +65,6 @@ class PostDetailViewModel(
     private var activePostId: Long = 0L
     private var activeNodeId: Long? = null
 
-    /**
-     * 获取当前帖子有效全局节点 ID (nodeId)。
-     * 优先取已明确解析的 activeNodeId 或详情中的 detail.id，若未获取则回退至 activePostId。
-     */
     val effectiveNodeId: Long
         get() = activeNodeId ?: _uiState.value.detail?.id?.takeIf { it > 0L } ?: activePostId
 

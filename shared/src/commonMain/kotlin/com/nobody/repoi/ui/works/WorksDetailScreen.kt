@@ -123,7 +123,6 @@ fun WorksDetailScreen(
     val textSharing = rememberTextSharing()
     val imageViewer = LocalImageViewer.current
 
-    // 初始化加载
     LaunchedEffect(navParam) {
         viewModel.loadDetail(navParam)
     }
@@ -244,7 +243,7 @@ fun WorksDetailScreen(
                                     isIntroExpanded = uiState.isIntroExpanded,
                                     onToggleIntro = { viewModel.toggleIntroExpanded() },
                                     onCoverClick = {
-                                        // 查看器消费绝对原图 URL（非 AsyncImage 下游），保留管道解析
+
                                         val url = MediaPipeline.Default.resolveRawUrl(
                                             works.cover ?: navParam.initialCover,
                                             MediaCategory.HOBBY
@@ -350,10 +349,6 @@ fun WorksDetailScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部悬浮操作栏 (WorksFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun WorksFloatingActionBar(
     onCommentClick: () -> Unit,
@@ -364,19 +359,18 @@ internal fun WorksFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 评论（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
+
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态
+
                 isProminent = false
             )
         }
 
-        // 2. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,
@@ -385,8 +379,6 @@ internal fun WorksFloatingActionBar(
         )
     }
 }
-
-
 
 @Composable
 internal fun WorksHeaderSection(
@@ -413,7 +405,7 @@ internal fun WorksHeaderSection(
                         .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                         .clickable(onClick = onCoverClick)
                 ) {
-                    // 作品详情主图档位：CARD_STANDARD 落 cover/n/；点击后由外层查看器取 raw
+
                     PoiAsyncImage(
                         path = works.cover ?: initialCover,
                         category = MediaCategory.HOBBY,
@@ -514,7 +506,7 @@ internal fun WorksSeriesSection(
                 modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {
-                // 所属系列缩略图：标准卡片档位 cover/n/
+
                 PoiAsyncImage(
                     path = seriesRef.cover,
                     category = MediaCategory.HOBBY,
@@ -600,7 +592,7 @@ internal fun WorksCharactersSection(
                                     modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    // 角色缩略图：标准卡片档位 cover/n/
+
                                     PoiAsyncImage(
                                         path = character.cCover,
                                         category = MediaCategory.HOBBY,
@@ -697,7 +689,7 @@ internal fun WorksHobbysSection(
                             .background(if (isDark) Color(0xFF22242E) else Color(0xFFEBEDF2))
                             .clickable { onHobbyClick(item) }
                     ) {
-                        // 相关周边九宫格：标准卡片档位 cover/n/
+
                         PoiAsyncImage(
                             path = item.cover,
                             category = MediaCategory.HOBBY,
@@ -742,7 +734,7 @@ internal fun WorksAlbumsSection(
                                 .clickable { onAlbumClick(album) },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+
                             val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
                             Box(
                                 modifier = Modifier.fillMaxWidth()
@@ -757,8 +749,7 @@ internal fun WorksAlbumsSection(
                                         shape = MaterialTheme.shapes.large
                                     )
                                 } else {
-                                    // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
-                                    // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+
                                     PoiAsyncImage(
                                         path = album.cover,
                                         category = MediaCategory.ALBUM,

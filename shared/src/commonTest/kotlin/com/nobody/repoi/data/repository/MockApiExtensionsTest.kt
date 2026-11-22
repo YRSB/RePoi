@@ -7,9 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 验证 [MockApi] 强类型扩展函数的序列化与路由行为。
- */
 class MockApiExtensionsTest {
 
     @Test

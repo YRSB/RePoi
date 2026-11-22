@@ -19,11 +19,9 @@ import kotlinx.serialization.Serializable
 
 sealed interface AppNavKey : NavKey
 
-// 全局根栈基底：主界面（底栏 + 5 个 Tab 首屏）作为唯一常驻条目
 @Serializable
 data object MainNavKey : AppNavKey
 
-// 一级底栏 Tab 路由
 @Serializable
 data object HomeNavKey : AppNavKey
 
@@ -38,7 +36,6 @@ data object FollowNavKey : AppNavKey
 @Serializable
 data object ProfileNavKey : AppNavKey
 
-// 专区相关路由契约
 @Serializable
 data object ZoneBrowseNavKey : AppNavKey
 
@@ -54,7 +51,6 @@ data class ZoneDetailNavKey(
 @Serializable
 data object ZoneSettingsNavKey : AppNavKey
 
-// 讨论贴详情路由契约
 @Serializable
 data class PostDetailNavKey(
     val postId: Long,
@@ -63,14 +59,12 @@ data class PostDetailNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 二手出售详情页路由契约（对应 ResaleDetailScreen，展示价格成色、卖家资料与联系方式）
 @Serializable
 data class ResaleDetailNavKey(
     val resaleId: Long,
     val id: String = newNavId()
 ) : AppNavKey
 
-// 二手市场 / 同款二手独立列表页路由契约（对应 ResaleMarketScreen，支持按手办过滤同款二手）
 @Serializable
 data class ResaleMarketNavKey(
     val hobbyId: Long = 0L,
@@ -78,13 +72,11 @@ data class ResaleMarketNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 核心消费链路与多窗格分栏路由
 @Serializable
 data class HobbyListNavKey(
     val param: HobbyListNavParam,
     val id: String = newNavId()
 ) : AppNavKey
-
 
 @Serializable
 data class CollectEditNavKey(
@@ -129,14 +121,12 @@ data class UserInfoNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 评论详情页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class CommentDetailNavKey(
     val param: CommentDetailNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-// 全屏评论列表页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class HobbyCommentsNavKey(
     val param: HobbyCommentsNavParam,
@@ -173,13 +163,11 @@ data class VendorDetailNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 厂商动态全量列表页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class VendorActionsNavKey(
     val param: VendorActionsNavParam,
     val id: String = newNavId()
 ) : AppNavKey
-
 
 @Serializable
 data class PersonDetailNavKey(
@@ -187,28 +175,24 @@ data class PersonDetailNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 角色/要素详情页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class CharacterNavKey(
     val param: CharacterNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-// 角色相关相册列表页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class CharacterAlbumListNavKey(
     val param: CharacterAlbumListNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-// 手办相关相册列表页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class HobbyAlbumListNavKey(
     val param: HobbyAlbumListNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-// 角色登场作品列表页（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class CharacterWorksListNavKey(
     val param: CharacterWorksListNavParam,
@@ -239,7 +223,6 @@ data class PictureListNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 收藏-图片 全屏大图画廊路由（可重复入栈，需唯一键防身份碰撞）
 @Serializable
 data class PictureGalleryNavKey(
     val param: PictureGalleryNavParam,
@@ -253,63 +236,39 @@ data class ExHobbyListNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-// 设置与鉴权路由
 @Serializable
 data object LoginNavKey : AppNavKey
 
 @Serializable
 data object SettingsNavKey : AppNavKey
 
-// ── 消息中心与通知路由 ──────────────────────────────────────────────────
-
-/**
- * 消息中心主页路由（展示 6 分类入口、未读 Badge 与私信联系人列表）。
- */
 @Serializable
 data class MessageCenterNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-/**
- * 分类通知详情页路由。
- */
 @Serializable
 data class MessageNoticeNavKey(
     val param: MessageNoticeNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-/**
- * 1v1 私信聊天页路由。
- */
 @Serializable
 data class MessageChatNavKey(
     val param: MessageChatNavParam,
     val id: String = newNavId()
 ) : AppNavKey
 
-/**
- * 黑名单管理页路由。
- */
 @Serializable
 data class MessageBlockNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-/**
- * 屏蔽设置三 Tab 列表页路由。
- */
 @Serializable
 data class SettingsShieldListNavKey(
     val id: String = newNavId()
 ) : AppNavKey
 
-/**
- * 全屏大图画廊查看器二级页路由契约（对应 ImageViewerScreen）。
- *
- * 全面回归 Navigation 3 单根栈体系，原生享有 MaterialSharedAxis.Z 转场
- * 与系统级 Predictive Back 预测性返回预览动效。
- */
 @Serializable
 data class ImageViewerNavKey(
     val param: ImageViewerNavParam,

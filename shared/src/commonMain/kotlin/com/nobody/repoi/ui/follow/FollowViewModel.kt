@@ -14,9 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 关注屏内页签（条目动态/用户动态）。
- */
 enum class FollowTab(val apiType: String, val label: String) {
     ITEMS("item", "条目动态"),
     USERS("user", "用户动态")
@@ -36,28 +33,11 @@ data class FollowUiState(
     val loadMoreError: String? = null
 )
 
-/**
- * 关注屏状态机（顶层关注目的地，复用关注条目/用户接口）。
- *
- * 登录判定读取 [UserSession.currentToken]，与底层凭据存储语义等价。
- */
 class FollowViewModel(
     private val followRepository: FollowRepository,
     private val userSession: UserSession
 ) : ViewModel() {
 
-    /**
-     * 关注收集流筛选项（条目动态）。
-     *
-     * 与首页/专区详情的动态筛选（唯一共享定义 `ActionSubType`）**暂不合并**，原因：
-     * 1. 首项是本屏本地哨兵 `any`（请求为 `actionType=0` 且不带 `subType`），关注流没有「推荐」档，
-     *    与共享定义的 9 项不完全等价；
-     * 2. 接口是 `api/user-action/collect/care/list-v2`（多一维 `actionType`），#151 只对
-     *    `api/user-action/list-v3` 的键值做过抓包验证，`allInfo` 在本接口是否可用尚未确认，
-     *    故本表请求键暂时保留原值 `all`；
-     * 3. 文案与顺序已与 2.43 对齐（直接引用共享定义的展示文案，见下方映射）。
-     * 后续抓到 `collect/care/list-v2` 接受 `allInfo` 后，直接改用 `ActionSubType.apiValue` 并删除本表。
-     */
     val filters = listOf(
         Pair("any", "全部"),
         Pair("comment", ActionSubType.Comment.label),
@@ -247,9 +227,6 @@ class FollowViewModel(
         }
     }
 
-    /**
-     * 条目动态筛选映射（沿用原 App 分支：any 去 subType 且 actionType=0）。
-     */
     internal fun queryParams(tab: FollowTab, filter: String): Pair<Int?, String?> {
         if (tab != FollowTab.ITEMS) return Pair(null, null)
         return when (filter) {

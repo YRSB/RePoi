@@ -6,12 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 作品详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `WorksDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
- */
 class WorksDetailRepositoryTest {
 
     private fun setup(): Pair<MockApi, WorksDetailRepository> {

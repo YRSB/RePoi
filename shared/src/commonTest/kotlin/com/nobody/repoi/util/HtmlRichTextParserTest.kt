@@ -9,14 +9,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 富文本解析器单元测试，覆盖 HTML 粗体、斜体、链接规范化与点击注解（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HtmlRichTextParserTest`（逐用例；JUnit4 → kotlin.test）。
- * 移植说明：原测试挂 `@RunWith(RobolectricTestRunner)`，但 `HtmlRichTextParser`
- * 仅依赖 Compose 文本类型（AnnotatedString/Color/LinkAnnotation，纯 Kotlin，
- * 无 android.* 调用），shared/commonMain 同源；runner 属多余负担，KMP 下去掉。
- */
 class HtmlRichTextParserTest {
 
     @Test

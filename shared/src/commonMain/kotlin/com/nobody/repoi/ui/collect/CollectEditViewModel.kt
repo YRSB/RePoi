@@ -15,10 +15,6 @@ import kotlinx.coroutines.launch
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.data.remote.model.CollectConstants
 
-/**
- * 收藏管理与编辑页面 ViewModel。
- * 驱动状态单选切换、入库价格/途径/日期录入、打分与多选标签池联动。
- */
 class CollectEditViewModel(
     private val collectRepository: CollectRepository,
     private val saveHobbyCollectUseCase: SaveHobbyCollectUseCase,
@@ -30,9 +26,6 @@ class CollectEditViewModel(
 
     private var initJob: Job? = null
 
-    /**
-     * 初始化页面数据，并发加载当前用户收藏状态、全站人数统计与热门推荐标签。
-     */
     fun initData(param: CollectEditNavParam, force: Boolean = false) {
         val resolvedNodeId = if (param.nodeId > 0L) param.nodeId else param.itemId
         if (!force && _uiState.value.nodeId == resolvedNodeId && !_uiState.value.isLoading) {
@@ -55,7 +48,6 @@ class CollectEditViewModel(
                 )
             }
 
-            // 1. 并发请求全站统计人数与推荐标签
             launch {
                 collectRepository.getCollectCount(resolvedNodeId).onSuccess { countData ->
                     _uiState.update { it.copy(countData = countData) }
@@ -68,7 +60,6 @@ class CollectEditViewModel(
                 }
             }
 
-            // 2. 拉取当前条目的用户收藏详情
             val stateResult = collectRepository.refreshCollectState(resolvedNodeId)
             stateResult.onSuccess { collectData ->
                 if (collectData != null && collectData.isCollected) {
@@ -117,21 +108,14 @@ class CollectEditViewModel(
         }
     }
 
-    // 初始加载失败后重试，强制绕过相同条目去重门控
     fun retryLoad(param: CollectEditNavParam) {
         initData(param, force = true)
     }
 
-    /**
-     * 切换 5 种互斥分类状态。
-     */
     fun selectState(state: String) {
         _uiState.update { it.copy(selectedState = state) }
     }
 
-    /**
-     * 点击星星设置评分；若点击当前评分则反选重置为 0。
-     */
     fun setRating(rating: Int) {
         _uiState.update {
             val newRating = if (it.rating == rating) 0 else rating
@@ -139,7 +123,6 @@ class CollectEditViewModel(
         }
     }
 
-    // 已评分态需独立清除入口，避免依赖重复点击反选
     fun clearRating() {
         _uiState.update { it.copy(rating = 0) }
     }
@@ -168,14 +151,10 @@ class CollectEditViewModel(
         _uiState.update { it.copy(orderForm = form) }
     }
 
-    // 后端简评上限 500 字，粘贴超长时截断保留前 500 字
     fun setComment(comment: String) {
         _uiState.update { it.copy(comment = comment.takeByCodePoints(MAX_COMMENT_LENGTH)) }
     }
 
-    /**
-     * 添加自定义或推荐标签。
-     */
     fun addTag(tag: String) {
         val trimmed = tag.trim()
         if (trimmed.isBlank()) return
@@ -188,16 +167,10 @@ class CollectEditViewModel(
         }
     }
 
-    /**
-     * 发起删除已有标签请求，弹出二次确认弹窗。
-     */
     fun requestDeleteTag(tag: String) {
         _uiState.update { it.copy(tagToDelete = tag, showDeleteTagDialog = true) }
     }
 
-    /**
-     * 确认删除当前选中的标签。
-     */
     fun confirmDeleteTag() {
         _uiState.update { current ->
             val target = current.tagToDelete
@@ -209,9 +182,6 @@ class CollectEditViewModel(
         }
     }
 
-    /**
-     * 取消/关闭删除标签二次确认弹窗。
-     */
     fun dismissDeleteTagDialog() {
         _uiState.update { it.copy(tagToDelete = null, showDeleteTagDialog = false) }
     }
@@ -248,7 +218,7 @@ class CollectEditViewModel(
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             val fresh = _uiState.value
             val collectData = fresh.toCollectData()
-            // 写侧委托用例：状态缺失/条目缺失的业务校验与状态池原子更新都在用例内完成
+
             val result = saveHobbyCollectUseCase(fresh.nodeId, collectData)
             result.fold(
                 onSuccess = {
@@ -264,9 +234,6 @@ class CollectEditViewModel(
         }
     }
 
-    /**
-     * 取消收藏当前条目。
-     */
     fun deleteCollect() {
         val snapshot = _uiState.value
         if (snapshot.isDeleting || snapshot.nodeId <= 0L || snapshot.isLoading) return
@@ -296,10 +263,6 @@ class CollectEditViewModel(
         }
     }
 
-    /**
-     * 写成功后以服务端 `collectCount` 刷新计数快照，供详情页重置基线并归零 delta。
-     * 请求失败时什么都不做：详情页保留原有乐观 delta，不把网络异常当成计数变化。
-     */
     private suspend fun refreshCountSnapshot(nodeId: Long) {
         collectRepository.getCollectCount(nodeId).onSuccess { count ->
             collectRepository.updateCollectCountSnapshot(nodeId, count.total.toLong())
@@ -309,7 +272,6 @@ class CollectEditViewModel(
 
 private const val MAX_COMMENT_LENGTH = 500
 
-// 按码点截断，避免 Emoji 代理对被切半
 private fun String.takeByCodePoints(max: Int): String {
     if (codePointCount(0, length) <= max) return this
     return substring(0, offsetByCodePoints(0, max))

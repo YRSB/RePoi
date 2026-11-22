@@ -9,9 +9,6 @@ import com.nobody.repoi.ui.zone.ZoneBrowseScreen
 import com.nobody.repoi.ui.zone.ZoneDetailScreen
 import com.nobody.repoi.ui.zone.ZoneSettingsScreen
 
-/**
- * 注册专区与帖子详情等社区领域路由。
- */
 fun EntryProviderScope<NavKey>.communityEntries(
     navigator: RePoiNavigator,
     onBack: () -> Unit
@@ -80,4 +77,3 @@ fun EntryProviderScope<NavKey>.communityEntries(
         )
     }
 }
-

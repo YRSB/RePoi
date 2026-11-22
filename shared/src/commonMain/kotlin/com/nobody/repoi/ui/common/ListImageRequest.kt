@@ -6,13 +6,6 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
-/**
- * 列表图片请求（KMP commonMain 移植版）。
- *
- * 与原生版（`ui/common/ListImageRequest.kt`）差异：
- * - Coil2 `ImageRequest.Builder(context)` → Coil3 `ImageRequest.Builder(LocalPlatformContext)`；
- *   `crossfade(false)`/`memoryCacheKey` 语义保留（Coil3 `coil3.request.crossfade` 扩展导入后同名调用）。
- */
 @Composable
 fun rememberListImageRequest(
     cover: String?,

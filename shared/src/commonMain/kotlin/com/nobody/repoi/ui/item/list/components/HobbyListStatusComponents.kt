@@ -29,9 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 周边列表富语义空状态组件
- */
 @Composable
 fun HobbyEmptyPlaceholder(
     hasActiveFilters: Boolean,
@@ -87,9 +84,6 @@ fun HobbyEmptyPlaceholder(
     }
 }
 
-/**
- * 列表底部加载更多 / 错误重试 / 触底结束提示组件
- */
 @Composable
 fun HobbyLoadingMoreFooter(
     isLoadingMore: Boolean,

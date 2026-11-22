@@ -104,8 +104,6 @@ class UserFinanceRepositoryTest {
 
         val finance = repository.parseOrderFinance(orderData)
 
-        // 待补款：手办 JPY 10000 * 0.06 = 600 + USD 100 * 6.4 = 640 => 1240
-        // 动漫模型 EUR 50 * 6.9 = 345 + HKD 200 * 0.92 = 184 + RMB 1000 * 1.0 = 1000 => 1529
         assertEquals(2, finance.supplementedGroups.size)
         assertEquals("手办", finance.supplementedGroups[0].categoryName)
         assertEquals(1240.0, finance.supplementedGroups[0].totalRmb, 0.001)
@@ -113,12 +111,10 @@ class UserFinanceRepositoryTest {
         assertEquals(1529.0, finance.supplementedGroups[1].totalRmb, 0.001)
         assertEquals(2769.0, finance.supplementedTotalRmb, 0.001)
 
-        // 已入总额：CNY 888 * 1.0 = 888
         assertEquals(1, finance.historyGroups.size)
         assertEquals("Doll娃娃", finance.historyGroups[0].categoryName)
         assertEquals(888.0, finance.historyTotalRmb, 0.001)
 
-        // 亚马逊涨跌幅：(1250 - 1000) * 100 / 1000 = +25%
         assertEquals("+25%", finance.amazonFluctuation)
     }
 
@@ -158,7 +154,7 @@ class UserFinanceRepositoryTest {
         assertEquals("JP¥", groups[0].items[0].symbol)
         assertEquals("港元", groups[0].items[1].displayName)
         assertEquals("HK$", groups[0].items[1].symbol)
-        // 1000 * 0.06 = 60 + 50 * 0.92 = 46 => 106
+
         assertEquals(106.0, groups[0].totalRmb, 0.001)
     }
 
@@ -175,7 +171,7 @@ class UserFinanceRepositoryTest {
                     })
                     add(buildJsonObject {
                         put("currency", "jpy")
-                        put("money", 10000.0) // 10000 JPY * 0.06 = 600 RMB
+                        put("money", 10000.0)
                     })
                 })
             })
@@ -186,7 +182,7 @@ class UserFinanceRepositoryTest {
         val figureGroup = groups.first()
         assertEquals("手办", figureGroup.categoryName)
         assertEquals(2, figureGroup.items.size)
-        // 100 RMB + 10000 JPY (600 RMB) = 700 RMB
+
         assertEquals(700.0, figureGroup.totalRmb, 0.01)
     }
 

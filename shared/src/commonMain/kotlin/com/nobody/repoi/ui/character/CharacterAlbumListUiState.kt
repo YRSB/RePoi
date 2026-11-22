@@ -3,9 +3,6 @@ package com.nobody.repoi.ui.character
 import androidx.compose.runtime.Immutable
 import com.nobody.repoi.data.remote.model.AlbumData
 
-/**
- * 角色相关相册列表页 UI 状态。
- */
 @Immutable
 data class CharacterAlbumListUiState(
     val title: String = "相关相册",

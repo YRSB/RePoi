@@ -8,11 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 动态媒体展示解析测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `FeedMediaResolverTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class FeedMediaResolverTest {
 
     @Test
@@ -165,7 +160,7 @@ class FeedMediaResolverTest {
 
     @Test
     fun resolve_albumWithCategoryId60001_resolvesAsCoverSr() {
-        // 用户真实生产动态样本：actionType=104, relateItem.categoryId=60001（相册分类区间）, 封面 png
+
         val action = ActionItem(
             id = 41122930L,
             actionType = 104,
@@ -181,7 +176,7 @@ class FeedMediaResolverTest {
         val info = action.resolveMediaDisplayInfo()
 
         assertTrue(info.shouldShowLeftCover)
-        // 关键断言：相册必须解析为 cover/sr/，严禁走 cover/n/ 导致 CDN 404！
+
         assertEquals("https://rfx.hpoi.net/gk/cover/sr/2026/11/4174eeb5bdff4c54a24f788845c1cd25.png", info.coverUrl)
         assertEquals(listOf("2026/11/photo1.jpg", "2026/11/photo2.jpg"), info.displayExtraImages)
         assertEquals(

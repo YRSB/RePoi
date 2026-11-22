@@ -55,7 +55,6 @@ class ImageViewerStateHolderTest {
         holder.show(listOf("a", "b", "c", "d", "e"), initialIndex = 4)
         assertEquals(4, holder.currentIndex)
 
-        // 缩减列表至 2 项，currentIndex 应自动夹取至 1，防止 IndexOutOfBoundsException
         holder.updateImages(listOf("x", "y"))
         assertEquals(listOf("x", "y"), holder.imageUrls)
         assertEquals(1, holder.currentIndex)
@@ -81,12 +80,11 @@ class ImageViewerStateHolderTest {
         val restored = ImageViewerStateHolder.Saver.restore(saved!!)
 
         assertTrue(restored != null)
-        // 恢复后只有 50 项窗口，index=25 是相对值
+
         assertEquals(25, restored.currentIndex)
 
         restored.updateImages(images)
 
-        // 必须按 URL 重锚回全量列表的绝对下标，否则会跳到另一张图
         assertEquals(50, restored.currentIndex)
         assertEquals("url_50", restored.imageUrls[restored.currentIndex])
     }
@@ -108,7 +106,7 @@ class ImageViewerStateHolderTest {
 
     @Test
     fun saver_oversizedList_clampsTo50Window_center() {
-        // 100 项，当前在第 50 项（0-indexed）
+
         val images = (0..99).map { "url_$it" }
         val holder = ImageViewerStateHolder()
         holder.show(images, initialIndex = 50)
@@ -118,17 +116,17 @@ class ImageViewerStateHolderTest {
 
         assertTrue(restored != null)
         assertEquals(50, restored.imageUrls.size)
-        // 50 为中心，halfWindow = 25 -> 窗口范围 [25, 75)
+
         assertEquals("url_25", restored.imageUrls.first())
         assertEquals("url_74", restored.imageUrls.last())
-        // 原 index 50 在新列表中的下标应为 25
+
         assertEquals(25, restored.currentIndex)
         assertEquals("url_50", restored.imageUrls[restored.currentIndex])
     }
 
     @Test
     fun saver_oversizedList_clampsTo50Window_start() {
-        // 100 项，当前在第 2 项
+
         val images = (0..99).map { "url_$it" }
         val holder = ImageViewerStateHolder()
         holder.show(images, initialIndex = 2)
@@ -146,7 +144,7 @@ class ImageViewerStateHolderTest {
 
     @Test
     fun saver_oversizedList_clampsTo50Window_end() {
-        // 100 项，当前在最后第 99 项
+
         val images = (0..99).map { "url_$it" }
         val holder = ImageViewerStateHolder()
         holder.show(images, initialIndex = 99)
@@ -165,7 +163,7 @@ class ImageViewerStateHolderTest {
     @Test
     fun saver_restoreCorruptedIndex_clampsSafely() {
         val images = listOf("a", "b", "c")
-        // 模拟外部脏数据传入 index = 99
+
         val corruptState = listOf(ArrayList(images), 99)
         val restored = ImageViewerStateHolder.Saver.restore(corruptState)
 

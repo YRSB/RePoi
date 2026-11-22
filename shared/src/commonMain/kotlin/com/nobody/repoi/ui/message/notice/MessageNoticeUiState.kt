@@ -2,9 +2,6 @@ package com.nobody.repoi.ui.message.notice
 
 import com.nobody.repoi.data.remote.model.PushMessageItem
 
-/**
- * 分类通知列表 UI 状态。
- */
 data class MessageNoticeUiState(
     val type: String = "system",
     val typeNumber: Int = 1,

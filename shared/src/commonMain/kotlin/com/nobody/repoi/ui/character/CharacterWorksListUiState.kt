@@ -3,9 +3,6 @@ package com.nobody.repoi.ui.character
 import androidx.compose.runtime.Immutable
 import com.nobody.repoi.data.remote.model.CharacterWorksItem
 
-/**
- * 角色登场作品列表页 UI 状态。
- */
 @Immutable
 data class CharacterWorksListUiState(
     val title: String = "登场作品",

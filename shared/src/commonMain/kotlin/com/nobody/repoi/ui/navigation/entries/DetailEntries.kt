@@ -19,9 +19,6 @@ import com.nobody.repoi.ui.vendor.actions.VendorActionsScreen
 import com.nobody.repoi.ui.works.WorksDetailScreen
 import com.nobody.repoi.ui.search.HobbyAllCategory
 
-/**
- * 注册手办、相册、角色、厂商、人物、系列与作品等详情链路由。
- */
 fun EntryProviderScope<NavKey>.detailEntries(
     navigator: RePoiNavigator,
     onBack: () -> Unit
@@ -222,4 +219,3 @@ fun EntryProviderScope<NavKey>.detailEntries(
         )
     }
 }
-

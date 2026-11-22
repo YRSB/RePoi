@@ -7,12 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 二手仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ResaleRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
- */
 class ResaleRepositoryTest {
 
     private fun setup(): Pair<MockApi, ResaleRepository> {
@@ -72,7 +66,6 @@ class ResaleRepositoryTest {
             """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
         )
 
-        // 「全部」聚合：zones 省略即等价全站（issue #160 验收标准「聚合态以专区集合取数成功」）
         val result = repository.searchResale(scope = ZoneQueryScope.All, type = 1, lastTime = null)
 
         assertTrue(result.isSuccess)
@@ -89,7 +82,6 @@ class ResaleRepositoryTest {
             """{"success":true,"code":200,"msg":"操作成功","data":{"list":[]}}"""
         )
 
-        // 关注作用域：逗号串原样透传（二手多专区是「交集」语义，关注聚合由上层隐藏板块规避）
         val result = repository.searchResale(
             scope = ZoneQueryScope.Follow(listOf(100L, 200L)),
             type = 2,

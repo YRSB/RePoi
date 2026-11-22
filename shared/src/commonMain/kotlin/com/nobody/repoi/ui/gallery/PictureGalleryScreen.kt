@@ -83,36 +83,6 @@ import com.nobody.repoi.ui.common.PoiZoomableImage
 import kotlin.math.roundToInt
 import com.nobody.repoi.ui.theme.largeCard
 
-// ── 大图画廊 ────────────────────────────────────────────────
-
-/**
- * 图片大图画廊（全屏展示组件；由独立 Nav 路由 `PictureGalleryNavKey` 宿主）。
- *
- * 对标原版 `PictureGalleryActivity`，具备：
- * - **无限分页**：滑到倒数第 4 张回调 [onLoadMore] 续拉；页码显示 `"3 / 20"`，
- *   未到底时末尾追加 `"+"`（原版 `isEnd ? "" : "+"`）。
- * - **顶栏 actionBar**：返回、收藏星标 + 收藏数徽章、more 按钮。
- * - **收藏/取消收藏**：复用 `CollectRepository.collectItemAdd` / `collectItemDel`，
- *   key 用 `UserCollectPicItem.id`；乐观更新 + 1.3 倍缩放动画；切页后延迟 500ms 回填星标。
- * - **长按图片或点 more** → 底部 BottomSheet 四项：列表 / 原图 / 下载 / 举报。
- * - **底部关联条目**：`api/pic/relate`，按 `itemType` 分相册(album)/手办(hobby)/文章(article) 三类。
- * - **大图底部叠加图片备注 `remark`**。
- * - **缩放/平移/双击缩放**：与 `ImageViewerDialog` 同源实现（1–4x 捏合、放大态禁用翻页、单击收起）。
- * - **超长图保护**：按屏幕高度夹取解码尺寸，并对极端长图给出提示（不引入 SubsamplingScaleImageView）。
- *
- * @param items 当前已加载的图片列表（由画廊路由自行加载，本组件只读）
- * @param initialIndex 初始定位下标
- * @param hasMore 是否还有下一页（决定页码是否追加 `+`）
- * @param isLoadingMore 续拉请求进行中（避免重复触发）
- * @param onLoadMore 滑到倒数第 4 张时回调，宿主接画廊 ViewModel 的分页加载
- * @param onBack 返回（路由出栈）
- * @param onOpenPictureList 「列表」入口回调；宿主需跳 `PictureListScreen`。
- *   收藏页的图片不属于任何相册/手办上下文，**暂无「按图片 id 反查所属列表」接口**，
- *   故默认传 `null` —— 传 null 时该项自动隐藏。
- * @param onNavigateToAlbum 关联条目为相册时的跳转
- * @param onNavigateToHobby 关联条目为手办时的跳转
- * @param onNavigateToArticle 关联条目为文章时的跳转（宿主用官网外链兜底）
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PictureGalleryScreen(
@@ -143,9 +113,7 @@ fun PictureGalleryScreen(
     val messages = LocalAppMessages.current
     val imageLoader: ImageLoader = koinInject()
     val coroutineScope = rememberCoroutineScope()
-    // 超长图保护用的解码高度上限：优先取真实窗口高度（KMP 无 android Configuration，
-    // 但 LocalWindowInfo 在双端均给出容器像素尺寸；桌面缩放窗口、分屏时会实时变化），
-    // 取不到（初始帧为 0）时回落 800dp 估算值，保证解码上限始终有限、巨图不会 OOM
+
     val density = LocalDensity.current
     val windowSize = LocalWindowInfo.current.containerSize
     val screenHeightPx = remember(windowSize, density) {
@@ -156,19 +124,17 @@ fun PictureGalleryScreen(
     var chromeVisible by remember { mutableStateOf(true) }
     var showActionSheet by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
-    // 收藏星标缩放脉冲触发器：每次收藏操作 +1
+
     var starPulse by remember { mutableIntStateOf(0) }
 
     val currentItem = items.getOrNull(pagerState.currentPage) ?: items.first()
 
-    // 切页：重置原图/超长图态，延迟 500ms 回填收藏态并拉关联条目
     LaunchedEffect(pagerState.currentPage) {
         items.getOrNull(pagerState.currentPage)?.let { item ->
             viewModel.onPageChanged(item, pagerState.currentPage)
         }
     }
 
-    // 画廊内无限分页：滑到倒数第 4 张即续拉（原版 `i10 > list.length() - 4`）
     LaunchedEffect(pagerState.currentPage, items.size) {
         val fromEnd = items.size - pagerState.currentPage
         if (fromEnd < PictureGalleryViewModel.PREFETCH_DISTANCE && hasMore && !isLoadingMore) {
@@ -176,14 +142,12 @@ fun PictureGalleryScreen(
         }
     }
 
-    // 轻提示（下载结果 / 举报结果 / 收藏回滚）：经消息总线展示，由调用点 Scaffold 宿主兜底
     LaunchedEffect(uiState.toastMessage) {
         val message = uiState.toastMessage ?: return@LaunchedEffect
         messages.show(message)
         viewModel.consumeMessage()
     }
 
-    // 双向后台预取管道：预取前后各 2 张图片沉淀到 Coil 磁盘与内存缓存中，防止快速连续翻页时白屏等待
     LaunchedEffect(pagerState.currentPage, items, uiState.showRaw) {
         val currentPage = pagerState.currentPage
         val preloadIndices = listOf(
@@ -212,7 +176,7 @@ fun PictureGalleryScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 1. 横向滑动查看大图（配置 beyondViewportPageCount=1 保证左右各预渲染 1 页，无缝切图零白屏）
+
         HorizontalPager(
             state = pagerState,
             userScrollEnabled = !isCurrentPageZoomed,
@@ -230,14 +194,13 @@ fun PictureGalleryScreen(
                         isCurrentPageZoomed = zoomed
                     }
                 },
-                // 放大态单击由基元内部只复位缩放、不冒泡；此处仅处理未放大态的 chrome 切换
+
                 onSingleTap = { chromeVisible = !chromeVisible },
                 onLongPress = { showActionSheet = true },
                 onDetectLongImage = { viewModel.markLongImage() }
             )
         }
 
-        // 2. 顶栏 actionBar：返回 / 收藏星标 + 徽章 / more
         AnimatedVisibility(
             visible = chromeVisible,
             enter = fadeIn(),
@@ -263,7 +226,6 @@ fun PictureGalleryScreen(
             )
         }
 
-        // 3. 底部：图片备注 remark + 关联条目
         AnimatedVisibility(
             visible = chromeVisible,
             enter = fadeIn(),
@@ -280,7 +242,6 @@ fun PictureGalleryScreen(
             )
         }
 
-        // 4. 超长图保护提示（P2）
         if (uiState.isLongImage) {
             Surface(
                 shape = CircleShape,
@@ -298,7 +259,6 @@ fun PictureGalleryScreen(
             }
         }
 
-        // 5. 下载中遮罩
         if (uiState.isDownloading) {
             Box(
                 modifier = Modifier
@@ -327,7 +287,6 @@ fun PictureGalleryScreen(
         }
     }
 
-    // 6. 操作 BottomSheet：列表 / 原图 / 下载 / 举报
     if (showActionSheet) {
         val sheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
@@ -347,7 +306,7 @@ fun PictureGalleryScreen(
                 },
                 onToggleRaw = {
                     showActionSheet = false
-                    // 已是原图规格则只提示，不再重复请求（原版 :235-242 的「已是原图」语义）
+
                     if (uiState.showRaw) {
                         coroutineScope.launch { messages.show("已是原图") }
                     } else {
@@ -367,7 +326,6 @@ fun PictureGalleryScreen(
         }
     }
 
-    // 7. 举报原因输入弹窗（api/web-report/add）
     if (showReportDialog) {
         ReportReasonDialog(
             onDismiss = { showReportDialog = false },
@@ -379,13 +337,6 @@ fun PictureGalleryScreen(
     }
 }
 
-// ── 顶栏 actionBar ──────────────────────────────────────────
-
-/**
- * 画廊顶栏：返回、收藏星标（含收藏数徽章）、more。
- *
- * @param pulseTrigger 每次 +1 触发一次 1→1.3→1 的缩放脉冲（对齐原版 `ValueAnimator.ofFloat(1f,1.3f,1f)`）
- */
 @Composable
 private fun GalleryActionBar(
     pageText: String,
@@ -396,7 +347,7 @@ private fun GalleryActionBar(
     onToggleCollect: () -> Unit,
     onMore: () -> Unit
 ) {
-    // 收藏/取消收藏后的缩放脉冲（原版 300ms：1f → 1.3f → 1f）
+
     val starScale = remember { Animatable(1f) }
     LaunchedEffect(pulseTrigger) {
         if (pulseTrigger == 0) return@LaunchedEffect
@@ -416,7 +367,7 @@ private fun GalleryActionBar(
             )
             .padding(statusBarPadding)
             .padding(horizontal = 8.dp, vertical = 8.dp)
-            // 拦截点击防穿透到背景误触
+
             .pointerInput(Unit) { detectTapGestures { } }
     ) {
         Row(
@@ -434,7 +385,7 @@ private fun GalleryActionBar(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 收藏星标 + 收藏数徽章
+
                 Box(contentAlignment = Alignment.Center) {
                     GalleryIconButton(
                         icon = if (isCollected) PoiIcons.Favorite else PoiIcons.FavoriteBorder,
@@ -474,9 +425,6 @@ private fun GalleryActionBar(
     }
 }
 
-/**
- * 画廊顶栏的圆形图标按钮（半透明磨砂底，对齐原版 actionBar 观感）。
- */
 @Composable
 private fun GalleryIconButton(
     icon: DrawableResource,
@@ -502,11 +450,6 @@ private fun GalleryIconButton(
     }
 }
 
-// ── 底部面板：备注 + 关联条目 ────────────────────────────────
-
-/**
- * 画廊底部面板：图片备注 `remark` + 关联条目横滑。
- */
 @Composable
 private fun GalleryBottomPanel(
     remark: String?,
@@ -528,7 +471,7 @@ private fun GalleryBottomPanel(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // 图片备注（原版 PictureGalleryPagerAdapter.java:173-179）
+
         if (!remark.isNullOrBlank()) {
             Text(
                 text = remark,
@@ -568,8 +511,7 @@ private fun GalleryBottomPanel(
                             relate = relate,
                             onClick = {
                                 when (relate.kind) {
-                                    // 相册 → 相册详情：相册 id 取实体 `id`（`itemId` 是关联手办 id；
-                                    // 原版 AlbumDetailActivity 解析 albumData 时同样取 `id`）
+
                                     RelateKind.ALBUM -> onNavigateToAlbum?.invoke(
                                         AlbumNavParam(
                                             albumId = relate.actualAlbumId,
@@ -578,8 +520,6 @@ private fun GalleryBottomPanel(
                                         )
                                     )
 
-                                    // 手办 → 手办详情：业务号取 `itemId`
-                                    //（对齐原版 HobbyDetailActivity 解析 itemData 的 itemId）
                                     RelateKind.HOBBY -> onNavigateToHobby?.invoke(
                                         DetailNavParam(
                                             itemId = relate.actualHobbyId,
@@ -589,7 +529,6 @@ private fun GalleryBottomPanel(
                                         )
                                     )
 
-                                    // 文章 → 宿主兜底（本工程无文章详情页，宿主用外链打开）
                                     RelateKind.ARTICLE -> onNavigateToArticle?.invoke(relate)
                                 }
                             }
@@ -601,17 +540,11 @@ private fun GalleryBottomPanel(
     }
 }
 
-/**
- * 关联条目展示名（原版 `pe.c.j` 标题回退：nameCN → name）。
- */
 private val PictureRelateItem.displayName: String
     get() = nameCN?.takeIf { it.isNotBlank() }
         ?: name?.takeIf { it.isNotBlank() }
         ?: "相关条目"
 
-/**
- * 关联条目胶囊：类型标签 + 名称。
- */
 @Composable
 private fun RelateItemChip(
     relate: PictureRelateItem,
@@ -648,12 +581,6 @@ private fun RelateItemChip(
     }
 }
 
-/**
- * 关联条目路由类型。
- *
- * 判定顺序对齐原版 `PictureGalleryActivity.a0()`：优先按 `itemType`（album/hobby，大小写不敏感），
- * 仅在 `itemType` 缺失/未知时才用原版标签映射的 categoryId 区间（相册 60001..70000）兜底，其余按文章处理。
- */
 private enum class RelateKind { ALBUM, HOBBY, ARTICLE }
 
 private val PictureRelateItem.kind: RelateKind
@@ -664,7 +591,6 @@ private val PictureRelateItem.kind: RelateKind
         else -> RelateKind.ARTICLE
     }
 
-/** 关联条目类型中文标签 */
 private val PictureRelateItem.itemTypeLabel: String
     get() = when (kind) {
         RelateKind.ALBUM -> "相册"
@@ -672,11 +598,6 @@ private val PictureRelateItem.itemTypeLabel: String
         RelateKind.ARTICLE -> "文章"
     }
 
-// ── 操作 BottomSheet ────────────────────────────────────────
-
-/**
- * 大图操作 BottomSheet：列表 / 原图 / 下载 / 举报。
- */
 @Composable
 private fun GalleryActionSheet(
     showListEntry: Boolean,
@@ -693,7 +614,7 @@ private fun GalleryActionSheet(
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // 「列表」入口无可用上下文时隐藏（见 PictureGalleryScreen 的 KDoc）
+
         if (showListEntry) {
             GallerySheetRow(
                 icon = PoiIcons.List,
@@ -720,9 +641,6 @@ private fun GalleryActionSheet(
     }
 }
 
-/**
- * BottomSheet 单行操作项。
- */
 @Composable
 private fun GallerySheetRow(
     icon: DrawableResource,
@@ -759,11 +677,6 @@ private fun GallerySheetRow(
     }
 }
 
-// ── 举报弹窗 ────────────────────────────────────────────────
-
-/**
- * 举报原因输入弹窗（`api/web-report/add`，type 固定 `picture_info`）。
- */
 @Composable
 private fun ReportReasonDialog(
     onDismiss: () -> Unit,

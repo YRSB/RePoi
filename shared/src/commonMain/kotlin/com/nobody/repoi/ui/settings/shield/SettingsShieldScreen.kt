@@ -48,7 +48,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-
 private fun ShieldListTab.unblockConfirmText(targetName: String): String = when (this) {
     ShieldListTab.User -> "确定取消屏蔽用户「$targetName」吗？取消后将会查看到对方动态"
     ShieldListTab.Vendor -> "确定取消屏蔽厂商「$targetName」吗？取消后其周边将重新在首页展示"

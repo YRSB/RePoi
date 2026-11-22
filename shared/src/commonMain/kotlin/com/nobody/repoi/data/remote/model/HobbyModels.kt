@@ -13,8 +13,6 @@ import kotlinx.serialization.json.longOrNull
 import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
 
-// ── 2. 手办与条目详情模型 ─────────────────────────────
-
 @Serializable
 data class HobbyListData(
     val list: List<HobbyItemSummary>? = null
@@ -109,7 +107,6 @@ data class CategoryNode(
     val children: List<CategoryNode>? = null
 )
 
-
 @Serializable
 data class HobbyDetailPayload(
     @SerialName("itemData") val itemData: HobbyDetailData? = null
@@ -143,19 +140,16 @@ data class HobbyDetailData(
     val praiseCount: Int = 0,
     val collectCount: Int = 0
 ) {
-    /** 节点 ID（Hpoi 接口在 itemData 中返回 id 即为 nodeId） */
+
     val actualNodeId: Long
         get() = if (nodeId > 0L) nodeId else id
 
-    /** 条目 ID（Hpoi 接口中为 itemId） */
     val actualItemId: Long
         get() = if (itemId > 0L) itemId else id
 
-    /** 优先显示中文名，若无则显示日文/外文名 */
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 
-    /** 真实计算评分（满分 5.0 分，四舍五入保留一位小数） */
     val ratingScore: Double
         get() = if (ratingCount > 0) {
             val score = rating / ratingCount
@@ -174,7 +168,6 @@ data class HobbyDetailData(
     val commentCountText: String
         get() = if (commentCount > 0) "评论 $commentCount" else ""
 
-    /** 统一格式化手办定价文本（例如 "15000日元(含税）"、"价格待定"） */
     val displayPriceText: String
         get() = PriceFormatter.format(
             money = money,
@@ -184,7 +177,6 @@ data class HobbyDetailData(
             moneyString = moneyString
         )
 
-    /** 统一格式化手办发售时间（对齐原版：无发售时间时兜底为 "时间待定"） */
     val displayReleaseDateText: String
         get() {
             val raw = releaseDate?.trim()?.ifBlank { null } ?: return "时间待定"
@@ -199,7 +191,6 @@ data class HobbyDetailData(
             }
         }
 
-    /** 纯文本详情介绍（去除 HTML 标签，转换换行符） */
     val detailPlainText: String
         get() {
             if (detail.isNullOrBlank()) return ""
@@ -215,8 +206,6 @@ data class HobbyDetailData(
         }
 }
 
-// ── 2.1 发售情报时间轴模型 ─────────────────────────
-
 @Serializable
 data class HobbyTimelinePayload(
     val list: List<HobbyTimelineItem>? = null
@@ -228,7 +217,7 @@ data class HobbyTimelineItem(
     val actionComment: String? = null,
     val actionDateString: String? = null
 ) {
-    /** 映射情报事件类型的中文语义化标签 */
+
     val displayTypeLabel: String
         get() = when (actionData) {
             "preorder" -> "开订时间"
@@ -262,23 +251,19 @@ data class InfoListEntry(
     val link: String? = null,
     val cover: String? = null
 ) {
-    /** 字段展示标签名称（优先 key，如“中文名”、“定价”、“比例”、“出货日”） */
+
     val displayKey: String
         get() = key?.ifBlank { null } ?: title ?: ""
 
-    /** 是否为可点击跳转的创作者/厂商链接 */
     val isNavigatable: Boolean
         get() = type == 2 && !link.isNullOrBlank()
 
-    /** 是否为属性标签列表 */
     val isTagList: Boolean
         get() = type == 4
 
-    /** 是否为标签/属性组（属性、兼售材质等） */
     val isTagGroup: Boolean
         get() = type == 4 || displayKey.contains("属性") || displayKey.contains("兼售材质") || displayKey.contains("标签")
 
-    /** 格式化显示的值（支持纯文本、标签数组、字符串数组的多态提取） */
     val displayValue: String
         get() {
             if (value == null) return ""
@@ -331,7 +316,6 @@ data class InfoListEntry(
             }
         }
 
-    /** 多行文本列表（针对发售历程、版本数组等） */
     val lines: List<String>
         get() {
             if (value !is kotlinx.serialization.json.JsonArray) {
