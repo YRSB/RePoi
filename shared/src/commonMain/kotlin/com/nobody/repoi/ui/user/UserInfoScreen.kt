@@ -120,6 +120,7 @@ import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
+import kotlin.math.min
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
@@ -210,23 +211,40 @@ fun UserInfoScreen(
     val nestedScrollConnection = remember(outerListState, pagerState, albumListState, actionListState, resaleListState) {
         object : NestedScrollConnection {
             private fun currentChildCanScrollBackward(): Boolean {
-                return when (pagerState.currentPage) {
-                    0 -> albumListState.firstVisibleItemIndex > 0 || albumListState.firstVisibleItemScrollOffset > 0
-                    1 -> actionListState.firstVisibleItemIndex > 0 || actionListState.firstVisibleItemScrollOffset > 0
-                    2 -> resaleListState.firstVisibleItemIndex > 0 || resaleListState.firstVisibleItemScrollOffset > 0
-                    else -> false
+                val activeListState = when (pagerState.currentPage) {
+                    0 -> albumListState
+                    1 -> actionListState
+                    2 -> resaleListState
+                    else -> null
                 }
+                return activeListState?.canScrollBackward == true
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
-                if (delta < 0 && outerListState.firstVisibleItemIndex < OUTER_HEADER_ITEM_COUNT) {
-                    val consumed = outerListState.dispatchRawDelta(delta)
-                    return Offset(0f, consumed)
+                if (delta < 0) {
+                    val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
+                    val canScrollOuter = if (tabsItem != null) {
+                        tabsItem.offset > 0
+                    } else {
+                        outerListState.firstVisibleItemIndex < OUTER_HEADER_ITEM_COUNT
+                    }
+                    if (canScrollOuter) {
+                        val maxAllowedScroll = if (tabsItem != null) tabsItem.offset.toFloat() else Float.MAX_VALUE
+                        val toScroll = min(-delta, maxAllowedScroll)
+                        if (toScroll > 0f) {
+                            val consumed = outerListState.dispatchRawDelta(toScroll)
+                            return Offset(0f, -consumed)
+                        }
+                    }
                 }
-                if (delta > 0 && !currentChildCanScrollBackward() && (outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0)) {
-                    val consumed = outerListState.dispatchRawDelta(delta)
-                    return Offset(0f, consumed)
+
+                if (delta > 0 && !currentChildCanScrollBackward()) {
+                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
+                    if (canScrollOuter) {
+                        val consumed = outerListState.dispatchRawDelta(-delta)
+                        return Offset(0f, -consumed)
+                    }
                 }
                 return Offset.Zero
             }
@@ -237,9 +255,12 @@ fun UserInfoScreen(
                 source: NestedScrollSource
             ): Offset {
                 val delta = available.y
-                if (delta > 0 && (outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0)) {
-                    val consumedDelta = outerListState.dispatchRawDelta(delta)
-                    return Offset(0f, consumedDelta)
+                if (delta > 0) {
+                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
+                    if (canScrollOuter) {
+                        val consumedDelta = outerListState.dispatchRawDelta(-delta)
+                        return Offset(0f, -consumedDelta)
+                    }
                 }
                 return Offset.Zero
             }
