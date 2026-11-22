@@ -45,6 +45,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -163,6 +164,42 @@ fun UserInfoScreen(
     LaunchedEffect(uiState.selectedTab) {
         if (!pagerState.isScrollInProgress && pagerState.currentPage != uiState.selectedTab && uiState.selectedTab in 0..2) {
             pagerState.animateScrollToPage(uiState.selectedTab)
+        }
+    }
+
+    val handleTabClick: (Int) -> Unit = { index ->
+        if (pagerState.currentPage != index) {
+            viewModel.selectTab(index)
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(index)
+            }
+        } else {
+            val activeListState = when (index) {
+                0 -> albumListState
+                1 -> actionListState
+                2 -> resaleListState
+                else -> null
+            }
+            val isScrolled = activeListState != null &&
+                (activeListState.firstVisibleItemIndex > 0 || activeListState.firstVisibleItemScrollOffset > 0)
+            if (isScrolled) {
+                coroutineScope.launch {
+                    activeListState.animateScrollToItem(0)
+                }
+            } else {
+                viewModel.refreshActiveTab()
+            }
+        }
+    }
+
+    val onFabClick: () -> Unit = {
+        coroutineScope.launch {
+            when (pagerState.currentPage) {
+                0 -> albumListState.animateScrollToItem(0)
+                1 -> actionListState.animateScrollToItem(0)
+                2 -> resaleListState.animateScrollToItem(0)
+            }
+            viewModel.refreshActiveTab()
         }
     }
 
@@ -400,53 +437,61 @@ fun UserInfoScreen(
                             ) {
                                 UserContentTabs(
                                     selectedTab = pagerState.currentPage,
-                                    onSelectTab = { index ->
-                                        viewModel.selectTab(index)
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(index)
-                                        }
-                                    }
+                                    onSelectTab = handleTabClick
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                HorizontalPager(
-                                    state = pagerState,
-                                    key = { it },
-                                    beyondViewportPageCount = 1,
-                                    modifier = Modifier.fillMaxSize()
-                                ) { page ->
-                                    when (page) {
-                                        0 -> UserAlbumPage(
-                                            listState = albumListState,
-                                            uiState = uiState,
-                                            columns = 3,
-                                            minHeight = 0.dp,
-                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
-                                            onNavigateToAlbum = onNavigateToAlbum,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        1 -> UserActionPage(
-                                            listState = actionListState,
-                                            uiState = uiState,
-                                            minHeight = 0.dp,
-                                            onNavigateToAlbum = onNavigateToAlbum,
-                                            onNavigateToHobby = onNavigateToHobby,
-                                            onNavigateToUser = onNavigateToUser,
-                                            onImageClick = { images, index ->
-                                                if (images.isNotEmpty()) {
-                                                    imageViewer.show(images, index)
-                                                }
-                                            },
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        2 -> UserResalePage(
-                                            listState = resaleListState,
-                                            uiState = uiState,
-                                            minHeight = 0.dp,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth()
+                                ) {
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        key = { it },
+                                        beyondViewportPageCount = 1,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) { page ->
+                                        when (page) {
+                                            0 -> UserAlbumPage(
+                                                listState = albumListState,
+                                                uiState = uiState,
+                                                columns = 3,
+                                                minHeight = 0.dp,
+                                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                                onNavigateToAlbum = onNavigateToAlbum,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            1 -> UserActionPage(
+                                                listState = actionListState,
+                                                uiState = uiState,
+                                                minHeight = 0.dp,
+                                                onNavigateToAlbum = onNavigateToAlbum,
+                                                onNavigateToHobby = onNavigateToHobby,
+                                                onNavigateToUser = onNavigateToUser,
+                                                onImageClick = { images, index ->
+                                                    if (images.isNotEmpty()) {
+                                                        imageViewer.show(images, index)
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            2 -> UserResalePage(
+                                                listState = resaleListState,
+                                                uiState = uiState,
+                                                minHeight = 0.dp,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        }
                                     }
+
+                                    UserRefreshFab(
+                                        onClick = onFabClick,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(end = 16.dp, bottom = 16.dp)
+                                    )
                                 }
                             }
                         }
@@ -470,134 +515,139 @@ fun UserInfoScreen(
                                 }
                             )
 
-                            LazyColumn(
-                                state = outerListState,
+                            Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fillMaxWidth(),
-                                contentPadding = PaddingValues(bottom = 32.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    .fillMaxWidth()
                             ) {
+                                LazyColumn(
+                                    state = outerListState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
 
-                                item(key = "banner", contentType = "banner") {
-                                    UserProfileBanner(
-                                        profile = profile,
-                                        isSelf = uiState.isSelf,
-                                        onBack = onNavigateBack,
-                                        onEdit = { viewModel.startEditing() },
-                                        onRefresh = { viewModel.loadProfile(profile.id) },
-                                        onBannerClick = {
-                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
-                                            if (raw.isNotBlank()) imageViewer.show(raw)
-                                        },
-                                        showNavigationActions = false
-                                    )
-                                }
+                                    item(key = "banner", contentType = "banner") {
+                                        UserProfileBanner(
+                                            profile = profile,
+                                            isSelf = uiState.isSelf,
+                                            onBack = onNavigateBack,
+                                            onEdit = { viewModel.startEditing() },
+                                            onRefresh = { viewModel.loadProfile(profile.id) },
+                                            onBannerClick = {
+                                                val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
+                                                if (raw.isNotBlank()) imageViewer.show(raw)
+                                            },
+                                            showNavigationActions = false
+                                        )
+                                    }
 
-                                item(key = "header_info", contentType = "header_info") {
-                                    UserProfileHeader(
-                                        profile = profile,
-                                        uiState = uiState,
-                                        onAvatarClick = {
-                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                            if (raw.isNotBlank()) imageViewer.show(raw)
-                                        },
-                                        onNavigateToFriendList = { tab ->
-                                            onNavigateToFriendList(profile.id, tab)
-                                        },
-                                        onToggleFollow = { viewModel.toggleFollow() },
-                                        onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                        onNavigateToChat = onNavigateToChat
-                                    )
-                                }
+                                    item(key = "header_info", contentType = "header_info") {
+                                        UserProfileHeader(
+                                            profile = profile,
+                                            uiState = uiState,
+                                            onAvatarClick = {
+                                                val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                                if (raw.isNotBlank()) imageViewer.show(raw)
+                                            },
+                                            onNavigateToFriendList = { tab ->
+                                                onNavigateToFriendList(profile.id, tab)
+                                            },
+                                            onToggleFollow = { viewModel.toggleFollow() },
+                                            onToggleIntro = { viewModel.toggleIntroExpanded() },
+                                            onNavigateToChat = onNavigateToChat
+                                        )
+                                    }
 
-                                item(key = "order_stats", contentType = "order_stats") {
-                                    UserOrderStatsCard(
-                                        profile = profile,
-                                        uiState = uiState,
-                                        onNavigateToCollect = onNavigateToCollect,
-                                        onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
-                                    )
-                                }
+                                    item(key = "order_stats", contentType = "order_stats") {
+                                        UserOrderStatsCard(
+                                            profile = profile,
+                                            uiState = uiState,
+                                            onNavigateToCollect = onNavigateToCollect,
+                                            onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
+                                        )
+                                    }
 
-                                item(key = "basic_info", contentType = "basic_info") {
-                                    BasicProfileSection(
-                                        profile = profile,
-                                        onCopyUid = { uid ->
-                                            coroutineScope.launch {
-                                                clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
-                                                snackbarHostState.showSnackbar("UID 已复制")
-                                            }
-                                        }
-                                    )
-                                }
-
-                                stickyHeader(key = "content_tabs", contentType = "content_tabs") {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        UserContentTabs(
-                                            selectedTab = pagerState.currentPage,
-                                            onSelectTab = { index ->
-                                                viewModel.selectTab(index)
+                                    item(key = "basic_info", contentType = "basic_info") {
+                                        BasicProfileSection(
+                                            profile = profile,
+                                            onCopyUid = { uid ->
                                                 coroutineScope.launch {
-                                                    pagerState.animateScrollToPage(index)
+                                                    clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
+                                                    snackbarHostState.showSnackbar("UID 已复制")
                                                 }
                                             }
                                         )
                                     }
-                                }
 
-                                item(key = "content_pager", contentType = "content_pager") {
-                                    BoxWithConstraints(
-                                        modifier = Modifier
-                                            .fillParentMaxHeight()
-                                            .fillMaxWidth()
-                                    ) {
-                                        val minPageHeight = maxHeight
-                                        HorizontalPager(
-                                            state = pagerState,
-                                            key = { it },
-                                            beyondViewportPageCount = 1,
+                                    stickyHeader(key = "content_tabs", contentType = "content_tabs") {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            UserContentTabs(
+                                                selectedTab = pagerState.currentPage,
+                                                onSelectTab = handleTabClick
+                                            )
+                                        }
+                                    }
+
+                                    item(key = "content_pager", contentType = "content_pager") {
+                                        BoxWithConstraints(
                                             modifier = Modifier
-                                                .fillMaxSize()
-                                                .nestedScroll(nestedScrollConnection)
-                                        ) { page ->
-                                            when (page) {
-                                                0 -> UserAlbumPage(
-                                                    listState = albumListState,
-                                                    uiState = uiState,
-                                                    columns = 2,
-                                                    minHeight = minPageHeight,
-                                                    onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
-                                                    onNavigateToAlbum = onNavigateToAlbum,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                                1 -> UserActionPage(
-                                                    listState = actionListState,
-                                                    uiState = uiState,
-                                                    minHeight = minPageHeight,
-                                                    onNavigateToAlbum = onNavigateToAlbum,
-                                                    onNavigateToHobby = onNavigateToHobby,
-                                                    onNavigateToUser = onNavigateToUser,
-                                                    onImageClick = { images, index ->
-                                                        if (images.isNotEmpty()) {
-                                                            imageViewer.show(images, index)
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                                2 -> UserResalePage(
-                                                    listState = resaleListState,
-                                                    uiState = uiState,
-                                                    minHeight = minPageHeight,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
+                                                .fillParentMaxHeight()
+                                                .fillMaxWidth()
+                                        ) {
+                                            val minPageHeight = maxHeight
+                                            HorizontalPager(
+                                                state = pagerState,
+                                                key = { it },
+                                                beyondViewportPageCount = 1,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .nestedScroll(nestedScrollConnection)
+                                            ) { page ->
+                                                when (page) {
+                                                    0 -> UserAlbumPage(
+                                                        listState = albumListState,
+                                                        uiState = uiState,
+                                                        columns = 2,
+                                                        minHeight = minPageHeight,
+                                                        onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                                        onNavigateToAlbum = onNavigateToAlbum,
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                    1 -> UserActionPage(
+                                                        listState = actionListState,
+                                                        uiState = uiState,
+                                                        minHeight = minPageHeight,
+                                                        onNavigateToAlbum = onNavigateToAlbum,
+                                                        onNavigateToHobby = onNavigateToHobby,
+                                                        onNavigateToUser = onNavigateToUser,
+                                                        onImageClick = { images, index ->
+                                                            if (images.isNotEmpty()) {
+                                                                imageViewer.show(images, index)
+                                                            }
+                                                        },
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                    2 -> UserResalePage(
+                                                        listState = resaleListState,
+                                                        uiState = uiState,
+                                                        minHeight = minPageHeight,
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
+
+                                UserRefreshFab(
+                                    onClick = onFabClick,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 16.dp, bottom = 16.dp)
+                                )
                             }
                         }
                     }
@@ -646,7 +696,7 @@ private fun UserAlbumPage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item(key = "album_sub_chips", contentType = "album_sub_chips") {
@@ -744,7 +794,7 @@ private fun UserActionPage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (uiState.actions.isEmpty()) {
@@ -822,7 +872,7 @@ private fun UserResalePage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 32.dp)
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item(key = "empty_resale", contentType = "empty_resale") {
             Box(
@@ -1626,6 +1676,24 @@ private fun UserContentTabs(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun UserRefreshFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = modifier
+    ) {
+        Icon(
+            painter = painterResource(PoiIcons.Filled.Refresh),
+            contentDescription = "刷新"
+        )
     }
 }
 
