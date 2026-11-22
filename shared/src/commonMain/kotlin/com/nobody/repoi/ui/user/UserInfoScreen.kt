@@ -226,7 +226,7 @@ fun UserInfoScreen(
                 val remainingVelocity = with(defaultFlingBehavior) {
                     performFling(initialVelocity)
                 }
-                if (remainingVelocity < -50f) {
+                if (remainingVelocity > 50f) {
                     val activeList = when (pagerState.currentPage) {
                         0 -> albumListState
                         1 -> actionListState
@@ -317,7 +317,7 @@ fun UserInfoScreen(
                     coroutineScope.launch {
                         outerListState.scroll {
                             with(outerFlingBehavior) {
-                                performFling(deltaY)
+                                performFling(-deltaY)
                             }
                         }
                     }
@@ -337,7 +337,7 @@ fun UserInfoScreen(
                         coroutineScope.launch {
                             outerListState.scroll {
                                 with(defaultFlingBehavior) {
-                                    performFling(deltaY)
+                                    performFling(-deltaY)
                                 }
                             }
                         }
