@@ -297,4 +297,30 @@ class UserRepositoryTest {
         assertEquals(500, (result.exceptionOrNull() as ApiException).code)
     }
 
+    @Test
+    fun getUserCollectAlbumList_success_mapsToAlbumListItems() = runTest {
+        val (mock, repository) = setup()
+        mock.route("api/collect/album-v2", """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":1001,"itemId":2001,"name":"收藏相册1","nameCN":"中文名1","cover":"cover1.jpg","praiseCount":42}]}}""")
+
+        val result = repository.getUserCollectAlbumList(userId = 88888L)
+        assertTrue(result.isSuccess)
+        val list = result.getOrThrow()
+        assertEquals(1, list.size)
+        assertEquals(1001L, list[0].targetAlbumId)
+        assertEquals("中文名1", list[0].displayName)
+        assertEquals("cover1.jpg", list[0].cover)
+    }
+
+    @Test
+    fun getUserGkdiyAlbumList_success_parsesAlbumsArray() = runTest {
+        val (mock, repository) = setup()
+        mock.route("api/album/get/gkdiy/list", """{"success":true,"code":200,"msg":"ok","data":{"albums":[{"id":3001,"name":"GK作品相册","cover":"gkdiy.jpg","praiseCount":88}]}}""")
+
+        val result = repository.getUserGkdiyAlbumList(userId = 88888L)
+        assertTrue(result.isSuccess)
+        val list = result.getOrThrow()
+        assertEquals(1, list.size)
+        assertEquals(3001L, list[0].targetAlbumId)
+        assertEquals("GK作品相册", list[0].displayName)
+    }
 }

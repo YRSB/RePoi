@@ -34,6 +34,7 @@ import com.nobody.repoi.data.remote.model.DiscussListPayload
 import com.nobody.repoi.data.remote.model.DiscussReplyListPayload
 import com.nobody.repoi.data.remote.model.FellowCountPayload
 import com.nobody.repoi.data.remote.model.FellowTypePayload
+import com.nobody.repoi.data.remote.model.GkdiyAlbumPayload
 import com.nobody.repoi.data.remote.model.HobbyAlbumPayload
 import com.nobody.repoi.data.remote.model.HobbyDetailPayload
 import com.nobody.repoi.data.remote.model.HobbyGroupPayload
@@ -644,6 +645,21 @@ class HpoiApi(
         parameter("type", type)
         parameter("order", order)
     }.unwrapDataOrNull<UserCollectAlbumPayload>(json, "获取用户相册列表失败")
+
+    suspend fun getUserGkdiyAlbumList(
+        userId: Long,
+        page: Int = 1,
+        pageSize: Int = 20,
+        order: String = "addTime",
+    ): GkdiyAlbumPayload? = client.post("api/album/get/gkdiy/list") {
+        setBody(formOf(
+            "userNId" to userId,
+            "userNodeId" to userId,
+            "page" to page,
+            "pageSize" to pageSize,
+            "order" to order
+        ))
+    }.unwrapDataOrNull<GkdiyAlbumPayload>(json, "获取用户作品相册失败")
 
     suspend fun getUserPicList(
         userNodeId: Long,

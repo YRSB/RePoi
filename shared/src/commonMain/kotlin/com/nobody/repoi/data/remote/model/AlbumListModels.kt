@@ -62,6 +62,15 @@ data class PraiseTopPayload(
     val list: List<AlbumListItem>? = null
 )
 
+@Serializable
+data class GkdiyAlbumPayload(
+    val albums: List<AlbumListItem>? = null,
+    val list: List<AlbumListItem>? = null
+) {
+    val items: List<AlbumListItem>
+        get() = albums ?: list ?: emptyList()
+}
+
 enum class AlbumOrder(val apiValue: String, val label: String) {
     Recommend("top", "推荐"),
     Latest("updTime", "最新"),

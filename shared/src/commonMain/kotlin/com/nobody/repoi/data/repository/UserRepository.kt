@@ -42,6 +42,23 @@ class UserRepository(
             ?.list?.map { it.toAlbumListItem() } ?: emptyList()
     }
 
+    suspend fun getUserCollectAlbumList(userId: Long, page: Int = 1, pageSize: Int = 20): Result<List<AlbumListItem>> = runCatching {
+        val params = mapOf(
+            "userId" to userId.toString(),
+            "userNodeId" to userId.toString(),
+            "type" to "fav",
+            "order" to "addTime",
+            "page" to page.toString(),
+            "limit" to pageSize.toString(),
+            "pageSize" to pageSize.toString()
+        )
+        api.getUserCollectAlbum(params)?.list?.map { it.toAlbumListItem() } ?: emptyList()
+    }
+
+    suspend fun getUserGkdiyAlbumList(userId: Long, page: Int = 1, pageSize: Int = 20): Result<List<AlbumListItem>> = runCatching {
+        api.getUserGkdiyAlbumList(userId = userId, page = page, pageSize = pageSize)?.items ?: emptyList()
+    }
+
     suspend fun getCheckInStatus(): Result<CheckInStatusPayload> = runCatching {
         api.getCheckInStatus() ?: CheckInStatusPayload()
     }
