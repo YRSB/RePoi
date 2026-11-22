@@ -60,6 +60,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -242,50 +244,100 @@ fun UserInfoScreen(
             when {
                 uiState.isLoading && uiState.profile == null -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "正在加载个人主页...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = "个人主页",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                        contentDescription = "返回",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
                         )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "正在加载个人主页...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
                 uiState.errorMessage != null && uiState.profile == null -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.Person),
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.outline
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = "个人主页",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                        contentDescription = "返回",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = uiState.errorMessage ?: "加载主页失败",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadProfile(userId) }) {
-                            Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "重新加载")
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Person),
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = uiState.errorMessage ?: "加载主页失败",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadProfile(userId) }) {
+                                Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "重新加载")
+                            }
                         }
                     }
                 }
@@ -400,130 +452,149 @@ fun UserInfoScreen(
                         }
                     } else {
 
-                        LazyColumn(
-                            state = outerListState,
+                        Column(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .widthIn(max = 720.dp)
-                                .fillMaxWidth(),
-                            contentPadding = PaddingValues(bottom = 32.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                .fillMaxWidth()
                         ) {
+                            UserCompactTopBar(
+                                profile = profile,
+                                isSelf = uiState.isSelf,
+                                onBack = onNavigateBack,
+                                onEdit = { viewModel.startEditing() },
+                                onRefresh = { viewModel.loadProfile(profile.id) },
+                                onAvatarClick = {
+                                    val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                    if (raw.isNotBlank()) imageViewer.show(raw)
+                                }
+                            )
 
-                            item(key = "banner", contentType = "banner") {
-                                UserProfileBanner(
-                                    profile = profile,
-                                    isSelf = uiState.isSelf,
-                                    onBack = onNavigateBack,
-                                    onEdit = { viewModel.startEditing() },
-                                    onRefresh = { viewModel.loadProfile(profile.id) },
-                                    onBannerClick = {
-                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
-                                        if (raw.isNotBlank()) imageViewer.show(raw)
-                                    }
-                                )
-                            }
+                            LazyColumn(
+                                state = outerListState,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentPadding = PaddingValues(bottom = 32.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
 
-                            item(key = "header_info", contentType = "header_info") {
-                                UserProfileHeader(
-                                    profile = profile,
-                                    uiState = uiState,
-                                    onAvatarClick = {
-                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                        if (raw.isNotBlank()) imageViewer.show(raw)
-                                    },
-                                    onNavigateToFriendList = { tab ->
-                                        onNavigateToFriendList(profile.id, tab)
-                                    },
-                                    onToggleFollow = { viewModel.toggleFollow() },
-                                    onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                    onNavigateToChat = onNavigateToChat
-                                )
-                            }
+                                item(key = "banner", contentType = "banner") {
+                                    UserProfileBanner(
+                                        profile = profile,
+                                        isSelf = uiState.isSelf,
+                                        onBack = onNavigateBack,
+                                        onEdit = { viewModel.startEditing() },
+                                        onRefresh = { viewModel.loadProfile(profile.id) },
+                                        onBannerClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        showNavigationActions = false
+                                    )
+                                }
 
-                            item(key = "order_stats", contentType = "order_stats") {
-                                UserOrderStatsCard(
-                                    profile = profile,
-                                    uiState = uiState,
-                                    onNavigateToCollect = onNavigateToCollect,
-                                    onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
-                                )
-                            }
+                                item(key = "header_info", contentType = "header_info") {
+                                    UserProfileHeader(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onAvatarClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        onNavigateToFriendList = { tab ->
+                                            onNavigateToFriendList(profile.id, tab)
+                                        },
+                                        onToggleFollow = { viewModel.toggleFollow() },
+                                        onToggleIntro = { viewModel.toggleIntroExpanded() },
+                                        onNavigateToChat = onNavigateToChat
+                                    )
+                                }
 
-                            item(key = "basic_info", contentType = "basic_info") {
-                                BasicProfileSection(
-                                    profile = profile,
-                                    onCopyUid = { uid ->
-                                        coroutineScope.launch {
-                                            clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
-                                            snackbarHostState.showSnackbar("UID 已复制")
-                                        }
-                                    }
-                                )
-                            }
+                                item(key = "order_stats", contentType = "order_stats") {
+                                    UserOrderStatsCard(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onNavigateToCollect = onNavigateToCollect,
+                                        onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
+                                    )
+                                }
 
-                            stickyHeader(key = "content_tabs", contentType = "content_tabs") {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surface,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    UserContentTabs(
-                                        selectedTab = pagerState.currentPage,
-                                        onSelectTab = { index ->
-                                            viewModel.selectTab(index)
+                                item(key = "basic_info", contentType = "basic_info") {
+                                    BasicProfileSection(
+                                        profile = profile,
+                                        onCopyUid = { uid ->
                                             coroutineScope.launch {
-                                                pagerState.animateScrollToPage(index)
+                                                clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
+                                                snackbarHostState.showSnackbar("UID 已复制")
                                             }
                                         }
                                     )
                                 }
-                            }
 
-                            item(key = "content_pager", contentType = "content_pager") {
-                                BoxWithConstraints(
-                                    modifier = Modifier
-                                        .fillParentMaxHeight()
-                                        .fillMaxWidth()
-                                ) {
-                                    val minPageHeight = maxHeight
-                                    HorizontalPager(
-                                        state = pagerState,
-                                        key = { it },
-                                        beyondViewportPageCount = 1,
+                                stickyHeader(key = "content_tabs", contentType = "content_tabs") {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        UserContentTabs(
+                                            selectedTab = pagerState.currentPage,
+                                            onSelectTab = { index ->
+                                                viewModel.selectTab(index)
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(index)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+
+                                item(key = "content_pager", contentType = "content_pager") {
+                                    BoxWithConstraints(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .nestedScroll(nestedScrollConnection)
-                                    ) { page ->
-                                        when (page) {
-                                            0 -> UserAlbumPage(
-                                                listState = albumListState,
-                                                uiState = uiState,
-                                                columns = 2,
-                                                minHeight = minPageHeight,
-                                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
-                                                onNavigateToAlbum = onNavigateToAlbum,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                            1 -> UserActionPage(
-                                                listState = actionListState,
-                                                uiState = uiState,
-                                                minHeight = minPageHeight,
-                                                onNavigateToAlbum = onNavigateToAlbum,
-                                                onNavigateToHobby = onNavigateToHobby,
-                                                onNavigateToUser = onNavigateToUser,
-                                                onImageClick = { images, index ->
-                                                    if (images.isNotEmpty()) {
-                                                        imageViewer.show(images, index)
-                                                    }
-                                                },
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                            2 -> UserResalePage(
-                                                listState = resaleListState,
-                                                uiState = uiState,
-                                                minHeight = minPageHeight,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
+                                            .fillParentMaxHeight()
+                                            .fillMaxWidth()
+                                    ) {
+                                        val minPageHeight = maxHeight
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            key = { it },
+                                            beyondViewportPageCount = 1,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .nestedScroll(nestedScrollConnection)
+                                        ) { page ->
+                                            when (page) {
+                                                0 -> UserAlbumPage(
+                                                    listState = albumListState,
+                                                    uiState = uiState,
+                                                    columns = 2,
+                                                    minHeight = minPageHeight,
+                                                    onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                                    onNavigateToAlbum = onNavigateToAlbum,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                                1 -> UserActionPage(
+                                                    listState = actionListState,
+                                                    uiState = uiState,
+                                                    minHeight = minPageHeight,
+                                                    onNavigateToAlbum = onNavigateToAlbum,
+                                                    onNavigateToHobby = onNavigateToHobby,
+                                                    onNavigateToUser = onNavigateToUser,
+                                                    onImageClick = { images, index ->
+                                                        if (images.isNotEmpty()) {
+                                                            imageViewer.show(images, index)
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                                2 -> UserResalePage(
+                                                    listState = resaleListState,
+                                                    uiState = uiState,
+                                                    minHeight = minPageHeight,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -828,6 +899,114 @@ private fun UserProfileIdentityPane(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UserCompactTopBar(
+    profile: UserProfile,
+    isSelf: Boolean,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onRefresh: () -> Unit,
+    onAvatarClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    val avatarUrl = MediaPipeline.Default.resolveUrl(
+                        profile.header,
+                        MediaCategory.AVATAR,
+                        ImagePurpose.CARD_STANDARD
+                    )
+                    if (avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalPlatformContext.current)
+                                .data(avatarUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "用户头像",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable { onAvatarClick() }
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Person),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(4.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = profile.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Lv.${profile.level}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                    contentDescription = "返回",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        actions = {
+            if (isSelf) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        painter = painterResource(PoiIcons.Filled.Edit),
+                        contentDescription = "编辑资料",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    painter = painterResource(PoiIcons.Filled.Refresh),
+                    contentDescription = "刷新",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = modifier
+    )
+}
+
 @Composable
 private fun UserProfileBanner(
     profile: UserProfile,
@@ -836,6 +1015,7 @@ private fun UserProfileBanner(
     onEdit: () -> Unit,
     onRefresh: () -> Unit,
     onBannerClick: () -> Unit,
+    showNavigationActions: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val bannerUrl = MediaPipeline.Default.resolveUrl(profile.bnr, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
@@ -843,7 +1023,7 @@ private fun UserProfileBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .height(if (showNavigationActions) 200.dp else 160.dp)
     ) {
 
         if (bannerUrl.isNotBlank()) {
@@ -873,73 +1053,75 @@ private fun UserProfileBanner(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.45f),
-                            Color.Transparent
+        if (showNavigationActions) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(84.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.45f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.35f),
-                modifier = Modifier.size(36.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                        contentDescription = "返回",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isSelf) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.35f),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        IconButton(onClick = onEdit) {
-                            Icon(
-                                painter = painterResource(PoiIcons.Filled.Edit),
-                                contentDescription = "编辑资料",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
                 Surface(
                     shape = CircleShape,
                     color = Color.Black.copy(alpha = 0.35f),
                     modifier = Modifier.size(36.dp)
                 ) {
-                    IconButton(onClick = onRefresh) {
+                    IconButton(onClick = onBack) {
                         Icon(
-                            painter = painterResource(PoiIcons.Filled.Refresh),
-                            contentDescription = "刷新",
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                            contentDescription = "返回",
                             tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isSelf) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.35f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            IconButton(onClick = onEdit) {
+                                Icon(
+                                    painter = painterResource(PoiIcons.Filled.Edit),
+                                    contentDescription = "编辑资料",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.35f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        IconButton(onClick = onRefresh) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Refresh),
+                                contentDescription = "刷新",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
