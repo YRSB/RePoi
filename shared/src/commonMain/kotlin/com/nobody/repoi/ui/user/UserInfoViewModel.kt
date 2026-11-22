@@ -312,6 +312,61 @@ class UserInfoViewModel(
         _uiState.update { it.copy(selectedTab = tab) }
         if (tab == 0 && _uiState.value.albums.isEmpty() && !_uiState.value.isAlbumLoading) {
             loadAlbumSubTab(_uiState.value.selectedAlbumSubTab)
+        } else if (tab == 1 && _uiState.value.actions.isEmpty() && !_uiState.value.isTabLoading) {
+            loadActions()
+        }
+    }
+
+    fun refreshActiveTab() {
+        val userNodeId = _uiState.value.profile?.id ?: initializedUserId ?: targetUserId
+        if (userNodeId <= 0L) return
+
+        when (_uiState.value.selectedTab) {
+            0 -> {
+                if (_uiState.value.isAlbumLoading) return
+                loadAlbumSubTab(_uiState.value.selectedAlbumSubTab, forceRefresh = true)
+            }
+            1 -> {
+                if (_uiState.value.isTabLoading) return
+                loadActions(forceRefresh = true)
+            }
+            2 -> {
+                _uiState.update { it.copy(isTabLoading = false) }
+            }
+        }
+    }
+
+    private fun loadActions(forceRefresh: Boolean = false) {
+        val userNodeId = _uiState.value.profile?.id ?: initializedUserId ?: targetUserId
+        if (userNodeId <= 0L) return
+
+        if (!forceRefresh && _uiState.value.actions.isNotEmpty()) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isTabLoading = true) }
+            val result = userRepository.getUserActionList(userNodeId, pageSize = 20)
+            val actionList = result.getOrDefault(emptyList())
+            val currentLatestAvatar = _uiState.value.profile?.header
+            val normalizedActions = if (!currentLatestAvatar.isNullOrBlank()) {
+                actionList.map { action ->
+                    val itemUser = action.user
+                    if (itemUser != null) {
+                        action.copy(user = itemUser.copy(header = currentLatestAvatar))
+                    } else {
+                        action
+                    }
+                }
+            } else {
+                actionList
+            }
+            _uiState.update {
+                it.copy(
+                    actions = normalizedActions,
+                    isTabLoading = false
+                )
+            }
         }
     }
 
