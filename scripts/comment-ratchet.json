@@ -1,0 +1,8 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": 1,
+  "description": "RePoi 代码注释禁令与棘轮基线（只降不升）。禁止新增注释；删除存量注释后更新此基线锁定战果。",
+  "max_comments": 4995,
+  "max_comment_lines": 11579,
+  "updated_at": "2026-11-22"
+}

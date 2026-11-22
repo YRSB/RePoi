@@ -392,8 +392,6 @@ class PictureGalleryViewModel(
         val picId = item.id
         currentRelatePicId = picId
         if (picId <= 0L) {
-            // TODO(原版对齐)：原版在图片 id 为 0 时改用 `path` 调 api/pic/relate。
-            // 当前收藏图片列表项均带 id，暂不扩展接口；出现 id=0 时展示空关联而不是发起无效请求。
             _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
             return
         }

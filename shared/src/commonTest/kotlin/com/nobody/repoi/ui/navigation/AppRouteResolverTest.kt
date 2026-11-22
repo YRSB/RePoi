@@ -21,7 +21,6 @@ import kotlin.test.assertIs
  */
 class AppRouteResolverTest {
 
-    // ── 1. 旧版分流器用例平移 ────────────────────────────────────────────
 
     @Test
     fun `resolveAction - company or vendor resolves to Vendor destination`() {

@@ -213,17 +213,6 @@ class UserHistoryViewModel(
         _uiState.update { it.copy(userMessage = null) }
     }
 
-    /**
-     * 封面加载失败回调：按条回源修复历史快照里的过期封面路径。
-     *
-     * 为什么需要它：`api/user/read/item/get` 返回的 `cover` 是写入历史那一刻的快照，服务端重新
-     * 落盘封面后旧路径必然 404；而详情接口每次都会给出当前真实封面。因此只在图片真的加载失败时
-     * 按条补一次，绝不整页刷新（N 条历史 = N 个详情请求的代价不可接受）。
-     *
-     * @param rowId 历史记录行主键（用于精确替换列表项）
-     * @param detailId 业务实体 ID（手办为 `itemId`，相册为 `albumId`）
-     * @param category 条目所属分类
-     */
     fun onCoverLoadFailed(rowId: Long, detailId: Long, category: UserHistoryCategory) {
         if (detailId <= 0L) return
         val entityType = category.toCoverEntityType()

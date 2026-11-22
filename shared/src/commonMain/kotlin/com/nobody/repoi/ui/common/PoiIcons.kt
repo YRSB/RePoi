@@ -168,7 +168,6 @@ object PoiIcons {
     val MoreVert: DrawableResource get() = Res.drawable.ic_ms_more_vert_rounded
     val SentimentSatisfied: DrawableResource get() = Res.drawable.ic_ms_sentiment_satisfied_rounded
 
-    // 兼容层：对齐旧代码中的 Icons.Filled / Icons.Outlined / Icons.AutoMirrored / Icons.Default
     object Filled {
         val AccountBox: DrawableResource get() = PoiIcons.AccountBox
         val Add: DrawableResource get() = PoiIcons.Add

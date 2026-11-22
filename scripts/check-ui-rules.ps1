@@ -53,16 +53,23 @@
 #                                  → CODING_STANDARDS.md §2 要求统一 viewModelOf(::XxxViewModel)；
 #                                    仅相对 main 新增的注册报错，基线存量豁免
 #
+#   [错误] NO-CODE-COMMENTS        代码中残留或新增注释（代码注释禁令与棘轮收敛）
+#                                  → 架构决策沉淀入 ADR、待办缺陷提 GitHub Issue，代码保持自解释。
+#                                    禁止在 Kotlin 源码中新增注释；存量注释遵循 scripts/comment-ratchet.json
+#                                    棘轮上限只降不升。
+#
 # 用法：
-#   pwsh -File scripts/check-ui-rules.ps1           # 检查全库（有 warning 仍返回 0）
-#   pwsh -File scripts/check-ui-rules.ps1 -Strict   # warning 也视为失败
-#   pwsh -File scripts/check-ui-rules.ps1 -Verbose  # 打印扫描规模与 warning 明细
+#   pwsh -File scripts/check-ui-rules.ps1                 # 检查全库（有 warning 仍返回 0）
+#   pwsh -File scripts/check-ui-rules.ps1 -Strict         # warning 也视为失败
+#   pwsh -File scripts/check-ui-rules.ps1 -Verbose        # 打印扫描规模与 warning 明细
+#   pwsh -File scripts/check-ui-rules.ps1 -UpdateRatchet  # 重新统计全库注释并刷新棘轮基线
 #
 # 退出码：0 = 无错误（可能有警告）；1 = 有错误（或 -Strict 下有警告）。
 
 param(
     [switch]$Verbose,
-    [switch]$Strict
+    [switch]$Strict,
+    [switch]$UpdateRatchet
 )
 
 $ErrorActionPreference = 'Stop'
@@ -470,6 +477,124 @@ foreach ($diFile in $diFiles) {
             File = $diFile; Line = $reg.Line; Tag = 'KOIN-VIEWMODEL-OF'
             Text = "viewModel { $($reg.Name)(get(), ...) }  ── 新增显式 get() 注册"
             Hint = "改用 viewModelOf(::$($reg.Name))；仅当需要 named 限定符或显式参数顺序时保留显式注册"
+        }
+    }
+}
+
+# ---------------------------------------------------------------- 规则 11：代码注释禁令与棘轮收敛 (NO-CODE-COMMENTS)
+# 背景：代码注释往往掩盖不良设计或沦为过时谎言；架构决策沉淀入 ADR、待办缺陷提 GitHub Issue，
+#       代码本身保持自解释。全库禁止在 Kotlin 源文件中新增注释，存量注释实行棘轮上限控制，只降不升。
+# 判据：
+#   1. 增量检查（相对 main/baseRef）：改动的 .kt 源文件内不允许包含新增注释行（//、/*、/**）
+#   2. 全量棘轮：全库注释总数与总行数不得超过 scripts/comment-ratchet.json 基线
+
+$ratchetFile = Join-Path $root 'scripts/comment-ratchet.json'
+function Get-KotlinCommentStats {
+    $ktFiles = git ls-files --cached --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt'
+    $totalLines = 0
+    $totalCount = 0
+    foreach ($f in $ktFiles) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        if ($f -like '*zzprobe*') { continue }
+        $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $f))
+        $inBlock = $false
+        foreach ($line in $lines) {
+            $t = $line.Trim()
+            if ($inBlock) {
+                $totalLines++
+                if ($t.Contains('*/')) { $inBlock = $false }
+            } elseif ($t.StartsWith('//')) {
+                $totalLines++
+                $totalCount++
+            } elseif ($t.StartsWith('/*')) {
+                $totalLines++
+                $totalCount++
+                if (-not $t.Contains('*/')) { $inBlock = $true }
+            }
+        }
+    }
+    return @{ Count = $totalCount; Lines = $totalLines }
+}
+
+if ($UpdateRatchet) {
+    $stats = Get-KotlinCommentStats
+    $ratchetObj = [ordered]@{
+        '$schema' = 'http://json-schema.org/draft-07/schema#'
+        version = 1
+        description = 'RePoi 代码注释禁令与棘轮基线（只降不升）。禁止新增注释；删除存量注释后更新此基线锁定战果。'
+        max_comments = $stats.Count
+        max_comment_lines = $stats.Lines
+        updated_at = (Get-Date -Format 'yyyy-MM-dd')
+    }
+    $json = ConvertTo-Json -InputObject $ratchetObj -Depth 5
+    [System.IO.File]::WriteAllText((Resolve-Path -LiteralPath $ratchetFile), "$json`n", [System.Text.Encoding]::UTF8)
+    Write-Host "已更新注释棘轮基线：$($stats.Count) 条注释, $($stats.Lines) 行注释" -ForegroundColor Green
+    Set-Location $PushDir
+    exit 0
+}
+
+# 1. 增量检查（改动文件新增注释拦截）
+if ($baseRef) {
+    $changedKt = @(git diff --name-only --diff-filter=ACMR "$baseRef...HEAD" -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    $changedKt += @(git diff --name-only --diff-filter=ACMR -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    $untrackedKt = @(git ls-files --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    $allChangedKt = @($changedKt) + @($untrackedKt) | Sort-Object -Unique
+
+    foreach ($file in $allChangedKt) {
+        if (-not (Test-Path -LiteralPath $file)) { continue }
+        if ($file -in $untrackedKt) {
+            $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $file))
+            for ($idx = 0; $idx -lt $lines.Count; $idx++) {
+                $t = $lines[$idx].Trim()
+                if ($t.StartsWith('//') -or $t.StartsWith('/*') -or $t.StartsWith('/**')) {
+                    $errors += [pscustomobject]@{
+                        File = $file; Line = $idx + 1; Tag = 'NO-CODE-COMMENTS'
+                        Text = "新增代码注释: $t"
+                        Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
+                    }
+                }
+            }
+        } else {
+            $diffLines = @()
+            if ($baseRef) {
+                $diffLines = @(git diff -U0 "$baseRef...HEAD" -- $file)
+            }
+            $diffLines += @(git diff -U0 -- $file)
+            $curLine = 1
+            foreach ($dLine in $diffLines) {
+                if ($dLine -match '^\@\@ -\d+(?:,\d+)? \+(\d+)') {
+                    $curLine = [int]$matches[1]
+                    continue
+                }
+                if ($dLine.StartsWith('+') -and -not $dLine.StartsWith('+++')) {
+                    $added = $dLine.Substring(1).Trim()
+                    if ($added.StartsWith('//') -or $added.StartsWith('/*') -or $added.StartsWith('/**')) {
+                        $errors += [pscustomobject]@{
+                            File = $file; Line = $curLine; Tag = 'NO-CODE-COMMENTS'
+                            Text = "新增代码注释: $added"
+                            Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
+                        }
+                    }
+                    $curLine++
+                }
+            }
+        }
+    }
+}
+
+# 2. 全量棘轮检查
+if (Test-Path -LiteralPath $ratchetFile) {
+    $baseline = Get-Content -LiteralPath $ratchetFile -Raw | ConvertFrom-Json
+    $stats = Get-KotlinCommentStats
+    if ($stats.Lines -gt $baseline.max_comment_lines -or $stats.Count -gt $baseline.max_comments) {
+        $errors += [pscustomobject]@{
+            File = $ratchetFile; Line = 0; Tag = 'NO-CODE-COMMENTS'
+            Text = "全库注释总量 ($($stats.Count) 条 / $($stats.Lines) 行) 超出棘轮基线 ($($baseline.max_comments) 条 / $($baseline.max_comment_lines) 行)"
+            Hint = "存量注释遵循棘轮收敛机制只降不升；若删除了注释，请运行 pwsh -File scripts/check-ui-rules.ps1 -UpdateRatchet 锁定新基线"
+        }
+    } elseif ($stats.Lines -lt $baseline.max_comment_lines -or $stats.Count -lt $baseline.max_comments) {
+        if ($Verbose) {
+            Write-Host "  棘轮进步：全库注释由 $($baseline.max_comments) 条 ($($baseline.max_comment_lines) 行) 下降至 $($stats.Count) 条 ($($stats.Lines) 行)！" -ForegroundColor Green
         }
     }
 }

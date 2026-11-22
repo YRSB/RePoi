@@ -128,7 +128,6 @@ object HtmlRichTextParser {
         data class Link(val url: String) : SegKind
     }
 
-    // 上方 Kind 枚举为历史占位，实际使用 SegKind；保留以最小化行数变更。
     private fun tokenize(html: String): List<Segment> {
         val out = mutableListOf<Segment>()
         var bold = 0; var italic = 0; var underline = 0; var strike = 0

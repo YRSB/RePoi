@@ -298,6 +298,36 @@ val probeModule = module {
     viewModel { ProbeViewModel(get(), get(named("download"))) }
 }
 '@ 0
+
+function Run-CommentCase {
+    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
+    if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+    $f = Join-Path $probeDir 'CommentProbe.kt'
+    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
+    $out = & pwsh -File $script 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $errCount = ([regex]::Matches($out, '\[NO-CODE-COMMENTS\] [^:]*zzprobe')).Count
+    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
+    $status = if ($ok) { 'PASS' } else { 'FAIL' }
+    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
+    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+    if (-not $ok) { Write-Host $out }
+}
+
+Run-CommentCase '28 新增行注释（应报错误）' @'
+package com.nobody.repoi.ui.zzprobe
+
+// 新增注释应被拦截
+fun cleanCode(): Int = 42
+'@ 1
+
+Run-CommentCase '29 纯洁自解释代码（不应报）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun cleanCode(): Int = 42
+'@ 0
+
 if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
 if (Test-Path $dataProbeDir) { Remove-Item $dataProbeDir -Recurse -Force }
 if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }

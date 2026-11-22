@@ -31,47 +31,6 @@ import com.nobody.repoi.ui.zone.components.ZonePinnedPostsBar
 import com.nobody.repoi.ui.zone.components.ZonePostCard
 import com.nobody.repoi.ui.zone.components.ZoneResaleCard
 
-/**
- * 板块共享面板：首页与专区详情共用的「唯一内容渲染入口」。
- *
- * 已实现 [ZoneBoard.Action]（动态）、[ZoneBoard.Album]（分享/相册，#157）、[ZoneBoard.Posts]
- * （讨论，#158）、[ZoneBoard.Hobby]（产品，#159）、[ZoneBoard.Resale]（二手，#160）与实体 5 类
- * （厂商/系列/作品/角色/人物，共用 `api/zone/items`，#161）分支——覆盖客户端白名单全部 10 类，
- * 因此**没有「建设中」兜底分支**（白名单外类型在能力矩阵已被丢弃，ADR-0022 决策 6「不做假入口」）。
- * 空态 / 错误态统一使用 [com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder] /
- * [com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder]（卡片式，§3.6），与首页同一基元。
- *
- * 硬约束（后续改动请勿破坏，否则首页/详情会再次漂移）：
- * 1. 本组件**不包** `Scaffold` / `TopAppBar` / `PullToRefreshBox` / `FAB` / `TabRow`，不持有 header 高度；
- *    内容边距只通过 [contentPadding] 由宿主注入（详情 = `totalHeaderHeightDp + 8dp` / 底部安全区；
- *    首页 = 顶栏 + 二级 TabRow + 筛选行 / 底部栏）。
- * 2. 本组件**不注入**仓储 / 偏好 / `LocalAppMessages`；一切交互经 [onIntent] 与 [itemActions]。
- * 3. 内部只允许存在**一个** `LazyVerticalStaggeredGrid`；[gridState] 由宿主持有并传入（切换板块时
- *    复用同一滚动状态），本组件不新建状态。
- * 4. 列表项 `key` / `contentType` 必须原样保留（动态为 `contentType = "feed_action"`、
- *    分享为 `contentType = "album_feed"`、讨论为 `contentType = "zone_post"`、二手为
- *    `contentType = "zone_resale"`、产品为 `hobby_grid` / `hobby_list`、实体为
- *    `contentType = "zone_entity_<type>"`），不得在 pane 内去重或重算游标，`hasMore` 由宿主
- *    投影进 [ZoneBoardPageView]。
- * 5. 内部用 `when(board)` 分派而不是泛型化，保留各板块类型安全；迁移新板块时在此加分支并在
- *    [ZoneBoardContent] / [ZoneBoardFilters] / [ZoneBoardIntent] 补对应字段与分支。
- * 6. 产品板块的两个弹层（高级筛选 / 分类级联）**不在本面板内**：面板只在其「有内容」时存在，
- *    而首页在空/错/加载态用卡片或加载视图顶替面板，弹层若挂在面板内会让筛选入口在空结果时点击无响应
- *    （并因显隐标志残留导致后续自行弹出）。宿主须在四态之外无条件组合 [ZoneBoardHobbySheets]（见 #159）。
- * 7. 六个板块的空/错/加载页脚骨架统一收在 [BoardGridContainer]（#150 审查 B6），
- *    避免新增板块时再复制一份「错误卡片 + 空卡片 + 分页页脚」。
- *
- * @param board 当前板块
- * @param content 当前板块内容快照
- * @param gridState 宿主持有的瀑布流滚动状态
- * @param contentPadding 宿主注入的内容边距
- * @param onIntent 板块单向意图分发
- * @param itemActions 条目点击 / 图片浏览动作
- * @param columns 宿主算好的列数策略（产品与相册按各自规则在面板内计算，不使用该参数）
- * @param showPinnedPosts 讨论板块是否渲染置顶帖条：单专区 true、聚合态（全部）必须 false
- *   （置顶是单专区语义；关注聚合已由 `homeBoardsFor` 隐藏整个讨论板块）
- * @param modifier 宿主修饰符（通常 `Modifier.fillMaxSize()`）
- */
 @Composable
 fun ZoneBoardPane(
     board: ZoneBoard,

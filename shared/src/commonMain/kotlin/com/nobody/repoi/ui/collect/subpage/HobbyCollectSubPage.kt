@@ -231,8 +231,6 @@ internal fun HobbyCollectSubPage(
         GridCells.Adaptive(minSize = 120.dp)
     }
 
-    // subCategoryId / selectedTag 已在 ViewModel 归一化（「全部」与空白标签恒为 null），
-    // 此处只判断「是否有筛选」，不再需要单独排除 10000 那种双表示。
     val hasFilter = uiState.subCategoryId != null || uiState.selectedTag != null
 
     var showCancelConfirm by remember { mutableStateOf(false) }

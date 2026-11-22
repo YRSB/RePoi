@@ -39,6 +39,8 @@
 | [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 通过 DataStore 持久化已消费代数游标并结合 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳 (Accepted) - 2026-11-18 |
 | [ADR-0026](0026-post-write-server-count-baseline.md) | 写后按服务端计数重置详情页基线与乐观增量归零 | **收藏/计数对齐/乐观增量**：服务端 collectCount 为唯一真相源、快照池带单调 revision 广播、编辑页写侧手动刷新接缝、六个 toggle 页面就地重置 | 已采纳 (Accepted) - 2026-11-19 |
 | [ADR-0027](0027-comment-reply-dialog-topology-and-keyboard-mutex.md) | 评论回复面板纵向拓扑重构与软键盘表情互斥联动 | **评论/回复面板/拓扑/软键盘互斥**：输入框自适应单/双行（44dp~120dp）、操作工具栏提升至表情面板上方、软键盘与表情面板严格互斥互换、固定 240dp 表情容器防抖、分级返回拦截 | 已采纳 (Accepted) - 2026-11-19 |
+| [ADR-0028](0028-zone-board-pane-host-isolation-and-render-invariants.md) | 专区与首页板块共享面板 (ZoneBoardPane) 宿主隔离与渲染不变式架构 | **UI/板块面板/宿主隔离/不变式**：纯渲染契约无嵌套Scaffold、宿主contentPadding注入、单StaggeredGrid与外部滚动状态复用、严格when分发、筛选弹层外置隔离 | 已采纳 (Accepted) - 2026-11-22 |
+| [ADR-0029](0029-history-snapshot-reactive-cover-repair.md) | 历史记录快照过期封面按需响应式自愈架构 | **历史记录/图片自愈/防N+1风暴**：按条失败响应式回源修复、精确rowId单条替换、规避整页详情N+1请求风暴、保持首屏零额外开销 | 已采纳 (Accepted) - 2026-11-22 |
 
 
 

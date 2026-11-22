@@ -98,8 +98,6 @@ class ZoneQueryScopeTest {
 
     @Test
     fun zoneParams_areScopeSpecific() {
-        // 数据层只下发 `zones` / `zoneNodeId` 两类 zone 参数；`homeScope` 派生已删除
-        // （当前产品关注态隐藏，生产代码不再下发该参数），避免保留无调用点的假 API。
         assertNull(ZoneQueryScope.All.zonesParam())
         assertEquals("123", ZoneQueryScope.Single(123L).zonesParam())
 
