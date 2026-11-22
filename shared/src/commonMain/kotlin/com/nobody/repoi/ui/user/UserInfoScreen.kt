@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.user
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -9,6 +10,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -29,11 +33,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -98,6 +104,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
@@ -211,7 +218,37 @@ fun UserInfoScreen(
         }
     }
 
-    val nestedScrollConnection = remember(outerListState, pagerState, albumListState, actionListState, resaleListState) {
+    val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
+
+    val outerFlingBehavior: FlingBehavior = remember(defaultFlingBehavior, outerListState, pagerState, albumListState, actionListState, resaleListState, coroutineScope) {
+        object : FlingBehavior {
+            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                val remainingVelocity = with(defaultFlingBehavior) {
+                    performFling(initialVelocity)
+                }
+                if (remainingVelocity < -50f) {
+                    val activeList = when (pagerState.currentPage) {
+                        0 -> albumListState
+                        1 -> actionListState
+                        2 -> resaleListState
+                        else -> null
+                    }
+                    activeList?.let { targetList ->
+                        coroutineScope.launch {
+                            targetList.scroll {
+                                with(defaultFlingBehavior) {
+                                    performFling(remainingVelocity)
+                                }
+                            }
+                        }
+                    }
+                }
+                return remainingVelocity
+            }
+        }
+    }
+
+    val nestedScrollConnection = remember(outerListState, pagerState, albumListState, actionListState, resaleListState, outerFlingBehavior, defaultFlingBehavior, coroutineScope) {
         object : NestedScrollConnection {
             private fun currentChildCanScrollBackward(): Boolean {
                 val activeListState = when (pagerState.currentPage) {
@@ -267,6 +304,48 @@ fun UserInfoScreen(
                 }
                 return Offset.Zero
             }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val deltaY = available.y
+                val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
+                val canScrollOuter = if (tabsItem != null) {
+                    tabsItem.offset > 0
+                } else {
+                    outerListState.firstVisibleItemIndex < OUTER_HEADER_ITEM_COUNT
+                }
+                if (deltaY < 0 && canScrollOuter) {
+                    coroutineScope.launch {
+                        outerListState.scroll {
+                            with(outerFlingBehavior) {
+                                performFling(deltaY)
+                            }
+                        }
+                    }
+                    return available
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(
+                consumed: Velocity,
+                available: Velocity
+            ): Velocity {
+                val deltaY = available.y
+                if (deltaY > 0) {
+                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
+                    if (canScrollOuter) {
+                        coroutineScope.launch {
+                            outerListState.scroll {
+                                with(defaultFlingBehavior) {
+                                    performFling(deltaY)
+                                }
+                            }
+                        }
+                        return Velocity(0f, deltaY)
+                    }
+                }
+                return Velocity.Zero
+            }
         }
     }
 
@@ -280,6 +359,12 @@ fun UserInfoScreen(
             }
         }
     }
+
+    val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val tabRowTopPadding by animateDpAsState(
+        targetValue = if (isTabsSticky) statusBarTopPadding else 0.dp,
+        label = "tabRowTopPadding"
+    )
 
     LaunchedEffect(userId) {
         viewModel.initUserId(userId)
@@ -473,6 +558,7 @@ fun UserInfoScreen(
                         ) {
                             LazyColumn(
                                 state = outerListState,
+                                flingBehavior = outerFlingBehavior,
                                 modifier = Modifier.fillMaxSize()
                             ) {
 
@@ -539,7 +625,8 @@ fun UserInfoScreen(
                                     ) {
                                         UserContentTabs(
                                             selectedTab = pagerState.currentPage,
-                                            onSelectTab = handleTabClick
+                                            onSelectTab = handleTabClick,
+                                            modifier = Modifier.padding(top = tabRowTopPadding)
                                         )
                                     }
                                 }
