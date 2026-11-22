@@ -59,6 +59,7 @@ fun CommentDetailScreen(
     navParam: CommentDetailNavParam,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onUrlClick: ((String) -> Unit)? = null,
     viewModel: CommentDetailViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -234,7 +235,8 @@ fun CommentDetailScreen(
                                     },
                                     onDeleteComment = { val ok = viewModel.deleteHeaderComment(); if (ok) onBack(); ok },
                                     onLoadStickerPacks = { viewModel.loadStickerPacks() },
-                                    onViewAllReplies = null
+                                    onViewAllReplies = null,
+                                    onUrlClick = onUrlClick
                                 )
                             )
                         }
@@ -261,7 +263,8 @@ fun CommentDetailScreen(
                                 isDark = isDark,
                                 onReplyClick = { viewModel.openReplyDialog(it) },
                                 currentUserId = commentUserId,
-                                onDeleteReply = { viewModel.deleteDetailReply(it) }
+                                onDeleteReply = { viewModel.deleteDetailReply(it) },
+                                onUrlClick = onUrlClick
                             )
                         }
                     }

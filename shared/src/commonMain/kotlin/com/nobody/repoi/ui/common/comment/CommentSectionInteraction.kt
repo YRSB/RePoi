@@ -30,5 +30,6 @@ data class CommentSectionInteraction(
     val onAddComment: (suspend (content: String, stickers: List<String>) -> Boolean)? = null,
     val onLoadStickerPacks: (suspend () -> List<StickerPackData>)? = null,
     val onRequestReply: ((comment: CommentItem, target: CommentReplyItem?) -> Unit)? = null,
-    val onRequestDeleteComment: ((comment: CommentItem) -> Unit)? = null
+    val onRequestDeleteComment: ((comment: CommentItem) -> Unit)? = null,
+    val onUrlClick: ((String) -> Unit)? = null
 )

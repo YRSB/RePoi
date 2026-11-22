@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -88,5 +89,99 @@ class HtmlRichTextParserTest {
     @Test
     fun parse_nbsp_keptAsNonBreakingSpace() {
         assertEquals("甲\u00A0\u00A0乙", HtmlRichTextParser.parse("甲&nbsp;&nbsp;乙").text)
+    }
+
+    @Test
+    fun parse_escapedUserLink_createsClickableLinkAnnotation() {
+        val html = "&lt;a href=\"/user/224213\"&gt;@小猫咪能有什么坏心眼&lt;/a&gt; 支持一下"
+        var clickedUrl: String? = null
+        val annotated = HtmlRichTextParser.parse(
+            html = html,
+            linkColor = Color.Blue,
+            onLinkClick = { clickedUrl = it }
+        )
+        assertEquals("@小猫咪能有什么坏心眼 支持一下", annotated.text)
+
+        val linkAnnotations = annotated.getLinkAnnotations(0, annotated.length)
+        assertEquals(1, linkAnnotations.size)
+        val range = linkAnnotations.first()
+        val link = range.item
+        assertTrue(link is LinkAnnotation.Clickable)
+        assertEquals("https://www.hpoi.net/user/224213", link.tag)
+        assertEquals("@小猫咪能有什么坏心眼", annotated.text.substring(range.start, range.end))
+
+        link.linkInteractionListener?.onClick(link)
+        assertEquals("https://www.hpoi.net/user/224213", clickedUrl)
+    }
+
+    @Test
+    fun parse_escapedUserLinkWithQuotEntities_createsClickableLinkAnnotation() {
+        val html = "&lt;a href=&quot;/user/224213&quot;&gt;@小猫咪能有什么坏心眼&lt;/a&gt; 点赞"
+        var clickedUrl: String? = null
+        val annotated = HtmlRichTextParser.parse(
+            html = html,
+            linkColor = Color.Blue,
+            onLinkClick = { clickedUrl = it }
+        )
+        assertEquals("@小猫咪能有什么坏心眼 点赞", annotated.text)
+
+        val linkAnnotations = annotated.getLinkAnnotations(0, annotated.length)
+        assertEquals(1, linkAnnotations.size)
+        val link = linkAnnotations.first().item
+        assertTrue(link is LinkAnnotation.Clickable)
+        assertEquals("https://www.hpoi.net/user/224213", link.tag)
+
+        link.linkInteractionListener?.onClick(link)
+        assertEquals("https://www.hpoi.net/user/224213", clickedUrl)
+    }
+
+    @Test
+    fun parse_hyperlink_defaultsToNoUnderline() {
+        val html = "<a href=\"/user/10235\">@笑容不是为我</a>"
+        val annotated = HtmlRichTextParser.parse(html)
+        val link = annotated.getLinkAnnotations(0, annotated.length).first().item
+        val styles = when (link) {
+            is LinkAnnotation.Url -> link.styles?.style
+            is LinkAnnotation.Clickable -> link.styles?.style
+            else -> null
+        }
+        assertEquals(TextDecoration.None, styles?.textDecoration)
+    }
+
+    @Test
+    fun parse_hyperlink_allowsCustomUnderline() {
+        val html = "<a href=\"/user/10235\">@笑容不是为我</a>"
+        val annotated = HtmlRichTextParser.parse(html, linkUnderline = true)
+        val link = annotated.getLinkAnnotations(0, annotated.length).first().item
+        val styles = when (link) {
+            is LinkAnnotation.Url -> link.styles?.style
+            is LinkAnnotation.Clickable -> link.styles?.style
+            else -> null
+        }
+        assertEquals(TextDecoration.Underline, styles?.textDecoration)
+    }
+
+    @Test
+    fun parse_userLinkWithAttributesAndSingleQuotes_stripsHtmlAndCreatesClickableAnnotation() {
+        val html = "<a href='user/10235' target='_blank' class='user-link'>@笑容不是为我</a> 你看。你差这个凑齐三环神"
+        var clickedUrl: String? = null
+        val annotated = HtmlRichTextParser.parse(
+            html = html,
+            linkColor = Color.Blue,
+            onLinkClick = { clickedUrl = it }
+        )
+        assertEquals("@笑容不是为我 你看。你差这个凑齐三环神", annotated.text)
+
+        val linkAnnotations = annotated.getLinkAnnotations(0, annotated.length)
+        assertEquals(1, linkAnnotations.size)
+        val range = linkAnnotations.first()
+        val link = range.item
+        assertTrue(link is LinkAnnotation.Clickable)
+        assertEquals("https://www.hpoi.net/user/10235", link.tag)
+        assertEquals("@笑容不是为我", annotated.text.substring(range.start, range.end))
+        assertEquals(TextDecoration.None, link.styles?.style?.textDecoration)
+
+        link.linkInteractionListener?.onClick(link)
+        assertEquals("https://www.hpoi.net/user/10235", clickedUrl)
     }
 }

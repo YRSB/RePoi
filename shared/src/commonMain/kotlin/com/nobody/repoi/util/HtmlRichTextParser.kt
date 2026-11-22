@@ -25,10 +25,18 @@ object HtmlRichTextParser {
         html: String?,
         linkColor: Color = Color(0xFF1E88E5),
         onLinkClick: ((String) -> Unit)? = null,
+        linkUnderline: Boolean = false,
     ): AnnotatedString {
         if (html.isNullOrBlank()) return AnnotatedString("")
-        // 统一预处理：双换行折叠（与原版一致）
-        val prepared = html.replace(Regex("(?i)<br\\s*/?>\\s*<br\\s*/?>"), "<br/>")
+        // 统一预处理：
+        // 1. 还原服务端返回的转义 HTML 标签（如 &lt;a href="..."&gt;、&lt;/a&gt;、&lt;br/&gt;），并解码标签属性中的实体引号
+        // 2. 双换行折叠（与原版一致）
+        val prepared = html
+            .replace(Regex("(?i)&lt;(/?[a-z][a-z0-9]*(?:\\s+.*?|/?)?)&gt;")) { match ->
+                val tagContent = match.groupValues[1].replace("&quot;", "\"").replace("&apos;", "'")
+                "<$tagContent>"
+            }
+            .replace(Regex("(?i)<br\\s*/?>\\s*<br\\s*/?>"), "<br/>")
 
         val segments = tokenize(prepared)
         val rawText = buildString { segments.forEach { append(it.text) } }.trimEnd()
@@ -60,7 +68,7 @@ object HtmlRichTextParser {
                             val linkStyles = TextLinkStyles(
                                 style = SpanStyle(
                                     color = linkColor,
-                                    textDecoration = TextDecoration.Underline,
+                                    textDecoration = if (linkUnderline) TextDecoration.Underline else TextDecoration.None,
                                     fontWeight = FontWeight.Medium,
                                 ),
                             )
@@ -270,8 +278,9 @@ object HtmlRichTextParser {
     }
 
     private fun parseHref(attrs: String): String? {
-        val m = Regex("""(?i)href\s*=\s*["']?([^"'\s>]+)["']?""").find(attrs) ?: return null
-        return m.groupValues[1].takeIf { it.isNotBlank() }
+        val cleanAttrs = attrs.replace("&quot;", "\"").replace("&apos;", "'")
+        val m = Regex("""(?i)href\s*=\s*["']?([^"'\s>]+)["']?""").find(cleanAttrs) ?: return null
+        return m.groupValues[1].replace("&amp;", "&").trim('"', '\'').takeIf { it.isNotBlank() }
     }
 
     private fun parseCssColor(raw: String): Color? {

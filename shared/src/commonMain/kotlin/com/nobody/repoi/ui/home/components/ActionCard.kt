@@ -36,6 +36,7 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +55,7 @@ import com.nobody.repoi.ui.theme.FormFactorPreviews
 import com.nobody.repoi.ui.theme.PoiShelfTheme
 import com.nobody.repoi.util.FeedMediaResolver
 import com.nobody.repoi.util.FeedContentResolver
+import com.nobody.repoi.util.HtmlRichTextParser
 import com.nobody.repoi.util.resolveMediaDisplayInfo
 import com.nobody.repoi.platform.DateTimeFormats
 import com.nobody.repoi.platform.nowMillis
@@ -72,7 +74,8 @@ fun ActionCard(
     modifier: Modifier = Modifier,
     fallbackAvatarUrl: String? = null,
     onActionClick: ((ActionItem) -> Unit)? = null,
-    onImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null
+    onImageClick: ((imageUrls: List<String>, initialIndex: Int) -> Unit)? = null,
+    onUrlClick: ((String) -> Unit)? = null
 ) {
     val relateItem = actionItem.relateItem
     val mediaInfo = remember(actionItem) { actionItem.resolveMediaDisplayInfo() }
@@ -90,9 +93,24 @@ fun ActionCard(
     val isTrade = FeedContentResolver.isTradeAction(actionItem)
     val mainComment = remember(actionItem) { FeedContentResolver.resolveMainComment(actionItem) }
 
+    val uriHandler = LocalUriHandler.current
+    val effectiveUrlClick: (String) -> Unit = onUrlClick ?: { url -> uriHandler.openUri(url) }
+    val linkColor = MaterialTheme.colorScheme.primary
+    val parsedMainComment = remember(mainComment, linkColor, effectiveUrlClick) {
+        if (mainComment.isNullOrBlank()) null
+        else HtmlRichTextParser.parse(
+            html = mainComment,
+            linkColor = linkColor,
+            onLinkClick = effectiveUrlClick
+        )
+    }
+
     val figureName = relateItem?.nameCN?.ifBlank { null } ?: relateItem?.name
-    val isCommentSameAsFigure = isOfficialNotice && !mainComment.isNullOrBlank() && !figureName.isNullOrBlank() &&
-        (mainComment.equals(figureName, ignoreCase = true) || mainComment.equals(relateItem?.name, ignoreCase = true) || mainComment.equals(relateItem?.nameCN, ignoreCase = true))
+    val parsedText = parsedMainComment?.text
+    val isCommentSameAsFigure = isOfficialNotice && !parsedText.isNullOrBlank() && !figureName.isNullOrBlank() &&
+        (parsedText.equals(figureName, ignoreCase = true) ||
+            parsedText.equals(relateItem?.name, ignoreCase = true) ||
+            parsedText.equals(relateItem?.nameCN, ignoreCase = true))
 
     // 左侧海报槽位分类分流（ADR-0016 / ADR-0021）：
     // - 相册传图类：宽 96dp，高度完全随实拍照片比例撑开、不设上限，顶部对齐；
@@ -273,9 +291,9 @@ fun ActionCard(
                             }
                         }
                     } else {
-                        if (!mainComment.isNullOrBlank() && !isCommentSameAsFigure) {
+                        if (parsedMainComment != null && parsedMainComment.text.isNotBlank() && !isCommentSameAsFigure) {
                             Text(
-                                text = mainComment,
+                                text = parsedMainComment,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.onSurface,
