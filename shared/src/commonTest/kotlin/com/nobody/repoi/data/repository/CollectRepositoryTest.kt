@@ -202,6 +202,38 @@ class CollectRepositoryTest {
     }
 
     @Test
+    fun getPictureRelate_withPathWhenPicIdZero_postsPathParameter() = runTest {
+        val (mock, repository) = setup()
+        mock.enqueue(
+            """
+            {"success":true,"code":200,"msg":"ok","data":{"list":[
+                {"relateItem":{"id":1,"itemId":11,"itemType":"album","name":"Album","categoryId":70000}}
+            ]}}
+            """.trimIndent()
+        )
+
+        val items = repository.getPictureRelate(picId = 0L, path = "files/pic/2023.jpg").getOrThrow()
+
+        assertEquals(1, items.size)
+        assertEquals("album", items[0].itemType)
+
+        val recorded = mock.takeRequest()
+        assertEquals("POST", recorded.method)
+        assertEquals("files/pic/2023.jpg", recorded.formEntries()["path"])
+        assertNull(recorded.formEntries()["picId"])
+    }
+
+    @Test
+    fun getPictureRelate_withoutIdAndPath_returnsEmptyWithoutNetwork() = runTest {
+        val (mock, repository) = setup()
+
+        val items = repository.getPictureRelate(picId = 0L, path = "").getOrThrow()
+
+        assertTrue(items.isEmpty())
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
     fun submitReport_postsOriginalFieldNamesObjIdUserReasonAndType() = runTest {
         val (mock, repository) = setup()
         mock.enqueue("""{"success":true,"code":200,"msg":"举报已提交","data":{}}""")

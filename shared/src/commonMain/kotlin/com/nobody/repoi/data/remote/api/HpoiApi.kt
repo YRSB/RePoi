@@ -829,10 +829,24 @@ class HpoiApi(
         setBody(formOf("itemType" to itemType, "itemId" to itemId))
     }.unwrapUnit(json, "取消作品收藏失败")
 
-    suspend fun getPictureRelate(picId: Long): PictureRelatePayload? =
-        client.post("api/pic/relate") {
-            setBody(formOf("picId" to picId))
+    suspend fun getPictureRelate(
+        picId: Long? = null,
+        path: String? = null,
+    ): PictureRelatePayload? {
+        val validPicId = picId?.takeIf { it > 0L }
+        val validPath = path?.trim()?.ifBlank { null }
+        if (validPicId == null && validPath == null) return null
+        return client.post("api/pic/relate") {
+            val pairs = buildList {
+                if (validPicId != null) {
+                    add("picId" to validPicId)
+                } else {
+                    add("path" to validPath!!)
+                }
+            }
+            setBody(formOf(*pairs.toTypedArray()))
         }.unwrapDataOrNull<PictureRelatePayload>(json, "获取图片关联条目失败")
+    }
 
     suspend fun submitReport(
         objId: Long,
