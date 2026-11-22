@@ -43,6 +43,10 @@ data class UserInfoUiState(
     val selectedTab: Int = 1,
     val selectedAlbumSubTab: Int = 0,
     val albums: List<AlbumListItem> = emptyList(),
+    val userAlbums: List<AlbumListItem> = emptyList(),
+    val favoriteAlbums: List<AlbumListItem> = emptyList(),
+    val creatorAlbums: List<AlbumListItem> = emptyList(),
+    val isAlbumLoading: Boolean = false,
     val actions: List<ActionItem> = emptyList(),
     val isTabLoading: Boolean = false,
     val isIntroExpanded: Boolean = false,
@@ -226,8 +230,14 @@ class UserInfoViewModel(
                 val initialFollowed = profile.isFollowed || fType.isFollowed
                 val initialMutual = profile.isMutual || fType == FriendState.MUTUAL
 
-                _uiState.update {
-                    it.copy(
+                _uiState.update { current ->
+                    val activeAlbums = when (current.selectedAlbumSubTab) {
+                        0 -> albumList
+                        1 -> current.favoriteAlbums
+                        2 -> current.creatorAlbums
+                        else -> albumList
+                    }
+                    current.copy(
                         isLoading = false,
                         profile = profile,
                         isSelf = actualIsSelf,
@@ -238,10 +248,15 @@ class UserInfoViewModel(
                         similarity = if (simVal > 0) simVal else profile.similarity,
                         isFollowed = initialFollowed,
                         isMutual = initialMutual,
-                        albums = albumList,
+                        userAlbums = albumList,
+                        albums = activeAlbums,
                         actions = normalizedActions,
                         errorMessage = null
                     )
+                }
+
+                if (_uiState.value.selectedAlbumSubTab != 0) {
+                    loadAlbumSubTab(_uiState.value.selectedAlbumSubTab, forceRefresh = true)
                 }
             }.onFailure { error ->
                 _uiState.update {
@@ -295,10 +310,73 @@ class UserInfoViewModel(
 
     fun selectTab(tab: Int) {
         _uiState.update { it.copy(selectedTab = tab) }
+        if (tab == 0 && _uiState.value.albums.isEmpty() && !_uiState.value.isAlbumLoading) {
+            loadAlbumSubTab(_uiState.value.selectedAlbumSubTab)
+        }
     }
 
     fun selectAlbumSubTab(subTab: Int) {
-        _uiState.update { it.copy(selectedAlbumSubTab = subTab) }
+        val currentSubTab = _uiState.value.selectedAlbumSubTab
+        if (currentSubTab == subTab && _uiState.value.albums.isNotEmpty()) {
+            return
+        }
+
+        val cached = when (subTab) {
+            0 -> _uiState.value.userAlbums
+            1 -> _uiState.value.favoriteAlbums
+            2 -> _uiState.value.creatorAlbums
+            else -> emptyList()
+        }
+
+        _uiState.update {
+            it.copy(
+                selectedAlbumSubTab = subTab,
+                albums = cached
+            )
+        }
+
+        if (cached.isEmpty()) {
+            loadAlbumSubTab(subTab, forceRefresh = false)
+        }
+    }
+
+    private fun loadAlbumSubTab(subTab: Int, forceRefresh: Boolean = false) {
+        val userNodeId = _uiState.value.profile?.id ?: initializedUserId ?: targetUserId
+        if (userNodeId <= 0L) return
+
+        if (!forceRefresh) {
+            val isCached = when (subTab) {
+                0 -> _uiState.value.userAlbums.isNotEmpty()
+                1 -> _uiState.value.favoriteAlbums.isNotEmpty()
+                2 -> _uiState.value.creatorAlbums.isNotEmpty()
+                else -> false
+            }
+            if (isCached) return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAlbumLoading = true) }
+            val result = when (subTab) {
+                0 -> userRepository.getUserAlbumList(userNodeId, page = 1, pageSize = 20)
+                1 -> userRepository.getUserCollectAlbumList(userNodeId, page = 1, pageSize = 20)
+                2 -> userRepository.getUserGkdiyAlbumList(userNodeId, page = 1, pageSize = 20)
+                else -> Result.success(emptyList())
+            }
+            val items = result.getOrDefault(emptyList())
+            _uiState.update { current ->
+                val updated = when (subTab) {
+                    0 -> current.copy(userAlbums = items)
+                    1 -> current.copy(favoriteAlbums = items)
+                    2 -> current.copy(creatorAlbums = items)
+                    else -> current
+                }
+                if (updated.selectedAlbumSubTab == subTab) {
+                    updated.copy(albums = items, isAlbumLoading = false)
+                } else {
+                    updated.copy(isAlbumLoading = false)
+                }
+            }
+        }
     }
 
     fun toggleIntroExpanded() {

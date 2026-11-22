@@ -430,7 +430,7 @@ private fun LazyListScope.userContentFeedItems(
 ) {
     when (uiState.selectedTab) {
         0 -> {
-            item(key = "album_sub_chips") {
+            item(key = "album_sub_chips", contentType = "album_sub_chips") {
                 UserAlbumSubChips(
                     isSelf = uiState.isSelf,
                     selectedSubTab = uiState.selectedAlbumSubTab,
@@ -438,15 +438,36 @@ private fun LazyListScope.userContentFeedItems(
                 )
             }
 
-            if (uiState.albums.isEmpty()) {
-                item(key = "empty_albums") {
+            if (uiState.isAlbumLoading && uiState.albums.isEmpty()) {
+                item(key = "album_loading_${uiState.selectedAlbumSubTab}", contentType = "album_loading") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            } else if (uiState.albums.isEmpty()) {
+                item(key = "empty_albums_${uiState.selectedAlbumSubTab}", contentType = "empty_albums") {
+                    val emptyText = when (uiState.selectedAlbumSubTab) {
+                        0 -> if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
+                        1 -> if (uiState.isSelf) "你还没有收藏相册" else "该用户暂无收藏相册"
+                        2 -> if (uiState.isSelf) "你还没有发布作品" else "该用户暂无作品"
+                        else -> "暂无相册"
+                    }
                     EmptyTabPlaceholder(
                         icon = PoiIcons.Filled.PhotoLibrary,
-                        text = if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
+                        text = emptyText
                     )
                 }
             } else {
-                item(key = "user_albums_waterfall") {
+                item(key = "user_albums_waterfall_${uiState.selectedAlbumSubTab}", contentType = "user_albums_waterfall") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -465,7 +486,7 @@ private fun LazyListScope.userContentFeedItems(
                                             onClick = {
                                                 onNavigateToAlbum(
                                                     AlbumNavParam(
-                                                        albumId = album.id,
+                                                        albumId = album.targetAlbumId,
                                                         initialTitle = album.nameCN?.ifBlank { null } ?: album.name,
                                                         initialCover = album.cover
                                                     )
