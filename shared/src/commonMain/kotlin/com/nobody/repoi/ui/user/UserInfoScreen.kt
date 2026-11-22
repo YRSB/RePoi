@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.user
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,10 +11,15 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,15 +77,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
@@ -108,7 +119,7 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UserInfoScreen(
     userId: Long = 0L,
@@ -130,6 +141,67 @@ fun UserInfoScreen(
 
     val isLandscapeState = remember { mutableStateOf(false) }
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
+
+    val outerListState = rememberLazyListState()
+    val albumListState = rememberLazyListState()
+    val actionListState = rememberLazyListState()
+    val resaleListState = rememberLazyListState()
+
+    val pagerState = rememberPagerState(
+        initialPage = uiState.selectedTab.coerceIn(0, 2),
+        pageCount = { 3 }
+    )
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (uiState.selectedTab != pagerState.currentPage) {
+            viewModel.selectTab(pagerState.currentPage)
+        }
+    }
+
+    LaunchedEffect(uiState.selectedTab) {
+        if (!pagerState.isScrollInProgress && pagerState.currentPage != uiState.selectedTab && uiState.selectedTab in 0..2) {
+            pagerState.animateScrollToPage(uiState.selectedTab)
+        }
+    }
+
+    val nestedScrollConnection = remember(outerListState, pagerState, albumListState, actionListState, resaleListState) {
+        object : NestedScrollConnection {
+            private fun currentChildCanScrollBackward(): Boolean {
+                return when (pagerState.currentPage) {
+                    0 -> albumListState.firstVisibleItemIndex > 0 || albumListState.firstVisibleItemScrollOffset > 0
+                    1 -> actionListState.firstVisibleItemIndex > 0 || actionListState.firstVisibleItemScrollOffset > 0
+                    2 -> resaleListState.firstVisibleItemIndex > 0 || resaleListState.firstVisibleItemScrollOffset > 0
+                    else -> false
+                }
+            }
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < 0 && outerListState.firstVisibleItemIndex < 4) {
+                    val consumed = outerListState.dispatchRawDelta(delta)
+                    return Offset(0f, consumed)
+                }
+                if (delta > 0 && !currentChildCanScrollBackward() && (outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0)) {
+                    val consumed = outerListState.dispatchRawDelta(delta)
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                val delta = available.y
+                if (delta > 0 && (outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0)) {
+                    val consumedDelta = outerListState.dispatchRawDelta(delta)
+                    return Offset(0f, consumedDelta)
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     LaunchedEffect(userId) {
         viewModel.initUserId(userId)
@@ -275,36 +347,61 @@ fun UserInfoScreen(
                                     .padding(top = 8.dp)
                             ) {
                                 UserContentTabs(
-                                    selectedTab = uiState.selectedTab,
-                                    onSelectTab = { viewModel.selectTab(it) }
+                                    selectedTab = pagerState.currentPage,
+                                    onSelectTab = { index ->
+                                        viewModel.selectTab(index)
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
+                                    }
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(bottom = 32.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    userContentFeedItems(
-                                        uiState = uiState,
-                                        columns = 3,
-                                        onNavigateToAlbum = onNavigateToAlbum,
-                                        onNavigateToHobby = onNavigateToHobby,
-                                        onNavigateToUser = onNavigateToUser,
-                                        onImageClick = { images, index ->
-                                            if (images.isNotEmpty()) {
-                                                imageViewer.show(images, index)
-                                            }
-                                        },
-                                        onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
-                                    )
+                                HorizontalPager(
+                                    state = pagerState,
+                                    key = { it },
+                                    beyondViewportPageCount = 1,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+                                    when (page) {
+                                        0 -> UserAlbumPage(
+                                            listState = albumListState,
+                                            uiState = uiState,
+                                            columns = 3,
+                                            minHeight = 0.dp,
+                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        1 -> UserActionPage(
+                                            listState = actionListState,
+                                            uiState = uiState,
+                                            minHeight = 0.dp,
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onNavigateToHobby = onNavigateToHobby,
+                                            onNavigateToUser = onNavigateToUser,
+                                            onImageClick = { images, index ->
+                                                if (images.isNotEmpty()) {
+                                                    imageViewer.show(images, index)
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        2 -> UserResalePage(
+                                            listState = resaleListState,
+                                            uiState = uiState,
+                                            minHeight = 0.dp,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
                             }
                         }
                     } else {
 
                         LazyColumn(
+                            state = outerListState,
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .widthIn(max = 720.dp)
@@ -313,7 +410,7 @@ fun UserInfoScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
 
-                            item(key = "banner") {
+                            item(key = "banner", contentType = "banner") {
                                 UserProfileBanner(
                                     profile = profile,
                                     isSelf = uiState.isSelf,
@@ -327,7 +424,7 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            item(key = "header_info") {
+                            item(key = "header_info", contentType = "header_info") {
                                 UserProfileHeader(
                                     profile = profile,
                                     uiState = uiState,
@@ -344,7 +441,7 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            item(key = "order_stats") {
+                            item(key = "order_stats", contentType = "order_stats") {
                                 UserOrderStatsCard(
                                     profile = profile,
                                     uiState = uiState,
@@ -353,7 +450,7 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            item(key = "basic_info") {
+                            item(key = "basic_info", contentType = "basic_info") {
                                 BasicProfileSection(
                                     profile = profile,
                                     onCopyUid = { uid ->
@@ -365,26 +462,72 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            item(key = "content_tabs") {
-                                UserContentTabs(
-                                    selectedTab = uiState.selectedTab,
-                                    onSelectTab = { viewModel.selectTab(it) }
-                                )
+                            stickyHeader(key = "content_tabs", contentType = "content_tabs") {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    UserContentTabs(
+                                        selectedTab = pagerState.currentPage,
+                                        onSelectTab = { index ->
+                                            viewModel.selectTab(index)
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(index)
+                                            }
+                                        }
+                                    )
+                                }
                             }
 
-                            userContentFeedItems(
-                                uiState = uiState,
-                                columns = 2,
-                                onNavigateToAlbum = onNavigateToAlbum,
-                                onNavigateToHobby = onNavigateToHobby,
-                                onNavigateToUser = onNavigateToUser,
-                                onImageClick = { images, index ->
-                                    if (images.isNotEmpty()) {
-                                        imageViewer.show(images, index)
+                            item(key = "content_pager", contentType = "content_pager") {
+                                BoxWithConstraints(
+                                    modifier = Modifier
+                                        .fillParentMaxHeight()
+                                        .fillMaxWidth()
+                                ) {
+                                    val minPageHeight = maxHeight
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        key = { it },
+                                        beyondViewportPageCount = 1,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .nestedScroll(nestedScrollConnection)
+                                    ) { page ->
+                                        when (page) {
+                                            0 -> UserAlbumPage(
+                                                listState = albumListState,
+                                                uiState = uiState,
+                                                columns = 2,
+                                                minHeight = minPageHeight,
+                                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                                onNavigateToAlbum = onNavigateToAlbum,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            1 -> UserActionPage(
+                                                listState = actionListState,
+                                                uiState = uiState,
+                                                minHeight = minPageHeight,
+                                                onNavigateToAlbum = onNavigateToAlbum,
+                                                onNavigateToHobby = onNavigateToHobby,
+                                                onNavigateToUser = onNavigateToUser,
+                                                onImageClick = { images, index ->
+                                                    if (images.isNotEmpty()) {
+                                                        imageViewer.show(images, index)
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            2 -> UserResalePage(
+                                                listState = resaleListState,
+                                                uiState = uiState,
+                                                minHeight = minPageHeight,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        }
                                     }
-                                },
-                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
-                            )
+                                }
+                            }
                         }
                     }
                 }
@@ -419,82 +562,93 @@ fun UserInfoScreen(
     }
 }
 
-private fun LazyListScope.userContentFeedItems(
+@Composable
+private fun UserAlbumPage(
+    listState: LazyListState,
     uiState: UserInfoUiState,
     columns: Int,
+    minHeight: Dp,
+    onSelectAlbumSubTab: (Int) -> Unit,
     onNavigateToAlbum: (AlbumNavParam) -> Unit,
-    onNavigateToHobby: (Long) -> Unit,
-    onNavigateToUser: (Long) -> Unit,
-    onImageClick: (List<String>, Int) -> Unit,
-    onSelectAlbumSubTab: (Int) -> Unit
+    modifier: Modifier = Modifier
 ) {
-    when (uiState.selectedTab) {
-        0 -> {
-            item(key = "album_sub_chips", contentType = "album_sub_chips") {
-                UserAlbumSubChips(
-                    isSelf = uiState.isSelf,
-                    selectedSubTab = uiState.selectedAlbumSubTab,
-                    onSelectSubTab = onSelectAlbumSubTab
-                )
-            }
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item(key = "album_sub_chips", contentType = "album_sub_chips") {
+            UserAlbumSubChips(
+                isSelf = uiState.isSelf,
+                selectedSubTab = uiState.selectedAlbumSubTab,
+                onSelectSubTab = onSelectAlbumSubTab
+            )
+        }
 
-            if (uiState.isAlbumLoading && uiState.albums.isEmpty()) {
-                item(key = "album_loading_${uiState.selectedAlbumSubTab}", contentType = "album_loading") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 3.dp
-                        )
-                    }
+        if (uiState.isAlbumLoading && uiState.albums.isEmpty()) {
+            item(key = "album_loading_${uiState.selectedAlbumSubTab}", contentType = "album_loading") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = (minHeight - 72.dp).coerceAtLeast(180.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp
+                    )
                 }
-            } else if (uiState.albums.isEmpty()) {
-                item(key = "empty_albums_${uiState.selectedAlbumSubTab}", contentType = "empty_albums") {
-                    val emptyText = when (uiState.selectedAlbumSubTab) {
-                        0 -> if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
-                        1 -> if (uiState.isSelf) "你还没有收藏相册" else "该用户暂无收藏相册"
-                        2 -> if (uiState.isSelf) "你还没有发布作品" else "该用户暂无作品"
-                        else -> "暂无相册"
-                    }
+            }
+        } else if (uiState.albums.isEmpty()) {
+            item(key = "empty_albums_${uiState.selectedAlbumSubTab}", contentType = "empty_albums") {
+                val emptyText = when (uiState.selectedAlbumSubTab) {
+                    0 -> if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
+                    1 -> if (uiState.isSelf) "你还没有收藏相册" else "该用户暂无收藏相册"
+                    2 -> if (uiState.isSelf) "你还没有发布作品" else "该用户暂无作品"
+                    else -> "暂无相册"
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = (minHeight - 72.dp).coerceAtLeast(180.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
                     EmptyTabPlaceholder(
                         icon = PoiIcons.Filled.PhotoLibrary,
                         text = emptyText
                     )
                 }
-            } else {
-                item(key = "user_albums_waterfall_${uiState.selectedAlbumSubTab}", contentType = "user_albums_waterfall") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        for (colIndex in 0 until columns) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                uiState.albums.forEachIndexed { index, album ->
-                                    if (index % columns == colIndex) {
-                                        AlbumFeedCard(
-                                            item = album,
-                                            onClick = {
-                                                onNavigateToAlbum(
-                                                    AlbumNavParam(
-                                                        albumId = album.targetAlbumId,
-                                                        initialTitle = album.nameCN?.ifBlank { null } ?: album.name,
-                                                        initialCover = album.cover
-                                                    )
+            }
+        } else {
+            item(key = "user_albums_waterfall_${uiState.selectedAlbumSubTab}", contentType = "user_albums_waterfall") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    for (colIndex in 0 until columns) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            uiState.albums.forEachIndexed { index, album ->
+                                if (index % columns == colIndex) {
+                                    AlbumFeedCard(
+                                        item = album,
+                                        onClick = {
+                                            onNavigateToAlbum(
+                                                AlbumNavParam(
+                                                    albumId = album.targetAlbumId,
+                                                    initialTitle = album.nameCN?.ifBlank { null } ?: album.name,
+                                                    initialCover = album.cover
                                                 )
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         }
@@ -502,63 +656,110 @@ private fun LazyListScope.userContentFeedItems(
                 }
             }
         }
+    }
+}
 
-        1 -> {
-            if (uiState.actions.isEmpty()) {
-                item(key = "empty_actions") {
+@Composable
+private fun UserActionPage(
+    listState: LazyListState,
+    uiState: UserInfoUiState,
+    minHeight: Dp,
+    onNavigateToAlbum: (AlbumNavParam) -> Unit,
+    onNavigateToHobby: (Long) -> Unit,
+    onNavigateToUser: (Long) -> Unit,
+    onImageClick: (List<String>, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (uiState.actions.isEmpty()) {
+            item(key = "empty_actions", contentType = "empty_actions") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = minHeight.coerceAtLeast(180.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
                     EmptyTabPlaceholder(
                         icon = PoiIcons.Filled.Timeline,
                         text = if (uiState.isSelf) "你还没有发布动态" else "该用户暂无动态"
                     )
                 }
-            } else {
-                items(
-                    items = uiState.actions,
-                    key = { it.id }
-                ) { action ->
-                    ActionCard(
-                        actionItem = action,
-                        fallbackAvatarUrl = MediaPipeline.Default.resolveUrl(uiState.profile?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        onActionClick = { item ->
-                            val targetRelate = item.relateItem
-                            if (targetRelate != null) {
-                                val isAlbum = targetRelate.isAlbum || item.actionType == 3
-                                if (isAlbum) {
-                                    val targetAlbumId = targetRelate.actualAlbumId
-                                    if (targetAlbumId > 0L) {
-                                        onNavigateToAlbum(
-                                            AlbumNavParam(
-                                                albumId = targetAlbumId,
-                                                initialTitle = targetRelate.nameCN?.ifBlank { null } ?: targetRelate.name,
-                                                initialCover = targetRelate.cover ?: targetRelate.path
-                                            )
+            }
+        } else {
+            items(
+                items = uiState.actions,
+                key = { it.id },
+                contentType = { "action" }
+            ) { action ->
+                ActionCard(
+                    actionItem = action,
+                    fallbackAvatarUrl = MediaPipeline.Default.resolveUrl(
+                        uiState.profile?.header,
+                        MediaCategory.AVATAR,
+                        ImagePurpose.CARD_STANDARD
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    onActionClick = { item ->
+                        val targetRelate = item.relateItem
+                        if (targetRelate != null) {
+                            val isAlbum = targetRelate.isAlbum || item.actionType == 3
+                            if (isAlbum) {
+                                val targetAlbumId = targetRelate.actualAlbumId
+                                if (targetAlbumId > 0L) {
+                                    onNavigateToAlbum(
+                                        AlbumNavParam(
+                                            albumId = targetAlbumId,
+                                            initialTitle = targetRelate.nameCN?.ifBlank { null } ?: targetRelate.name,
+                                            initialCover = targetRelate.cover ?: targetRelate.path
                                         )
-                                    }
-                                } else {
-                                    val targetHobbyId = targetRelate.actualHobbyId
-                                    if (targetHobbyId > 0L) {
-                                        onNavigateToHobby(targetHobbyId)
-                                    }
+                                    )
                                 }
                             } else {
-
-                                val targetUserId = item.user?.actualUserId ?: 0L
-                                if (targetUserId > 0L) {
-                                    onNavigateToUser(targetUserId)
+                                val targetHobbyId = targetRelate.actualHobbyId
+                                if (targetHobbyId > 0L) {
+                                    onNavigateToHobby(targetHobbyId)
                                 }
                             }
-                        },
-                        onImageClick = onImageClick
-                    )
-                }
+                        } else {
+                            val targetUserId = item.user?.actualUserId ?: 0L
+                            if (targetUserId > 0L) {
+                                onNavigateToUser(targetUserId)
+                            }
+                        }
+                    },
+                    onImageClick = onImageClick
+                )
             }
         }
+    }
+}
 
-        2 -> {
-            item(key = "empty_resale") {
+@Composable
+private fun UserResalePage(
+    listState: LazyListState,
+    uiState: UserInfoUiState,
+    minHeight: Dp,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        item(key = "empty_resale", contentType = "empty_resale") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = minHeight.coerceAtLeast(180.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 EmptyTabPlaceholder(
                     icon = PoiIcons.Filled.Sell,
                     text = if (uiState.isSelf) "你暂无在售二手条目" else "该用户暂无在售二手条目"
