@@ -1,6 +1,10 @@
 package com.nobody.repoi.ui.user
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -62,8 +66,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -72,6 +74,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -267,6 +270,17 @@ fun UserInfoScreen(
         }
     }
 
+    val isTabsSticky by remember(outerListState) {
+        derivedStateOf {
+            val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
+            if (tabsItem != null) {
+                tabsItem.offset <= 0
+            } else {
+                outerListState.firstVisibleItemIndex >= OUTER_HEADER_ITEM_COUNT
+            }
+        }
+    }
+
     LaunchedEffect(userId) {
         viewModel.initUserId(userId)
     }
@@ -306,100 +320,50 @@ fun UserInfoScreen(
             when {
                 uiState.isLoading && uiState.profile == null -> {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = "个人主页",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onNavigateBack) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                                        contentDescription = "返回",
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "正在加载个人主页...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "正在加载个人主页...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
 
                 uiState.errorMessage != null && uiState.profile == null -> {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = "个人主页",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onNavigateBack) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                                        contentDescription = "返回",
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Person),
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.outline
                         )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                painter = painterResource(PoiIcons.Filled.Person),
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = uiState.errorMessage ?: "加载主页失败",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadProfile(userId) }) {
-                                Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "重新加载")
-                            }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = uiState.errorMessage ?: "加载主页失败",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadProfile(userId) }) {
+                            Icon(painter = painterResource(PoiIcons.Filled.Refresh), contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "重新加载")
                         }
                     }
                 }
@@ -465,8 +429,6 @@ fun UserInfoScreen(
                                     onSelectTab = handleTabClick
                                 )
 
-                                Spacer(modifier = Modifier.height(10.dp))
-
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -503,139 +465,127 @@ fun UserInfoScreen(
                         }
                     } else {
 
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .widthIn(max = 720.dp)
                                 .fillMaxWidth()
                         ) {
-                            UserCompactTopBar(
-                                profile = profile,
-                                onBack = onNavigateBack,
-                                onTitleClick = {
-                                    coroutineScope.launch {
-                                        outerListState.animateScrollToItem(0)
-                                    }
-                                },
-                                onAvatarClick = {
-                                    val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                    if (raw.isNotBlank()) imageViewer.show(raw)
-                                }
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
+                            LazyColumn(
+                                state = outerListState,
+                                modifier = Modifier.fillMaxSize()
                             ) {
-                                LazyColumn(
-                                    state = outerListState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
 
-                                    item(key = "banner", contentType = "banner") {
-                                        UserProfileBanner(
-                                            profile = profile,
-                                            isSelf = uiState.isSelf,
-                                            onBack = onNavigateBack,
-                                            onEdit = { viewModel.startEditing() },
-                                            onRefresh = { viewModel.loadProfile(profile.id) },
-                                            onBannerClick = {
-                                                val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
-                                                if (raw.isNotBlank()) imageViewer.show(raw)
-                                            },
-                                            showNavigationActions = false
-                                        )
-                                    }
+                                item(key = "banner", contentType = "banner") {
+                                    UserProfileBanner(
+                                        profile = profile,
+                                        isSelf = uiState.isSelf,
+                                        onBack = onNavigateBack,
+                                        onEdit = { viewModel.startEditing() },
+                                        onRefresh = { viewModel.loadProfile(profile.id) },
+                                        onBannerClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                }
 
-                                    item(key = "header_info", contentType = "header_info") {
-                                        UserProfileHeader(
-                                            profile = profile,
-                                            uiState = uiState,
-                                            onAvatarClick = {
-                                                val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                                if (raw.isNotBlank()) imageViewer.show(raw)
-                                            },
-                                            onNavigateToFriendList = { tab ->
-                                                onNavigateToFriendList(profile.id, tab)
-                                            },
-                                            onToggleFollow = { viewModel.toggleFollow() },
-                                            onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                            onNavigateToChat = onNavigateToChat
-                                        )
-                                    }
+                                item(key = "header_info", contentType = "header_info") {
+                                    UserProfileHeader(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onAvatarClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        onNavigateToFriendList = { tab ->
+                                            onNavigateToFriendList(profile.id, tab)
+                                        },
+                                        onToggleFollow = { viewModel.toggleFollow() },
+                                        onToggleIntro = { viewModel.toggleIntroExpanded() },
+                                        onNavigateToChat = onNavigateToChat,
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                }
 
-                                    item(key = "order_stats", contentType = "order_stats") {
-                                        UserOrderStatsCard(
-                                            profile = profile,
-                                            uiState = uiState,
-                                            onNavigateToCollect = onNavigateToCollect,
-                                            onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
-                                        )
-                                    }
+                                item(key = "order_stats", contentType = "order_stats") {
+                                    UserOrderStatsCard(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onNavigateToCollect = onNavigateToCollect,
+                                        onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) },
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                }
 
-                                    item(key = "basic_info", contentType = "basic_info") {
-                                        BasicProfileSection(
-                                            profile = profile,
-                                            onCopyUid = { uid ->
-                                                coroutineScope.launch {
-                                                    clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
-                                                    snackbarHostState.showSnackbar("UID 已复制")
-                                                }
+                                item(key = "basic_info", contentType = "basic_info") {
+                                    BasicProfileSection(
+                                        profile = profile,
+                                        onCopyUid = { uid ->
+                                            coroutineScope.launch {
+                                                clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
+                                                snackbarHostState.showSnackbar("UID 已复制")
                                             }
+                                        },
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                }
+
+                                stickyHeader(key = "content_tabs", contentType = "content_tabs") {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        UserContentTabs(
+                                            selectedTab = pagerState.currentPage,
+                                            onSelectTab = handleTabClick
                                         )
-                                    }
-
-                                    stickyHeader(key = "content_tabs", contentType = "content_tabs") {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.surface,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            UserContentTabs(
-                                                selectedTab = pagerState.currentPage,
-                                                onSelectTab = handleTabClick
-                                            )
-                                        }
-                                    }
-
-                                    item(key = "content_pager", contentType = "content_pager") {
-                                        BoxWithConstraints(
-                                            modifier = Modifier
-                                                .fillParentMaxHeight()
-                                                .fillMaxWidth()
-                                        ) {
-                                            val minPageHeight = maxHeight
-                                            UserPagerContent(
-                                                pagerState = pagerState,
-                                                albumListState = albumListState,
-                                                actionListState = actionListState,
-                                                resaleListState = resaleListState,
-                                                uiState = uiState,
-                                                columns = 2,
-                                                minHeight = minPageHeight,
-                                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
-                                                onNavigateToAlbum = onNavigateToAlbum,
-                                                onNavigateToHobby = onNavigateToHobby,
-                                                onNavigateToUser = onNavigateToUser,
-                                                onImageClick = { images, index ->
-                                                    if (images.isNotEmpty()) {
-                                                        imageViewer.show(images, index)
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .nestedScroll(nestedScrollConnection)
-                                            )
-                                        }
                                     }
                                 }
 
+                                item(key = "content_pager", contentType = "content_pager") {
+                                    BoxWithConstraints(
+                                        modifier = Modifier
+                                            .fillParentMaxHeight()
+                                            .fillMaxWidth()
+                                    ) {
+                                        val minPageHeight = maxHeight
+                                        UserPagerContent(
+                                            pagerState = pagerState,
+                                            albumListState = albumListState,
+                                            actionListState = actionListState,
+                                            resaleListState = resaleListState,
+                                            uiState = uiState,
+                                            columns = 2,
+                                            minHeight = minPageHeight,
+                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onNavigateToHobby = onNavigateToHobby,
+                                            onNavigateToUser = onNavigateToUser,
+                                            onImageClick = { images, index ->
+                                                if (images.isNotEmpty()) {
+                                                    imageViewer.show(images, index)
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .nestedScroll(nestedScrollConnection)
+                                        )
+                                    }
+                                }
+                            }
+
+                            AnimatedVisibility(
+                                visible = isTabsSticky,
+                                enter = fadeIn() + scaleIn(),
+                                exit = fadeOut() + scaleOut(),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 16.dp, bottom = 16.dp)
+                            ) {
                                 UserRefreshFab(
-                                    onClick = onFabClick,
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(end = 16.dp, bottom = 16.dp)
+                                    onClick = onFabClick
                                 )
                             }
                         }
@@ -737,7 +687,7 @@ private fun UserAlbumPage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 80.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item(key = "album_sub_chips", contentType = "album_sub_chips") {
@@ -835,7 +785,7 @@ private fun UserActionPage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 80.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (uiState.isTabLoading && uiState.actions.isEmpty()) {
@@ -928,7 +878,7 @@ private fun UserResalePage(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(top = 10.dp, bottom = 80.dp)
     ) {
         item(key = "empty_resale", contentType = "empty_resale") {
             Box(
@@ -1003,61 +953,6 @@ private fun UserProfileIdentityPane(
 
         Spacer(modifier = Modifier.height(24.dp))
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun UserCompactTopBar(
-    profile: UserProfile,
-    onBack: () -> Unit,
-    onTitleClick: () -> Unit,
-    onAvatarClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    TopAppBar(
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onTitleClick)
-            ) {
-                PoiAsyncImage(
-                    path = profile.header,
-                    category = MediaCategory.AVATAR,
-                    purpose = ImagePurpose.THUMBNAIL,
-                    contentDescription = "用户头像",
-                    onClick = onAvatarClick,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                )
-
-                Text(
-                    text = profile.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                    contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        modifier = modifier
-    )
 }
 
 @Composable
