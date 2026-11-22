@@ -17,14 +17,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * [MessageChatViewModel] 单元测试：私信加载、发送消息与撤回消息（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `MessageChatViewModelTest`（逐用例；Mockito `mock(MessageRepository)` →
- * 真实 MessageRepository 背后 [MockApi] MockEngine（`thenReturn` 序列 →
- * routeWhen 计数闭包；`verify send` → 请求体断言）；
- * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MessageChatViewModelTest {
 

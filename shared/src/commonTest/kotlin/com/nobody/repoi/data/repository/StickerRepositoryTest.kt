@@ -5,15 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 表情包仓储纯逻辑测试（W4-W5 pure-logic；KMP commonTest）。
- *
- * 对齐 W3 仓储测试形态（[MockApi] MockEngine + 真实 HpoiApi；JUnit4 → kotlin.test；
- * plain `runTest`，无 Main/DataStore）。
- * - buyTime（`api/sticker/pack/buyTime`，GET）+ packs（`api/sticker/pack/list`，
- *   GET）双均成功 → 按 `applyLocation <= 0 || == 1` 过滤。
- * - 购买时间一致的第二次调用走内存缓存，不再发 packs 请求。
- */
 class StickerRepositoryTest {
 
     private fun buyTimeJson(buyTime: String?): String {
@@ -44,9 +35,7 @@ class StickerRepositoryTest {
     @Test
     fun getCommentPacks_sameBuyTimeUsesCache() = runTest {
         val mock = MockApi()
-        // M7 注：MockApi 无路由时按 FIFO 顺序消费——入队顺序必须与 helper 的
-        // 实际调用顺序一致：call-1 取 buyTime + packs（2），call-2 取 buyTime
-        // 命中内存缓存（3 = buyTime×2 + packs×1）。
+
         mock.enqueue(buyTimeJson("\"2024-05-05\""))
         mock.enqueue(packsJson("\"2024-05-05\"", pack("A", 1)))
         mock.enqueue(buyTimeJson("\"2024-05-05\""))
@@ -60,7 +49,6 @@ class StickerRepositoryTest {
         val second = repository.getCommentPacks()
         assertTrue(second.isSuccess, "call-2 failed: ${second.exceptionOrNull()}")
 
-        // 命中缓存后仅多 1 次 buyTime。
         assertEquals(3, mock.requestCount)
     }
 }

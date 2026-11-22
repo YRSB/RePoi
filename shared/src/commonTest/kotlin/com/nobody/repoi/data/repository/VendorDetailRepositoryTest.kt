@@ -7,13 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 厂商详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `VendorDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito `mock(CollectRepository)` →
- * 真实 CollectRepository 背后独立 MockApi 队列；JUnit4 → kotlin.test）。
- */
 class VendorDetailRepositoryTest {
 
     private fun setup(): Triple<MockApi, MockApi, VendorDetailRepository> {

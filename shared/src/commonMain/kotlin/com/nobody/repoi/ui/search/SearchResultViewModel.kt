@@ -17,12 +17,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 搜索结果页状态模型。
- *
- * 专注管理 8 个分类（[SearchTab]）的搜索结果浏览、独立筛选快照与分页缓存，
- * 不包含搜索历史、热词、联想补全及草稿编辑等落地页职责。
- */
 data class SearchResultUiState(
     val keyword: String = "",
     val companyNodeId: Long? = null,
@@ -37,18 +31,16 @@ data class SearchResultUiState(
     val attributeMap: Map<Int, List<AttributeItem>> = emptyMap(),
     val isLoadingAttributes: Boolean = false
 ) {
-    /** 当前前台分类的独立状态（不存在时返回默认空状态）。 */
+
     val currentTabState: TabSearchState
         get() = tabStates[selectedTab] ?: TabSearchState()
 
-    /** 指定分类的排序键；无排序能力的分类返回空串。 */
     fun orderFor(tab: SearchTab): String = when (tab) {
         SearchTab.HOBBY -> hobbyFilter.order
         SearchTab.ALBUM -> albumFilter.order
         else -> ""
     }
 
-    /** 指定分类是否存在已激活的筛选或排序项（顶栏 Badge 按 Pager 当前页取）。 */
     fun isFilterActiveFor(tab: SearchTab): Boolean = com.nobody.repoi.ui.search.isFilterActive(
         tab = tab,
         order = orderFor(tab),
@@ -60,7 +52,6 @@ data class SearchResultUiState(
         attribute = elementsFilter.attribute
     )
 
-    // 筛选只读派生访问器：按活动分类从对应快照取值，避免 UI 与快照双真相源
     val order: String get() = orderFor(selectedTab)
     val selectedCompany: SearchCompanyAggregate? get() = hobbyFilter.company
     val selectedYear: String? get() = hobbyFilter.year
@@ -73,14 +64,9 @@ data class SearchResultUiState(
 
     val isFilterActive: Boolean get() = isFilterActiveFor(selectedTab)
 
-    /** 顶栏展示文案：优先显示关键词，若关键词为空则显示厂商名称，均无时为空串。 */
     val displayTitle: String get() = keyword.ifBlank { companyName.orEmpty() }
 }
 
-/**
- * 专职搜索结果页 ViewModel：
- * 专注于 8 个分类搜索结果的按需加载、Tab 切换缓存复用、单 Tab 刷新/分页与独立筛选。
- */
 class SearchResultViewModel(
     private val searchRepository: SearchRepository,
     private val categoryManager: CategoryManager
@@ -104,10 +90,6 @@ class SearchResultViewModel(
         _uiState.update { it.copy(hobbyCategories = listOf(HobbyAllCategory) + initialTree) }
     }
 
-    /**
-     * 初始参数注入与导航状态同步。
-     * 若入参相同则保持幂等，避免多余重载。
-     */
     fun initParam(param: SearchResultNavParam) {
         if (currentParam == param) return
         currentParam = param
@@ -149,9 +131,6 @@ class SearchResultViewModel(
         }
     }
 
-    /**
-     * 用户切换分类页签：若未加载则懒加载，已加载则复用缓存。
-     */
     fun onSelectTab(tab: SearchTab) {
         if (_uiState.value.selectedTab == tab) return
         _uiState.update { it.copy(selectedTab = tab) }
@@ -164,10 +143,6 @@ class SearchResultViewModel(
         }
     }
 
-    /**
-     * Pager 呈现某分类（滑入可见）时触发首屏懒加载。
-     * 只拉取该分类数据，不改变当前选中分类。
-     */
     fun onTabVisible(tab: SearchTab) {
         val state = _uiState.value
         if (state.keyword.isBlank() && state.hobbyFilter.company == null) return
@@ -328,8 +303,6 @@ class SearchResultViewModel(
             }
         }
     }
-
-    // ── 内部辅助函数 ──────────────────────────────────────────
 
     private fun emptyTabStates(): Map<SearchTab, TabSearchState> =
         SearchTab.entries.associateWith { TabSearchState() }

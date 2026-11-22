@@ -51,9 +51,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 评论详情页：头部主楼 + 子评论分页流 + 底部回复输入框（对齐原版 CommentReplyActivity）。
- */
 @Composable
 fun CommentDetailScreen(
     navParam: CommentDetailNavParam,
@@ -74,7 +71,6 @@ fun CommentDetailScreen(
         viewModel.loadDetail(navParam)
     }
 
-    // 一次性提示 Toast
     val actionMessage = uiState.actionMessage
     LaunchedEffect(actionMessage) {
         if (actionMessage != null) {
@@ -83,7 +79,6 @@ fun CommentDetailScreen(
         }
     }
 
-    // 触底自动翻页
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -108,7 +103,7 @@ fun CommentDetailScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 顶部抽屉把手与标题栏（对齐“评论抽屉”规范）
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -244,7 +239,7 @@ fun CommentDetailScreen(
 
                     if (uiState.replies.isNotEmpty()) {
                         item(key = "detail_replies_title", contentType = "detail_replies_title") {
-                            // 原版标题无计数
+
                             Text(
                                 text = "全部回复",
                                 fontSize = 13.sp,
@@ -283,8 +278,6 @@ fun CommentDetailScreen(
         }
     }
 
-    // 点击层主或子评论“回复”按钮时弹出的输入浮层（主窗口同层 Overlay，对齐 ADR 0027）：目标唯一来源为 ViewModel，
-    // 成功时 ViewModel 清空草稿与目标并关框，失败时两者完整保留。
     val currentComment = uiState.comment
     if (uiState.isReplyDialogOpen && currentComment != null) {
         CommentReplyDialog(

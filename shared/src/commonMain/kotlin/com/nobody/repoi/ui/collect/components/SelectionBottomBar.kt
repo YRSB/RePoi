@@ -20,25 +20,6 @@ import androidx.compose.foundation.layout.widthIn
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
 import androidx.compose.foundation.shape.CircleShape
 
-// ── 多选模式底部操作条 ──────────────────────────────────────
-
-/**
- * 多选模式底部悬浮操作条（对标原版周边页/相册页 `cancel_layout`：全选 / 取消 / 取消收藏N）。
- *
- * 周边页与相册页共用本组件。置灰规则：
- * - 「全选」在未选中任何条目或已全选时置灰；
- * - 「取消」「取消收藏(N)」在选中数为 0 时置灰。
- *
- * 遵循 M3 Expressive 悬浮胶囊规范：在居中容器内限制最大宽度（560dp），保证大屏/横屏下不被无限横向拉伸。
- * 挂载到 `Scaffold(bottomBar = { ... })` 时本组件已内置 `navigationBarsPadding()`；
- * 若改为 Box 叠加方式挂在内容之上，请自行移除该修饰以免重复内边距。
- *
- * @param selectedCount 当前选中条目数（多选集合存**外层收藏节点 id**，勿用 actualAlbumId）
- * @param totalCount 当前列表可见条目总数，用于判断是否已全选
- * @param onSelectAll 全选
- * @param onCancelSelection 取消多选
- * @param onCancelCollect 批量取消收藏，调用方负责二次确认与提交
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SelectionBottomBar(
@@ -82,14 +63,6 @@ internal fun SelectionBottomBar(
     }
 }
 
-/**
- * 底部操作条内的动作按钮，基于官方 `TextButton` 实现。
- *
- * - 容器透明，避免在悬浮栏内叠加第二个容器色；
- * - 危险操作用 `error` 前景色，不使用 prominent 容器；
- * - 禁用态保持 38% 前景色；
- * - 形状沿用设计系统 `CircleShape`。
- */
 @Composable
 private fun SelectionActionButton(
     text: String,

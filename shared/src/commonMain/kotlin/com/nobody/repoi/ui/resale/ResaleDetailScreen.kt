@@ -67,14 +67,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 二手出售详情页（对应逆向 ResaleDetailActivity 规范与截图 1）。
- *
- * 界面组成：
- * 1. 顶栏：返回键、卖家头像、昵称、等级勋章与举报入口；
- * 2. 主体区：价格大字高亮、成色、交易描述正文、发布时间与城市、实物大图列表、关联手办卡片；
- * 3. 底部悬浮栏：聊一聊（私信）与外部链接（快捷跳转与自动复制淘口令）。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResaleDetailScreen(
@@ -119,7 +111,7 @@ fun ResaleDetailScreen(
                                 }
                                 .padding(vertical = 4.dp, horizontal = 2.dp)
                         ) {
-                            // 卖家头像
+
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
@@ -144,7 +136,6 @@ fun ResaleDetailScreen(
                                 }
                             }
 
-                            // 卖家昵称
                             Text(
                                 text = user.nickname?.ifBlank { null } ?: "胶友",
                                 style = MaterialTheme.typography.titleMedium,
@@ -153,7 +144,6 @@ fun ResaleDetailScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            // 等级胶囊 (如 Lv.3)
                             if (user.level > 0) {
                                 Surface(
                                     shape = MaterialTheme.shapes.extraSmall,
@@ -280,14 +270,14 @@ fun ResaleDetailScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // 1. 价格与成色行
+
                         item {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // 价格大字
+
                                 Text(
                                     text = detail.displayPriceText,
                                     fontSize = 28.sp,
@@ -295,7 +285,6 @@ fun ResaleDetailScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
 
-                                // 成色标识
                                 val purity = detail.purityStr?.trim()?.ifBlank { null }
                                 if (purity != null) {
                                     Text(
@@ -308,7 +297,6 @@ fun ResaleDetailScreen(
                             }
                         }
 
-                        // 2. 交易详细描述
                         item {
                             val desc = detail.detail?.trim()?.ifBlank { null }
                             if (desc != null) {
@@ -321,7 +309,6 @@ fun ResaleDetailScreen(
                             }
                         }
 
-                        // 3. 发布地点与时间
                         item {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -347,14 +334,12 @@ fun ResaleDetailScreen(
                             }
                         }
 
-                        // 4. 柔和分割线
                         item {
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                             )
                         }
 
-                        // 5. 关联手办条目卡片 (linkItems)
                         val hobby = detail.firstHobby
                         if (hobby != null) {
                             item {
@@ -370,7 +355,6 @@ fun ResaleDetailScreen(
                             }
                         }
 
-                        // 6. 卖家实物配图列表
                         if (detail.userPics.isNotEmpty()) {
                             itemsIndexed(detail.userPics) { index, picUrl ->
                                 Surface(
@@ -398,7 +382,6 @@ fun ResaleDetailScreen(
         }
     }
 
-    // 举报原因弹窗（复用公共组件）
     if (showReportDialog) {
         ResaleReportDialog(
             isSubmitting = uiState.isReporting,
@@ -415,9 +398,6 @@ fun ResaleDetailScreen(
     }
 }
 
-/**
- * 关联手办条目卡片。
- */
 @Composable
 private fun ResaleLinkedHobbyCard(
     item: ResaleDetailHobbyItem,
@@ -442,7 +422,7 @@ private fun ResaleLinkedHobbyCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 手办缩略封面
+
             Box(
                 modifier = Modifier
                     .size(60.dp)
@@ -470,7 +450,6 @@ private fun ResaleLinkedHobbyCard(
                 }
             }
 
-            // 手办名称
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -493,9 +472,6 @@ private fun ResaleLinkedHobbyCard(
     }
 }
 
-/**
- * 底部常驻悬浮栏（聊一聊 + 外部链接）。
- */
 @Composable
 private fun ResaleDetailBottomBar(
     detail: ResaleDetailItem,
@@ -519,7 +495,7 @@ private fun ResaleDetailBottomBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            // 聊一聊按钮
+
             Button(
                 onClick = onContactClick,
                 shape = CircleShape,
@@ -545,7 +521,6 @@ private fun ResaleDetailBottomBar(
                 )
             }
 
-            // 外部链接按钮 (若包含外链)
             if (detail.hasExternalLink) {
                 Spacer(modifier = Modifier.width(12.dp))
                 val link = detail.link.orEmpty()

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** 登录方式：账号密码或登录令牌。 */
 enum class LoginMode { ACCOUNT, TOKEN }
 
 data class LoginUiState(
@@ -59,9 +58,6 @@ class LoginViewModel(
         _uiState.update { it.copy(token = "", errorMessage = null) }
     }
 
-    /**
-     * Token 登录：空输入直接报错不发请求；失败保留输入供修改，成功回调通知跳转。
-     */
     fun loginWithToken(onSuccess: () -> Unit = {}) {
         val candidate = _uiState.value.token.trim()
         if (candidate.isBlank()) {

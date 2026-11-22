@@ -92,9 +92,6 @@ import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 1v1 私信聊天主界面：左右气泡流、表情选择、图片发送与轮询。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageChatScreen(
@@ -112,10 +109,9 @@ fun MessageChatScreen(
     var showMenu by remember { mutableStateOf(false) }
     val imageViewer = LocalImageViewer.current
 
-    // 图片选择器（FileKit 跨平台；读取字节后经 VM 字节上传 API 发送）
     val imagePickerLauncher = rememberFilePickerLauncher(
         type = FileKitType.Image,
-        // mode=Single pins overload 1 of 4 (0.16.0)
+
         mode = FileKitMode.Single
     ) { file: PlatformFile? ->
         file?.let { picked ->
@@ -135,7 +131,6 @@ fun MessageChatScreen(
         viewModel.loadInitial(param)
     }
 
-    // 长轮询由 VM 内的 viewModelScope 驱动（3 秒间隔）；进入前台恢复即启动、退后台或离开即停止。
     LifecycleResumeEffect(param) {
         viewModel.startPolling()
         onPauseOrDispose {
@@ -156,7 +151,6 @@ fun MessageChatScreen(
         }
     }
 
-    // 当收到新消息时滚动到底部
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
@@ -305,7 +299,6 @@ fun MessageChatScreen(
                         }
                     }
 
-                    // 消息气泡流（VM 预先保证正序排列，LazyColumn 显式配置 key 与 contentType）
                     items(
                         items = uiState.messages,
                         key = { it.actualMessageId },
@@ -327,9 +320,6 @@ fun MessageChatScreen(
     }
 }
 
-/**
- * 二手商品/条目关联预览卡片。
- */
 @Composable
 private fun ChatCommodityCard(
     dataMap: com.nobody.repoi.data.remote.model.ChatMessageDataMap,
@@ -385,9 +375,6 @@ private fun ChatCommodityCard(
     }
 }
 
-/**
- * 单条聊天消息气泡项。
- */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ChatBubbleItem(
@@ -406,7 +393,7 @@ private fun ChatBubbleItem(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start
     ) {
-        // 时间戳
+
         if (item.date > 0L) {
             val formattedTime = remember(item.date) {
                 DateTimeFormats.hmFromMillis(item.date)
@@ -524,9 +511,6 @@ private fun ChatBubbleItem(
     }
 }
 
-/**
- * 底部私信输入与富功能控制栏。
- */
 @Composable
 private fun ChatBottomInputBar(
     inputContent: String,
@@ -573,7 +557,7 @@ private fun ChatBottomInputBar(
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 图片选择按钮
+
                 IconButton(
                     onClick = onPickImage,
                     enabled = !isUploadingPicture
@@ -589,7 +573,6 @@ private fun ChatBottomInputBar(
                     }
                 }
 
-                // 表情切换按钮
                 IconButton(onClick = onToggleEmoji) {
                     Icon(
                         painter = painterResource(PoiIcons.Filled.EmojiEmotions),
@@ -598,7 +581,6 @@ private fun ChatBottomInputBar(
                     )
                 }
 
-                // 输入框
                 OutlinedTextField(
                     value = inputContent,
                     onValueChange = onContentChange,
@@ -616,7 +598,6 @@ private fun ChatBottomInputBar(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 发送按钮
                 IconButton(
                     onClick = onSend,
                     enabled = inputContent.isNotBlank() && !isSending
@@ -633,7 +614,6 @@ private fun ChatBottomInputBar(
                 }
             }
 
-            // 常用表情面板（仅 20 项静态表情，用 Row 避免 LazyRow 懒加载开销）
             AnimatedVisibility(visible = isEmojiPanelVisible) {
                 val emojiList = listOf(
                     "😊", "😂", "😍", "😭", "👍", "❤️", "🎉", "🔥", "👏", "🥺",

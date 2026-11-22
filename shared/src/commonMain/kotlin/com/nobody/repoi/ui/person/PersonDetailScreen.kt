@@ -58,12 +58,10 @@ fun PersonDetailScreen(
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
 
-    // 初始化加载
     LaunchedEffect(navParam) {
         viewModel.loadDetail(navParam)
     }
 
-    // 评论互动一次性提示（点赞/回复结果）
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -75,7 +73,6 @@ fun PersonDetailScreen(
     var commentUserId by remember { mutableStateOf(viewModel.currentCommentUserId) }
     LaunchedEffect(Unit) { commentUserId = viewModel.resolveCommentUserId() }
 
-    // 分享人物处理
     val onSharePerson: () -> Unit = {
         val personName = uiState.person?.displayName ?: navParam.initialName ?: "人物"
         textSharing.share("【PoiShelf 人物分享】$personName\n了解更多作品与参与手办周边情报！")
@@ -187,7 +184,7 @@ fun PersonDetailScreen(
                         PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                     }
                 } else {
-                    // ── 区块 0：主体综合资料卡 ──
+
                     item(key = "section_header") {
                     PersonHeaderSection(
                         person = person,
@@ -199,7 +196,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // ── 区块 1：参与周边 (精选九宫格网格) ──
                 item(key = "section_hobbies") {
                     PersonHobbiesSection(
                         hobbies = uiState.hobbies,
@@ -235,7 +231,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // ── 区块 2：参与作品 ──
                 if (uiState.isWorksLoading || uiState.works.isNotEmpty()) {
                     item(key = "section_works") {
                         PersonWorksSection(
@@ -271,7 +266,6 @@ fun PersonDetailScreen(
                     }
                 }
 
-                // ── 区块 3：出演角色 ──
                 if (uiState.isCharactersLoading || uiState.characters.isNotEmpty()) {
                     item(key = "section_characters") {
                         PersonCharactersSection(

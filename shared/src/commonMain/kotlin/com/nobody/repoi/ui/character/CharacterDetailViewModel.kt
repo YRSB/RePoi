@@ -30,13 +30,10 @@ class CharacterDetailViewModel(
     private var loadCommentsJob: Job? = null
 
     init {
-        // 合并评论详情页回写的主楼更新（点赞/回复）
+
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
     }
 
-    /**
-     * 渐进多阶段加载角色/要素详情全部数据。
-     */
     fun loadDetail(param: CharacterNavParam) {
         if (_uiState.value.characterId == param.characterId && !_uiState.value.isInitialLoading && _uiState.value.character != null) {
             return
@@ -53,7 +50,6 @@ class CharacterDetailViewModel(
                 errorMessage = null
             )
 
-            // ── 阶段 1：首屏核心渲染，拉取角色主体基本信息 ──
             val detailResult = repository.getCharacterDetail(param.characterId)
             if (detailResult.isFailure) {
                 _uiState.update {
@@ -84,8 +80,6 @@ class CharacterDetailViewModel(
                 )
             }
 
-            // ── 阶段 2：并行发起次级各板块网络请求 ──
-            // 2.1 登场作品
             launch {
                 val worksResult = repository.getCharacterWorks(param.characterId)
                 _uiState.update {
@@ -96,7 +90,6 @@ class CharacterDetailViewModel(
                 }
             }
 
-            // 2.2 周边手办
             launch {
                 val hobbysResult = repository.getCharacterHobbys(nodeId)
                 _uiState.update {
@@ -107,7 +100,6 @@ class CharacterDetailViewModel(
                 }
             }
 
-            // 2.3 相关相册
             launch {
                 val albumsResult = repository.getCharacterAlbums(param.characterId)
                 _uiState.update {
@@ -118,7 +110,6 @@ class CharacterDetailViewModel(
                 }
             }
 
-            // 2.4 推荐要素/相关角色
             launch {
                 val relevantResult = repository.getCharacterRelevant(param.characterId)
                 _uiState.update {
@@ -129,7 +120,6 @@ class CharacterDetailViewModel(
                 }
             }
 
-            // 2.5 所属分区/属性标签
             if (nodeId > 0L) {
                 launch {
                     val zonesResult = repository.getItemZones(nodeId)
@@ -144,7 +134,6 @@ class CharacterDetailViewModel(
                 _uiState.update { it.copy(isZonesLoading = false) }
             }
 
-            // 2.6 首屏评论加载
             if (nodeId > 0L) {
                 launch {
                     commentDelegate.loadInitialComments(_uiState, nodeId, repository::getComments)
@@ -155,16 +144,10 @@ class CharacterDetailViewModel(
         }
     }
 
-    /**
-     * 切换角色详细介绍的展开/折叠状态。
-     */
     fun toggleIntroExpanded() {
         _uiState.update { it.copy(isIntroExpanded = !it.isIntroExpanded) }
     }
 
-    /**
-     * 切换收藏/想买状态（乐观更新 + 失败回滚）。
-     */
     fun toggleCollect() {
         val state = _uiState.value
         val nodeId = state.characterNodeId
@@ -173,13 +156,12 @@ class CharacterDetailViewModel(
         val nextCollected = !currentCollected
         val delta = collectDeltaOf(state.originalCollected, nextCollected)
 
-        // 乐观更新
         _uiState.update { it.copy(isCollected = nextCollected, collectCountDelta = delta) }
 
         viewModelScope.launch {
             val result = collectRepository.toggleItemCollect(nodeId, currentCollected)
             if (result.isFailure) {
-                // 失败回滚
+
                 _uiState.update {
                     val origDelta = collectDeltaOf(it.originalCollected, currentCollected)
                     it.copy(
@@ -190,7 +172,7 @@ class CharacterDetailViewModel(
                 }
             }
             else {
-                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+
                 collectRepository.getCollectCount(nodeId).onSuccess { count ->
                     _uiState.update { current ->
                         current.copy(
@@ -204,9 +186,6 @@ class CharacterDetailViewModel(
         }
     }
 
-    /**
-     * 加载更多最新评论。
-     */
     fun loadNextCommentsPage() {
         val state = _uiState.value
         val nodeId = state.characterNodeId
@@ -217,9 +196,6 @@ class CharacterDetailViewModel(
         }
     }
 
-    /**
-     * 刷新评论列表。
-     */
     fun refreshComments() {
         val nodeId = _uiState.value.characterNodeId
         if (nodeId <= 0L) return
@@ -229,18 +205,12 @@ class CharacterDetailViewModel(
         }
     }
 
-    /**
-     * 切换主评论点赞状态（乐观更新）。
-     */
     fun toggleCommentPraise(commentId: Long) {
         val nodeId = _uiState.value.characterNodeId
         if (nodeId <= 0L) return
         commentDelegate.toggleCommentPraise(viewModelScope, _uiState, commentId, nodeId)
     }
 
-    /**
-     * 发表子评论回复。
-     */
     suspend fun submitCommentReply(
         commentId: Long,
         target: CommentReplyItem?,
@@ -250,9 +220,6 @@ class CharacterDetailViewModel(
         return commentDelegate.submitCommentReply(_uiState, commentId, target, content, stickers)
     }
 
-    /**
-     * 发表主楼评论。
-     */
     suspend fun submitTopLevelComment(content: String, stickers: List<String>): Boolean {
         val nodeId = _uiState.value.characterNodeId
         val ok = commentDelegate.postTopLevelComment(_uiState, nodeId, content, stickers)

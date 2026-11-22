@@ -80,12 +80,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-
-
-// ─────────────────────────────────────────────────────────────
-// 主体展台与基础信息卡 (SeriesHeaderSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun SeriesHeaderSection(
     series: SeriesData,
@@ -104,20 +98,20 @@ internal fun SeriesHeaderSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 上半部分：Logo 封面 + 中英文标题 + 胶囊
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // 系列 Logo/封面 (86.dp, 16.dp圆角)
+
                 Box(
                     modifier = Modifier
                         .size(86.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
                 ) {
-                    // 系列详情主图档位：CARD_STANDARD 落 cover/n/，空路径由组件回退官方缺省图
+
                     PoiAsyncImage(
                         path = series.cover,
                         category = MediaCategory.HOBBY,
@@ -127,7 +121,6 @@ internal fun SeriesHeaderSection(
                     )
                 }
 
-                // 右侧：中文标题 / 主名 + 外文原名 + 属性胶囊
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -151,7 +144,6 @@ internal fun SeriesHeaderSection(
                         )
                     }
 
-                    // 胶囊列表：周边款数、收藏人数
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -190,7 +182,6 @@ internal fun SeriesHeaderSection(
                 }
             }
 
-            // 中部：系列简介（默认全展开，点击可查看系列详情抽屉）
             if (introText.isNotBlank()) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -229,10 +220,6 @@ internal fun SeriesHeaderSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 周边板块 (SeriesHobbysSection) - 3x3 纯图九宫格
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun SeriesHobbysSection(
     hobbys: List<RelatedHobbyItem>,
@@ -249,7 +236,7 @@ internal fun SeriesHobbysSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题栏
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -276,7 +263,6 @@ internal fun SeriesHobbysSection(
                 }
             }
 
-            // 内容九宫格
             if (isLoading && hobbys.isEmpty()) {
                 PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (hobbys.isEmpty()) {
@@ -306,7 +292,7 @@ internal fun SeriesHobbysSection(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         onClick = { onHobbyClick(item) }
                     ) {
-                        // 九宫格封面属标准卡片展示档位，走 cover/n/
+
                         PoiAsyncImage(
                             path = item.cover,
                             category = MediaCategory.HOBBY,
@@ -320,10 +306,6 @@ internal fun SeriesHobbysSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 子系列板块 (SeriesSubSeriesSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun SeriesSubSeriesSection(
@@ -371,7 +353,7 @@ internal fun SeriesSubSeriesSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    // 子系列缩略图：标准卡片档位 cover/n/
+
                                     PoiAsyncImage(
                                         path = item.cover,
                                         category = MediaCategory.HOBBY,
@@ -416,10 +398,6 @@ internal fun SeriesSubSeriesSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 相关系列板块 (SeriesRelateSeriesSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun SeriesRelateSeriesSection(
@@ -474,7 +452,7 @@ internal fun SeriesRelateSeriesSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    // 子系列缩略图：标准卡片档位 cover/n/
+
                                     PoiAsyncImage(
                                         path = item.cover,
                                         category = MediaCategory.HOBBY,
@@ -510,10 +488,6 @@ internal fun SeriesRelateSeriesSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 关联相册板块 (SeriesAlbumsSection) - 对标手办详情与角色相册流
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun SeriesAlbumsSection(
     albums: List<AlbumData>,
@@ -535,7 +509,7 @@ internal fun SeriesAlbumsSection(
             modifier = Modifier.padding(vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 标题栏：左侧标题 + 右侧查看更多
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -601,7 +575,7 @@ private fun SeriesAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走占位图标分支
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
@@ -619,8 +593,7 @@ private fun SeriesAlbumCard(
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             if (!isNoCover) {
-                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
-                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+
                 PoiAsyncImage(
                     path = album.cover,
                     category = MediaCategory.ALBUM,
@@ -644,7 +617,6 @@ private fun SeriesAlbumCard(
                 }
             }
 
-            // 右上角点赞徽标
             val praiseCount = album.praiseCount ?: 0L
             if (praiseCount > 0L) {
                 Surface(
@@ -678,9 +650,6 @@ private fun SeriesAlbumCard(
     }
 }
 
-/**
- * 系列相关相册「查看更多」卡片（等高且正方形比例，样式与手办/角色保持一致）。
- */
 @Composable
 private fun SeriesAlbumMoreTile(
     onMoreClick: () -> Unit,
@@ -713,11 +682,6 @@ private fun SeriesAlbumMoreTile(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-// 在售周边板块 (SeriesGoodsSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun SeriesGoodsSection(
@@ -772,7 +736,7 @@ internal fun SeriesGoodsSection(
                                         .clip(MaterialTheme.shapes.small)
                                         .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f))
                                 ) {
-                                    // 在售周边封面同属 cover/ 家族，标准卡片档位走 cover/n/
+
                                     PoiAsyncImage(
                                         path = goods.cover,
                                         category = MediaCategory.HOBBY,
@@ -827,10 +791,6 @@ internal fun SeriesGoodsSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部悬浮操作栏 (SeriesFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun SeriesFloatingActionBar(
     collectCount: Int,
@@ -844,7 +804,7 @@ internal fun SeriesFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 收藏（心形切换，只显示数字）
+
         ExpressiveToolbarButton(
             onClick = onCollectClick,
             text = if (collectCount > 0) "$collectCount" else null,
@@ -856,19 +816,17 @@ internal fun SeriesFloatingActionBar(
             iconTint = if (isCollected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 评论（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+
                 isProminent = false
             )
         }
 
-        // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,
@@ -877,10 +835,6 @@ internal fun SeriesFloatingActionBar(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 错误占位 (SeriesErrorState)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun SeriesErrorState(
@@ -927,10 +881,6 @@ internal fun SeriesErrorState(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 系列详细信息底部抽屉 (SeriesInfoBottomSheet)
-// ─────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SeriesInfoBottomSheet(
@@ -958,7 +908,7 @@ internal fun SeriesInfoBottomSheet(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 顶栏：标题 + 关闭按钮
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -979,7 +929,6 @@ internal fun SeriesInfoBottomSheet(
                 }
             }
 
-            // 属性列表容器
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -989,7 +938,7 @@ internal fun SeriesInfoBottomSheet(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // 中文主名
+
                     val nameCN = series?.nameCN?.ifBlank { null }
                     if (!nameCN.isNullOrBlank()) {
                         SeriesInfoRow(
@@ -999,7 +948,6 @@ internal fun SeriesInfoBottomSheet(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     }
 
-                    // 外文名/日文名
                     val name = series?.name?.ifBlank { null }
                     if (!name.isNullOrBlank()) {
                         SeriesInfoRow(
@@ -1009,7 +957,6 @@ internal fun SeriesInfoBottomSheet(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     }
 
-                    // 官网
                     val website = series?.website?.trim().orEmpty()
                     val isNoneWebsite = website.isBlank() ||
                         website.equals("暂无", ignoreCase = true) ||
@@ -1035,7 +982,6 @@ internal fun SeriesInfoBottomSheet(
                         } else null
                     )
 
-                    // 扩展属性（如推特以及 otherInfo 中剩余项）
                     val otherItems = series?.parsedOtherInfo.orEmpty().filter { !it.value.isNullOrBlank() }
                     if (otherItems.isNotEmpty()) {
                         otherItems.forEach { item ->
@@ -1085,7 +1031,6 @@ internal fun SeriesInfoBottomSheet(
                 }
             }
 
-            // 简介全文
             val detailText = series?.detailPlainText.orEmpty()
             if (detailText.isNotBlank()) {
                 Column(

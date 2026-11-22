@@ -6,14 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 讨论贴仓储单测：帖子详情、回帖列表适配、发表回帖、楼中楼回复与删除（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `PostRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；
- * JUnit4 → kotlin.test）。
- * 移植说明：`addDiscuss` 的 URL 解码断言在 MockEngine 侧直接断言解码后 form 值，语义等价。
- */
 class PostRepositoryTest {
 
     private fun setup(): Pair<MockApi, PostRepository> {
@@ -89,7 +81,7 @@ class PostRepositoryTest {
     @Test
     fun getPostDetail_failure_throwsApiException() = runTest {
         val (mock, repository) = setup()
-        // info-v2 失败后 fallback 到 info-v1 也失败
+
         mock.enqueue("""{"success":false,"code":404,"msg":"帖子不存在或已删除","data":null}""")
         mock.enqueue("""{"success":false,"code":404,"msg":"帖子不存在或已删除","data":null}""")
 
@@ -104,7 +96,7 @@ class PostRepositoryTest {
     @Test
     fun getPostDetail_withNodeId_resolvesViaV1AndEnrichesViaV2() = runTest {
         val (mock, repository) = setup()
-        // 1. info-v1 响应基础数据（包含 itemId = 5450）
+
         mock.enqueue(
             """
             {
@@ -122,7 +114,7 @@ class PostRepositoryTest {
             }
             """.trimIndent()
         )
-        // 2. info-v2 补齐 relateItem
+
         mock.enqueue(
             """
             {
@@ -224,7 +216,7 @@ class PostRepositoryTest {
     @Test
     fun getDiscussList_codeMinusOne_success() = runTest {
         val (mock, repository) = setup()
-        // Hpoi 服务端 discuss 接口成功时特异性返回 code: -1
+
         mock.enqueue(
             """
             {
@@ -264,7 +256,7 @@ class PostRepositoryTest {
         val recorded = mock.takeRequest()
         assertEquals("POST", recorded.method)
         assertTrue(recorded.path?.contains("api/discuss/add") == true)
-        // 线上为百分号编码正文；MockEngine 侧断言解码后值，语义等价
+
         val form = recorded.formEntries()
         assertEquals("12345", form["itemNodeId"])
         assertEquals("测试回帖", form["content"])

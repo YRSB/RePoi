@@ -14,24 +14,10 @@ import io.ktor.util.AttributeKey
 
 private val CommonParamsAttributeKey = AttributeKey<Boolean>("PoiShelfCommonParamsApplied")
 
-/** 在途登录令牌快照：发包前写入，供网络管道在 4001 时安全比对并驱动自愈。 */
 val PoiRequestTokenAttributeKey = AttributeKey<String>("PoiRequestToken")
 
-/** 候选令牌验权旁路：置位后 4001 只抛异常，不触发全局会话失效（ADR-0005）。 */
 val BypassTokenSelfHealingAttributeKey = AttributeKey<Boolean>("PoiBypassTokenSelfHealing")
 
-/**
- * 公共参数 Ktor 插件（`CommonParamsInterceptor` 的 Ktor 等价实现）。
- *
- * 行为与 OkHttp 版逐条对齐：
- * - GET/其他：公共参数拼到 query，已有同名不覆盖；
- * - POST `FormDataContent`：合并字段，已有同名不覆盖（null 值跳过）；
- * - POST 空包：合成仅含公共参数的 form；
- * - Multipart/其他 body：仅补 Referer/User-Agent 头（服务端上传链路现状：不注入）。
- *
- * 通过 HttpSend 拦截实现（DefaultRequest 无法读取/合并 form body）。
- * 同一请求最多应用一次（重试路径经 HttpSend 重放时不再叠加）。
- */
 class CommonParamsPlugin(val tokenProvider: () -> String) {
 
     companion object Plugin {
@@ -74,7 +60,7 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
                     )
                 }
                 is MultiPartFormDataContent -> {
-                    // 与 OkHttp 版一致：Multipart 不注入公共参数。
+
                 }
                 else -> {
                     val needsSyntheticForm = when (body) {
@@ -104,9 +90,7 @@ class CommonParamsPlugin(val tokenProvider: () -> String) {
     }
 }
 
-/** 已构建 HttpClient 作用域安装入口（链式调用：`HttpClient(engine) { ... }.installCommonParams(...)`）。 */
 fun HttpClient.installCommonParams(tokenProvider: () -> String): HttpClient {
     CommonParamsPlugin.install(this, tokenProvider)
     return this
 }
-

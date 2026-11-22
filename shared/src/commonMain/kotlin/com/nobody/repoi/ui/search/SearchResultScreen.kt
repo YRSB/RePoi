@@ -80,14 +80,6 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * 专职搜索结果页：
- *
- * 承载常驻顶栏（显示当前关键词或厂商名称，点击搜索栏触发重搜编辑）、
- * 8 分类横向分页器（[HorizontalPager]）与分类自适应筛选弹窗。
- *
- * 彻底释放返回调度权给 Navigation 3 原生单根栈，零私有 BackHandler，原生支持 MaterialSharedAxis.Z 与预测性返回手势。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchResultScreen(
@@ -115,16 +107,13 @@ fun SearchResultScreen(
 
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // 8 个搜索分类横向分页：初始页与当前分类对齐
     val pagerState = rememberPagerState(
         initialPage = SearchTab.entries.indexOf(uiState.selectedTab).coerceAtLeast(0)
     ) { SearchTab.entries.size }
     val coroutineScope = rememberCoroutineScope()
 
-    // 顶栏筛选入口跟随 Pager 当前页
     val activeTab = SearchTab.entries[pagerState.currentPage.coerceIn(0, SearchTab.entries.lastIndex)]
 
-    // 翻页手势落定后，同步 ViewModel 的当前分类
     LaunchedEffect(pagerState) {
         var lastSettledPage = pagerState.settledPage
         snapshotFlow { pagerState.settledPage }.collect { page ->
@@ -135,7 +124,6 @@ fun SearchResultScreen(
         }
     }
 
-    // ViewModel 的分类变更反向驱动分页器位置
     LaunchedEffect(uiState.selectedTab) {
         val targetPage = SearchTab.entries.indexOf(uiState.selectedTab)
         if (targetPage >= 0 && targetPage != pagerState.currentPage) {
@@ -149,7 +137,7 @@ fun SearchResultScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // 1. 常驻搜索操作栏：只读显示，点击输入区压入 SearchNavKey 重新编辑
+
         SearchTopBar(
             query = uiState.displayTitle,
             onQueryChange = {},
@@ -176,7 +164,6 @@ fun SearchResultScreen(
             }
         )
 
-        // 2. 常驻分类页签：指示器随 Pager 拖拽进度实时插值
         PrimaryScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 16.dp,
@@ -209,7 +196,6 @@ fun SearchResultScreen(
             }
         }
 
-        // 3. 分类分页器：按需懒加载
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f),
@@ -339,7 +325,6 @@ fun SearchResultScreen(
         }
     }
 
-    // 4. 自适应结果筛选与排序面板
     if (showFilterSheet) {
         val hobbyState = remember(uiState.hobbyCategories, uiState.hobbyFilter) {
             HobbyFilterState(
@@ -382,9 +367,6 @@ fun SearchResultScreen(
     }
 }
 
-/**
- * 单个搜索分类列表呈现区：独立持有滚动与分页状态。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchResultTabContent(

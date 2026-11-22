@@ -70,9 +70,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 分类通知列表页面，支持单项已读、全部已读、多选管理删除与实体跳转联动。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageNoticeScreen(
@@ -92,11 +89,9 @@ fun MessageNoticeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
-    // 选择态下沉：屏级持有选择集合快照，叶子经 provider 按需读取，避免全列表重组
     val selectedIdsSnapshot = remember { mutableStateOf(emptySet<Long>()) }
     selectedIdsSnapshot.value = uiState.selectedIds
 
-    // 触底分页：屏级派生滚动位置，空列表、已到底、错误态不触发
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalCount = listState.layoutInfo.totalItemsCount
@@ -297,7 +292,6 @@ fun MessageNoticeScreen(
                         )
                     }
 
-                    // 分页加载脚：被动展示，不在此触发加载（加载由屏级触底判断驱动）
                     if (uiState.isLoadingMore) {
                         item(key = "footer_notice_loading_more", contentType = "loading_footer") {
                             Box(
@@ -316,9 +310,6 @@ fun MessageNoticeScreen(
     }
 }
 
-/**
- * 单条分类通知行组件。
- */
 @Composable
 private fun NoticeItemRow(
     item: PushMessageItem,
@@ -328,7 +319,7 @@ private fun NoticeItemRow(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // 选择态在叶子内部读取，选中变化时仅本行重组
+
     val isSelected = isSelectedProvider()
     Surface(
         modifier = Modifier
@@ -356,7 +347,6 @@ private fun NoticeItemRow(
                 )
             }
 
-            // 发送者头像或系统图标
             val avatarUrl = item.dataMap?.header
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -413,7 +403,6 @@ private fun NoticeItemRow(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 正文描述
                 val mainContent = item.content ?: item.dataMap?.content ?: item.title.orEmpty()
                 if (mainContent.isNotBlank()) {
                     Text(
@@ -425,7 +414,6 @@ private fun NoticeItemRow(
                     )
                 }
 
-                // 关联回复/评论内容卡片预览
                 val quote = item.dataMap?.comment ?: item.dataMap?.reply
                 if (!quote.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(6.dp))
@@ -448,7 +436,6 @@ private fun NoticeItemRow(
                 }
             }
 
-            // 未读小红点
             if (item.isUnread) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
@@ -462,9 +449,6 @@ private fun NoticeItemRow(
     }
 }
 
-/**
- * 处理各类通知条目点击后的目标实体导航跳转。
- */
 private fun handleNoticeNavigation(
     item: PushMessageItem,
     onNavigateToHobby: (Long) -> Unit,
@@ -480,7 +464,6 @@ private fun handleNoticeNavigation(
     val relateItemId = dataMap.relateItemId ?: dataMap.nodeId ?: 0L
     val relateType = dataMap.relateItemType ?: dataMap.itemType ?: ""
 
-    // 若属于评论或楼中楼回复通知，优先跳往评论详情
     val commentId = dataMap.commentId ?: 0L
     if (commentId > 0L) {
         onNavigateToCommentDetail(commentId, relateItemId)

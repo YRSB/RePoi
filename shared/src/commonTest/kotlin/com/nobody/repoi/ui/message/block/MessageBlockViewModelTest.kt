@@ -18,15 +18,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 黑名单 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `MessageBlockViewModelTest`（逐用例；Mockito `mock(MessageRepository)` →
- * 真实 MessageRepository 背后 [MockApi] MockEngine（`thenReturn` 序列 →
- * routeWhen 计数闭包按 page 匹配；`verify getBlockList(page=2)` →
- * 取请求断言）；`MainDispatcherRule` → `Dispatchers.setMain`；
- * JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MessageBlockViewModelTest {
 
@@ -61,7 +52,7 @@ class MessageBlockViewModelTest {
                 body = { _, _ -> bodies[1] }
             )
         }
-        // 首屏之外的后续页回落首包（按序消费由调用方 enqueue 保证）
+
         var extra = 1
         routeWhen(
             predicate = { path, form -> path.contains("api/block/list") && form["page"] != null && form["page"] != "1" && form["page"] != "2" },
@@ -128,8 +119,8 @@ class MessageBlockViewModelTest {
         assertEquals(51L, state.blockList.last().id)
         assertEquals(2, state.currentPage)
         assertFalse(state.hasMore)
-        mock.takeRequest() // page=1 首屏
-        val last = mock.takeRequest() // page=2 翻页（POST 表单）
+        mock.takeRequest()
+        val last = mock.takeRequest()
         assertEquals("2", last.formEntries()["page"])
     }
 

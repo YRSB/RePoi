@@ -218,7 +218,7 @@ fun ItemHomeScreen(
                         }
 
                         else -> {
-                            // 热门预订区块
+
                             if (uiState.preOrderItems.isNotEmpty()) {
                                 item(key = "preorder", contentType = "preview") {
                                     PreviewSectionGrid(
@@ -251,7 +251,6 @@ fun ItemHomeScreen(
                                 }
                             }
 
-                            // 热门出荷区块
                             if (uiState.releaseItems.isNotEmpty()) {
                                 item(key = "release", contentType = "preview") {
                                     PreviewSectionGrid(
@@ -293,9 +292,6 @@ fun ItemHomeScreen(
         }
     }
 
-/**
- * 顶栏搜索栏
- */
 @Composable
 private fun ItemTopSearchBar(
     onSearchClick: () -> Unit
@@ -308,9 +304,6 @@ private fun ItemTopSearchBar(
     )
 }
 
-/**
- * 分类 Tab 横滑条
- */
 @Composable
 private fun ItemCategoryTabBar(
     categories: List<CategoryItem>,
@@ -515,9 +508,6 @@ private fun RowScope.QuickEntranceItem(
     }
 }
 
-/**
- * 预览区块：标题栏 + 3 列网格卡片
- */
 @Composable
 private fun PreviewSectionGrid(
     title: String,
@@ -532,7 +522,7 @@ private fun PreviewSectionGrid(
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
-        // 区块标题行
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -565,7 +555,6 @@ private fun PreviewSectionGrid(
                 )
             }
 
-            // 查看更多 >
             TextButton(onClick = onMoreClick) {
                 Text(text = "查看更多")
                 Icon(
@@ -576,7 +565,6 @@ private fun PreviewSectionGrid(
             }
         }
 
-        // 自适应网格卡片（按可用宽度动态计算 3/4/6 列）
         AdaptiveChunkedGrid(
             items = items,
             maxRows = 3,
@@ -594,9 +582,6 @@ private fun PreviewSectionGrid(
     }
 }
 
-/**
- * 预览卡片（9:13 黄金手办封面比例）
- */
 @Composable
 private fun PreviewItemCard(
     item: HobbyItemSummary,
@@ -647,10 +632,6 @@ private fun PreviewItemCard(
     }
 }
 
-/**
- * KMP 日期小工具（`Calendar`/`SimpleDateFormat("yyyy-MM-dd")` 替代，行为对齐原版：
- * 月份按 [DatePeriod] 整月平移，年月日零填充）。
- */
 @OptIn(ExperimentalTime::class)
 private fun todayLocalDate(timeZone: TimeZone = TimeZone.currentSystemDefault()) =
     Clock.System.todayIn(timeZone)

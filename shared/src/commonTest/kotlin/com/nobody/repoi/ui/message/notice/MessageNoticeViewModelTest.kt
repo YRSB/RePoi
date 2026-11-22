@@ -17,13 +17,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * [MessageNoticeViewModel] 单元测试：分类通知加载、标已读与批量删除（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `MessageNoticeViewModelTest`（逐用例；Mockito `mock(MessageRepository)` →
- * 真实 MessageRepository 背后 [MockApi] MockEngine；`MainDispatcherRule` →
- * `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MessageNoticeViewModelTest {
 

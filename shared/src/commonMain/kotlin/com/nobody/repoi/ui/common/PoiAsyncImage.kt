@@ -28,56 +28,16 @@ import kotlin.math.abs
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/** 未命中缓存、无回退比例且非自适应场景下的默认纵横比（正方形占位，防布局跳动）。 */
 private const val DEFAULT_ASPECT_RATIO = 1.0f
 
-/** 手办/条目的语义缺省纵横比（17:24 竖版海报，ADR-0007 §3）。 */
 internal const val HOBBY_FALLBACK_ASPECT_RATIO = 17f / 24f
 
-/** 相册及其余分类的语义缺省纵横比（1.0f 正方形，ADR-0007 §3）。 */
 internal const val DEFAULT_CATEGORY_ASPECT_RATIO = 1.0f
 
-/** 本地比例写回的阈值：变化小于该值时不触发状态更新，避免无谓重组。 */
 private const val RATIO_UPDATE_THRESHOLD = 0.01f
 
-/** 加载失败占位图标边长（固定 28dp 折中值，理由见 `PoiAsyncImageCore` 内注释）。 */
 private val BrokenImageIconSize = 28.dp
 
-/**
- * 多媒体图片呈现基元（语义化重载）。
- *
- * 调用端只需提供「资源路径 + 分类 + 用途」，由 [MediaPipeline.resolveUrl] 统一裁决真实 CDN 变体，
- * 调用端不再关心目录差异、404 避坑与纵横比缓存。
- *
- * 行为约定：
- * - [path] 为空、空白或命中官方缺省图（`none.jpg`）时**不请求**该路径，直接展示分类感知的
- *   官方缺省图：相册走 `cover/sr/none.jpg`（服务端没有 `cover/n/` 目录），其余分类走
- *   [MediaPipeline.getDefaultCoverUrl]；
- * - 请求统一经 [rememberListImageRequest] 生成，缓存键区分「分类 + 用途 + 缩放模式 + 自适应与否」，
- *   防止缩略图与原图缓存串味；
- * - [adaptiveRatio] 为真时用 `Modifier.aspectRatio` 自行撑开高度（调用方只需给出宽度约束），
- *   首帧同步读缓存占位，加载成功后再回写；未命中缓存且未显式给 [fallbackRatio] 时按分类取
- *   语义缺省比例（手办 17:24，其余 1:1，见 [fallbackRatioFor]）；
- *   **约束前提**：`aspectRatio` 只在至少一个轴仍可自由伸缩时生效。若调用方同时钉死宽与高
- *   （如 `Modifier.fillMaxSize()` 落在尺寸确定的父容器里），比例将被忽略、图片铺满容器。
- *   需要「定高、宽度按比例反推」时必须只给高度（`Modifier.height(...)`），不要叠加 `fillMaxSize()`；
- * - [enableFullscreenPreview] 为真时点击唤起全屏查看器；若同时提供 [onClick]，则 [onClick] 优先；
- * - [onError] 为失败出口，供调用方在「URL 快照失效」时按条回源修复（成功重试由 urlText 变化驱动，
- *   基元本身不做重试；未传则保持既有的静默破损图标表现）。
- *
- * @param path Hpoi 资源路径（相对路径或绝对 URL，可为空）
- * @param category 资源所属业务分类
- * @param purpose 期望的呈现用途（管道会在服务端缺档时自动降级）
- * @param contentDescription 无障碍描述
- * @param modifier 外部尺寸与样式约束
- * @param contentScale 内容缩放模式，默认裁切填充
- * @param adaptiveRatio 是否按图片真实纵横比自适应高度
- * @param fallbackRatio 纵横比缓存未命中时的回退比例；缺省按分类取语义值（手办 17:24，其余 1:1）
- * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器
- * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
- * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
- * @param onError 加载失败回调（每次失败触发一次），用于触发按条回源修复
- */
 @Composable
 fun PoiAsyncImage(
     path: String?,
@@ -95,7 +55,7 @@ fun PoiAsyncImage(
 ) {
     val pipeline = LocalMediaPipeline.current
     val resolvedUrl = remember(path, category, purpose) { pipeline.resolveUrl(path, category, purpose) }
-    // 空路径与官方缺省图不发网络请求，直接落到分类感知的吉祥物缺省图
+
     val needsRequest = remember(path, resolvedUrl) { shouldLoadFromNetwork(path, resolvedUrl, pipeline) }
     val displayUrl = remember(needsRequest, resolvedUrl, category, purpose) {
         if (needsRequest) resolvedUrl else placeholderUrlFor(pipeline, category, purpose)
@@ -123,24 +83,6 @@ fun PoiAsyncImage(
     )
 }
 
-/**
- * 多媒体图片呈现基元（通用重载）。
- *
- * 用于「URL 已在别处解析完毕」的场景：不触碰 CDN 规则，[model] 原样交给 Coil
- * （可传绝对 URL、任意 `ImageRequest` 或其它 Coil 可识别类型）。
- *
- * @param model Coil 模型：绝对 URL / [ImageRequest] 直通，不做任何 CDN 拼接
- * @param contentDescription 无障碍描述
- * @param modifier 外部尺寸与样式约束
- * @param contentScale 内容缩放模式，默认裁切填充
- * @param adaptiveRatio 是否按图片真实纵横比自适应高度
- * @param ratioKey 纵横比缓存键，缺省按 [model] 的字符串形式反推
- * @param fallbackRatio 纵横比缓存未命中时的回退比例，缺省 1.0f（无分类上下文，不套用手办比例）
- * @param enableFullscreenPreview 是否在点击时唤起全屏大图查看器（仅纯字符串 URL 可用）
- * @param onClick 自定义点击回调，非空时不再唤起全屏查看器
- * @param alignment 图片在容器内的对齐方式，默认居中；海报类卡片可传 `Alignment.TopCenter` 顶部对齐
- * @param onError 加载失败回调（每次失败触发一次），语义与语义化重载一致
- */
 @Composable
 fun PoiAsyncImage(
     model: Any?,
@@ -163,7 +105,7 @@ fun PoiAsyncImage(
     PoiAsyncImageCore(
         model = model,
         urlText = urlText,
-        // 仅有纯字符串（绝对 URL）才可交给全屏查看器；ImageRequest 等复合模型不外送
+
         previewUrl = if (model is String) model.ifBlank { null } else null,
         ratioKey = ratioKey ?: ratioCacheKey(null, urlText, bucket),
         bucket = bucket,
@@ -180,14 +122,6 @@ fun PoiAsyncImage(
     )
 }
 
-/**
- * 两个公开重载的公共渲染核：负责请求构建、自适应纵横比、失败态与点击交互。
- *
- * 与公开重载的差别仅在于「URL 已解析完毕」，因此不做任何 CDN 判定。
- *
- * 失败态只做两件事：标记本地破损图标，并通过 [onError] 把「这张图加载失败」这一事实交给调用方。
- * 基元自身**不重试**——修复后的新 URL 会让 `remember(urlText)` 自动重置失败态。
- */
 @Composable
 private fun PoiAsyncImageCore(
     model: Any?,
@@ -207,7 +141,7 @@ private fun PoiAsyncImageCore(
     onError: (() -> Unit)?
 ) {
     val pipeline = LocalMediaPipeline.current
-    // ImageRequest 直通；其余模型统一经列表请求工厂生成带独立缓存键的请求
+
     val listRequest = if (model !is ImageRequest && urlText.isNotBlank()) {
         rememberListImageRequest(urlText, urlText, bucket)
     } else {
@@ -222,8 +156,7 @@ private fun PoiAsyncImageCore(
             if (!adaptiveRatio) {
                 DEFAULT_ASPECT_RATIO
             } else {
-                // 缓存可能由旧代码写入（历史上界 2.0f/5.0f 混杂），读取后一律按管道区间规整；
-                // 缓存与显式回退都缺席时才套用分类语义缺省比例
+
                 pipeline.getAspectRatio(ratioKey)?.let(::clampRatio)
                     ?: clampRatio(fallbackRatioFor(category, fallbackRatio))
             }
@@ -232,8 +165,7 @@ private fun PoiAsyncImageCore(
 
     val viewer = LocalImageViewer.current
     val previewTarget = previewUrl?.takeIf { enableFullscreenPreview }
-    // 未提供任何点击语义时不加 clickable，避免抢走外层卡片的手势；
-    // 传了 onClick 就只执行它，不再唤起查看器（避免双触发）
+
     val clickModifier: Modifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)
     } else if (previewTarget != null) {
@@ -250,8 +182,7 @@ private fun PoiAsyncImageCore(
         contentAlignment = Alignment.Center
     ) {
         if (request == null || loadFailed) {
-            // 失败/无模型态：大容器（详情、全屏入口）与 72dp 级缩略图各占一半概率，
-            // 因此取 28dp 折中而不引入 BoxWithConstraints（后者在 Lazy 列表逐项测量有额外开销）
+
             Icon(
                 painter = painterResource(PoiIcons.Filled.BrokenImage),
                 contentDescription = null,
@@ -270,7 +201,7 @@ private fun PoiAsyncImageCore(
                         return@AsyncImage
                     }
                     val size = state.painter.intrinsicSize
-                    // 矢量/未指定尺寸时 width/height 为 NaN，比较结果为 false，天然被过滤
+
                     if (size.width > 0f && size.height > 0f) {
                         val ratio = clampRatio(size.width / size.height)
                         pipeline.recordAspectRatio(ratioKey, ratio)
@@ -288,26 +219,12 @@ private fun PoiAsyncImageCore(
     }
 }
 
-/**
- * 是否需要从网络请求该路径。
- *
- * 空/空白路径与官方缺省吉祥物视为「无可请求资源」，由调用方改用缺省图。
- */
 internal fun shouldLoadFromNetwork(
     path: String?,
     resolvedUrl: String,
     pipeline: MediaPipeline = MediaPipeline.Default
 ): Boolean = resolvedUrl.isNotBlank() && !pipeline.isPlaceholder(path)
 
-/**
- * 分类感知的官方缺省图 URL（无请求态下展示）。
- *
- * 只对 [MediaCategory.ALBUM] 特判：相册在 CDN 上**没有** `cover/n/` 目录，
- * `getDefaultCoverUrl(CARD_STANDARD)` 会产出必然 404 的 `cover/n/none.jpg`，
- * 故改由管道按相册规则解析 `DEFAULT_COVER_PATH`（→ `cover/sr/none.jpg`）。
- * 其它分类保持 `cover/n/none.jpg`（真实部署的吉祥物图）——`posts/n/none.jpg`、
- * `resale/n/none.jpg` 未必存在，不能一概走 `resolveUrl`。
- */
 internal fun placeholderUrlFor(
     pipeline: MediaPipeline,
     category: MediaCategory,
@@ -318,35 +235,17 @@ internal fun placeholderUrlFor(
     else -> pipeline.getDefaultCoverUrl(purpose)
 }
 
-/**
- * 自适应比例在「缓存未命中且调用方未显式指定」时的语义缺省值。
- *
- * ADR-0007 §3：内置手办 17:24、相册 1.0f。此处把「其余分类一律 1.0f」一并落实；
- * 通用重载（[category] 为 `null`，无分类上下文）同样回落 1.0f。
- */
 internal fun fallbackRatioFor(category: MediaCategory?, explicit: Float?): Float = when {
     explicit != null -> explicit
     category == MediaCategory.HOBBY -> HOBBY_FALLBACK_ASPECT_RATIO
     else -> DEFAULT_CATEGORY_ASPECT_RATIO
 }
 
-/**
- * 构造纵横比缓存键。
- *
- * 基座取**完整路径**（无路径时回落完整 URL）而非文件名：不同目录下同名文件（各相册的
- * `cover.jpg`）宽度比完全不同，按文件名建键会让它们共用同一个比例；同时所有占位图都会
- * 落到 `none.jpg` 键上互相污染。Coil 的内存缓存键仍由 [listImageKey] 单独构造，二者解耦。
- */
 internal fun ratioCacheKey(path: String?, url: String, bucket: String): String {
     val base = path?.takeIf { it.isNotBlank() } ?: url
     return "$base:$bucket"
 }
 
-/**
- * 构造列表请求的区分桶：分类 + 用途 + 缩放模式 + 是否自适应。
- *
- * 例：`album:adaptive_grid:crop:adaptive`。
- */
 internal fun imageBucketKey(
     category: MediaCategory,
     purpose: ImagePurpose,
@@ -355,28 +254,20 @@ internal fun imageBucketKey(
 ): String = "${category.name.lowercase()}:${purpose.name.lowercase()}:$contentScaleLabel:" +
     if (adaptiveRatio) "adaptive" else "static"
 
-/**
- * 把原始宽高比截断到管道允许的 `[MIN_ASPECT_RATIO, MAX_ASPECT_RATIO]`。
- *
- * 非有限值（NaN / 非正值）返回默认 1.0f，避免 `Modifier.aspectRatio` 收到非法值。
- */
 internal fun clampRatio(raw: Float): Float = when {
     raw.isNaN() || raw <= 0f -> DEFAULT_ASPECT_RATIO
     else -> raw.coerceIn(DefaultMediaPipeline.MIN_ASPECT_RATIO, DefaultMediaPipeline.MAX_ASPECT_RATIO)
 }
 
-/** 把缩放模式映射为稳定、可读的缓存桶标签。 */
 private fun contentScaleBucketLabel(scale: ContentScale): String = when (scale) {
     ContentScale.Crop -> "crop"
     ContentScale.Fit -> "fit"
-    // FillBounds 会拉伸填满容器，与 Crop/Fit 可视效果差异明显，单独分桶避免缓存键串味
+
     ContentScale.FillBounds -> "fill_bounds"
-    // `ContentScale` 具体变体在每个平台以独立单例对象暴露，跨平台无法穷举，
-    // 因此只对业务用到的三种给出稳定标签，其余统一归入 `other`（仍可区分桶，不影响正确性）。
+
     else -> "other"
 }
 
-/** 从 Coil 模型反推可用作文本键的字符串（绝对 URL 即其本身）。 */
 private fun modelTextOf(model: Any?): String = when (model) {
     null -> ""
     is String -> model

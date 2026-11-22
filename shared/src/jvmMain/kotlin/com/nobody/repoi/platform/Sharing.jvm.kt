@@ -7,11 +7,6 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.net.URI
 
-/**
- * 文本分享器（S1）JVM 实际：
- * - URL 文本 → 系统默认浏览器打开；
- * - 普通文本 → AWT 系统剪贴板（调用方经 `onMessage` 提示“已复制链接”）。
- */
 @Composable
 actual fun rememberTextSharing(): TextSharing = remember {
     object : TextSharing {
@@ -29,7 +24,6 @@ actual fun rememberTextSharing(): TextSharing = remember {
     }
 }
 
-/** 打开外部链接（S2）：`Desktop.browse`，桌面环境不支持时返回 false。 */
 actual fun openUrl(url: String): Boolean = runCatching {
     val normalized = url.trim().let {
         if (it.startsWith("http://") || it.startsWith("https://")) it else "https://$it"

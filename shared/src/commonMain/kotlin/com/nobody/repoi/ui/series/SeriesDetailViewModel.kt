@@ -23,9 +23,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/**
- * 系列详情页路由导航参数。
- */
 @Serializable
 data class SeriesNavParam(
     val seriesId: Long,
@@ -34,9 +31,6 @@ data class SeriesNavParam(
     val initialCover: String? = null
 )
 
-/**
- * 系列详情页渐进式加载 UI 状态机。
- */
 data class SeriesDetailUiState(
     val seriesId: Long = 0L,
     val seriesNodeId: Long = 0L,
@@ -45,34 +39,26 @@ data class SeriesDetailUiState(
     val isInitialLoading: Boolean = true,
     val errorMessage: String? = null,
 
-    // 核心系列主体数据
     val series: SeriesData? = null,
 
-    // 关联周边手办 (3x3 纯图九宫格)
     val isHobbysLoading: Boolean = false,
     val hobbys: List<RelatedHobbyItem> = emptyList(),
 
-    // 旗下子系列 (isChild=1)
     val isSubSeriesLoading: Boolean = false,
     val subSeries: List<SeriesLinkItem> = emptyList(),
 
-    // 相关系列 (isChild=2)
     val isRelateSeriesLoading: Boolean = false,
     val relateSeries: List<SeriesLinkItem> = emptyList(),
 
-    // 关联相册画廊
     val isAlbumsLoading: Boolean = false,
     val albums: List<AlbumData> = emptyList(),
 
-    // 在售周边商品 (淘宝推荐)
     val isGoodsLoading: Boolean = false,
     val goods: List<SeriesGoodsItem> = emptyList(),
 
-    // 社区论坛与帖子
     val isForumLoading: Boolean = false,
     val forum: SeriesForumPayload? = null,
 
-    // 评论区（热门神评置顶 + 最新时序流）
     override val isCommentsLoading: Boolean = false,
     override val hotComments: List<CommentItem> = emptyList(),
     override val latestComments: List<CommentItem> = emptyList(),
@@ -83,11 +69,10 @@ data class SeriesDetailUiState(
     override val pendingPraiseIds: Set<Long> = emptySet(),
     override val commentActionMessage: String? = null,
 
-    // 用户交互状态
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
-    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+
     val collectCountBase: Int? = null,
     val isMasked: Boolean = false,
     val isIntroExpanded: Boolean = false
@@ -139,13 +124,10 @@ class SeriesDetailViewModel(
     private var loadCommentsJob: Job? = null
 
     init {
-        // 合并评论详情页回写的主楼更新（点赞/回复）
+
         commentDelegate.observeCommentUpdates(viewModelScope, _uiState)
     }
 
-    /**
-     * 渐进多阶段加载系列详情所有数据。
-     */
     fun loadDetail(param: SeriesNavParam) {
         if (_uiState.value.seriesId == param.seriesId && !_uiState.value.isInitialLoading && _uiState.value.series != null) {
             return
@@ -161,9 +143,6 @@ class SeriesDetailViewModel(
                 isInitialLoading = true
             )
 
-            // ══════════════════════════════════════════════════════════
-            // 阶段 1：首屏核心主体加载 (api/item/get-v2?itemType=series)
-            // ══════════════════════════════════════════════════════════
             val detailResult = repository.getSeriesDetail(param.seriesId)
             if (detailResult.isFailure) {
                 _uiState.update {
@@ -193,11 +172,6 @@ class SeriesDetailViewModel(
                 )
             }
 
-            // ══════════════════════════════════════════════════════════
-            // 阶段 2：次级板块并行拉取（周边、子系列、相关系列、相册、在售、论坛、评论）
-            // ══════════════════════════════════════════════════════════
-
-            // 2.1 周边手办 3x3 九宫格 (api/item/relate/hobby)
             launch {
                 val hobbysResult = repository.getSeriesHobbys(nodeId, pageSize = 9)
                 _uiState.update {
@@ -208,7 +182,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.2 子系列列表 (api/series/link/series?isChild=1)
             launch {
                 val subSeriesResult = repository.getSeriesSubSeries(param.seriesId, page = 1, pageSize = 6)
                 _uiState.update {
@@ -219,7 +192,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.3 相关系列列表 (api/series/link/series?isChild=2)
             launch {
                 val relateSeriesResult = repository.getSeriesRelateSeries(param.seriesId, page = 1, pageSize = 6)
                 _uiState.update {
@@ -230,7 +202,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.4 系列相册列表 (api/series/album)
             launch {
                 val albumsResult = repository.getSeriesAlbums(param.seriesId, page = 1, pageSize = 6)
                 _uiState.update {
@@ -241,7 +212,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.5 在售周边商品 (api/goods/tb/more-v2)
             launch {
                 val goodsResult = repository.getSeriesGoods(nodeId, page = 1, pageSize = 10)
                 _uiState.update {
@@ -252,7 +222,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.6 社区论坛与讨论帖 (api/series/forum)
             launch {
                 val forumResult = repository.getSeriesForum(param.seriesId)
                 _uiState.update {
@@ -263,7 +232,6 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.7 收藏与屏蔽状态查询
             launch {
                 val collectDeferred = async { repository.getCollectState(nodeId) }
                 val maskDeferred = async { repository.getMaskState(nodeId) }
@@ -279,16 +247,12 @@ class SeriesDetailViewModel(
                 }
             }
 
-            // 2.8 评论区（热评置顶 + 普通评论时序流）
             launch {
                 commentDelegate.loadInitialComments(_uiState, nodeId, repository::getComments)
             }
         }
     }
 
-    /**
-     * 翻页追加最新评论流。
-     */
     fun loadNextCommentsPage() {
         val state = _uiState.value
         val nodeId = state.seriesNodeId
@@ -298,12 +262,6 @@ class SeriesDetailViewModel(
         }
     }
 
-    /**
-     * 切换收藏状态（乐观更新 + 失败回滚）。
-     *
-     * 原实现只翻转本地状态、不发网络请求，导致刷新后回滚；现统一改走
-     * [CollectRepository.toggleItemCollect]，成功即写入收藏仓储状态池并推进变更代数。
-     */
     fun toggleCollect() {
         val state = _uiState.value
         val nodeId = state.seriesNodeId
@@ -311,7 +269,6 @@ class SeriesDetailViewModel(
         val previousCollected = state.isCollected
         val nextCollected = !previousCollected
 
-        // 乐观更新
         _uiState.update {
             it.copy(
                 isCollected = nextCollected,
@@ -322,7 +279,7 @@ class SeriesDetailViewModel(
         viewModelScope.launch {
             val result = collectRepository.toggleItemCollect(nodeId, previousCollected)
             if (result.isFailure) {
-                // 失败回滚
+
                 _uiState.update {
                     it.copy(
                         isCollected = previousCollected,
@@ -332,7 +289,7 @@ class SeriesDetailViewModel(
                 }
             }
             else {
-                // 写成功后以服务端计数重置基线并归零 delta；计数请求失败时保留乐观 delta
+
                 collectRepository.getCollectCount(nodeId).onSuccess { count ->
                     _uiState.update { current ->
                         current.copy(
@@ -346,24 +303,15 @@ class SeriesDetailViewModel(
         }
     }
 
-    /**
-     * 切换屏蔽状态。
-     */
     fun toggleMask() {
         _uiState.update { it.copy(isMasked = !it.isMasked) }
     }
 
-    /**
-     * 切换主评论点赞状态（乐观更新，失败回滚）。
-     */
     fun toggleCommentPraise(commentId: Long) {
         val nodeId = _uiState.value.seriesNodeId
         commentDelegate.toggleCommentPraise(viewModelScope, _uiState, commentId, nodeId)
     }
 
-    /**
-     * 发表子评论回复（成功后追加到主楼并广播更新）。
-     */
     suspend fun submitCommentReply(
         commentId: Long,
         target: com.nobody.repoi.data.remote.model.CommentReplyItem?,
@@ -382,9 +330,6 @@ class SeriesDetailViewModel(
     suspend fun deleteComment(comment: CommentItem): Boolean = commentDelegate.deleteMainComment(_uiState, comment.id)
     suspend fun deleteReply(comment: CommentItem, reply: CommentReplyItem): Boolean = commentDelegate.deleteSubReply(_uiState, comment.id, reply.id)
 
-    /**
-     * 发表主楼评论（成功后重拉第一页评论流）。
-     */
     suspend fun submitTopLevelComment(content: String, stickers: List<String>): Boolean {
         val nodeId = _uiState.value.seriesNodeId
         val ok = commentDelegate.postTopLevelComment(_uiState, nodeId, content, stickers)
@@ -392,9 +337,6 @@ class SeriesDetailViewModel(
         return ok
     }
 
-    /**
-     * 发表成功后重拉第一页评论流（与首屏加载同一口径）。
-     */
     fun refreshComments() {
         val nodeId = _uiState.value.seriesNodeId
         if (nodeId <= 0L) return
@@ -404,16 +346,10 @@ class SeriesDetailViewModel(
         }
     }
 
-    /**
-     * 消费评论互动一次性提示文案。
-     */
     fun consumeCommentActionMessage() {
         commentDelegate.consumeCommentActionMessage(_uiState)
     }
 
-    /**
-     * 展开 / 折叠系列简介。
-     */
     fun toggleIntroExpanded() {
         _uiState.update { it.copy(isIntroExpanded = !it.isIntroExpanded) }
     }

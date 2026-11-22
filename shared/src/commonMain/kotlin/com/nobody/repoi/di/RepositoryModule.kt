@@ -43,13 +43,6 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 
-/**
- * 仓储模块：26 repositories + CommentInteractionDelegate（factory，贴合原 Hilt 非单例语义）。
- * `CollectRepository` 声明在前（Person/Series/Vendor 依赖它；Koin 无序但可读性优先）。
- *
- * 模块尾部同时挂载收藏写侧 Domain UseCases（`factory`，无状态、随用随建）：
- * 它们只依赖仓储与会话，承担收藏领域的业务校验与数据清洗，避免校验散落各 ViewModel。
- */
 val repositoryModule = module {
     singleOf(::CollectRepository)
     single { AlbumRepository(get()) }
@@ -71,8 +64,7 @@ val repositoryModule = module {
     single { SettingsRepository(get()) }
     single { StickerRepository(get()) }
     single { UserHistoryRepository(get(), get()) }
-    // 封面新鲜度：独立 DataStore 文件 + 应用级协程作用域（预热与防抖落盘常驻）。
-    // onClose 在 Koin 关闭时取消作用域，避免测试/重启场景泄漏常驻协程（Koin 传入的实例可空，按空安全处理）。
+
     single(named("cover_freshness_scope")) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }.onClose { scope -> scope?.cancel() }
@@ -91,7 +83,6 @@ val repositoryModule = module {
     single { ZoneRepository(get(), get()) }
     factory { CommentInteractionDelegate(get(), get(), get()) }
 
-    // ── 收藏写侧 Domain UseCases（无状态，factory 即取即用） ──
     factoryOf(::SaveHobbyCollectUseCase)
     factoryOf(::DeleteHobbyCollectUseCase)
     factoryOf(::BatchCancelCollectUseCase)

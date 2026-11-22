@@ -13,8 +13,6 @@ import kotlinx.serialization.json.longOrNull
 import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
 
-// ── 3. 图片与相册模型 ───────────────────────────────
-
 @Serializable
 data class PicListPayload(
     val list: List<PicItem>? = null
@@ -30,11 +28,10 @@ data class PicItem(
     val smallPath: String? = null,
     val rawPath: String? = null
 ) {
-    /** 统一提取图片相对路径 */
+
     val imagePath: String?
         get() = pictureInfo?.path ?: path ?: smallPath ?: rawPath
 
-    /** 计算图片的纵横宽高比 (宽/高) */
     val aspectRatio: Float?
         get() = pictureInfo?.let { info ->
             val w = info.width ?: 0
@@ -98,9 +95,6 @@ data class HobbyAlbumUser(
     val def: Int = 0
 )
 
-/**
- * 条目/相册点赞状态响应载荷 (/api/item/likeInfo)
- */
 @Serializable
 data class ItemLikeInfoPayload(
     val praiseState: Boolean = false
@@ -133,22 +127,19 @@ data class AlbumData(
     val userId: Long = 0L,
     val userName: String? = null
 ) {
-    /** 实际相册 ID：优先取自身的 id，若无则降级为 itemId */
+
     val actualAlbumId: Long
         get() = if (id > 0L) id else itemId
 
-    /** 作者用户 ID：优先取 user?.id（>0），其次 user?.userId（>0），降级为 userId */
     val authorUserId: Long
         get() = user?.id?.takeIf { it > 0L } ?: user?.userId?.takeIf { it > 0L } ?: userId
 
-    /** 优先显示中文名，若无则显示原名 */
     val displayName: String
         get() = nameCN?.ifBlank { null } ?: name ?: ""
 
     val userNickname: String
         get() = user?.nickname?.ifBlank { null } ?: userName ?: "胶友"
 
-    /** 纯文本相册描述（去除 HTML 标签，转换换行符） */
     val detailPlainText: String
         get() {
             if (detail.isNullOrBlank()) return ""

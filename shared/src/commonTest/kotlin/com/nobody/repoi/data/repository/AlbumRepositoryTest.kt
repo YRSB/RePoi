@@ -10,12 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 相册仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `AlbumRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
- */
 class AlbumRepositoryTest {
 
     private fun setup(): Pair<MockApi, AlbumRepository> {
@@ -136,7 +130,7 @@ class AlbumRepositoryTest {
         val form = mock.takeRequest().formEntries()
         assertEquals("hitsDay", form["order"])
         assertEquals("60100", form["category"])
-        // 全部作用域：省略 zones（空串等价全站，但按接口约定不发送）
+
         assertFalse(form.containsKey("zones"))
     }
 

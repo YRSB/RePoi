@@ -32,14 +32,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 用户仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `UserRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi（含按体分发 `routeWhen`，等价 Dispatcher）；
- * 鉴权档案由持有会话的 ViewModel 传入，仓储自身不接触会话状态
- * JUnit4 → kotlin.test + `runTest`）。
- */
 class UserRepositoryTest {
 
     private val json = Json {
@@ -58,9 +50,9 @@ class UserRepositoryTest {
     @Test
     fun loadFullProfile_1Plus5Concurrency_aggregatesAllData() = runTest {
         val (mock, repository) = setup()
-        // 档案由调用方传入，仓储不再请求 /api/user/self
+
         val profile = UserProfile(id = 88888L, nickname = "手办达人", userName = "master", level = 5)
-        // 配置按路径 + 按体分发（等价 Dispatcher 1+5 并发拦截）
+
         mock.route("api/user/fellow/count", """{"success":true,"code":200,"msg":"ok","data":{"data":{"fanCount":120,"friendCount":45,"praiseCount":666}}}""")
         mock.route(
             "api/user/orderStatic",
@@ -83,18 +75,15 @@ class UserRepositoryTest {
         assertTrue(result.isSuccess)
         val data = result.getOrThrow()
 
-        // 验证用户与社交信息
         assertEquals(88888L, data.profile.id)
         assertEquals("手办达人", data.profile.displayName)
         assertEquals(120, data.fellow.fanCount)
         assertEquals(45, data.fellow.friendCount)
 
-        // 验证订单数量
         assertEquals(10, data.order.buy)
         assertEquals(5, data.order.preorder)
         assertEquals(15, data.order.care)
 
-        // 验证 1+5 并发拉取的三个展柜条目
         assertEquals(1, data.preorderItems.size)
         assertEquals(101L, data.preorderItems[0].itemId)
         assertEquals(1, data.buyItems.size)
@@ -102,9 +91,8 @@ class UserRepositoryTest {
         assertEquals(1, data.careItems.size)
         assertEquals(301L, data.careItems[0].itemId)
 
-        // 验证财务与行情汇总
-        assertEquals(600.0, data.finance.supplementedTotalRmb, 0.001) // 10000 JPY * 0.06
-        assertEquals(2000.0, data.finance.historyTotalRmb, 0.001)     // 2000 RMB * 1.0
+        assertEquals(600.0, data.finance.supplementedTotalRmb, 0.001)
+        assertEquals(2000.0, data.finance.historyTotalRmb, 0.001)
         assertEquals("+10%", data.finance.amazonFluctuation)
     }
 
@@ -124,7 +112,7 @@ class UserRepositoryTest {
 
     @Test
     fun userCollectCategory_apiType_matchesOriginalMapping() {
-        // 原版 utils/s.java:209-244 + oe/a.java:32-44，注意 charactar 是服务端历史拼写错误
+
         assertEquals("hobby", UserCollectCategory.HOBBY.apiType)
         assertEquals("company", UserCollectCategory.VENDOR.apiType)
         assertEquals("series", UserCollectCategory.SERIES.apiType)
@@ -133,28 +121,26 @@ class UserRepositoryTest {
         assertEquals("person", UserCollectCategory.PERSON.apiType)
         assertEquals(UserCollectCategory.CHARACTER, UserCollectCategory.fromApiType("charactar"))
         assertEquals(UserCollectCategory.VENDOR, UserCollectCategory.fromKey(40000))
-        // 未收录的分类 id 不应误命中
+
         assertNull(UserCollectCategory.fromKey(12345))
     }
 
     @Test
     fun collectConstants_normalizeOrderByWhitelist() {
-        // 通用 4 页白名单仅 actionDate / collect
+
         assertEquals("actionDate", CollectConstants.normalizeCommonOrder("actionDate"))
         assertEquals("collect", CollectConstants.normalizeCommonOrder("collect"))
         assertEquals("actionDate", CollectConstants.normalizeCommonOrder("orderTime"))
         assertEquals("actionDate", CollectConstants.normalizeCommonOrder(""))
 
-        // 相册/图片白名单 addTime / actionDate / praiseCount
         assertEquals("addTime", CollectConstants.normalizeMediaOrder("addTime"))
         assertEquals("praiseCount", CollectConstants.normalizeMediaOrder("praiseCount"))
         assertEquals("addTime", CollectConstants.normalizeMediaOrder("collect"))
 
-        // 周边白名单 actionDate/release/rating/myRating/updateDate
         assertEquals("release", CollectConstants.normalizeHobbyOrder("release", "preorder"))
         assertEquals("updateDate", CollectConstants.normalizeHobbyOrder("updateDate", "preorder"))
         assertEquals("actionDate", CollectConstants.normalizeHobbyOrder("garbage", "preorder"))
-        // orderTime（入手时间）仅「已入」档可用，其余状态回落收藏时间
+
         assertEquals("orderTime", CollectConstants.normalizeHobbyOrder("orderTime", "buy"))
         assertEquals("actionDate", CollectConstants.normalizeHobbyOrder("orderTime", "preorder"))
         assertEquals("actionDate", CollectConstants.normalizeHobbyOrder("orderTime", ""))
@@ -183,7 +169,7 @@ class UserRepositoryTest {
             }
             """.trimIndent()
         )
-        // 混合实体场景下真实条目在 item 子对象里
+
         assertEquals(9003L, item.actualItemId)
         assertEquals("covers/inner.jpg", item.actualCover)
         assertEquals("inner name", item.displayName)
@@ -200,7 +186,7 @@ class UserRepositoryTest {
         )
         assertEquals(5001L, item.actualItemId)
         assertEquals("良笑社", item.displayName)
-        // 老结构只有 itemsCount，兼容回落到同一语义
+
         assertEquals(120, item.actualHobbyCount)
         assertEquals(0, item.actualIssueHobbyCount)
         assertNull(item.collectStateText)
@@ -269,9 +255,9 @@ class UserRepositoryTest {
     @Test
     fun getUserInfo_whenIdFails_fallsBackToUserId() = runTest {
         val (mock, repository) = setup()
-        // 第一次以 id 查询失败（未命中）
+
         mock.enqueue("""{"success": false, "code": -8, "msg": "未知错误！", "data": {}}""")
-        // 第二次回退以 userId 查询成功
+
         mock.enqueue(
             """{"success": true,"code": 200,"msg": "ok","data": {"user": {"id": 88888,"userId": 77777,"nickname": "回退成功用户","level": 3}}}"""
         )

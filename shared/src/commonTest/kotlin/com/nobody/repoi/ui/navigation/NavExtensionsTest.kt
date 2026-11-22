@@ -11,10 +11,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-/**
- * 验证全局单根栈导航语义：[RePoiNavigator] 根栈出入栈、[RePoiNavigationState] Tab 状态，
- * 以及 [NavExtensions] 强类型跳转扩展。
- */
 class NavExtensionsTest {
 
     private fun testTabState(start: AppDestinations = AppDestinations.HOME): RePoiNavigationState {
@@ -234,7 +230,6 @@ class NavExtensionsTest {
         assertEquals(2, rootStack.size)
         assertIs<SearchNavKey>(rootStack.last())
 
-        // 普通首搜：[MainNavKey, SearchNavKey] -> commitSearchResult -> [MainNavKey, SearchNavKey, SearchResultNavKey]
         navigator.commitSearchResult(SearchResultNavParam(keyword = "初音"))
         assertEquals(3, rootStack.size)
         assertEquals(MainNavKey, rootStack[0])
@@ -242,7 +237,6 @@ class NavExtensionsTest {
         val resultKey = assertIs<SearchResultNavKey>(rootStack[2])
         assertEquals("初音", resultKey.param.keyword)
 
-        // 验证返回手势能退回原输入现场落地页
         assertTrue(navigator.pop())
         assertEquals(2, rootStack.size)
         assertIs<SearchNavKey>(rootStack.last())
@@ -257,7 +251,6 @@ class NavExtensionsTest {
         assertEquals(2, rootStack.size)
         assertIs<HobbyDetailNavKey>(rootStack.last())
 
-        // 外部直达首搜：[MainNavKey, HobbyDetailNavKey] -> navigateToSearchResult -> [MainNavKey, HobbyDetailNavKey, SearchResultNavKey]
         navigator.navigateToSearchResult(SearchResultNavParam(keyword = "GSC"))
         assertEquals(3, rootStack.size)
         assertEquals(MainNavKey, rootStack[0])
@@ -265,7 +258,6 @@ class NavExtensionsTest {
         val resultKey = assertIs<SearchResultNavKey>(rootStack[2])
         assertEquals("GSC", resultKey.param.keyword)
 
-        // 验证返回手势直接退回原详情页，不经过落地页
         assertTrue(navigator.pop())
         assertEquals(2, rootStack.size)
         assertIs<HobbyDetailNavKey>(rootStack.last())
@@ -280,12 +272,10 @@ class NavExtensionsTest {
         navigator.commitSearchResult(SearchResultNavParam(keyword = "初音"))
         assertEquals(3, rootStack.size)
 
-        // 用户在结果页点击搜索栏发起二次重搜，压入带有当前词与分类的 SearchNavKey
         navigator.navigateToSearch(SearchNavParam(initialKeyword = "初音", initialCategory = 10000))
         assertEquals(4, rootStack.size)
         assertIs<SearchNavKey>(rootStack.last())
 
-        // 用户未做修改直接返回，验证精准回退到原 SearchResultNavKey，保留原结果页现场
         assertTrue(navigator.pop())
         assertEquals(3, rootStack.size)
         val resultKey = assertIs<SearchResultNavKey>(rootStack.last())
@@ -301,11 +291,9 @@ class NavExtensionsTest {
         navigator.commitSearchResult(SearchResultNavParam(keyword = "初音"))
         assertEquals(3, rootStack.size)
 
-        // 二次重搜：[MainNavKey, SearchNavKey, SearchResultNavKey, SearchNavKey]
         navigator.navigateToSearch(SearchNavParam(initialKeyword = "初音", initialCategory = 10000))
         assertEquals(4, rootStack.size)
 
-        // 提交修改后的新词，触发收敛
         navigator.commitSearchResult(SearchResultNavParam(keyword = "初音未来"))
         assertEquals(3, rootStack.size)
         assertEquals(MainNavKey, rootStack[0])
@@ -313,7 +301,6 @@ class NavExtensionsTest {
         val newResultKey = assertIs<SearchResultNavKey>(rootStack[2])
         assertEquals("初音未来", newResultKey.param.keyword)
 
-        // 栈中仅包含一个 SearchResultNavKey，返回直达落地页现场
         val searchResultCount = rootStack.count { it is SearchResultNavKey }
         assertEquals(1, searchResultCount)
         assertTrue(navigator.pop())
@@ -326,16 +313,13 @@ class NavExtensionsTest {
         val (navigator, _) = testNavigator()
         val rootStack = navigator.rootBackStack
 
-        // 外部直达：[MainNavKey, HobbyDetailNavKey]
         navigator.navigateToDetail(2002L)
         navigator.navigateToSearchResult(SearchResultNavParam(keyword = "GSC"))
         assertEquals(3, rootStack.size)
 
-        // 结果页发起二次重搜：[MainNavKey, HobbyDetailNavKey, SearchResultNavKey, SearchNavKey]
         navigator.navigateToSearch(SearchNavParam(initialKeyword = "GSC"))
         assertEquals(4, rootStack.size)
 
-        // 提交二次重搜收敛：[MainNavKey, HobbyDetailNavKey, SearchResultNavKey(new)]
         navigator.commitSearchResult(SearchResultNavParam(keyword = "MaxFactory"))
         assertEquals(3, rootStack.size)
         assertEquals(MainNavKey, rootStack[0])
@@ -346,7 +330,6 @@ class NavExtensionsTest {
         val searchResultCount = rootStack.count { it is SearchResultNavKey }
         assertEquals(1, searchResultCount)
 
-        // 验证返回直接回到来源详情页
         assertTrue(navigator.pop())
         assertEquals(2, rootStack.size)
         assertIs<HobbyDetailNavKey>(rootStack.last())
@@ -357,19 +340,17 @@ class NavExtensionsTest {
         val (navigator, _) = testNavigator()
         val rootStack = navigator.rootBackStack
 
-        // 首搜
         navigator.navigateToSearch(SearchNavParam(initialKeyword = "round0"))
         navigator.commitSearchResult(SearchResultNavParam(keyword = "round0"))
         assertEquals(3, rootStack.size)
 
-        // 连续 5 轮修改再提交
         for (i in 1..5) {
             navigator.navigateToSearch(SearchNavParam(initialKeyword = "round${i - 1}"))
             assertEquals(4, rootStack.size)
             assertIs<SearchNavKey>(rootStack.last())
 
             navigator.commitSearchResult(SearchResultNavParam(keyword = "round$i"))
-            // 断言栈深严格收敛为 3，且栈中仅包含 1 个 SearchResultNavKey
+
             assertEquals(3, rootStack.size)
             val resultKey = assertIs<SearchResultNavKey>(rootStack.last())
             assertEquals("round$i", resultKey.param.keyword)
@@ -377,7 +358,6 @@ class NavExtensionsTest {
             assertEquals(1, searchResultCount)
         }
 
-        // 5 轮重搜后返回链路依然清晰：一退落地页，二退主页
         assertTrue(navigator.pop())
         assertEquals(2, rootStack.size)
         assertIs<SearchNavKey>(rootStack.last())
@@ -392,14 +372,12 @@ class NavExtensionsTest {
     fun testNavBackStackCommitSearchResultDirectConvergence() {
         val stack = NavBackStack<NavKey>(MainNavKey)
 
-        // 首搜：[MainNavKey, SearchNavKey] -> commitSearchResult -> [MainNavKey, SearchNavKey, SearchResultNavKey]
         stack.navigateToSearch(keyword = "ALTER")
         stack.commitSearchResult(keyword = "ALTER", category = 10000)
         assertEquals(3, stack.size)
         val firstResult = assertIs<SearchResultNavKey>(stack.last())
         assertEquals("ALTER", firstResult.param.keyword)
 
-        // 二次重搜：压入 SearchNavKey，然后 commitSearchResult
         stack.navigateToSearch(keyword = "ALTER", category = 10000)
         assertEquals(4, stack.size)
         stack.commitSearchResult(keyword = "ALTER 1/7", category = 10000)

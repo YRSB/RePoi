@@ -31,12 +31,6 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 主界面：自适应导航套件（底栏/导航栏）+ 当前 Tab 首屏内容。
- *
- * Tab 首屏的 decorated entries 由根层 [RePoiNavHost] 计算后传入，保证二级页面压栈期间
- * Tab 的 SaveableState / ViewModel 装饰器始终常驻，返回主界面时滚动位置与数据不丢失。
- */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun MainScreen(

@@ -8,39 +8,21 @@ import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.jetbrains.compose.resources.DrawableResource
 
-/**
- * 设置页内部子路由契约（模块私有子 Key，不污染全局导航根栈）。
- */
 @Serializable
 sealed interface SettingsSubNavKey : NavKey
 
-/**
- * 一级分组列表页（主列表）。
- */
 @Serializable
 data object SettingsListNavKey : SettingsSubNavKey
 
-/**
- * 外观与主题详情页。
- */
 @Serializable
 data object SettingsAppearanceNavKey : SettingsSubNavKey
 
-/**
- * 浏览与内容详情页。
- */
 @Serializable
 data object SettingsContentNavKey : SettingsSubNavKey
 
-/**
- * 账号与安全详情页。
- */
 @Serializable
 data object SettingsAccountNavKey : SettingsSubNavKey
 
-/**
- * 设置页内部子栈多态序列化模块（供 SavedStateConfiguration 持久化与单测使用）。
- */
 val SettingsSubNavSerializersModule: SerializersModule = SerializersModule {
     polymorphic(NavKey::class) {
         subclass(SettingsListNavKey::class)
@@ -56,9 +38,6 @@ val SettingsSubNavSerializersModule: SerializersModule = SerializersModule {
     }
 }
 
-/**
- * 设置项一级业务分组枚举。
- */
 enum class SettingsGroup(
     val title: String,
     val description: String,

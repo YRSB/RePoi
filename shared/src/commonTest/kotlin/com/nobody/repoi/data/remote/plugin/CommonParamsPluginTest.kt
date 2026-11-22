@@ -19,15 +19,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * `CommonParamsPlugin`（HttpSend）行为测试（MockEngine，无网络）。
- *
- * 对齐原 `CommonParamsInterceptorTest` 4 用例 + null 跳过 + multipart 不注入：
- * - GET：Referer/UA 头 + 公共参数拼 query，已有同名不覆盖；
- * - POST form：字段合并，已有同名不覆盖；
- * - POST 空包：合成仅含公共参数的 form；
- * - Multipart：不注入公共参数。
- */
 class CommonParamsPluginTest {
 
     private fun plugin(token: String = "test_token_123") =
@@ -143,9 +134,9 @@ class CommonParamsPluginTest {
                 ),
             )
         }
-        // 调用方已有 platform=custom：不覆盖。
+
         assertTrue(bodyText.contains("platform=custom"), bodyText)
-        // 公共参数其余字段补齐。
+
         assertTrue(bodyText.contains("utoken=test_token_123"), bodyText)
         client.close()
     }
@@ -182,7 +173,7 @@ class CommonParamsPluginTest {
         }
         var decoded = ""
         val client = testClient()
-        // 经 MockEngine 返回含 @ref 的包络，直接走 decodeRefAware。
+
         val mock = MockEngine { _ ->
             respond(
                 content = """{"code":200,"success":true,"msg":"ok","data":{"name":"A"}}""",

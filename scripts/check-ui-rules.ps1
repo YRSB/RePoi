@@ -535,47 +535,46 @@ if ($UpdateRatchet) {
 
 # 1. 增量检查（改动文件新增注释拦截）
 if ($baseRef) {
-    $changedKt = @(git diff --name-only --diff-filter=ACMR "$baseRef...HEAD" -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
-    $changedKt += @(git diff --name-only --diff-filter=ACMR -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
-    $untrackedKt = @(git ls-files --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
-    $allChangedKt = @($changedKt) + @($untrackedKt) | Sort-Object -Unique
+    # 一次性批量执行 git diff，避免对数百个改动文件逐一启动进程
+    $diffOutput = @(git diff -U0 "$baseRef...HEAD" -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    $diffOutput += @(git diff -U0 -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
 
-    foreach ($file in $allChangedKt) {
-        if (-not (Test-Path -LiteralPath $file)) { continue }
-        if ($file -in $untrackedKt) {
-            $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $file))
-            for ($idx = 0; $idx -lt $lines.Count; $idx++) {
-                $t = $lines[$idx].Trim()
-                if ($t.StartsWith('//') -or $t.StartsWith('/*') -or $t.StartsWith('/**')) {
-                    $errors += [pscustomobject]@{
-                        File = $file; Line = $idx + 1; Tag = 'NO-CODE-COMMENTS'
-                        Text = "新增代码注释: $t"
-                        Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
-                    }
+    $curFile = ''
+    $curLine = 1
+    foreach ($dLine in $diffOutput) {
+        if ($dLine -match '^\+\+\+ b/(.*)') {
+            $curFile = $matches[1]
+            continue
+        }
+        if ($dLine -match '^\@\@ -\d+(?:,\d+)? \+(\d+)') {
+            $curLine = [int]$matches[1]
+            continue
+        }
+        if ($dLine.StartsWith('+') -and -not $dLine.StartsWith('+++')) {
+            $added = $dLine.Substring(1).Trim()
+            if ($added.StartsWith('//') -or $added.StartsWith('/*') -or $added.StartsWith('/**')) {
+                $errors += [pscustomobject]@{
+                    File = $curFile; Line = $curLine; Tag = 'NO-CODE-COMMENTS'
+                    Text = "新增代码注释: $added"
+                    Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
                 }
             }
-        } else {
-            $diffLines = @()
-            if ($baseRef) {
-                $diffLines = @(git diff -U0 "$baseRef...HEAD" -- $file)
-            }
-            $diffLines += @(git diff -U0 -- $file)
-            $curLine = 1
-            foreach ($dLine in $diffLines) {
-                if ($dLine -match '^\@\@ -\d+(?:,\d+)? \+(\d+)') {
-                    $curLine = [int]$matches[1]
-                    continue
-                }
-                if ($dLine.StartsWith('+') -and -not $dLine.StartsWith('+++')) {
-                    $added = $dLine.Substring(1).Trim()
-                    if ($added.StartsWith('//') -or $added.StartsWith('/*') -or $added.StartsWith('/**')) {
-                        $errors += [pscustomobject]@{
-                            File = $file; Line = $curLine; Tag = 'NO-CODE-COMMENTS'
-                            Text = "新增代码注释: $added"
-                            Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
-                        }
-                    }
-                    $curLine++
+            $curLine++
+        }
+    }
+
+    # 全新未跟踪文件
+    $untrackedKt = @(git ls-files --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    foreach ($uFile in $untrackedKt) {
+        if (-not (Test-Path -LiteralPath $uFile)) { continue }
+        $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $uFile))
+        for ($idx = 0; $idx -lt $lines.Count; $idx++) {
+            $t = $lines[$idx].Trim()
+            if ($t.StartsWith('//') -or $t.StartsWith('/*') -or $t.StartsWith('/**')) {
+                $errors += [pscustomobject]@{
+                    File = $uFile; Line = $idx + 1; Tag = 'NO-CODE-COMMENTS'
+                    Text = "新增代码注释: $t"
+                    Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
                 }
             }
         }

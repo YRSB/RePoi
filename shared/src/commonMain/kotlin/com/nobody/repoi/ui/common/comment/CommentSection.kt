@@ -135,16 +135,6 @@ import com.nobody.repoi.ui.theme.bottomSheet
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * M3 注意：评论区内容过滤与展示模式唯一定义归属 M2
- * `ui/common/comment/CommentSectionInteraction.kt`（`CommentFilterMode`），
- * 本文件不再重复声明（CI Redeclaration 修复）。
- */
-
-/**
- * 共享评论区组件：LazyListScope 扩展函数体系。
- * 支持在任何 LazyColumn 中直接接入评论流，具备独立的模式筛选、楼中楼折叠与分页能力。
- */
 fun LazyListScope.commentSectionItems(
     filterMode: CommentFilterMode,
     onFilterModeChange: (CommentFilterMode) -> Unit,
@@ -224,9 +214,6 @@ fun LazyListScope.commentSectionItems(
     }
 }
 
-/**
- * 评论区头部：动态联动标题 + 右侧点击轮询排序（默认/热门/最新）。
- */
 @Composable
 fun CommentSectionHeader(
     totalCommentCount: Int,
@@ -244,7 +231,6 @@ fun CommentSectionHeader(
         CommentFilterMode.LATEST -> CommentFilterMode.DEFAULT
     }
 
-    // 动态联动标题
     val dynamicTitle = when (currentMode) {
         CommentFilterMode.HOT -> "最热评论"
         CommentFilterMode.LATEST -> "最新评论"
@@ -258,7 +244,7 @@ fun CommentSectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 左侧联动标题与总数（若有返回键则在最前呈现）
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -319,14 +305,8 @@ fun CommentSectionHeader(
     }
 }
 
-
-
-/** 主楼发表草稿键：与任意主楼回复草稿互不干扰。 */
 private const val TOP_LEVEL_COMMENT_DRAFT_ID = -1L
 
-/**
- * 发表主楼评论弹窗（复用回复弹窗的输入、防双击与草稿逻辑，被回复人为空时标题即“发表评论”）。
- */
 @Composable
 fun TopLevelCommentDialog(
     onDismiss: () -> Unit,
@@ -344,15 +324,6 @@ fun TopLevelCommentDialog(
     )
 }
 
-/**
- * 评论区单条主评论卡片（含子评论预览与回复点赞操作）。
- *
- * @param comment 评论数据实体。
- * @param isHot 是否为热门神评（高亮背景色与徽标）。
- * @param isDark 是否处于深色主题。
- * @param interaction 评论区交互参数聚合物。
- * @param showReplyPreview 是否展示楼中楼子评论预览（详情页头部复用时关闭，避免与下方全量回复重复）。
- */
 @Composable
 fun CommentItemCard(
     comment: CommentItem,
@@ -422,7 +393,6 @@ fun CommentItemCard(
         )
     }
 
-    // 极简流式评论卡片（直接对齐参考应用视觉规范）
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -437,7 +407,7 @@ fun CommentItemCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // 左侧头像 (36dp 圆形)
+
             AsyncImage(
                 model = MediaPipeline.Default.resolveUrl(comment.user?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
                 contentDescription = comment.user?.nickname,
@@ -452,7 +422,7 @@ fun CommentItemCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                // 1. 昵称 + 等级徽章 + 热门徽标
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -467,7 +437,6 @@ fun CommentItemCard(
                     LevelPill(level = comment.user?.level ?: 0)
                 }
 
-                // 2. 发布时间（位于昵称下方，小字号浅灰色，直接对照设计图 0）
                 val timeStr = comment.addDateString ?: comment.addTime ?: ""
                 if (timeStr.isNotBlank()) {
                     Text(
@@ -477,7 +446,6 @@ fun CommentItemCard(
                     )
                 }
 
-                // 3. 主评论正文
                 val linkColor = MaterialTheme.colorScheme.primary
                 val parsedCommentContent = remember(comment.content, interaction.onUrlClick, linkColor) {
                     HtmlRichTextParser.parse(
@@ -493,7 +461,7 @@ fun CommentItemCard(
                     lineHeight = 21.sp,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                // 表情附图数量较少，用 Row 直铺避免懒加载开销
+
                 if (comment.emoticonUrls.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -514,7 +482,6 @@ fun CommentItemCard(
                     }
                 }
 
-                // 4. 操作行：左侧【↩ 回复】，右侧【点赞】（直接对照设计图 0）
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -570,14 +537,12 @@ fun CommentItemCard(
                         }
                     }
 
-                    // 点赞按钮
                     CommentPraiseButton(
                         comment = comment,
                         interaction = interaction
                     )
                 }
 
-                // 5. 【楼中楼子评论嵌套气泡框】(直接对照设计图 0)
                 val replies = CommentMutations.filterShielded(comment.replys ?: emptyList())
                 if (showReplyPreview && replies.isNotEmpty()) {
                     val canJumpToDetail = interaction.onViewAllReplies != null
@@ -629,7 +594,6 @@ fun CommentItemCard(
             }
         }
 
-        // 底部分割线（展示回复预览的主列表项显示，与正文对齐）
         if (showReplyPreview && showDivider) {
             HorizontalDivider(
                 modifier = Modifier.padding(top = 10.dp, start = 46.dp),
@@ -640,9 +604,6 @@ fun CommentItemCard(
     }
 }
 
-/**
- * 评论点赞按钮（主楼右下角唯一入口，位于子评论区上方）。
- */
 @Composable
 private fun CommentPraiseButton(
     comment: CommentItem,
@@ -678,13 +639,10 @@ private fun CommentPraiseButton(
     }
 }
 
-/**
- * 是否为自言自语式回复（作者与被回复人为同一人时不展示“回复”关系）。
- */
 internal fun isSelfReplyTarget(reply: CommentReplyItem): Boolean {
     val authorName = reply.user?.nickname?.ifBlank { null } ?: "胶友"
     val toName = reply.toUser?.nickname?.ifBlank { null }
-    // 同名不同人需区分：优先按用户 ID 判定，仅双方均无可用 ID 时回退昵称比较
+
     val fromIds = listOfNotNull(reply.user?.id, reply.user?.userId).filter { it != 0L }.toSet()
     val toIds = listOfNotNull(reply.toUser?.id, reply.toUser?.userId).filter { it != 0L }.toSet()
     return if (fromIds.isNotEmpty() && toIds.isNotEmpty()) {
@@ -696,9 +654,6 @@ internal fun isSelfReplyTarget(reply: CommentReplyItem): Boolean {
     }
 }
 
-/**
- * 纯函数：构建子评论在主列表回复预览行的富文本（包含回复人关系与富文本正文解析）。
- */
 fun buildReplyRelationText(
     reply: CommentReplyItem,
     primaryColor: Color,
@@ -739,9 +694,6 @@ fun buildReplyRelationText(
     }
 }
 
-/**
- * 子评论关系富文本：“昵称A 回复 昵称B：正文”（无被回复人时为“昵称A：正文”）。
- */
 @Composable
 fun replyRelationText(
     reply: CommentReplyItem,
@@ -753,9 +705,6 @@ fun replyRelationText(
     onUrlClick = onUrlClick
 )
 
-/**
- * 评论详情页子评论整行：头像 + 昵称等级行 + 正文行 + 时间行 + 分割线（对齐原版）。
- */
 @Composable
 fun CommentReplyRow(
     reply: CommentReplyItem,
@@ -808,7 +757,7 @@ fun CommentReplyRow(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                // 1. 昵称 + 等级徽章
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -822,7 +771,6 @@ fun CommentReplyRow(
                     LevelPill(level = reply.user?.level ?: 0)
                 }
 
-                // 2. 发布时间
                 val timeStr = reply.addDateString ?: reply.addTime ?: ""
                 if (timeStr.isNotBlank()) {
                     Text(
@@ -832,7 +780,6 @@ fun CommentReplyRow(
                     )
                 }
 
-                // 3. 正文（带回复 @xxx 前缀）
                 Text(
                     text = replyDetailContentText(
                         reply = reply,
@@ -843,7 +790,7 @@ fun CommentReplyRow(
                     lineHeight = 20.sp,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                // 子楼表情数量较少，用 Row 直铺避免懒加载开销
+
                 if (reply.emoticonUrls.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -923,9 +870,6 @@ fun CommentReplyRow(
     }
 }
 
-/**
- * 纯函数：构建详情页子评论正文富文本（“回复 昵称：正文”；无被回复人时仅正文）。
- */
 fun buildReplyDetailContentText(
     reply: CommentReplyItem,
     primaryColor: Color,
@@ -960,9 +904,6 @@ fun buildReplyDetailContentText(
     }
 }
 
-/**
- * 详情页子评论正文：“回复 昵称：正文”（无被回复人时仅正文）。
- */
 @Composable
 fun replyDetailContentText(
     reply: CommentReplyItem,
@@ -1005,25 +946,11 @@ private fun CommentDeleteConfirmDialog(
     )
 }
 
-/**
- * 评论输入扩展选择器类型（对齐 Jetchat 架构规范）。
- */
 enum class CommentInputSelector {
     NONE,
     EMOJI
 }
 
-/**
- * 回复发表浮层（基于 Google 官方 Jetchat 架构精细重构）。
- *
- * 采用主窗口同层 Overlay 架构配合 Jetchat 的 [CommentInputSelector] 与 Focus Stealing 机制：
- * 1. 彻底移除 [ModalBottomSheet] 及其 DragHandle，根除手柄透明透底与子窗口 Insets 竞争导致的二段跳缺陷；
- * 2. 软键盘由 [Modifier.imePadding] 与 [LocalSoftwareKeyboardController] 直接由系统级动画驱动，毫秒级平滑升降；
- * 3. 展开表情区时通过 [focusTarget] 夺取焦点让输入框失焦，软键盘自然平滑收起；
- * 4. 键盘按钮常驻工具栏，点击可靠切换软键盘与表情面板；
- * 5. 光标与提示占位文本统一采用 [Alignment.TopStart] 基准，实现垂直基线像素级对齐；
- * 6. 保证输入草稿安全：仅当提交成功时清空草稿并关闭浮层；失败时保持浮层打开并保留草稿。
- */
 @Composable
 fun CommentReplyDialog(
     comment: CommentItem,
@@ -1079,20 +1006,17 @@ fun CommentReplyDialog(
     val targetName = target?.user?.nickname?.ifBlank { null }
         ?: if (comment.id != TOP_LEVEL_COMMENT_DRAFT_ID) comment.user?.nickname?.ifBlank { null } else null
 
-    // 唤起浮层时立即聚焦输入框并弹起软键盘（主窗口内由 imePadding 紧随系统动画无缝升起，杜绝二段跳）
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
         keyboardController?.show()
     }
 
-    // 表情面板处于激活状态时夺取焦点，触发 BasicTextField 失焦并让系统自然收起软键盘（Jetchat 招牌规范）
     if (currentInputSelector == CommentInputSelector.EMOJI) {
         SideEffect {
             selectorFocusRequester.requestFocus()
         }
     }
 
-    // 关闭收起处理
     val dismissAll = {
         if (!isSubmitting) {
             focusManager.clearFocus()
@@ -1101,7 +1025,6 @@ fun CommentReplyDialog(
         }
     }
 
-    // 返回键拦截：表情展开时优先关闭表情面板；未展开时关闭整个回复浮层
     PoiShelfBackHandler(enabled = true) {
         if (currentInputSelector != CommentInputSelector.NONE) {
             currentInputSelector = CommentInputSelector.NONE
@@ -1113,7 +1036,7 @@ fun CommentReplyDialog(
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        // 1. 半透明暗色遮罩（点击收起浮层）
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1126,7 +1049,6 @@ fun CommentReplyDialog(
                 }
         )
 
-        // 2. 贴底输入卡片 Surface（无 DragHandle，圆角平滑，紧贴软键盘升降）
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1143,7 +1065,7 @@ fun CommentReplyDialog(
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp)
             ) {
-                // 回复目标提示
+
                 if (targetName != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1164,7 +1086,6 @@ fun CommentReplyDialog(
                     }
                 }
 
-                // 紧凑自适应输入区（初始 40dp，自适应撑开至 120dp，首行与 Hint 基线严格对齐）
                 val inputTextStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 15.sp,
                     lineHeight = 22.sp,
@@ -1222,7 +1143,6 @@ fun CommentReplyDialog(
                     )
                 }
 
-                // 已选表情贴纸横向预览行
                 if (selectedStickers.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -1256,7 +1176,6 @@ fun CommentReplyDialog(
                     }
                 }
 
-                // 操作工具栏
                 val showFaceTab = faceTexts.isNotEmpty()
                 val tabTitles = buildList {
                     if (showFaceTab) add("颜文字")
@@ -1270,7 +1189,7 @@ fun CommentReplyDialog(
                         .padding(top = 8.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 表情常驻按钮
+
                     if (faceTexts.isNotEmpty() || stickerPacks.isNotEmpty() || (onLoadStickerPacks != null && !stickersLoaded)) {
                         IconButton(
                             onClick = {
@@ -1293,7 +1212,6 @@ fun CommentReplyDialog(
                         }
                     }
 
-                    // 键盘常驻按钮
                     IconButton(
                         onClick = {
                             if (currentInputSelector == CommentInputSelector.EMOJI) {
@@ -1321,7 +1239,6 @@ fun CommentReplyDialog(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // 右侧药丸形发送按钮
                     val canSubmit = (inputText.text.isNotBlank() || selectedStickers.isNotEmpty()) && !isSubmitting
                     Surface(
                         onClick = {
@@ -1370,7 +1287,6 @@ fun CommentReplyDialog(
                     }
                 }
 
-                // 底部表情面板插槽（通过 focusTarget 夺取焦点，自然收起软键盘）
                 AnimatedVisibility(
                     visible = currentInputSelector == CommentInputSelector.EMOJI && tabTitles.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth()
@@ -1482,9 +1398,6 @@ fun CommentReplyDialog(
     }
 }
 
-/**
- * 评论区空状态展示卡。
- */
 @Composable
 fun EmptyCommentsCard(
     text: String,
@@ -1505,9 +1418,6 @@ fun EmptyCommentsCard(
     }
 }
 
-/**
- * 评论区底部加载中与触底提示。
- */
 @Composable
 fun CommentFooter(
     isLoadingMore: Boolean,
@@ -1625,10 +1535,6 @@ private fun HotFooterText(hotCount: Int) {
     }
 }
 
-/**
- * 瀑布流版共享评论区：与 [commentSectionItems] 同逻辑，所有条目独占整行。
- * 仅供 LazyVerticalStaggeredGrid 宿主（如相册详情图集流）使用，其他详情页沿用原函数。
- */
 fun LazyStaggeredGridScope.commentSectionStaggeredItems(
     filterMode: CommentFilterMode,
     onFilterModeChange: (CommentFilterMode) -> Unit,
@@ -1706,15 +1612,6 @@ fun LazyStaggeredGridScope.commentSectionStaggeredItems(
     }
 }
 
-/**
- * 通用评论流面板容器：
- * 统一大屏（副栏）与小屏（全屏页）的评论呈现。
- * 包含：
- * 1. 顶部固定标题栏 CommentSectionHeader（支持可选 onBack 返回键，statusBarsPadding + 54dp 高度）；
- * 2. 评论流内置 PullToRefreshBox 下拉刷新及触底自动翻页加载（shouldLoadMore）；
- * 3. 右下角 FAB 触发发表主楼评论弹窗；
- * 4. 可选的楼中楼覆盖层插槽（threadOverlay），支持副栏内嵌滑入或外部路由。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentFeedPane(
@@ -1746,8 +1643,6 @@ fun CommentFeedPane(
     var isDeletingComment by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // 只在执行能力存在时安装 request 回调：否则「删除/回复」入口会因 canDelete/openReplyDialog 的
-    // 非空判定而显示，但顶层弹窗被原始 interaction 的能力门禁拦住，形成点了没反应的死入口。
     val effectiveInteraction = remember(interaction) {
         interaction.copy(
             onRequestReply = if (interaction.onReplySubmit != null) {
@@ -1763,7 +1658,6 @@ fun CommentFeedPane(
         )
     }
 
-    // 切换排序模式时自动回顶
     var isFirstComposition by remember { mutableStateOf(true) }
     LaunchedEffect(filterMode) {
         if (isFirstComposition) {
@@ -1780,8 +1674,6 @@ fun CommentFeedPane(
         }
     }
 
-    // 触底自动翻页检测：最新与默认模式翻页，热门模式不翻页
-    // 派生状态按需订阅列表布局信息，键仅用 remember 避免传入状态导致重建
     val shouldLoadMore by remember {
         derivedStateOf {
             if (filterMode == CommentFilterMode.HOT) {
@@ -1804,11 +1696,11 @@ fun CommentFeedPane(
     Box(
         modifier = modifier
     ) {
-        // 1. 底层：主评论流列表
+
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 顶部常驻副标题栏（高度 54dp + statusBarsPadding，对齐左侧 TopBar）
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
@@ -1834,7 +1726,6 @@ fun CommentFeedPane(
                 }
             }
 
-            // 独立滚动的评论流（包裹下拉刷新）
             PullToRefreshBox(
                 isRefreshing = isCommentsLoading && (hotComments.isNotEmpty() || latestComments.isNotEmpty()),
                 onRefresh = { onRefreshComments?.invoke() },
@@ -1867,7 +1758,6 @@ fun CommentFeedPane(
             }
         }
 
-        // 2. 右下角 FAB（发表主楼评论）
         if (interaction.onAddComment != null && isFabVisible) {
             FloatingActionButton(
                 onClick = { showTopLevelCommentDialog = true },
@@ -1886,10 +1776,8 @@ fun CommentFeedPane(
             }
         }
 
-        // 3. 楼中楼浮层覆盖插槽
         threadOverlay?.invoke()
 
-        // 4. 发表主楼评论弹窗
         if (showTopLevelCommentDialog && interaction.onAddComment != null) {
             TopLevelCommentDialog(
                 onDismiss = { showTopLevelCommentDialog = false },
@@ -1904,7 +1792,6 @@ fun CommentFeedPane(
             )
         }
 
-        // 5. 楼中楼回复弹窗（顶层提升托管，避免列表项反复重建）
         replyDialogTarget?.let { (comment, target) ->
             if (interaction.onReplySubmit != null) {
                 CommentReplyDialog(
@@ -1923,7 +1810,6 @@ fun CommentFeedPane(
             }
         }
 
-        // 6. 删除主评论确认弹窗（顶层提升托管）
         deleteCommentTarget?.let { comment ->
             if (interaction.onDeleteComment != null) {
                 CommentDeleteConfirmDialog(
@@ -1936,7 +1822,7 @@ fun CommentFeedPane(
                             isDeletingComment = true
                             try {
                                 val ok = interaction.onDeleteComment.invoke(comment)
-                                // 只在弹窗仍指向同一评论时关闭，避免误关后续打开的另一条确认框
+
                                 if (ok && deleteCommentTarget?.id == comment.id) {
                                     deleteCommentTarget = null
                                 }
@@ -1951,10 +1837,6 @@ fun CommentFeedPane(
     }
 }
 
-/**
- * 宽屏双栏模式副屏专用固定评论区组件：
- * 基于 [CommentFeedPane] 实现，内部集成楼中楼详情滑动覆盖副栏的浮层交互。
- */
 @Composable
 fun SupportingCommentPane(
     filterMode: CommentFilterMode,
@@ -1977,15 +1859,13 @@ fun SupportingCommentPane(
     relateNodeId: Long = 0L,
     bottomContentPadding: androidx.compose.ui.unit.Dp = 80.dp
 ) {
-    // 当前正在查看的楼中楼详情主评论（非空时副栏滑入楼中楼界面）
+
     var activeThreadComment by remember { mutableStateOf<CommentItem?>(null) }
 
-    // 拦截返回按键：如果副栏正在展示楼中楼，则先收起楼中楼
     PoiShelfBackHandler(enabled = activeThreadComment != null) {
         activeThreadComment = null
     }
 
-    // 包装 interaction：副栏内点击卡片或“查看回复详情”，直接在副栏内部滑入楼中楼覆盖层
     val paneInteraction = remember(interaction) {
         interaction.copy(
             onViewAllReplies = { comment ->

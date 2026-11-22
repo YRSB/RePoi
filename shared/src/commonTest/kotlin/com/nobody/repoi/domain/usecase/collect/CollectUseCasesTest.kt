@@ -13,12 +13,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 收藏写侧接缝单测：保留的用例覆盖校验分支**不发请求**（`requestCount == 0`）、
- * 成功路径（请求参数与状态池）与失败透传；通用条目切换已收口到
- * [CollectRepository.toggleItemCollect]，同样在此验证请求分发与结果翻转。
- * 命名刻意避开 `*ViewModelTest`（CI `excludeTestsMatching` 隔离名单）。
- */
 class CollectUseCasesTest {
 
     private class Env(

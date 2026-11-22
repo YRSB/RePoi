@@ -4,9 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 纯逻辑单测：价格格式化 / 日期时间 / 列表分页。
- */
 class PureUtilsTest {
 
     @Test

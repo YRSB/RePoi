@@ -47,7 +47,7 @@ fun ZoneBoardPane(
         ZoneBoard.Action -> {
             val actionContent = content as? ZoneBoardContent.Action
             if (actionContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
@@ -78,10 +78,10 @@ fun ZoneBoardPane(
         ZoneBoard.Album -> {
             val albumContent = content as? ZoneBoardContent.Album
             if (albumContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
-                // 相册沿用既有列数策略（手机 2 列 / 平板 3-4 列 / 桌面 5 列），不按动态瀑布流的列数渲染
+
                 val albumColumns = rememberAlbumStaggeredGridColumns()
                 BoardGridContainer(
                     itemCount = albumContent.items.size,
@@ -110,13 +110,12 @@ fun ZoneBoardPane(
         ZoneBoard.Posts -> {
             val postsContent = content as? ZoneBoardContent.Posts
             if (postsContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 val onPostClick: (PostItem) -> Unit = itemActions.onPostClick ?: {}
                 val onPostImageClick: (List<String>, Int) -> Unit = itemActions.onPostImageClick ?: { _, _ -> }
-                // 只统计真正会渲染的条目：showPinnedPosts=false 时置顶条不渲染，
-                // 若仍计入 itemCount，空列表会被误判为「有内容」，空态/首屏错误态被吞掉。
+
                 val visiblePinnedCount =
                     if (showPinnedPosts) postsContent.pinnedPosts.size else 0
                 BoardGridContainer(
@@ -129,7 +128,7 @@ fun ZoneBoardPane(
                     modifier = modifier,
                     onIntent = onIntent,
                     header = {
-                        // 置顶帖条只在单专区渲染：聚合态（全部）无置顶语义，关注态已隐藏整个板块
+
                         if (showPinnedPosts && postsContent.pinnedPosts.isNotEmpty()) {
                             item(
                                 key = "zone_pinned_posts",
@@ -162,7 +161,7 @@ fun ZoneBoardPane(
         ZoneBoard.Resale -> {
             val resaleContent = content as? ZoneBoardContent.Resale
             if (resaleContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
@@ -184,7 +183,7 @@ fun ZoneBoardPane(
                             item = item,
                             onClick = { itemActions.onResaleClick?.invoke(item) },
                             onUserClick = itemActions.onResaleUserClick,
-                            // 可空回调原样透传：卡片据 null 隐藏「联系」「更多」，避免渲染可点但无响应的假入口
+
                             onContactClick = itemActions.onResaleContactClick?.let { click -> { click(item) } },
                             onMoreClick = itemActions.onResaleMoreClick?.let { click -> { click(item) } }
                         )
@@ -195,10 +194,10 @@ fun ZoneBoardPane(
         ZoneBoard.Hobby -> {
             val hobbyContent = content as? ZoneBoardContent.Hobby
             if (hobbyContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
-                // 产品沿用专区详情既有列数规则：网格 = 自适应 120dp；列表 = 自适应 420dp
+
                 val hobbyColumns = remember(hobbyContent.isGridMode) {
                     if (hobbyContent.isGridMode) {
                         StaggeredGridCells.Adaptive(minSize = 120.dp)
@@ -249,7 +248,7 @@ fun ZoneBoardPane(
         ZoneBoard.Person -> {
             val entityContent = content as? ZoneBoardContent.Entity
             if (entityContent == null) {
-                // 防御：板块与内容类型不匹配时不崩溃，保持与原空态一致的视觉
+
                 ZoneEmptyPlaceholder(board.emptyText)
             } else {
                 BoardGridContainer(
@@ -262,8 +261,7 @@ fun ZoneBoardPane(
                     modifier = modifier,
                     onIntent = onIntent
                 ) {
-                    // 实体 5 类共用同一卡片：key/contentType 带板块类型，避免跨板块复用旧条目；
-                    // 服务端 `charactar` 拼写来自 [ZoneBoard.Character.type]，此处只透传。
+
                     items(
                         items = entityContent.items,
                         key = { item -> "zone_entity_${board.type}_${item.targetId}" },
@@ -280,17 +278,6 @@ fun ZoneBoardPane(
     }
 }
 
-/**
- * 产品板块的两个弹层（高级筛选 / 分类级联），由**宿主**无条件组合（与内容四态解耦）。
- *
- * 为什么不在 [ZoneBoardPane] 内：首页在首屏加载 / 空态 / 错误态时用卡片或加载视图顶替面板，
- * 若弹层随面板一起消失，筛选条上的「高级筛选」「分类」入口就会变成点击无反馈的死入口；
- * 弹层显隐标志还会残留，等列表恢复后自行弹出。宿主必须在 `when` 四态之外调用本函数，
- * 并只在当前板块为 [ZoneBoard.Hobby] 时组合，避免切板块后残留弹层。
- *
- * @param filters 产品筛选快照（含两个弹层的显隐与已选值）
- * @param hobbyCategoryTree 产品分类树（`parentId -> 子分类`）
- */
 @Composable
 fun ZoneBoardHobbySheets(
     filters: ZoneBoardFilters,
@@ -324,19 +311,6 @@ fun ZoneBoardHobbySheets(
     }
 }
 
-/**
- * 板块内容区的统一瀑布流骨架（#150 审查 B6：六个板块原本各有一份同构实现）。
- *
- * 只负责「空态 / 错误态 / 内容 + 分页页脚」三态骨架；条目本身由 [itemsContent] 注入
- * （条目 DSL 的 `key` / `contentType` 仍在各板块分支内原样声明），讨论板块的置顶帖条由
- * [header] 注入。空态 / 错误态用的卡片基元与首页四态完全一致（§3.6）。
- *
- * @param itemCount 当前板块条目数（含置顶帖等头部内容；为 0 时渲染空态卡片）
- * @param page 分页快照（加载更多 / 加载失败 / 已到底由页脚消费）
- * @param emptyText 空态文案（各板块措辞不同）
- * @param header 内容区顶部附加块（如讨论置顶帖条），仅在有条目时渲染
- * @param itemsContent 条目列表 DSL（调用方自行声明稳定的 key / contentType）
- */
 @Composable
 private fun BoardGridContainer(
     itemCount: Int,

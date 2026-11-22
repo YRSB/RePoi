@@ -156,7 +156,6 @@ fun LoginContent(
             )
         )
 
-        // 采用顶部锚定（Alignment.TopCenter）而非全屏居中，彻底消除因不同登录模式高度差异引起的头部品牌区与切换栏位移跳动
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter
@@ -175,7 +174,7 @@ fun LoginContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
-                // 品牌视觉区：56dp Flower 异形容器 + 标题
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -205,7 +204,6 @@ fun LoginContent(
                     )
                 }
 
-                // 双模连结切换：账号密码 / Token 登录
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -248,7 +246,6 @@ fun LoginContent(
                     }
                 }
 
-                // 表单输入区：AnimatedContent 结合水平平移与高度平滑过渡，替换突兀的瞬切
                 AnimatedContent(
                     targetState = uiState.loginMode,
                     transitionSpec = {
@@ -289,7 +286,6 @@ fun LoginContent(
                     }
                 }
 
-                // 外层统一步局的提交按钮：避免双按钮重复构建，随表单高度平滑随动
                 val canSubmit = when (uiState.loginMode) {
                     LoginMode.ACCOUNT -> uiState.account.isNotBlank() && uiState.password.isNotBlank() && !uiState.isLoading
                     LoginMode.TOKEN -> uiState.token.isNotBlank() && !uiState.isLoading
@@ -328,7 +324,6 @@ fun LoginContent(
                     }
                 }
 
-                // 错误提示条：使用高度展开与淡入，消除突变跳动
                 AnimatedVisibility(
                     visible = uiState.errorMessage != null,
                     enter = fadeIn() + expandVertically(),
@@ -494,7 +489,6 @@ private fun TokenLoginForm(
             )
         )
 
-        // Token 模式辅助说明卡片：帮助用户理解令牌来源，同时平衡两种模式的表单视觉高度
         Card(
             shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(

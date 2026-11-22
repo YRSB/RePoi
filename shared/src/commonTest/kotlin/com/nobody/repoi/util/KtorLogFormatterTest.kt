@@ -28,7 +28,7 @@ class KtorLogFormatterTest {
     @Test
     fun formatResponse_extractsStatusAndUrl() {
         val rawResponse = """
-            RESPONSE: 200 
+            RESPONSE: 200
             METHOD: GET
             FROM: https://www.hpoi.net.cn/api/user-action/list-v3?categoryId=0&pageSize=20
             COMMON HEADERS
@@ -143,7 +143,7 @@ class KtorLogFormatterTest {
 
     @Test
     fun sanitizeToken_truncatedJsonTokenAtBoundary_maskedSafely() {
-        // 当超长报文在 3000 字符处截断时，如果 token 的结尾引号被截断，仍应安全脱敏
+
         val raw = "BODY START\n" + "x".repeat(2980) + "{\"utoken\":\"secret12345\"}\nBODY END"
         val formatted = KtorLogFormatter.format(raw)
         assertTrue(formatted != null && !formatted.contains("secret"))

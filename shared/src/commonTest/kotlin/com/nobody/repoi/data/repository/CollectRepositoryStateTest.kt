@@ -9,13 +9,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 收藏仓储条目状态池单测（状态驱动架构的 SSOT 缝隙）。
- *
- * 覆盖：`observeCollectState` 幂等同实例、`refreshCollectState` 成功后写池 / 失败不改写、
- * 写操作（保存 / 取消 / 通用条目增删）成功后才更新池、失败绝不污染。
- * 命名刻意避开 `*ViewModelTest`（CI `excludeTestsMatching` 隔离名单）。
- */
 class CollectRepositoryStateTest {
 
     private fun setup(): Pair<MockApi, CollectRepository> {
@@ -32,7 +25,7 @@ class CollectRepositoryStateTest {
 
         assertSame(first, second)
         assertNull(first.value)
-        // 不同 nodeId 互不干扰
+
         assertTrue(first !== repository.observeCollectState(200L))
     }
 
@@ -118,10 +111,6 @@ class CollectRepositoryStateTest {
         assertEquals("buy", observed.value?.state)
     }
 
-    /**
-     * `care` 仅作为「已收藏」占位值（服务端 `api/collect/item/add` 无详情返回），
-     * 不代表手办心愿档；无旧值时以空 [CollectData] 为底。
-     */
     @Test
     fun collectItemAdd_onSuccessWithNoPreviousValue_marksCollectedPlaceholder() = runTest {
         val (mock, repository) = setup()
@@ -135,7 +124,6 @@ class CollectRepositoryStateTest {
         assertTrue(observed.value?.isCollected == true)
     }
 
-    /** 旧值存在时只改 `state`，其余字段原样保留。 */
     @Test
     fun collectItemAdd_onSuccess_preservesExistingFields() = runTest {
         val (mock, repository) = setup()

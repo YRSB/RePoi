@@ -4,24 +4,11 @@ import com.nobody.repoi.data.remote.api.HpoiApi
 import com.nobody.repoi.data.remote.model.UserHistoryItem
 import kotlinx.coroutines.CancellationException
 
-/**
- * 用户浏览足迹数据仓储。
- * 负责足迹列表查询、浏览足迹记录与足迹删除。
- *
- * 列表解析阶段做**前置主动重写**：接口返回的 `cover` 是写入快照，服务端重新落盘后旧路径必然 404。
- * 解析成功后先 [CoverFreshnessRepository.ensureWarmed]（冷启动读盘落定，幂等），再把每条命中本地
- * 已确认封面的快照重写为最新路径。命中后冷启动零 404、零详情请求、零闪烁；未命中保留原快照，
- * 由 UI 的按条回源自愈。
- */
 class UserHistoryRepository(
     private val api: HpoiApi,
     private val coverFreshnessRepository: CoverFreshnessRepository
 ) {
-    /**
-     * 获取用户浏览历史列表 (api/user/read/item/get)。
-     * @param itemType "hobby" (手办) / "album" (相册)
-     * @param page 分页页码，从 1 开始
-     */
+
     suspend fun getUserHistoryList(
         itemType: String,
         page: Int = 1
@@ -30,12 +17,6 @@ class UserHistoryRepository(
         rewriteCovers(readList, itemType)
     }
 
-    /**
-     * 前置主动重写：把每条历史记录中命中本地已确认封面的快照替换为最新路径。
-     *
-     * 冷启动时持久化预热可能尚未落定，因此先等待 [CoverFreshnessRepository.ensureWarmed]（幂等、不挂死）。
-     * 单条解析异常只跳过该条，绝不丢弃整个列表；未命中或封面相同都原样保留服务端快照。
-     */
     private suspend fun rewriteCovers(
         items: List<UserHistoryItem>,
         requestedItemType: String
@@ -52,8 +33,7 @@ class UserHistoryRepository(
         return try {
             val type = resolveEntityType(item.itemType, requestedItemType) ?: return item
             val entityId = when (type) {
-                // 接口偶有 itemId/nodeId 为 0 的桩数据：回退统一的 actualDetailId（id 兜底），
-                // 否则这类条目的缓存永远命中不了。仅命中才重写，回退不会放大请求。
+
                 CoverFreshnessRepository.EntityType.HOBBY -> item.itemId.takeIf { it > 0L } ?: item.actualDetailId
                 CoverFreshnessRepository.EntityType.ALBUM -> item.nodeId.takeIf { it > 0L } ?: item.actualDetailId
             }
@@ -62,12 +42,11 @@ class UserHistoryRepository(
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
-            // 仅吞单条解析异常（映射/类型解析），不吞 JVM Error 与协程取消
+
             item
         }
     }
 
-    /** 条目自带的有效 `itemType` 优先，缺失时回退到请求参数；未知类型返回 `null` 表示不重写。 */
     private fun resolveEntityType(
         itemType: String?,
         requestedItemType: String
@@ -81,19 +60,11 @@ class UserHistoryRepository(
         }
     }
 
-    /**
-     * 上报/添加浏览足迹 (api/user/read/item/add)。
-     * @param itemNodeId 手办条目节点 ID 或相册 ID
-     */
     suspend fun addUserHistory(itemNodeId: Long): Result<Unit> = runCatching {
         if (itemNodeId <= 0L) return@runCatching
         api.addUserHistory(itemNodeId = itemNodeId)
     }
 
-    /**
-     * 批量删除浏览历史 (api/user/read/item/del)。
-     * @param historyIds 浏览历史记录条目的记录 ID 列表
-     */
     suspend fun deleteUserHistory(historyIds: List<Long>): Result<Unit> = runCatching {
         if (historyIds.isEmpty()) return@runCatching
         val idsJson = historyIds.joinToString(separator = ",", prefix = "[", postfix = "]")

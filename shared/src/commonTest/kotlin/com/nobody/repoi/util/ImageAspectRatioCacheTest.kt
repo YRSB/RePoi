@@ -4,12 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * 图片纵横比缓存测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ImageAspectRatioCacheTest`（逐用例，JUnit4 → kotlin.test；
- * `@Before setUp` 内联为各用例首行 `clear()`，语义等价）。
- */
 class ImageAspectRatioCacheTest {
 
     @Test

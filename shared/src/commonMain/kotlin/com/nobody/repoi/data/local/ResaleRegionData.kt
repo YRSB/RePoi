@@ -12,10 +12,7 @@ data class ResaleProvince(
 )
 
 object ResaleRegionData {
-    /**
-     * 根据当前选中的区域 ID 反查所属的省级区划 ID。
-     * 若未选中或为全国(0)，返回 0。
-     */
+
     fun findProvinceId(regionId: Int?): Int {
         if (regionId == null || regionId == 0) return 0
         val found = provinces.find { prov ->

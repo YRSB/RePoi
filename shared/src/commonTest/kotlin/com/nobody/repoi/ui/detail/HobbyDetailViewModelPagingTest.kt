@@ -15,14 +15,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 手办详情评论分页 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailViewModelPagingTest`（逐用例；Mockito 仓储/代理 mock →
- * [HobbyDetailEnv] 真实 6 依赖 + MockEngine；按 (type,page) 粒度
- * routeWhen 桩评论页；`MainDispatcherRule` → `Dispatchers.setMain`；
- * JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HobbyDetailViewModelPagingTest {
 

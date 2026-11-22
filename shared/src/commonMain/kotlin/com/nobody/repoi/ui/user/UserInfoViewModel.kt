@@ -25,9 +25,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.ActionItem
 
-/**
- * 用户资料页面 UI 状态。
- */
 data class UserInfoUiState(
     val profile: UserProfile? = null,
     val isSelf: Boolean = true,
@@ -43,8 +40,8 @@ data class UserInfoUiState(
     val similarity: Int = 0,
     val isFollowed: Boolean = false,
     val isMutual: Boolean = false,
-    val selectedTab: Int = 1, // 0=相册, 1=动态, 2=二手（原版默认动态为主）
-    val selectedAlbumSubTab: Int = 0, // 0=TA的相册, 1=收藏相册, 2=作品
+    val selectedTab: Int = 1,
+    val selectedAlbumSubTab: Int = 0,
     val albums: List<AlbumListItem> = emptyList(),
     val actions: List<ActionItem> = emptyList(),
     val isTabLoading: Boolean = false,
@@ -52,9 +49,6 @@ data class UserInfoUiState(
     val showMoneyDialog: Boolean = false
 )
 
-/**
- * 个人资料展示与编辑 ViewModel。
- */
 class UserInfoViewModel(
     private val userRepository: UserRepository,
     private val userSession: UserSession,
@@ -95,7 +89,7 @@ class UserInfoViewModel(
             followRepository.friendChangeEvent.collect { event ->
                 val curProfile = _uiState.value.profile ?: return@collect
                 if (_uiState.value.isSelf) {
-                    // 查看本人主页时：关注/取关他人影响本人的关注数 friendCount
+
                     val updatedFellowCount = _uiState.value.fellowCount?.let { count ->
                         val curFriendCount = count.friendCount
                         val updatedFriendCount = if (event.isFollow) curFriendCount + 1 else (curFriendCount - 1).coerceAtLeast(0)
@@ -103,7 +97,7 @@ class UserInfoViewModel(
                     }
                     _uiState.update { it.copy(fellowCount = updatedFellowCount) }
                 } else if (curProfile.id == event.userId) {
-                    // 查看他人主页时：若操作的目标正是当前页面用户，同步更新关注态与粉丝数 fanCount
+
                     if (_uiState.value.isFollowed != event.isFollow) {
                         val newMutual = if (!event.isFollow) false else _uiState.value.isMutual
                         val updatedFellowCount = _uiState.value.fellowCount?.let { count ->
@@ -124,10 +118,6 @@ class UserInfoViewModel(
         }
     }
 
-    /**
-     * 初始化加载用户资料（具备幂等性，防止屏幕重组或并发 LaunchedEffect 重复触发，避免与默认 0L 产生竞态）。
-     * @param userId 目标用户 UID，0L 表示查看当前登录用户自身。
-     */
     fun initUserId(userId: Long) {
         if (initializedUserId == userId && (_uiState.value.profile != null || _uiState.value.isLoading)) {
             return
@@ -143,10 +133,6 @@ class UserInfoViewModel(
         loadProfile(userId)
     }
 
-    /**
-     * 加载指定用户的个人资料与附属统计数据。
-     * @param userId 目标用户 UID，0L 表示查看当前登录用户自身。
-     */
     fun loadProfile(userId: Long = initializedUserId ?: targetUserId) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -160,7 +146,6 @@ class UserInfoViewModel(
                 val actualIsSelf = isSelf || (userSession.currentUserId > 0L && profile.id == userSession.currentUserId)
                 val userNodeId = profile.id
 
-                // 并发拉取社交统计、订单统计、相似度与关注状态、下游动态与相册（使用 try-catch 防御 mock 未存根或网络异常）
                 val fellowDeferred = async {
                     try {
                         followRepository.getFellowCount(userNodeId).getOrNull()
@@ -212,8 +197,6 @@ class UserInfoViewModel(
                 val albumList = albumDeferred.await()
                 val actionList = actionDeferred.await()
 
-                // 历史动态头像覆盖/回退机制：Hpoi 历史动态快照中若固化了已在服务端物理删除的旧头像（HTTP 404），
-                // 统一以当前用户的最新有效头像覆盖，防止出现空白头像。
                 val currentLatestAvatar = profile.header
                 val normalizedActions = if (!currentLatestAvatar.isNullOrBlank()) {
                     actionList.map { action ->
@@ -271,9 +254,6 @@ class UserInfoViewModel(
         }
     }
 
-    /**
-     * 关注/取消关注目标用户（仅非本人主页可用，具备乐观响应与失败回滚）。
-     */
     fun toggleFollow() {
         val profile = _uiState.value.profile ?: return
         if (_uiState.value.isSelf) return
@@ -329,9 +309,6 @@ class UserInfoViewModel(
         _uiState.update { it.copy(showMoneyDialog = show) }
     }
 
-    /**
-     * 更新个性签名与个人简介 (POST api/user/base/upd)。
-     */
     fun updateBio(sign: String, intro: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccessMessage = null) }
@@ -372,9 +349,6 @@ class UserInfoViewModel(
         }
     }
 
-    /**
-     * 更新基础个人资料（昵称、性别、生日、城市）。
-     */
     fun updateBasicInfo(nickname: String, sex: Int, birthday: String, city: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccessMessage = null) }
@@ -418,9 +392,6 @@ class UserInfoViewModel(
         }
     }
 
-    /**
-     * 批量更新个人资料（表单综合提交）。
-     */
     fun updateAll(
         nickname: String,
         sign: String,

@@ -50,40 +50,18 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-// ── 作品子页（从通用 4 页拆出，独立实现） ──────────────────
-
-/**
- * 作品页顶部 3 档收藏状态 Tab。
- *
- * 对标原版 `UserCollectWorksSubFragment.java:55`：
- * `[{想看,1}, {在看,2}, {看过,3}]`。**这里 Tab 的语义是「收藏状态」而不是排序维度**，
- * 请求参数对应 `state`，因此与通用 4 页的排序 Tab 完全不同构。
- *
- * key 用字符串承载以便复用 [CollectOrderTabRow]，取回时用 `toIntOrNull()` 转回 Int。
- */
 internal val WorksCollectStateTabs: List<Pair<String, String>> = listOf(
     "想看" to "1",
     "在看" to "2",
     "看过" to "3"
 )
 
-/** 作品页滚动保存键的内容维度，生产与测试共用 */
 internal fun worksScrollKeyInputs(
     worksState: Int,
     worksOrderAsc: Boolean,
     worksTag: String?,
 ): Array<out Any?> = arrayOf<Any?>(worksState, worksOrderAsc, worksTag)
 
-/**
- * 作品收藏子页（原版 `UserCollectWorksSubFragment` + `UserCollectWorksFragment`）。
- *
- * 与通用 4 页的三点根本差异（见差异报告 §3.8）：
- * 1. 顶部 Tab 是**收藏状态**（想看/在看/看过）而非排序维度；
- * 2. 排序控件是升/降单按钮切换胶囊（单收藏时间维度），**没有第二档排序**；
- * 3. **有**标签筛选（仅本人可见），且**没有**网格/列表切换（固定线性列表）。
- *
- * 标签池来自 `api/user/glean/textTag/get`，与周边页的 `api/collect/tag` **不是同一个池**。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WorksCollectSubPage(
@@ -106,16 +84,12 @@ internal fun WorksCollectSubPage(
     onItemClick: (UserCollectCommonItem) -> Unit,
     onRetry: () -> Unit
 ) {
-    // 保存键绑定（统一入口见 rememberKeyedLazyListState）：
-    // 收藏状态 / 升降序 / 标签筛选任一变化时，以全新的 initialFirstVisibleItemIndex = 0 重建状态自动回顶；
-    // 条件不变时（Nav3 返回）由 SaveableStateRegistry 按同一键恢复滚动位置。
+
     val listState = rememberKeyedLazyListState(
         "works_list",
         *worksScrollKeyInputs(worksState, worksOrderAsc, worksTag)
     )
 
-    // 以 listState 为 remember 键：条件变化会重建 LazyListState，
-    // 缺少该键的 derivedStateOf 会一直盯着已被丢弃的旧实例，导致切过排序后触底分页永久失效。
     val shouldLoadMore by remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -125,8 +99,6 @@ internal fun WorksCollectSubPage(
         }
     }
 
-    // 附带 items.size 键（对齐 HobbyCollectSubPage）：宽屏一屏装下时触底判定恒为 true 不再变化，
-    // 缺这个键就只会翻一页。
     LaunchedEffect(shouldLoadMore, subPageData.items.size) {
         if (shouldLoadMore && subPageData.hasMore && !subPageData.isPaging && !subPageData.isLoading && !subPageData.isRefreshing) {
             onLoadNextPage()
@@ -139,7 +111,7 @@ internal fun WorksCollectSubPage(
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部：3 档状态 Tab + 升/降单按钮切换胶囊 + 标签筛选按钮（仅本人可见）
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -151,7 +123,6 @@ internal fun WorksCollectSubPage(
                 modifier = Modifier.weight(1f)
             )
 
-            // 单按钮升降序切换胶囊（对齐评论区右上角交互与视觉规范：文本 + 箭头矢量图标）
             Row(
                 modifier = Modifier
                     .padding(end = if (isSelf) 4.dp else 12.dp)
@@ -179,7 +150,6 @@ internal fun WorksCollectSubPage(
                 )
             }
 
-            // 原版 `UserCollectWorksSubFragment.java:246-255`：非本人隐藏筛选入口
             if (isSelf) {
                 IconButton(onClick = onOpenFilter) {
                     Icon(
@@ -235,7 +205,7 @@ internal fun WorksCollectSubPage(
                         ) { item ->
                             WorksCollectCard(
                                 item = item,
-                                // 真实实体 id 不可确定时禁止点击，避免带着收藏记录 id 跳错详情
+
                                 onClick = { if (worksDetailItemId(item) > 0L) onItemClick(item) }
                             )
                         }
@@ -278,14 +248,12 @@ internal fun WorksCollectSubPage(
         }
     }
 
-    // 作品页标签筛选抽屉：复用周边页抽屉，但传空 subCategories 隐藏「细分类型」区块
     if (showFilterSheet) {
         CollectFilterBottomSheet(
             subCategoryId = null,
             selectedTag = worksTag,
             availableTags = worksAvailableTags,
-            // 抽屉为「暂存-确定」语义：只有与当前生效值不同才提交，
-            // 否则用户原样点「确定」会被 VM 的反选逻辑误清空
+
             onConfirm = { _, tag -> if (tag != worksTag) onSelectTag(tag) },
             onReset = onResetTag,
             onDismiss = onDismissFilter,

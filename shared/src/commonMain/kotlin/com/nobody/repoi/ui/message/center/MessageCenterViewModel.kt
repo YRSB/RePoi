@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 消息中心主页状态管理 ViewModel。
- */
 class MessageCenterViewModel(
     private val repository: MessageRepository
 ) : ViewModel() {
@@ -27,9 +24,6 @@ class MessageCenterViewModel(
         loadData(initial = true)
     }
 
-    /**
-     * 加载未读消息统计与私信联系人列表。
-     */
     fun loadData(initial: Boolean = false, refresh: Boolean = false) {
         viewModelScope.launch {
             _uiState.update {
@@ -67,9 +61,6 @@ class MessageCenterViewModel(
         }
     }
 
-    /**
-     * 分页加载更多私信联系人。
-     */
     fun loadMoreContacts() {
         val state = _uiState.value
         if (state.isLoadingMore || !state.hasMore || state.isLoading || state.isRefreshing) return
@@ -98,9 +89,6 @@ class MessageCenterViewModel(
         }
     }
 
-    /**
-     * 切换联系人置顶状态。
-     */
     fun toggleContactTop(item: MessageContactItem) {
         val nextState = if (item.isTop) 0 else 1
         viewModelScope.launch {
@@ -125,9 +113,6 @@ class MessageCenterViewModel(
         }
     }
 
-    /**
-     * 删除私信会话。
-     */
     fun deleteContact(item: MessageContactItem) {
         viewModelScope.launch {
             val result = repository.deleteContact(id = item.id, userNodeId = item.otherId)
@@ -144,9 +129,6 @@ class MessageCenterViewModel(
         }
     }
 
-    /**
-     * 一键全部已读。
-     */
     fun markAllRead() {
         viewModelScope.launch {
             val result = repository.markPushRead(type = 0)

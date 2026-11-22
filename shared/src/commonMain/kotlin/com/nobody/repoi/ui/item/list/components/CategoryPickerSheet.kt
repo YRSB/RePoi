@@ -45,10 +45,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 周边分类与子分类一体化双栏级联选择底板：
- * 左栏切换大分类，右栏即点即生效选中具体子类（或当前大类的全部），一步关闭完成筛选。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryPickerSheet(
@@ -64,18 +60,14 @@ fun CategoryPickerSheet(
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
 
-    // 左侧选中的大类，默认定位到当前激活的大类
     var previewPrimaryId by remember { mutableIntStateOf(selectedCategoryId) }
 
-    // 一级分类候选项与产品板块筛选共享同一份定义（顺序与文案唯一来源，避免两处漂移）
     val primaryCategories = remember {
         HobbyBoardOptions.PRIMARY_CATEGORIES.map { (id, name) -> CategoryItem(id, name) }
     }
 
-    // 选中的大类名称
     val activePrimary = primaryCategories.find { it.id == previewPrimaryId } ?: primaryCategories.first()
 
-    // 右侧子分类列表
     val subList = remember(previewPrimaryId) {
         if (previewPrimaryId == 10000) {
             emptyList()
@@ -93,7 +85,7 @@ fun CategoryPickerSheet(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // 1. 顶栏：标题 + 关闭按钮
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -123,13 +115,12 @@ fun CategoryPickerSheet(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 2. 双栏级联内容区（固定高度 360dp，保证视觉舒适度）
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
             ) {
-                // ── 左栏：大分类列表 ──
+
                 LazyColumn(
                     modifier = Modifier
                         .width(112.dp)
@@ -190,7 +181,6 @@ fun CategoryPickerSheet(
 
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                // ── 右栏：子分类列表（即点即生效） ──
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -198,7 +188,7 @@ fun CategoryPickerSheet(
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    // 第 1 项：全部 [大分类] 项
+
                     item(key = "all_${activePrimary.id}") {
                         val isAllSelected = (activePrimary.id == 10000 && selectedCategoryId == 10000) ||
                                 (selectedCategoryId == activePrimary.id && selectedSubCategoryId == null)
@@ -213,7 +203,6 @@ fun CategoryPickerSheet(
                         )
                     }
 
-                    // 后续项：各个具体子分类
                     items(subList, key = { it.id }) { sub ->
                         val isSelected = selectedCategoryId == activePrimary.id && selectedSubCategoryId == sub.id
 
@@ -232,9 +221,6 @@ fun CategoryPickerSheet(
     }
 }
 
-/**
- * 右栏单项排版组件
- */
 @Composable
 private fun CategorySubItemRow(
     name: String,

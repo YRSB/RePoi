@@ -23,28 +23,11 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 颜色过渡动画的回归测试（对应 [animateAsState]，ADR-0009 + ADR-0012）。
- *
- * 断言的是正确性而不是观感：
- * 1. 首帧不做冷启动淡入，直接落在目标配色上；
- * 2. 冷启动色彩就绪（持久化主题配置到达）必须瞬间落定，不经过任何中间插值；
- * 3. 首态落定之后，用户在外观设置里切换风格仍触发弹簧过渡：首帧还没到目标；
- * 4. 动画最终必须收敛到目标配色，若停在中间值整个应用会永久显示错色；
- * 5. 深浅模式切换不补间，且落定之后依旧单帧瞬切。
- *
- * 需要观测「过渡中」的用例必须先走一次跃迁让 [ColdStartSettleGate] 落定，
- * 否则本次跃迁会被当作启动期修复而瞬间落定（这正是 ADR-0012 的设计）。
- *
- * 收敛断言用逐通道容差比较而非 [Color] 精确相等——`animateColorAsState`
- * 内部把颜色转成浮点向量再转回，末位可能差 1~2 个 8 位步进。
- */
 @OptIn(ExperimentalTestApi::class)
 class ThemeMotionTest {
 
     private val spec = ColorSpec.SpecVersion.SPEC_2021
 
-    /** 不带动画的目标配色，与根主题走同一条决策链，避免测试里复述取色算法。 */
     @Composable
     private fun targetScheme(darkTheme: Boolean, style: PaletteStyle): ColorScheme {
         val (seedPrimary, seedSecondary, seedTertiary) = ThemeSeed.Lotus.toColors()
@@ -62,12 +45,6 @@ class ThemeMotionTest {
         )
     }
 
-    /**
-     * 组合一棵只观察配色的最小主题树：分别抓取「目标配色」与 MaterialTheme 实际呈现的配色。
-     *
-     * 三个用例共用同一条装载路径，避免重复八参 [PoiShelfTheme] 调用；
-     * 平台取色在静态种子分支不应被触碰，故注入直接报错的 provider。
-     */
     private fun ComposeUiTest.setThemeUnderTest(
         style: State<PaletteStyle>,
         onTarget: (Triple<Color, Color, Color>) -> Unit,
@@ -91,10 +68,8 @@ class ThemeMotionTest {
         }
     }
 
-    /** 只取主 / 辅 / 第三色三个锚点，足以区分风格与种子色变化，也便于失败信息阅读。 */
     private fun ColorScheme.rgb() = Triple(primary, secondary, tertiary)
 
-    /** 拆成 A/R/G/B 四通道，便于做容差比较。 */
     private fun Color.channels(): List<Int> {
         val argb = toArgb()
         return listOf(
@@ -105,7 +80,6 @@ class ThemeMotionTest {
         )
     }
 
-    /** 逐通道容差比较，供「某一帧究竟是哪一版配色」的判定复用。 */
     private fun isClose(
         expected: Triple<Color, Color, Color>?,
         actual: Triple<Color, Color, Color>?,
@@ -129,14 +103,6 @@ class ThemeMotionTest {
         assertTrue(isClose(expected, actual), "$message（期望 $expected，实际 $actual）")
     }
 
-    /**
-     * 冷启动色彩就绪：默认配色（读盘未完成时的兜底）到持久化配置的跃迁必须瞬间落定。
-     *
-     * 判据是「落定过程从未渲染中间插值」而不是「恰好第几帧到位」：动画值总在目标变更的
-     * 下一帧才被重组读到，故逐帧采样，要求每一帧要么是启动色、要么是目标色，
-     * 且至多一个步进帧就到达目标色。
-     * 修复前这里会触发 48 角色弹簧补间，采样到的中段颜色会明显偏离两端。
-     */
     @Test
     fun coldStart_themeConfigArrival_snapsToTargetWithoutInterpolation() = runComposeUiTest {
         val style = mutableStateOf<PaletteStyle>(PaletteStyle.TonalSpot)
@@ -150,7 +116,6 @@ class ThemeMotionTest {
         waitForIdle()
         val launch = assertNotNull(target, "未捕获启动基准配色")
 
-        // 持久化配置到达：停表逐帧采样，收集落定过程中的每一帧
         mainClock.autoAdvance = false
         style.value = PaletteStyle.Vibrant
         val sampled = mutableListOf<Triple<Color, Color, Color>>()
@@ -168,7 +133,7 @@ class ThemeMotionTest {
                 "冷启动落定的第 ${index + 1} 帧出现了中间插值（$palette），应为瞬间落定（Snap）",
             )
         }
-        // 动画目标变更后的首个步进帧才被重新读到，故「瞬间落定」= 至多一步跳到目标色
+
         val settledAt = sampled.indexOfFirst { isClose(arrived, it) }
         assertTrue(
             settledAt in 0..1,
@@ -193,7 +158,6 @@ class ThemeMotionTest {
         val initial = assertNotNull(target, "未捕获初始目标配色")
         assertEquals(initial, animated, "首帧应直接落在目标配色上，不做冷启动淡入")
 
-        // 先完成一次冷启动首态落定（ADR-0012），否则下面的跃迁会被门禁瞬间落定
         style.value = PaletteStyle.Neutral
         waitForIdle()
 
@@ -229,8 +193,6 @@ class ThemeMotionTest {
         val light = assertNotNull(target, "未捕获浅色目标配色")
         assertEquals(light, animated)
 
-        // 先完成一次冷启动首态落定（ADR-0012），确保下面的瞬切由深浅模式重建保证，
-        // 而不是被冷启动门禁顺带掩盖
         style.value = PaletteStyle.Vibrant
         waitForIdle()
 

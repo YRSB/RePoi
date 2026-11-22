@@ -429,7 +429,6 @@ private fun LevelBadge(level: Int) {
     }
 }
 
-
 @Composable
 private fun RankListEmpty() {
     Box(

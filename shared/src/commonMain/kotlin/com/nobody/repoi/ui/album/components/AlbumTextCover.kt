@@ -17,13 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * 相册纯文本封面组件 (titleCover)。
- *
- * 当相册无封面（cover 为空或无图）时，居中高对比展示相册标题。
- * 遵循 Material 3 Expressive 规范，默认采用 [MaterialTheme.colorScheme.primaryContainer] 动态容器色
- * 与 [MaterialTheme.colorScheme.onPrimaryContainer] 文字色，跟随系统 Monet 动态主题自动着色。
- */
 @Composable
 fun AlbumTextCover(
     title: String,

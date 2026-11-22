@@ -5,37 +5,26 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 
-/**
- * RePoi 全局导航多态序列化模块：
- * 将所有 [AppNavKey] 实现类统一注册到 [NavKey] 基类多态域中。
- * 供 [androidx.savedstate.serialization.SavedStateConfiguration] 与 [androidx.navigation3.runtime.rememberNavBackStack]
- * 实现 Android 进程回收恢复、横竖屏旋转及桌面端状态持久化。
- */
 val RePoiSerializersModule = SerializersModule {
     polymorphic(baseClass = NavKey::class) {
-        // 1. 全局根栈基底 (1)
+
         subclass(MainNavKey::class, MainNavKey.serializer())
 
-        // 2. 一级底栏 Tab 路由 (5)
         subclass(HomeNavKey::class, HomeNavKey.serializer())
         subclass(ItemsNavKey::class, ItemsNavKey.serializer())
         subclass(AlbumNavKey::class, AlbumNavKey.serializer())
         subclass(FollowNavKey::class, FollowNavKey.serializer())
         subclass(ProfileNavKey::class, ProfileNavKey.serializer())
 
-        // 3. 专区相关路由 (3)
         subclass(ZoneBrowseNavKey::class, ZoneBrowseNavKey.serializer())
         subclass(ZoneDetailNavKey::class, ZoneDetailNavKey.serializer())
         subclass(ZoneSettingsNavKey::class, ZoneSettingsNavKey.serializer())
 
-        // 4. 讨论贴路由 (1)
         subclass(PostDetailNavKey::class, PostDetailNavKey.serializer())
 
-        // 5. 二手交易与市场路由 (2)
         subclass(ResaleDetailNavKey::class, ResaleDetailNavKey.serializer())
         subclass(ResaleMarketNavKey::class, ResaleMarketNavKey.serializer())
 
-        // 6. 核心消费与用户资产路由 (7)
         subclass(HobbyListNavKey::class, HobbyListNavKey.serializer())
         subclass(CollectEditNavKey::class, CollectEditNavKey.serializer())
         subclass(UserCollectNavKey::class, UserCollectNavKey.serializer())
@@ -44,20 +33,17 @@ val RePoiSerializersModule = SerializersModule {
         subclass(HobbyDetailNavKey::class, HobbyDetailNavKey.serializer())
         subclass(FriendListNavKey::class, FriendListNavKey.serializer())
 
-        // 7. 用户与评论互动路由 (5)
         subclass(UserInfoNavKey::class, UserInfoNavKey.serializer())
         subclass(CommentDetailNavKey::class, CommentDetailNavKey.serializer())
         subclass(HobbyCommentsNavKey::class, HobbyCommentsNavKey.serializer())
         subclass(SearchNavKey::class, SearchNavKey.serializer())
         subclass(SearchResultNavKey::class, SearchResultNavKey.serializer())
 
-        // 8. 相册与厂商关联路由 (4)
         subclass(AlbumDetailNavKey::class, AlbumDetailNavKey.serializer())
         subclass(AlbumRankListNavKey::class, AlbumRankListNavKey.serializer())
         subclass(VendorDetailNavKey::class, VendorDetailNavKey.serializer())
         subclass(VendorActionsNavKey::class, VendorActionsNavKey.serializer())
 
-        // 9. 人物、角色与作品关联路由 (7)
         subclass(PersonDetailNavKey::class, PersonDetailNavKey.serializer())
         subclass(CharacterNavKey::class, CharacterNavKey.serializer())
         subclass(CharacterAlbumListNavKey::class, CharacterAlbumListNavKey.serializer())
@@ -66,19 +52,16 @@ val RePoiSerializersModule = SerializersModule {
         subclass(WorksCollectEditNavKey::class, WorksCollectEditNavKey.serializer())
         subclass(SeriesDetailNavKey::class, SeriesDetailNavKey.serializer())
 
-        // 10. 作品、图片与扩展图库路由 (5)
         subclass(WorksDetailNavKey::class, WorksDetailNavKey.serializer())
         subclass(PictureListNavKey::class, PictureListNavKey.serializer())
         subclass(ImageViewerNavKey::class, ImageViewerNavKey.serializer())
         subclass(PictureGalleryNavKey::class, PictureGalleryNavKey.serializer())
         subclass(ExHobbyListNavKey::class, ExHobbyListNavKey.serializer())
 
-        // 11. 设置与鉴权路由 (3)
         subclass(LoginNavKey::class, LoginNavKey.serializer())
         subclass(SettingsNavKey::class, SettingsNavKey.serializer())
         subclass(SettingsShieldListNavKey::class, SettingsShieldListNavKey.serializer())
 
-        // 12. 消息中心与通知路由 (4)
         subclass(MessageCenterNavKey::class, MessageCenterNavKey.serializer())
         subclass(MessageNoticeNavKey::class, MessageNoticeNavKey.serializer())
         subclass(MessageChatNavKey::class, MessageChatNavKey.serializer())

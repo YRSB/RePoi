@@ -13,9 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.CharacterWorksItem
 
-/**
- * 角色登场作品列表 ViewModel。
- */
 class CharacterWorksListViewModel(
     private val repository: CharacterDetailRepository
 ) : ViewModel() {

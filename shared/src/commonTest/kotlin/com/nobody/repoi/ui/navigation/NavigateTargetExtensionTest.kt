@@ -12,10 +12,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-/**
- * 导航执行扩展测试：验证 [RouteTarget] 三分支副作用落点
- * （Internal 压栈 / External 调 UriHandler / Notice 走提示），均为纯 JVM。
- */
 class NavigateTargetExtensionTest {
 
     private class RecordingUriHandler(private val failure: Exception? = null) : UriHandler {

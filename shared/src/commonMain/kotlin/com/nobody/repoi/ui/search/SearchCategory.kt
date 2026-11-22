@@ -69,9 +69,6 @@ fun resolveSearchCategory(
     else -> tab.categoryId
 }
 
-/**
- * 判定当前 Tab 是否具备筛选与排序功能
- */
 fun isTabFilterable(tab: SearchTab): Boolean = when (tab) {
     SearchTab.HOBBY,
     SearchTab.ALBUM,
@@ -79,9 +76,6 @@ fun isTabFilterable(tab: SearchTab): Boolean = when (tab) {
     else -> false
 }
 
-/**
- * 判定当前 Tab 是否存在已激活的非默认筛选或排序项（用于显示 Badge 提示）
- */
 fun isFilterActive(
     tab: SearchTab,
     order: String = "",

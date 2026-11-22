@@ -7,15 +7,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 角色详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `CharacterDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test + `runTest`）。
- */
 class CharacterDetailRepositoryTest {
 
-    /** 仓储只做只读聚合查询；收藏切换由 ViewModel 直接调用 `CollectRepository.toggleItemCollect`。 */
     private fun setup(): Pair<MockApi, CharacterDetailRepository> {
         val mock = MockApi()
         return mock to CharacterDetailRepository(mock.api())

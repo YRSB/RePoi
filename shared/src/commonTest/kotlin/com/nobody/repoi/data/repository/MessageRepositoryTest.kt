@@ -7,12 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * [MessageRepository] 单元测试：覆盖通知未读计数、私信联系人、聊天记录、撤回与黑名单契约（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `MessageRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test）。
- */
 class MessageRepositoryTest {
 
     private fun setup(): Pair<MockApi, MessageRepository> {

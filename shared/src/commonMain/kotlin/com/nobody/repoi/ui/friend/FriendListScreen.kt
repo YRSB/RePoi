@@ -67,17 +67,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 好友与社交列表界面 (FriendListScreen)。
- * 展示指定用户的关注、粉丝或获赞条目列表，支持下拉刷新、无缝分页与关注即时切换。
- *
- * @param userId 目标用户 ID
- * @param initialType 初始进入的子分类（0=关注, 1=粉丝, 3=获赞）
- * @param onNavigateBack 返回上一级回调
- * @param onNavigateToUser 导航至用户详情回调
- * @param onNavigateToItem 导航至条目详情回调
- * @param viewModel 社交列表 ViewModel
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendListScreen(
@@ -92,12 +81,10 @@ fun FriendListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
-    // 页面进入或参数变化时触发初始化
     LaunchedEffect(userId, initialType) {
         viewModel.init(userId, initialType)
     }
 
-    // 处理一次性错误或回滚提示
     LaunchedEffect(uiState.userMessage) {
         uiState.userMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -105,7 +92,6 @@ fun FriendListScreen(
         }
     }
 
-    // 滑动到底部自动加载更多
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalCount = listState.layoutInfo.totalItemsCount
@@ -152,14 +138,14 @@ fun FriendListScreen(
                 .consumeWindowInsets(PaddingValues(top = innerPadding.calculateTopPadding())),
             contentAlignment = Alignment.TopCenter
         ) {
-            // 宽屏平板自适应约束：限制最大宽度为 720dp 并水平居中
+
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
                     .widthIn(max = 720.dp)
                     .fillMaxWidth()
             ) {
-                // 1. 三态分类 TabRow (关注 / 粉丝 / 获赞)
+
                 val selectedTabIndex = when (uiState.currentTab) {
                     1 -> 1
                     3 -> 2
@@ -187,7 +173,6 @@ fun FriendListScreen(
                     )
                 }
 
-                // 2. 下拉刷新与滚动流列表
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
                     onRefresh = { viewModel.refresh() },
@@ -321,9 +306,6 @@ fun FriendListScreen(
     }
 }
 
-/**
- * 关注/粉丝单项用户卡片。
- */
 @Composable
 private fun UserFollowItemCard(
     item: FriendListItemModel,
@@ -350,7 +332,7 @@ private fun UserFollowItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 用户头像
+
             AsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
                     .data(MediaPipeline.Default.resolveUrl(item.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD))
@@ -366,7 +348,6 @@ private fun UserFollowItemCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 昵称、等级与签名
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -397,7 +378,6 @@ private fun UserFollowItemCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // 关注状态胶囊按钮
             FollowCapsuleButton(
                 isFollowed = item.isFollowed,
                 isMutual = item.isMutual,
@@ -407,9 +387,6 @@ private fun UserFollowItemCard(
     }
 }
 
-/**
- * 关注/取关胶囊交互按钮。
- */
 @Composable
 private fun FollowCapsuleButton(
     isFollowed: Boolean,
@@ -455,9 +432,6 @@ private fun FollowCapsuleButton(
     }
 }
 
-/**
- * 获赞条目卡片。
- */
 @Composable
 private fun PraiseItemCard(
     item: FriendListItemModel,
@@ -492,7 +466,7 @@ private fun PraiseItemCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 点赞用户信息行
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -539,7 +513,6 @@ private fun PraiseItemCard(
                 )
             }
 
-            // 被点赞的手办条目内嵌信息
             if (relate != null) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,

@@ -11,11 +11,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 动态内容解析器测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `FeedContentResolverTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class FeedContentResolverTest {
 
     @Test

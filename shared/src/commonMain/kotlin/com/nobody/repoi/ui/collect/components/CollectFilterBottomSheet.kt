@@ -36,13 +36,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 周边页细分子分类候选集合。
- *
- * 对标原版 `ui/common/b0.java:231-240`：
- * `{10000 全部周边, 100 手办, 200 动漫模型, 500 真实模型, 400 毛绒布偶, 300 Doll娃娃}`。
- * 「全部」以 `10000` 表达（而非 `null`），且不存在原版没有的 `900 动漫周边`。
- */
 internal val CollectHobbySubCategories: List<Pair<Int, String>> = listOf(
     10000 to "全部周边",
     100 to "手办",
@@ -52,23 +45,6 @@ internal val CollectHobbySubCategories: List<Pair<Int, String>> = listOf(
     300 to "Doll娃娃"
 )
 
-// ── 筛选抽屉 BottomSheet ────────────────────────────────────
-
-/**
- * 收藏高级筛选抽屉，采用**「暂存-确定」**语义（对齐原版 `PopupCollectHobby`：
- * 弹层内点 chip 只改本地暂存值，底部「确定」才回调提交，「取消」直接丢弃）。
- *
- * 周边页（分类 + 标签）与作品页（仅标签）共用本组件：
- * - `title` 控制抽屉主标题；
- * - `subCategories` 传入空列表时自动隐藏「细分类型」区块，仅保留标签筛选；
- * - `emptyTagHint` 允许各页给出贴合自身编辑入口的标签空态文案。
- *
- * @param subCategoryId 当前**已生效**的细分类（`null` 表示未筛选，等价于候选集首项「全部」）。
- * @param selectedTag 当前**已生效**的标签。
- * @param onConfirm 点「确定」时回传暂存结果，子分类传 `null` 表示「全部」。
- * @param onReset 点「重置」时清空全部条件并立即生效（本身即显式提交动作）。
- * @param onDismiss 点「确定」或「取消」后关闭抽屉。
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun CollectFilterBottomSheet(
@@ -89,11 +65,9 @@ internal fun CollectFilterBottomSheet(
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
 
-    // 暂存值：chip 点击只改这里，点「确定」才提交
     var pendingSubCategoryId by remember(subCategoryId) { mutableStateOf(subCategoryId) }
     var pendingTag by remember(selectedTag) { mutableStateOf(selectedTag) }
 
-    // 「全部」既可能以 null 也可能以候选集首项（10000）表达，高亮时统一归位
     val allSubCategoryId = subCategories.firstOrNull()?.first
     val highlightedSubCategoryId = pendingSubCategoryId ?: allSubCategoryId
 
@@ -110,7 +84,7 @@ internal fun CollectFilterBottomSheet(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 顶栏：标题与重置
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -133,7 +107,6 @@ internal fun CollectFilterBottomSheet(
                 }
             }
 
-            // 细分子分类（仅标签页传空列表即整体隐藏）
             if (subCategories.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -169,7 +142,6 @@ internal fun CollectFilterBottomSheet(
                 }
             }
 
-            // 收藏标签池（单选，再次点击同一标签即取消暂存）
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = tagSectionTitle,
@@ -211,7 +183,6 @@ internal fun CollectFilterBottomSheet(
                 }
             }
 
-            // 底部「取消 / 确定」：确定才提交暂存值，取消直接丢弃
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

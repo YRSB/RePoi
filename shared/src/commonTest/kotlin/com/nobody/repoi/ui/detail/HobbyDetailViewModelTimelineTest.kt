@@ -14,14 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 手办详情时间轴 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailViewModelTimelineTest`（逐用例；
- * Mockito 仓储/代理 mock → [HobbyDetailEnv] 真实 6 依赖 + MockEngine，
- * 时间轴走路由桩；`MainDispatcherRule` → `Dispatchers.setMain`；
- * JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HobbyDetailViewModelTimelineTest {
 

@@ -97,17 +97,16 @@ class CorruptCacheRecoveryInterceptorTest {
 
         val finalResult = interceptor.intercept(chain)
 
-        // 1. 坏缓存 key 必须被立即从磁盘缓存抹除
         assertEquals(listOf(testUrl), fakeDiskCache.removedKeys)
-        // 2. 链必须执行了 2 次（初次 + 1 次自愈重试）
+
         assertEquals(2, chain.executedRequests.size)
-        // 3. 重试请求必须跳过读磁盘缓存（强制重走网络）
+
         val retryRequest = chain.executedRequests[1]
         assertFalse(retryRequest.diskCachePolicy.readEnabled)
         assertTrue(retryRequest.diskCachePolicy.writeEnabled)
         assertFalse(retryRequest.memoryCachePolicy.readEnabled)
         assertTrue(retryRequest.memoryCachePolicy.writeEnabled)
-        // 4. 最终结果为重试步骤的返回结果
+
         assertEquals("unimplemented Input contained an error", (finalResult as? ErrorResult)?.throwable?.message)
     }
 
@@ -122,7 +121,6 @@ class CorruptCacheRecoveryInterceptorTest {
             .data(testUrl)
             .build()
 
-        // 常规网络 404 等业务错误，不属于坏缓存解码异常，不触发自愈重试
         val normalError = ErrorResult(
             image = null,
             request = request,

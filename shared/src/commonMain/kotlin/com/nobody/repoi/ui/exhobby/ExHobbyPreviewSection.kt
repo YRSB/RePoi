@@ -31,12 +31,6 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * ExHobby 扩展图库横滑预览组件（供手办详情页与相册详情页单流平铺挂载）。
- *
- * 采用 `n/` 大图变体（ExHobby 仅 `s/` 与 `n/` 两档，无 `raw/`），纵横比由
- * [PoiAsyncImage] 的自适应比例统一维护，不再手写比例缓存。
- */
 @Composable
 fun ExHobbyPreviewSection(
     pics: List<ExHobbyImageItem>,
@@ -70,7 +64,6 @@ fun ExHobbyPreviewSection(
             )
         }
 
-        // 横滑图集按图片类型复用条目，提升滚动复用命中率
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -112,9 +105,6 @@ fun ExHobbyPreviewSection(
     }
 }
 
-/**
- * ExHobby 扩展图库「查看更多」卡片（样式与官图 OfficialPicsMoreTile 保持一致）。
- */
 @Composable
 private fun ExHobbyMoreTile(
     onMoreClick: () -> Unit,

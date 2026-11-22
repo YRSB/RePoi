@@ -105,9 +105,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * KMP 当前年份（`Calendar.getInstance().get(YEAR)` 替代）。
- */
 @OptIn(ExperimentalTime::class)
 private fun currentYearKmp(): Int =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
@@ -128,17 +125,14 @@ fun HobbyListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
-    // 搜索激活态（顶栏内嵌搜索 Inline Morphing）
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showCategoryPickerSheet by rememberSaveable { mutableStateOf(false) }
 
-    // 退出搜索激活态时清空焦点
     fun exitSearch() {
         isSearchActive = false
         focusManager.clearFocus()
     }
 
-    // 系统返回键：优先退出搜索激活态，否则正常退出页面
     PoiShelfBackHandler(enabled = isSearchActive) {
         exitSearch()
     }
@@ -151,7 +145,6 @@ fun HobbyListScreen(
     var topBarHeightPx by remember { mutableFloatStateOf(defaultTopBarPx) }
     var quickFilterBarHeightPx by remember { mutableFloatStateOf(defaultQuickFilterPx) }
 
-    // 无缝同步滚动控制器：当有列表数据且未处于搜索/弹窗面板状态时启用 1:1 协同位移
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -defaultQuickFilterPx,
         canScroll = {
@@ -163,26 +156,22 @@ fun HobbyListScreen(
         }
     )
 
-    // 搜索激活时强制展开，防止顶栏被折叠
     LaunchedEffect(isSearchActive) {
         if (isSearchActive) {
             scrollBehavior.state.heightOffset = 0f
         }
     }
 
-    // 筛选栏高度确定后动态贴合折叠行程上限
     LaunchedEffect(quickFilterBarHeightPx) {
         if (quickFilterBarHeightPx > 0f) {
             scrollBehavior.state.heightOffsetLimit = -quickFilterBarHeightPx
         }
     }
 
-    // 筛选条件变化时重置折叠偏移
     LaunchedEffect(uiState.categoryId, uiState.subCategoryId, uiState.order, uiState.releaseYear, uiState.releaseMonth, uiState.keyword) {
         scrollBehavior.state.heightOffset = 0f
     }
 
-    // 分页触底检测状态
     val gridState = rememberLazyGridState()
     val listGridState = rememberLazyGridState()
 
@@ -231,8 +220,6 @@ fun HobbyListScreen(
 
     val topBarHeightDp = with(density) { topBarHeightPx.toDp() }
 
-    // 2 行结构固定估高：内容边距不再回灌实测高度，实测仅用于位移锚点与折叠上限
-    // （严禁在此加上动态 scrollOffsetDp，否则将引发 Remeasure 抖动死循环）
     val quickFilterMeasuredDp = with(density) { quickFilterBarHeightPx.toDp() }
     val topContentPadding = topBarHeightDp + if (quickFilterMeasuredDp > 48.dp) quickFilterMeasuredDp else 48.dp
     val pullRefreshState = rememberPullToRefreshState()
@@ -242,11 +229,11 @@ fun HobbyListScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 主界面内容区（受顶栏协同滚动联动）
+
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 1. 底层：数据列表与下拉刷新主体（铺满全屏，受 topContentPadding 约束）
+
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = {
@@ -334,7 +321,7 @@ fun HobbyListScreen(
                 }
 
                 uiState.isGridMode -> {
-                    // 自适应封面网格模式
+
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 120.dp),
                         state = gridState,
@@ -374,7 +361,7 @@ fun HobbyListScreen(
                 }
 
                 else -> {
-                    // 1 列图文详情卡片列表模式（大屏自动自适应为双列）
+
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 420.dp),
                         state = listGridState,
@@ -417,8 +404,6 @@ fun HobbyListScreen(
         }
     }
 
-        // 2. 中层：随动快捷筛选栏（吸顶于顶栏下方，随列表滚动同步折叠）
-        // 实测高度仅用于位移锚点与折叠上限，不回灌内容边距
         val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
         val subCategories = remember(uiState.categoryId, categoryTree) { viewModel.getSubCategories(uiState.categoryId) }
         Box(
@@ -447,7 +432,6 @@ fun HobbyListScreen(
             )
         }
 
-        // 3. 顶层：动态变形主控顶栏（普通模式 / 搜索激活模式），Z 轴最上层
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -487,7 +471,6 @@ fun HobbyListScreen(
         }
     }
 
-        // 4. 高级筛选自适应抽屉（大屏 SideSheet / 手机 BottomSheet，独立于主列表的滚动行为树之外）
         if (uiState.showFilterSheet) {
             HobbyFilterAdaptiveSheet(
                 filterParam = HobbyAdvancedFilterParam(
@@ -506,7 +489,6 @@ fun HobbyListScreen(
             )
         }
 
-        // 5. 双栏级联分类选择面板（独立于主列表的滚动行为树之外）
         if (showCategoryPickerSheet) {
             CategoryPickerSheet(
                 selectedCategoryId = uiState.categoryId,
@@ -521,11 +503,6 @@ fun HobbyListScreen(
     }
 }
 
-/**
- * 动态变形主控顶栏：
- * - 普通模式：返回键 + 复合标题 + 搜索图标 + 视图切换 + 高级筛选（BadgedBox）
- * - 搜索激活模式：取消按钮 + 搜索输入框（含清空）+ 搜索按钮
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HobbyListTopBar(
@@ -545,7 +522,6 @@ private fun HobbyListTopBar(
 ) {
     val focusRequester = remember { FocusRequester() }
 
-    // 搜索激活时自动聚焦输入框
     LaunchedEffect(isSearchActive) {
         if (isSearchActive) {
             focusRequester.requestFocus()
@@ -560,7 +536,7 @@ private fun HobbyListTopBar(
                 label = "TopBarContentMorph"
             ) { searchActive ->
                 if (searchActive) {
-                    // 搜索激活态：内嵌搜索输入框（PillShape）
+
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -624,7 +600,7 @@ private fun HobbyListTopBar(
                         }
                     }
                 } else {
-                    // 普通模式：复合标题文本
+
                     Text(
                         text = title,
                         fontWeight = FontWeight.Bold,
@@ -636,7 +612,7 @@ private fun HobbyListTopBar(
             }
         },
         navigationIcon = {
-            // 搜索激活时作为"退出搜索"，普通模式作为"返回上一级"
+
             if (isSearchActive) {
                 IconButton(onClick = onExitSearch) {
                     Icon(
@@ -662,7 +638,7 @@ private fun HobbyListTopBar(
                 label = "TopBarActionsContent"
             ) { searchActive ->
                 if (searchActive) {
-                    // 搜索激活模式：搜索提交按钮
+
                     TextButton(
                         onClick = onSearch,
                         shape = CircleShape
@@ -675,9 +651,9 @@ private fun HobbyListTopBar(
                         )
                     }
                 } else {
-                    // 普通模式：搜索 + 视图切换 + 高级筛选（带角标）
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // 1. 搜索按钮
+
                         IconButton(onClick = onToggleSearch) {
                             Icon(
                                 painter = painterResource(PoiIcons.Filled.Search),
@@ -685,7 +661,7 @@ private fun HobbyListTopBar(
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        // 2. 视图切换按钮（独享 48dp 标准触控目标）
+
                         IconButton(onClick = onToggleViewMode) {
                             Icon(
                                 painter = painterResource(if (isGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
@@ -693,7 +669,7 @@ private fun HobbyListTopBar(
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        // 3. 高级筛选按钮（激活时点亮 Badge）
+
                         IconButton(
                             onClick = onFilterClick,
                             modifier = Modifier.padding(end = 4.dp)
@@ -723,10 +699,6 @@ private fun HobbyListTopBar(
     )
 }
 
-/**
- * 快捷下拉过滤栏：单行横向惯性滚动，平铺年、月、排序、分类 Chip
- * 视图切换按钮已提升至顶栏 Action 区域。
- */
 @Composable
 private fun QuickFilterBar(
     uiState: HobbyListUiState,
@@ -747,7 +719,6 @@ private fun QuickFilterBar(
     val orderOptions = HobbyBoardOptions.ORDERS
     val categoryOptions = HobbyBoardOptions.PRIMARY_CATEGORIES
 
-    // 横向惯性滚动，内容超出屏幕时可滑动
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -756,7 +727,7 @@ private fun QuickFilterBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 1. 排序下拉（排序放第 1 位，最常用）
+
         Box {
             val currentOrderLabel = orderOptions.find { it.first == uiState.order }?.second
                 ?: HobbyBoardOptions.ORDERS.first().second
@@ -784,7 +755,6 @@ private fun QuickFilterBar(
             }
         }
 
-        // 2. 分类入口（单一入口，唤起双栏级联选择底板）
         val categoryChipLabel = when {
             uiState.subCategoryId != null -> {
                 subCategories.find { it.id == uiState.subCategoryId }?.name ?: "子分类"
@@ -803,7 +773,6 @@ private fun QuickFilterBar(
             onClick = onOpenCategoryPicker
         )
 
-        // 3. 年份下拉
         Box {
             val hasYear = (uiState.releaseYear ?: 0) > 0
             FilterDropdownChip(
@@ -830,7 +799,6 @@ private fun QuickFilterBar(
             }
         }
 
-        // 4. 月份下拉
         Box {
             val hasMonth = (uiState.releaseMonth ?: 0) > 0
             FilterDropdownChip(
@@ -857,14 +825,10 @@ private fun QuickFilterBar(
             }
         }
 
-        // 末尾留白，避免最后一个 Chip 紧贴屏幕边缘
         Spacer(modifier = Modifier.width(2.dp))
     }
 }
 
-/**
- * 具有下拉展开指示箭头的 FilterChip
- */
 @Composable
 private fun FilterDropdownChip(
     label: String,

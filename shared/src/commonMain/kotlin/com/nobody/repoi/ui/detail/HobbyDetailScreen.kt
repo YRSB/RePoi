@@ -156,12 +156,10 @@ fun HobbyDetailScreen(
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
 
-    // 页面初始化拉取数据
     LaunchedEffect(navParam) {
         viewModel.loadDetail(navParam)
     }
 
-    // 评论互动一次性提示（点赞/回复结果）
     val commentActionMessage = uiState.commentActionMessage
     LaunchedEffect(commentActionMessage) {
         if (commentActionMessage != null) {
@@ -183,7 +181,7 @@ fun HobbyDetailScreen(
     } else {
         val detail = uiState.detail
         val isInitialLoading = uiState.isInitialLoading && detail == null
-        // 查看器消费绝对 URL（非 AsyncImage 下游）：保留管道解析，原图档位落 cover/raw/
+
         val heroImages = buildList {
             val rawCover = detail?.cover ?: navParam.initialCover
             if (!MediaPipeline.Default.isPlaceholder(rawCover)) {
@@ -303,7 +301,7 @@ fun HobbyDetailScreen(
                     PoiLoadingView(modifier = Modifier.fillParentMaxSize())
                 }
             } else {
-                    // ── 区块 0：官方经典双列 Header + 官图缩略预览栏（上下文由屏级下传）──
+
                     item(key = "section_hero") {
                         HobbyHeaderOfficialSection(
                             detail = detail,
@@ -358,7 +356,6 @@ fun HobbyDetailScreen(
                         )
                     }
 
-                    // ── 区块 1：全量规格参数流 + 特典介绍 ──
                     item(key = "section_specs") {
                         HobbySpecsSection(
                             detail = detail,
@@ -443,7 +440,6 @@ fun HobbyDetailScreen(
                         )
                     }
 
-                    // ── 区块 1.5：发售情报时间轴 ──
                     if (uiState.timeline.isNotEmpty()) {
                         item(key = "section_timeline") {
                             HobbyTimelineSection(
@@ -452,7 +448,6 @@ fun HobbyDetailScreen(
                         }
                     }
 
-                    // ── 区块 2：玩家相册与随手拍（上下文由屏级下传）──
                     if (uiState.userAlbums.isNotEmpty() || uiState.isUserAlbumsLoading) {
                         item(key = "section_user_albums") {
                             HobbyUserAlbumsSection(
@@ -463,7 +458,7 @@ fun HobbyDetailScreen(
                                     if (onNavigateToAlbum != null && album.id > 0) {
                                         onNavigateToAlbum(album.id)
                                     } else {
-                                        // 无跳转目标时退化为原地全屏查看，仍需绝对原图 URL
+
                                         val coverUrl = MediaPipeline.Default.resolveRawUrl(album.cover, MediaCategory.ALBUM)
                                         if (coverUrl.isNotBlank()) {
                                             imageViewer.show(coverUrl)
@@ -492,7 +487,7 @@ fun HobbyDetailScreen(
                             ExHobbyPreviewSection(
                                 pics = uiState.exHobbyPics,
                                 onPicClick = { index: Int ->
-                                    // 查看器消费绝对 URL；ExHobby 无 raw 档，管道把 FULLSCREEN_RAW 落到 n/
+
                                     val allFullUrls = uiState.exHobbyPics.map {
                                         MediaPipeline.Default.resolveUrl(
                                             it.path,
@@ -515,7 +510,6 @@ fun HobbyDetailScreen(
                         }
                     }
 
-                    // ── 区块 2.8：相关手办推荐（同款/再版 + 推荐）──
                     if (uiState.relatedHobbies.isNotEmpty()) {
                         item(key = "section_related_hobbies") {
                             HobbyRelatedHobbiesSection(
@@ -541,10 +535,6 @@ fun HobbyDetailScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 顶部官方经典双列 Header + 官图缩略预览栏 (HobbyHeaderOfficialSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun HobbyHeaderOfficialSection(
     detail: HobbyDetailData?,
@@ -561,13 +551,13 @@ private fun HobbyHeaderOfficialSection(
     isPicsLoading: Boolean = false
 ) {
     val rawCover = detail?.cover?.ifBlank { null } ?: initialCover?.ifBlank { null }
-    // 详情主图（含模糊背景与前景封面）属「详情大图展示」档位，走 cover/n/ 而非瀑布流 sr/
+
     val hasCover = !(detail == null && initialCover.isNullOrBlank()) && !MediaPipeline.Default.isPlaceholder(rawCover)
 
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // 1. 底层封面图高斯模糊背景 (Atmospheric Frosted Backdrop)
+
         if (hasCover) {
             PoiAsyncImage(
                 path = rawCover,
@@ -579,7 +569,7 @@ private fun HobbyHeaderOfficialSection(
                     .matchParentSize()
                     .blur(28.dp)
             )
-            // 渐变蒙层强化对比度与深浅色适配
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -599,21 +589,20 @@ private fun HobbyHeaderOfficialSection(
             )
         }
 
-        // 2. 前景内容区 (留出状态栏与悬浮返回按钮空间)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .padding(top = 64.dp, bottom = 10.dp)
         ) {
-            // 上半部：左右双列卡片（左侧动态自适应全景封面，右侧品名与属性品牌）
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 左侧封面卡片 (9:13 黄金手办封面比例，与列表网格卡片严格统一)
+
                 Box(
                     modifier = Modifier
                         .width(135.dp)
@@ -635,7 +624,7 @@ private fun HobbyHeaderOfficialSection(
                         )
                         .clickable(onClick = onCoverClick)
                 ) {
-                    // 加载失败态由基元承担（柔和底色 + 破损图标），此处只保留骨架屏与「暂无封面」语义
+
                     when {
                         hasCover -> {
                             PoiAsyncImage(
@@ -675,12 +664,11 @@ private fun HobbyHeaderOfficialSection(
                     }
                 }
 
-                // 右侧关键信息面板
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 中文品名 / 主标题
+
                     val title = detail?.displayName?.ifBlank { null } ?: initialName ?: "手办详情"
                     Text(
                         text = title,
@@ -692,7 +680,6 @@ private fun HobbyHeaderOfficialSection(
                         lineHeight = 22.sp
                     )
 
-                    // 外文/日文原名 (如果有且不同)
                     val subName = detail?.name
                     if (!subName.isNullOrBlank() && subName != title) {
                         Text(
@@ -711,7 +698,7 @@ private fun HobbyHeaderOfficialSection(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             if (!makerCover.isNullOrBlank()) {
-                                // 厂商 logo 属标准卡片展示档位，走 cover/n/
+
                                 PoiAsyncImage(
                                     path = makerCover,
                                     category = MediaCategory.HOBBY,
@@ -740,7 +727,6 @@ private fun HobbyHeaderOfficialSection(
                         }
                     }
 
-                    // 星级评分与评分人数
                     val score = detail?.ratingScore ?: 0.0
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -762,7 +748,6 @@ private fun HobbyHeaderOfficialSection(
                         }
                     }
 
-                    // ── 补齐：官方定价与发售日胶囊标签栏 (对齐原版 hobby_price / hobby_release) ──
                     val priceText = detail?.displayPriceText?.ifBlank { null }
                     val releaseText = detail?.displayReleaseDateText?.ifBlank { null }
                     if (priceText != null || releaseText != null) {
@@ -782,7 +767,6 @@ private fun HobbyHeaderOfficialSection(
                 }
             }
 
-            // 下半部：官图横滑栏 (0 张整排消失；1~9 张全铺；超 9 张前 9 加第 10 格更多按钮)
             if (officialPics.isNotEmpty() || isPicsLoading) {
                 Spacer(modifier = Modifier.height(14.dp))
                 Column(
@@ -820,7 +804,7 @@ private fun HobbyHeaderOfficialSection(
                                 }
                             }
                         } else {
-                        // 官图按图片类型复用，键包含图片标识与下标防止重复
+
                         itemsIndexed(
                             officialPics.take(9),
                             key = { index, pic ->
@@ -837,7 +821,7 @@ private fun HobbyHeaderOfficialSection(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 )
                             ) {
-                                // 横滑缩略条：pic/ 家族（MediaCategory 无 pic 槽位），缩略档位对齐 pic/s/
+
                                 PoiAsyncImage(
                                     model = MediaPipeline.Default.resolvePictureUrl(
                                         pic.imagePath,
@@ -895,10 +879,6 @@ private fun OfficialPicsMoreTile(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 全量规格参数与版本历程流 (HobbySpecsSection)
-// ─────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HobbySpecsSection(
@@ -914,7 +894,6 @@ private fun HobbySpecsSection(
     val messages = LocalAppMessages.current
     val scope = rememberCoroutineScope()
 
-    // 过滤有效条目（排除 key 和 value 都为空的）
     val validEntries = remember(infoList) {
         infoList.filter { it.displayKey.isNotBlank() && (it.displayValue.isNotBlank() || it.tags.isNotEmpty()) }
     }
@@ -925,7 +904,7 @@ private fun HobbySpecsSection(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 规格信息主卡片
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
@@ -938,7 +917,7 @@ private fun HobbySpecsSection(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 if (validEntries.isNotEmpty()) {
-                    // 全量动态参数键值流
+
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         validEntries.forEach { entry ->
                             SpecEntryRow(
@@ -954,7 +933,7 @@ private fun HobbySpecsSection(
                         }
                     }
                 } else if (!isLoading) {
-                    // Fallback: 若 infoList 为空，使用 detail 中的字段兜底渲染
+
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         val fallbackPrice = detail?.displayPriceText?.ifBlank { null }
                         fallbackPrice?.let { SpecFallbackRow("定价", it, isDark) }
@@ -970,13 +949,12 @@ private fun HobbySpecsSection(
                         }
                     }
                 } else {
-                    // 加载占位
+
                     PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
                 }
             }
         }
 
-        // 版本说明与特典介绍 (富文本卡片)
         val rawHtml = detail?.detail?.ifBlank { null }
         val cleanText = detail?.detailPlainText?.ifBlank { null }
         val hasDetailContent = !cleanText.isNullOrBlank()
@@ -1059,7 +1037,7 @@ private fun SpecEntryRow(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
-        // 左侧 Key: 固定 74dp 宽度，次级颜色
+
         Text(
             text = entry.displayKey,
             fontSize = 12.sp,
@@ -1070,7 +1048,6 @@ private fun SpecEntryRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // 右侧 Value: 根据不同类型呈现
         Box(modifier = Modifier.weight(1f)) {
             when {
                 entry.isTagGroup && entry.tags.isNotEmpty() -> {
@@ -1124,7 +1101,6 @@ private fun SpecEntryRow(
                     }
                 }
 
-                // 2. 多行文本（发售历史、再版历程等）
                 entry.lines.size > 1 -> {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         entry.lines.forEach { line ->
@@ -1150,7 +1126,6 @@ private fun SpecEntryRow(
                     }
                 }
 
-                // 3. 可点击/跳转实体 (制作商、系列、原型、原画、角色、作品等)
                 entry.isNavigatable || entry.type == 2 -> {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1179,7 +1154,6 @@ private fun SpecEntryRow(
                     }
                 }
 
-                // 4. 标准文本 (定价、尺寸、比例、材质等)
                 else -> {
                     Text(
                         text = entry.displayValue,
@@ -1230,9 +1204,6 @@ private fun SpecFallbackRow(
     }
 }
 
-/**
- * 手办头部关键信息胶囊徽章（对齐原版 Hpoi hobby_price / hobby_release 的胶囊设计）
- */
 @Composable
 private fun HeaderBadgeCapsule(
     text: String,
@@ -1266,10 +1237,6 @@ private fun HeaderBadgeCapsule(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 相关手办推荐卡片流 (HobbyRelatedHobbiesSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun HobbyRelatedHobbiesSection(
@@ -1337,7 +1304,7 @@ private fun HobbyRelatedHobbyCard(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // 手办封面（严格遵循 9:13 黄金比例）
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1362,7 +1329,6 @@ private fun HobbyRelatedHobbyCard(
                     )
                 }
 
-                // 分组标签角标（例如“再版”、“同款”、“异色”）
                 if (!item.typeName.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
@@ -1385,7 +1351,6 @@ private fun HobbyRelatedHobbyCard(
                 }
             }
 
-            // 中文品名（展示两行，固定最小两行高度保证底栏对齐）
             Text(
                 text = item.displayName,
                 fontSize = 12.sp,
@@ -1397,7 +1362,6 @@ private fun HobbyRelatedHobbyCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // 价格与发售时间
             val priceText = item.displayPriceText
             val releaseDate = item.displayReleaseDateText
             if (priceText.isNotBlank() || releaseDate.isNotBlank()) {
@@ -1426,10 +1390,6 @@ private fun HobbyRelatedHobbyCard(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 玩家摄影相册卡片流 (HobbyUserAlbumsSection)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun HobbyUserAlbumsSection(
@@ -1498,9 +1458,6 @@ private fun HobbyUserAlbumsSection(
     }
 }
 
-/**
- * 手办相关相册「查看更多」卡片（等高且正方形比例，样式与 ExHobby 及角色相册保持一致）。
- */
 @Composable
 private fun HobbyAlbumMoreTile(
     onMoreClick: () -> Unit,
@@ -1540,7 +1497,7 @@ private fun HobbyUserAlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：显式空路径与官方缺省吉祥物都走纯文本卡
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     Card(
@@ -1563,8 +1520,7 @@ private fun HobbyUserAlbumCard(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // 相册无 cover/n/ 目录，管道把 CARD_STANDARD 裁决到保留纵横比的 cover/sr/；
-                // 高度由 adaptiveRatio 撑开，替换原先手写的纵横比缓存读写
+
                 PoiAsyncImage(
                     path = album.cover,
                     category = MediaCategory.ALBUM,
@@ -1576,7 +1532,6 @@ private fun HobbyUserAlbumCard(
                 )
             }
 
-            // 右上角半透明浮层点赞徽标（与相册列表页及角色详情页完全一致的 ExtraSmallShape 与 padding）
             val praiseCount = album.praiseCount ?: 0L
             if (praiseCount > 0L) {
                 Surface(
@@ -1610,10 +1565,6 @@ private fun HobbyUserAlbumCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部悬浮液态玻璃操作胶囊 (HobbyFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun HobbyFloatingActionBar(
     detail: HobbyDetailData?,
@@ -1626,13 +1577,13 @@ private fun HobbyFloatingActionBar(
     onCommentListClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 写后以服务端计数快照为基线；未刷新过时回落详情接口 collect 字段
+
     val baseCollect = collectCountBase ?: (detail?.collect ?: 0).toLong()
     val displayCollect = (baseCollect + collectDelta).coerceAtLeast(0L)
     val displayComment = commentCount.coerceAtLeast(0)
 
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 【关注收藏管理】只显示数字，无数字时只显示图标
+
         ExpressiveToolbarButton(
             onClick = onToggleFavorite,
             text = if (displayCollect > 0) "$displayCollect" else null,
@@ -1644,24 +1595,18 @@ private fun HobbyFloatingActionBar(
             iconTint = if (isFavorite) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 【评论】仅在小屏下展示独立全屏评论页入口，统一显示数字，没有则显示0；大屏右侧常驻评论区无需此按钮
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentListClick,
                 text = "$displayComment",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+
                 isProminent = false
             )
         }
     }
 }
-
-
-// ─────────────────────────────────────────────────────────────
-// 五星评分组件
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun RatingStars(score: Double) {
@@ -1680,10 +1625,6 @@ private fun RatingStars(score: Double) {
         }
     }
     }
-
-// ─────────────────────────────────────────────────────────────
-// 错误重试界面
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun DetailErrorState(

@@ -6,11 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 针对 api/zone/items 真实下发报文的反序列化单元测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `ZoneEntityModelTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class ZoneEntityModelTest {
 
     private val json = Json {

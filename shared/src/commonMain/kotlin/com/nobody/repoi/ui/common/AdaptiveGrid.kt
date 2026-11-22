@@ -17,13 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 
-/**
- * 根据窗口断点自适应计算列数（手机3列，折叠屏/平板4列，桌面/宽屏6列）并按网格排布的高性能网格容器。
- *
- * 性能优化说明：
- * 避免在滚动列表中使用 `BoxWithConstraints` 触发昂贵的子组合（Subcomposition）与延迟测量；
- * 采用全局 WindowSizeClass 在首轮组合期计算列数，并使用 `key` 保持行与单元项复用稳定性。
- */
 @Composable
 fun <T> AdaptiveChunkedGrid(
     items: List<T>,

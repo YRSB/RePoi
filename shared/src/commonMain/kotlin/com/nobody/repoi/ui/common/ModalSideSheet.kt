@@ -38,15 +38,6 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import com.nobody.repoi.ui.theme.sideSheet
 
-/**
- * Material Design 3 Modal Side Sheet 组件：
- * 专为平板与横屏大屏设计，从屏幕右侧平滑滑入，具备背景半透明遮罩与返回键手势关闭。
- *
- * KMP 移植版（原 `ui/search/components/SearchFilterSheet.kt:171`，M3 先行提取为 common；
- * M5 Search 侧改由本 common 实现 import）。
- *
- * @param SIDE_SHEET_ANIMATION_DURATION_MS 侧边抽屉动画时长（毫秒）
- */
 private const val SIDE_SHEET_ANIMATION_DURATION_MS = 260
 
 @Composable
@@ -100,7 +91,7 @@ fun ModalSideSheet(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // 全额消费抽屉内可滚动视图未消费的剩余滚动位移，防止过滚动事件穿透泄漏至底层
+
                 return available
             }
 
@@ -115,7 +106,7 @@ fun ModalSideSheet(
             .fillMaxSize()
             .zIndex(100f)
     ) {
-        // 1. 全屏半透明遮罩 (Scrim)：全屏铺满压暗背景，抽屉圆角外切角处自然透出暗色遮罩，彻底消除白色直角
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -135,7 +126,6 @@ fun ModalSideSheet(
                 }
         )
 
-        // 2. 右侧抽屉面板：居右停靠浮于遮罩之上，自身消费空白处点击防止击穿到底层遮罩
         Box(
             modifier = modifier
                 .align(Alignment.CenterEnd)
@@ -147,7 +137,7 @@ fun ModalSideSheet(
                 .nestedScroll(sideSheetNestedScrollConnection)
                 .pointerInput(Unit) {
                     detectTapGestures {
-                        // 消费抽屉空白处的点击，防止事件击穿透传到底层遮罩
+
                     }
                 }
                 .background(

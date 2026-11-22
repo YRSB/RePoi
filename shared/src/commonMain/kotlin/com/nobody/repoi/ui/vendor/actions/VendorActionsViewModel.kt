@@ -14,25 +14,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 厂商动态分类 Tab 项。
- */
 data class VendorActionTab(
     val name: String,
     val subType: String
 )
 
-/**
- * 厂商手办品类选项。
- */
 data class VendorActionCategoryOption(
     val id: Int,
     val label: String
 )
 
-/**
- * 厂商动态界面状态。
- */
 data class VendorActionsUiState(
     val companyNodeId: Long = 0L,
     val companyName: String? = null,
@@ -45,22 +36,12 @@ data class VendorActionsUiState(
         get() = VendorActionsViewModel.CATEGORY_OPTIONS.firstOrNull { it.id == selectedCategoryId }?.label ?: "全制品类"
 }
 
-/**
- * 厂商动态全量列表 ViewModel。
- */
 class VendorActionsViewModel(
     private val repository: VendorDetailRepository
 ) : ViewModel() {
 
     companion object {
-        /**
-         * 厂商动态分类 Tab。
-         *
-         * 与首页/专区详情的动态筛选（唯一共享定义 `ActionSubType`）**暂不合并**，原因：
-         * 1. 文案属厂商动态语义（如「制作决定」「官图更新」「再贩」），与 2.43 首页动态 9 项文案不同域；
-         * 2. 首项是 `all`（厂商动态的全部），且没有「推荐」「评论」档，键集是共享定义的 7 项子集；
-         * 3. 接口为厂商动态专用接口，键值支持范围未抓包验证。
-         */
+
         val TABS = listOf(
             VendorActionTab(name = "全部", subType = "all"),
             VendorActionTab(name = "制作决定", subType = "confirm"),
@@ -71,7 +52,6 @@ class VendorActionsViewModel(
             VendorActionTab(name = "再贩", subType = "reorder")
         )
 
-        // 严格对齐原版逆向 NameValues.t 分类 ID 规范
         val CATEGORY_OPTIONS = listOf(
             VendorActionCategoryOption(id = 0, label = "全制品类"),
             VendorActionCategoryOption(id = 100, label = "手办"),
@@ -85,7 +65,6 @@ class VendorActionsViewModel(
     private val _uiState = MutableStateFlow(VendorActionsUiState())
     val uiState: StateFlow<VendorActionsUiState> = _uiState.asStateFlow()
 
-    // 采用 KeyedListLoader 封装动态时序游标分页 (lastId = 最后一项 actionDate)
     private val pagedLoader = KeyedListLoader<CompanyActionItem, Long>(
         scope = viewModelScope,
         initialKey = 0L,
@@ -120,12 +99,9 @@ class VendorActionsViewModel(
         }
     }
 
-    /**
-     * 根据路由参数初始化。
-     */
     fun init(param: VendorActionsNavParam) {
         if (_uiState.value.companyNodeId == param.companyNodeId && param.companyNodeId > 0L) {
-            return // 已初始化同厂商，保留现有数据
+            return
         }
         _uiState.update {
             it.copy(
@@ -138,18 +114,12 @@ class VendorActionsViewModel(
         pagedLoader.loadInitial()
     }
 
-    /**
-     * 切换情报类型 Tab。
-     */
     fun selectTab(index: Int) {
         if (_uiState.value.selectedTabIndex == index) return
         _uiState.update { it.copy(selectedTabIndex = index) }
         pagedLoader.loadInitial()
     }
 
-    /**
-     * 切换制品品类过滤。
-     */
     fun selectCategory(categoryId: Int) {
         if (_uiState.value.selectedCategoryId == categoryId) {
             _uiState.update { it.copy(isCategoryMenuOpen = false) }
@@ -164,32 +134,20 @@ class VendorActionsViewModel(
         pagedLoader.loadInitial()
     }
 
-    /**
-     * 展开/收起品类过滤菜单。
-     */
     fun toggleCategoryMenu(expanded: Boolean? = null) {
         _uiState.update {
             it.copy(isCategoryMenuOpen = expanded ?: !it.isCategoryMenuOpen)
         }
     }
 
-    /**
-     * 下拉刷新。
-     */
     fun refresh() {
         pagedLoader.refresh()
     }
 
-    /**
-     * 触底追加更多。
-     */
     fun loadMore() {
         pagedLoader.loadMore()
     }
 
-    /**
-     * 错误重试。
-     */
     fun retry() {
         if (_uiState.value.pagedState.items.isEmpty()) {
             pagedLoader.loadInitial()

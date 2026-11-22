@@ -14,10 +14,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 
-/**
- * 用户订单与财务统计数据仓储。
- * 负责获取订单统计概况、多币种补款与已入金额换算汇总、分类金额解析与汇率折算。
- */
 class UserFinanceRepository(
     private val api: HpoiApi,
     private val json: Json = Json {
@@ -26,23 +22,15 @@ class UserFinanceRepository(
         isLenient = true
     }
 ) {
-    /**
-     * 获取指定用户的订单统计原始数据 (api/user/orderStatic)。
-     */
+
     suspend fun getOrderStaticData(userId: Long): Result<OrderStaticData> = runCatching {
         api.getOrderStatic(userId = userId)
     }
 
-    /**
-     * 获取指定用户的订单计数 (api/user/orderStatic)。
-     */
     suspend fun getOrderStatic(userId: Long): Result<OrderCount> = runCatching {
         getOrderStaticData(userId).map { it.count ?: OrderCount() }.getOrThrow()
     }
 
-    /**
-     * 解析订单财务与行情指标（多币种待补款、已入总额换算人民币及亚马逊涨跌幅）。
-     */
     internal fun parseOrderFinance(orderPayload: OrderStaticData?): OrderFinanceSummary {
         if (orderPayload == null) return OrderFinanceSummary()
         val supplementedGroups = parseCategoryMoneyGroups(orderPayload.allPreorderMoney)
@@ -60,9 +48,6 @@ class UserFinanceRepository(
         )
     }
 
-    /**
-     * 解析按分类汇总的多币种金额分组。
-     */
     internal fun parseCategoryMoneyGroups(jsonElement: JsonElement?): List<CategoryMoneyGroup> {
         if (jsonElement == null) return emptyList()
         val array = when (jsonElement) {
@@ -116,9 +101,6 @@ class UserFinanceRepository(
         return groups
     }
 
-    /**
-     * 分类 key 映射为可读中文名称。
-     */
     fun mapCategoryName(key: String): String {
         return when (key.lowercase().trim()) {
             "category_100", "100", "category_figure", "figure", "手办" -> "手办"
@@ -130,9 +112,6 @@ class UserFinanceRepository(
         }
     }
 
-    /**
-     * 获取指定货币相对于人民币的折算汇率。
-     */
     fun getExchangeRate(currency: String): Double {
         return CurrencyType.fromString(currency).exchangeRateToRmb
     }

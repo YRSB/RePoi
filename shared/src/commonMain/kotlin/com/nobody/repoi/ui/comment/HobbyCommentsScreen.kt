@@ -20,9 +20,6 @@ import com.nobody.repoi.ui.common.comment.CommentSectionInteraction
 import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * 全屏评论列表页：基于 [CommentFeedPane] 实现，支持“默认/热门/最新”三种排序、下拉刷新与右下角 FAB 评论入口。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HobbyCommentsScreen(

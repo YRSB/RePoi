@@ -23,18 +23,6 @@ import kotlinx.coroutines.sync.withLock
 
 typealias CommentPageFetch = suspend (nodeId: Long, type: String?, page: Int, pageSize: Int) -> Result<List<CommentItem>>
 
-/**
- * 评论交互协调委托：统一详情页评论点赞/回复与跨页广播合并。
- *
- * 负责统一管理：
- * 1. 监听 [CommentRepository.commentUpdates] 广播并自动合并回写；
- * 2. 主评论点赞切换（乐观更新、接口调用、广播与失败回滚）；
- * 3. 子评论回复发表（接口调用、本地追加、广播与失败处理，返回 Boolean 表明成功与否）；
- * 4. 主楼评论发表（接口调用与失败处理，成功后由调用方刷新列表，返回 Boolean 表明成功与否）；
- * 5. 消费操作反馈提示。
- *
- * 身份判定统一走 [UserSession]，档案缺失时由 [UserSession.refreshProfile] 在会话内补齐。
- */
 class CommentInteractionDelegate(
     private val commentRepository: CommentRepository,
     private val stickerRepository: StickerRepository,
@@ -59,9 +47,6 @@ class CommentInteractionDelegate(
     suspend fun loadStickerPacks(): List<StickerPackData> =
         stickerRepository.getCommentPacks().getOrDefault(emptyList())
 
-    /**
-     * 监听外部/评论详情页回写的主楼更新广播，并原子合并到热/最新评论列表中。
-     */
     fun <T : CommentAwareUiState> observeCommentUpdates(
         scope: CoroutineScope,
         stateFlow: MutableStateFlow<T>
@@ -101,15 +86,9 @@ class CommentInteractionDelegate(
 
     private val deletingCommentIds = mutableSetOf<Long>()
     private val deletingReplyIds = mutableSetOf<Pair<Long, Long>>()
-    /** 进行中的主评论点赞（按 commentId 去重，协程内原子判重，防止双击并发）。 */
+
     private val praisingCommentIds = mutableSetOf<Long>()
 
-    /**
-     * 在途去重守卫（原 `synchronized` 块的 KMP 等价实现；common 无 JVM 监视器）。
-     *
-     * 所有判重 + 占位都在同一 [Mutex] 内完成，与原语义一致：调用方协程在
-     * `withLock` 上挂起点即排队，不存在“检查-占用”竞态。
-     */
     private val inFlightMutex = Mutex()
 
     suspend fun <T : CommentAwareUiState> deleteMainComment(
@@ -186,9 +165,6 @@ class CommentInteractionDelegate(
         }
      }
 
-    /**
-     * 切换主评论点赞状态（乐观更新，失败回滚）。
-     */
     fun <T : CommentAwareUiState> toggleCommentPraise(
         scope: CoroutineScope,
         stateFlow: MutableStateFlow<T>,
@@ -260,14 +236,8 @@ class CommentInteractionDelegate(
         }
     }
 
-    /** 进行中的回复发表（按主楼 id 去重，防止双击重复发表）。 */
     private val submittingReplyIds = mutableSetOf<Long>()
 
-    /**
-     * 发表子评论回复（成功后追加到主楼并广播更新）。
-     *
-     * 挂起函数，返回是否发表成功，便于 UI 决定是否清空草稿或关框。
-     */
     suspend fun <T : CommentAwareUiState> submitCommentReply(
         stateFlow: MutableStateFlow<T>,
         commentId: Long,
@@ -326,14 +296,8 @@ class CommentInteractionDelegate(
         )
     }
 
-    /** 进行中的主楼发表（全局去重，防止双击重复发表）。 */
     private var submittingTopLevel = false
 
-    /**
-     * 发表主楼评论（成功后由调用方刷新列表，原版同样直接刷新）。
-     *
-     * 挂起函数，返回是否发表成功，便于 UI 决定是否清空草稿或关框。
-     */
     suspend fun <T : CommentAwareUiState> postTopLevelComment(
         stateFlow: MutableStateFlow<T>,
         nodeId: Long,
@@ -375,9 +339,6 @@ class CommentInteractionDelegate(
         }
     }
 
-    /**
-     * 消费一次性操作反馈信息。
-     */
     fun <T : CommentAwareUiState> consumeCommentActionMessage(stateFlow: MutableStateFlow<T>) {
         stateFlow.update { current ->
             @Suppress("UNCHECKED_CAST")

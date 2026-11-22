@@ -41,15 +41,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 相册详情收藏切换一致性测试：断言 UIState 与 [CollectRepository] 状态池/变更代数同步。
- *
- * `collectCountDelta` 是相对详情接口返回人数的增量，成功往返必须按服务端原始收藏态回零：
- * 原始未收藏时 0 → +1 → 0，原始已收藏时 0 → -1 → 0，避免重复切换积累虚假计数。
- *
- * 调度器三件套：`Dispatchers.setMain` + `runTest(testDispatcher)` + `MockApi.api(testDispatcher)`。
- * 类名刻意不含 `ViewModel`，避免受既有 ViewModel 测试过滤规则影响。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumDetailCollectToggleTest {
 
@@ -94,7 +85,7 @@ class AlbumDetailCollectToggleTest {
         assertFalse(state.isCollectPending)
         assertEquals(1L, state.collectCountDelta)
         assertEquals("已收藏该相册 ★", state.interactionActionMessage)
-        // 界面人数 = 详情接口基数 40 + 增量 1
+
         assertEquals(41L, (state.album?.collect ?: 0L) + state.collectCountDelta)
         assertEquals(CollectConstants.STATE_CARE, env.collectRepository.observeCollectState(ALBUM_ID).value?.state)
         assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
@@ -279,7 +270,6 @@ class AlbumDetailCollectToggleTest {
         assertEquals("$ALBUM_ID", writes.single().second["id"])
     }
 
-
     @Test
     fun toggleCollect_refreshesCountBaseFromServer() = runTest(testDispatcher) {
         val env = Env(testDispatcher, backgroundScope)
@@ -314,12 +304,11 @@ class AlbumDetailCollectToggleTest {
         }
         assertTrue(paths.any { it?.contains("hobby/collectCount") == true }, "写成功后必须拉取服务端计数")
     }
-    /** 消费并丢弃首屏阶段的请求记录，保证后续断言只针对切换收藏。 */
+
     private fun MockApi.drainRequests() {
         repeat(requestCount) { takeRequest() }
     }
 
-    /** 写后会追加 collectCount 计数请求，故按路径筛选写请求而不是按 FIFO 首位断言。 */
     private fun MockApi.consumeAsPairs(): List<Pair<String?, Map<String, String>>> =
         (0 until requestCount).map { takeRequest() }.map { request ->
             request.encodedPath to request.formEntries()

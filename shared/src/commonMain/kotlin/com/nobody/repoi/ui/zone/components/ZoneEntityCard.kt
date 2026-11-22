@@ -12,10 +12,6 @@ import com.nobody.repoi.ui.common.PoiAsyncImage
 import com.nobody.repoi.ui.common.card.PoiListCard
 import com.nobody.repoi.ui.common.card.PoiThumbnail
 
-/**
- * 专区通用实体卡片（厂商、系列、作品、角色、人物）
- * 遵循搜索结果页与通用卡片规范：基于 PoiListCard 深基元，左侧 68dp 方形缩略图，右侧两行标题与浏览量统计。
- */
 @Composable
 fun ZoneEntityCard(
     item: ZoneEntityItem,

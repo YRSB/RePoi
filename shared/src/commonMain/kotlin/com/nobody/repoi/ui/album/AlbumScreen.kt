@@ -103,7 +103,7 @@ fun AlbumScreen(
     val gridState = rememberLazyStaggeredGridState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    // 实测高度仅用于折叠行程与位移，内容边距取估高与实测的最大值：实测更大时补足避免遮盖，更小或相等时零额外重组
+
     var tabsHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     var pillsHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -294,9 +294,6 @@ fun AlbumScreen(
         }
     }
 
-        // 顶部操作区结构：
-        // 1. 底层：AlbumOrderPills，位于 ZoneTabs 下方，通过 Y 轴平移收进 ZoneTabs 底下
-        // 实测高度仅用于位移锚点与折叠上限，不回灌内容边距
         val tabsHeightDp = statusBarTopPadding + with(density) { tabsHeightPx.toDp() }
         Box(
             modifier = Modifier
@@ -319,7 +316,6 @@ fun AlbumScreen(
             )
         }
 
-        // 2. 顶层：AlbumZoneTabs 常驻顶端，Surface 遮盖上浮的 OrderPills
         AlbumZoneTabs(
             uiState = uiState,
             onSelectZone = viewModel::selectZone,
@@ -437,7 +433,6 @@ private fun AlbumOrderPills(
     }
 }
 
-/** 相册信息流网格。 */
 @Composable
 private fun AlbumFeedGrid(
     uiState: AlbumUiState,
@@ -584,7 +579,6 @@ private fun RankingSections(
         }
     }
 }
-
 
 @Composable
 private fun AlbumEmptyState(

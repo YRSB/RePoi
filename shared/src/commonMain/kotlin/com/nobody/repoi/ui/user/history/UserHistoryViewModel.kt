@@ -23,17 +23,8 @@ class UserHistoryViewModel(
     private val _uiState = MutableStateFlow(UserHistoryUiState())
     val uiState: StateFlow<UserHistoryUiState> = _uiState.asStateFlow()
 
-    /**
-     * 封面修复闸门：列表接口给的 `cover` 是写入快照，服务端重新落盘后必然 404，
-     * 而详情接口每次都会返回当前真实封面。失败才修复，且同时在途最多 [COVER_REPAIR_CONCURRENCY] 条，
-     * 正常滚动与翻页零额外请求。
-     */
     private val coverRepairGate = Semaphore(COVER_REPAIR_CONCURRENCY)
 
-    /**
-     * 单条实体的本会话**失败**次数（键为 `type:id`），防止反复失败时形成请求风暴。
-     * 修复成功即清零：成功既不产生新请求，也不该占用失败额度。
-     */
     private val coverRepairAttempts = mutableMapOf<String, Int>()
 
     private val hobbyLoader: PagedListLoader<UserHistoryItem> = pagedListLoader(
@@ -90,9 +81,6 @@ class UserHistoryViewModel(
         hobbyLoader.loadInitial()
     }
 
-    /**
-     * 切换历史分类 Tab。
-     */
     fun selectCategory(category: UserHistoryCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
@@ -109,25 +97,16 @@ class UserHistoryViewModel(
         }
     }
 
-    /**
-     * 下拉刷新当前或指定分类。
-     */
     fun refresh(category: UserHistoryCategory = _uiState.value.selectedCategory) {
         val loader = if (category == UserHistoryCategory.HOBBY) hobbyLoader else albumLoader
         loader.refresh()
     }
 
-    /**
-     * 加载更多下一页历史数据。
-     */
     fun loadMore(category: UserHistoryCategory = _uiState.value.selectedCategory) {
         val loader = if (category == UserHistoryCategory.HOBBY) hobbyLoader else albumLoader
         loader.loadMore()
     }
 
-    /**
-     * 进入或退出多选管理模式。
-     */
     fun toggleManageMode(enable: Boolean? = null) {
         _uiState.update { current ->
             val nextMode = enable ?: !current.isManageMode
@@ -138,9 +117,6 @@ class UserHistoryViewModel(
         }
     }
 
-    /**
-     * 勾选或反选单个历史项。
-     */
     fun toggleSelectItem(id: Long) {
         _uiState.update { current ->
             val newSelected = current.selectedIds.toMutableSet()
@@ -156,9 +132,6 @@ class UserHistoryViewModel(
         }
     }
 
-    /**
-     * 全选或取消全选当前 Tab 的所有历史项。
-     */
     fun toggleSelectAll() {
         _uiState.update { current ->
             val currentItems = current.currentTabState.items
@@ -172,9 +145,6 @@ class UserHistoryViewModel(
         }
     }
 
-    /**
-     * 执行批量删除选中的历史足迹。
-     */
     fun deleteSelected() {
         val idsToDelete = _uiState.value.selectedIds.toList()
         if (idsToDelete.isEmpty()) return
@@ -206,9 +176,6 @@ class UserHistoryViewModel(
         }
     }
 
-    /**
-     * 消费一次性操作反馈提示。
-     */
     fun consumeUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
     }
@@ -223,20 +190,17 @@ class UserHistoryViewModel(
 
         viewModelScope.launch {
             coverRepairGate.withPermit {
-                // 404 说明本地缓存的封面地址也已失效：必须穿透正缓存重新回源，
-                // 否则会一直返回同一个坏地址，形成无法自愈的死循环。
-                // 负缓存窗口仍由仓储内部拦截，避免空白封面反复打接口。
+
                 val freshCover = coverFreshnessRepository
                     .freshCover(detailId, entityType, forceRefresh = true)
                     .getOrNull()
                 if (freshCover.isNullOrBlank()) return@withPermit
                 val loader = if (category == UserHistoryCategory.HOBBY) hobbyLoader else albumLoader
-                // 只替换真正失败的那一行：copy 后 urlText 变化会让 PoiAsyncImage 自动重置失败态
+
                 loader.updateItem(predicate = { it.id == rowId }) { item ->
                     item.copy(cover = freshCover)
                 }
-                // 成功修复不消耗失败额度：否则下拉刷新把服务端快照换回旧路径后，
-                // 两次刷新就会把本会话的修复机会耗尽（刷新后的修复本可命中仓储缓存、零请求）。
+
                 coverRepairAttempts.remove(attemptKey)
             }
         }
@@ -259,10 +223,9 @@ class UserHistoryViewModel(
         }
 
     private companion object {
-        /** 同时在途的封面修复请求上限，避免整屏失效时瞬间打满详情接口。 */
+
         const val COVER_REPAIR_CONCURRENCY = 3
 
-        /** 同一实体的本会话连续失败次数上限（成功修复会清零）；超限后保持破损图标，等下次进入页面重来。 */
         const val MAX_COVER_REPAIR_ATTEMPTS = 2
     }
 }

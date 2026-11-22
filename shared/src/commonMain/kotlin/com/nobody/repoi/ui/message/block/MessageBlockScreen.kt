@@ -60,9 +60,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 黑名单管理页面：展示被屏蔽的用户列表，支持解除屏蔽。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageBlockScreen(
@@ -74,7 +71,6 @@ fun MessageBlockScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
-    // 触底分页：屏级派生滚动位置，空列表、已到底、错误态不触发
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalCount = listState.layoutInfo.totalItemsCount
@@ -189,7 +185,6 @@ fun MessageBlockScreen(
                         )
                     }
 
-                    // 分页加载脚：被动展示，不在此触发加载（加载由屏级触底判断驱动）
                     if (uiState.isLoading && uiState.blockList.isNotEmpty()) {
                         item(key = "footer_block_loading_more", contentType = "loading_footer") {
                             Box(
@@ -207,7 +202,6 @@ fun MessageBlockScreen(
         }
     }
 
-    // 解除屏蔽确认弹窗
     uiState.unblockTarget?.let { target ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissUnblockDialog() },
@@ -235,9 +229,6 @@ fun MessageBlockScreen(
     }
 }
 
-/**
- * 黑名单单行卡片。
- */
 @Composable
 private fun BlockItemRow(
     item: BlockItem,

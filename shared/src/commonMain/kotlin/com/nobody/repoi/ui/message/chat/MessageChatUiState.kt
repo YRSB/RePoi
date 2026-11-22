@@ -2,9 +2,6 @@ package com.nobody.repoi.ui.message.chat
 
 import com.nobody.repoi.data.remote.model.ChatMessageItem
 
-/**
- * 1v1 私信聊天 UI 状态。
- */
 data class MessageChatUiState(
     val targetUserId: Long = 0L,
     val targetUserName: String = "",

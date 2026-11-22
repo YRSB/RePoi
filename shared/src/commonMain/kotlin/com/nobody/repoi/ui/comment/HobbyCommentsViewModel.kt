@@ -16,14 +16,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/**
- * 全屏评论列表页路由导航参数。
- *
- * @param nodeId 条目节点 id（详情页 actualNodeId，评论接口的 id 参数）。
- * @param itemType 条目类型，默认 hobby。
- * @param title 页标题，默认评论。
- * @param initialCommentCount 进入时已知的评论总数，用于首屏占位。
- */
 @Serializable
 data class HobbyCommentsNavParam(
     val nodeId: Long,
@@ -32,9 +24,6 @@ data class HobbyCommentsNavParam(
     val initialCommentCount: Int = 0
 )
 
-/**
- * 全屏评论列表页 UI 状态机（复用详情页评论分页协议）。
- */
 data class HobbyCommentsUiState(
     val nodeId: Long = 0L,
     val itemType: String = "hobby",
@@ -85,9 +74,6 @@ data class HobbyCommentsUiState(
     )
 }
 
-/**
- * 全屏评论列表页 ViewModel：热门（hot_top）与最新（null）双流复用详情页委托。
- */
 class HobbyCommentsViewModel(
     private val repository: HobbyDetailRepository,
     private val commentDelegate: CommentInteractionDelegate

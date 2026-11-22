@@ -30,14 +30,6 @@ import com.nobody.repoi.ui.theme.topBarScrolled
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 详情页统一顶部导航栏：
- * - 刚进入页面时透明，可透视后方内容；
- * - 左侧显示返回键，中间不显示文字；右侧保留对称占位；
- * - 向下滚动一段距离后，顶部栏变为实心浅色条 (surfaceContainerHigh)，底部带圆角 (20dp)，中间淡入微缩标题与副标题/作者；
- * - 滑回顶部时恢复透明状态且中间文字隐藏；
- * - 在宽屏布局下，该顶部栏只覆盖主窗格，不覆盖右侧评论区。
- */
 @Composable
 fun DetailTopNavigation(
     isScrolled: Boolean,
@@ -63,7 +55,7 @@ fun DetailTopNavigation(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // 返回按钮
+
             if (showBackButton) {
                 FilledTonalIconButton(
                     onClick = onBack,
@@ -80,7 +72,6 @@ fun DetailTopNavigation(
                 Spacer(modifier = Modifier.size(38.dp))
             }
 
-            // 中间微缩标题与副标题（向下滚动时淡入展示）
             AnimatedVisibility(
                 visible = isScrolled,
                 enter = fadeIn(),
@@ -110,7 +101,6 @@ fun DetailTopNavigation(
                 }
             }
 
-            // 右侧保持 38.dp 占位以维持居中对称
             Spacer(modifier = Modifier.size(38.dp))
         }
     }

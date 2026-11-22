@@ -8,9 +8,6 @@ import java.awt.datatransfer.StringSelection
 actual fun plainTextClipEntry(text: String): ClipEntry =
     ClipEntry(StringSelection(text))
 
-/**
- * Desktop 纯文本提取：从 AWT `Transferable` 取字符串并 trim。
- */
 @OptIn(ExperimentalComposeUiApi::class)
 actual fun ClipEntry.plainText(): String? = runCatching {
     val transferable = nativeClipEntry as? java.awt.datatransfer.Transferable ?: return null

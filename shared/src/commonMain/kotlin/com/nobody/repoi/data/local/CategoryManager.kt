@@ -17,10 +17,6 @@ data class CategoryItem(
     val parentId: Int = 0
 )
 
-/**
- * 分类管理服务：内置离线基线分类树 + 异步后台拉取缓存。
- * 保证界面启动即刻秒开显示内置分类，无等待白屏。
- */
 class CategoryManager(
     private val api: HpoiApi,
     scope: CoroutineScope? = null,
@@ -125,7 +121,6 @@ class CategoryManager(
                 if (!nodes.isNullOrEmpty()) {
                     val newMap = mutableMapOf<Int, MutableList<CategoryItem>>()
 
-                    // 构建二级分类树（注意用业务 categoryId，不用数据库行 id）
                     for (node in nodes) {
                         val pId = node.parentId
                         val list = newMap.getOrPut(pId) { mutableListOf() }
@@ -140,7 +135,7 @@ class CategoryManager(
                     }
 
                     if (newMap.isNotEmpty()) {
-                        // 合并保留默认基准
+
                         val merged = defaultSubCategories.toMutableMap()
                         newMap.forEach { (k, v) ->
                             if (v.isNotEmpty()) {
@@ -151,7 +146,7 @@ class CategoryManager(
                     }
                 }
             } catch (_: Exception) {
-                // 网络异常保持内置默认配置，确保离线高可用
+
             }
         }
     }

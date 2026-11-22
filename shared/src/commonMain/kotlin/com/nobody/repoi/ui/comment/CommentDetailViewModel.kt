@@ -20,9 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/**
- * 评论详情页路由导航参数。
- */
 @Serializable
 data class CommentDetailNavParam(
     val commentId: Long,
@@ -32,16 +29,12 @@ data class CommentDetailNavParam(
     val isDiscuss: Boolean = false
 )
 
-/** 评论详情页加载阶段 */
 enum class CommentDetailPhase {
     Loading,
     Success,
     Error
 }
 
-/**
- * 评论详情页 UI 状态机：头部主楼 + 子评论分页 + 点赞/回复 mutation。
- */
 data class CommentDetailUiState(
     val commentId: Long = 0L,
     val relateNodeId: Long = 0L,
@@ -62,19 +55,13 @@ data class CommentDetailUiState(
     val actionMessage: String? = null
 )
 
-/**
- * 评论详情页状态机与动作。
- *
- * 身份判定统一走 [UserSession]：`currentUserId` 与 `currentToken` 语义等价于原凭据存储读取，
- * 档案缺失时通过 [UserSession.refreshProfile] 触发会话内刷新，不再直接依赖仓储。
- */
 class CommentDetailViewModel(
     private val repository: CommentRepository,
     private val stickerRepository: StickerRepository,
     private val userSession: UserSession
 ) : ViewModel() {
     companion object {
-        /** 子评论分页大小：与 hasMore 判定口径共用 */
+
         private const val REPLY_PAGE_SIZE = 10
     }
 
@@ -104,46 +91,26 @@ class CommentDetailViewModel(
         }
     }
 
-    /**
-     * 更新当前输入框草稿文本。
-     */
     fun onInputTextChanged(text: String) {
         _uiState.update { it.copy(inputText = text) }
     }
 
-    /**
-     * 打开回复弹窗。
-     *
-     * @param target 被回复的子评论；若为 null，则表示直接回复层主（主楼）。
-     */
     fun openReplyDialog(target: CommentReplyItem? = null) {
         _uiState.update { it.copy(isReplyDialogOpen = true, replyTarget = target) }
     }
 
-    /**
-     * 关闭回复弹窗并清空回复目标。
-     */
     fun closeReplyDialog() {
         _uiState.update { it.copy(isReplyDialogOpen = false, replyTarget = null) }
     }
 
-    /**
-     * 设置回复目标（子评论）。
-     */
     fun onReplyTargetChanged(target: CommentReplyItem?) {
         openReplyDialog(target)
     }
 
-    /**
-     * 清空回复目标（切回直接回复主楼或关闭回复）。
-     */
     fun clearReplyTarget() {
         closeReplyDialog()
     }
 
-    /**
-     * 进入详情页：快照预渲染，随后拉取 getreply 第一页校准。
-     */
     fun loadDetail(param: CommentDetailNavParam) {
         if (_uiState.value.commentId == param.commentId && _uiState.value.phase != CommentDetailPhase.Loading && _uiState.value.phase != CommentDetailPhase.Error) {
             return
@@ -219,16 +186,13 @@ class CommentDetailViewModel(
         }
     }
 
-    /**
-     * 触底拉取下一页子评论（带最大 3 次指数退避，按 id 去重）。
-     */
     fun loadNextPage() {
         val snapshot = _uiState.value
         if (snapshot.phase != CommentDetailPhase.Success || snapshot.isLoadingMore || !snapshot.hasMore) return
         moreJob?.cancel()
         moreJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
-            // 以最新状态为准，避免详情切换后旧分页混入新列表
+
             val current = _uiState.value
             val commentId = current.commentId
             val nextPage = current.page + 1
@@ -261,7 +225,7 @@ class CommentDetailViewModel(
             }
 
             if (successData != null) {
-                // 详情切换后丢弃旧分页回写，避免旧主楼子评论混入新列表
+
                 if (_uiState.value.commentId != commentId) {
                     return@launch
                 }
@@ -298,9 +262,6 @@ class CommentDetailViewModel(
         }
     }
 
-    /**
-     * 头部主楼点赞切换（乐观更新，失败回滚并广播回写）。
-     */
     fun togglePraise() {
         val state = _uiState.value
         val comment = state.comment ?: return
@@ -324,7 +285,7 @@ class CommentDetailViewModel(
                 },
                 onFailure = { err ->
                     _uiState.update { current ->
-                        // 仅回滚点赞字段，保留在途回复等并发变更
+
                         val rolledBack = current.comment
                             ?.takeIf { it.id == comment.id }
                             ?.copy(
@@ -342,9 +303,6 @@ class CommentDetailViewModel(
         }
     }
 
-    /**
-     * 提交当前输入框草稿内容（空时提示，成功时清空草稿与目标，失败时草稿完整保留）。
-     */
     fun submitCurrentInput() {
         val state = _uiState.value
         val text = state.inputText.trim()
@@ -362,11 +320,6 @@ class CommentDetailViewModel(
         }
     }
 
-    /**
-     * 发表回复（可指定被回复子评论，直接回复主楼时为空）。
-     *
-     * 挂起函数，直接返回是否发表成功，便于弹窗按返回值关框，不再比对提示文案。
-     */
     suspend fun submitReply(
         content: String,
         replyTarget: CommentReplyItem? = null,
@@ -400,7 +353,7 @@ class CommentDetailViewModel(
             onSuccess = { reply ->
                 var updated: CommentItem? = null
                 _uiState.update { current ->
-                    // 主楼已切换时丢弃本次回写，避免污染新主楼
+
                     if (current.comment?.id != commentId) {
                         return@update current.copy(isSubmittingReply = false)
                     }
@@ -442,9 +395,6 @@ class CommentDetailViewModel(
     suspend fun loadStickerPacks(): List<StickerPackData> =
         stickerRepository.getCommentPacks().getOrDefault(emptyList())
 
-    /**
-     * 消费一次性提示文案。
-     */
     fun consumeActionMessage() {
         _uiState.update { it.copy(actionMessage = null) }
     }

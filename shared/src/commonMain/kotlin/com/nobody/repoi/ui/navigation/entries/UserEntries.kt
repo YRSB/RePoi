@@ -11,9 +11,6 @@ import com.nobody.repoi.ui.user.UserInfoScreen
 import com.nobody.repoi.ui.user.creation.UserCreationScreen
 import com.nobody.repoi.ui.user.history.UserHistoryScreen
 
-/**
- * 注册社交好友、用户信息、收藏管理、用户创作与足迹历史等用户资产路由。
- */
 fun EntryProviderScope<NavKey>.userEntries(
     navigator: RePoiNavigator,
     onBack: () -> Unit
@@ -109,4 +106,3 @@ fun EntryProviderScope<NavKey>.userEntries(
         )
     }
 }
-

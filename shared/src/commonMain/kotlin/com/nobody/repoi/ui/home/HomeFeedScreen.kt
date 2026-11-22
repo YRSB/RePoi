@@ -111,29 +111,25 @@ fun HomeFeedScreen(
     modifier: Modifier = Modifier,
     onActionClick: ((ActionItem) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
-    /** 二手条目点击（跳二手详情）。 */
+
     onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToHobby: ((DetailNavParam) -> Unit)? = null,
-    /**
-     * 实体卡片点击（厂商/系列/作品/角色/人物）。
-     */
+
     onEntityClick: ((ZoneBoard, ZoneEntityItem) -> Unit)? = null,
     onNavigateToSearch: ((SearchNavParam) -> Unit)? = null,
     onNavigateToZoneBrowse: (() -> Unit)? = null,
     onNavigateToZoneSettings: (() -> Unit)? = null,
     onNavigateToMessage: (() -> Unit)? = null,
-    /** 讨论帖点击（itemId, nodeId, 初始标题）；为空时提示「即将上线」。 */
+
     onNavigateToPost: ((Long, Long?, String?) -> Unit)? = null,
-    /** 讨论帖作者点击。 */
+
     onNavigateToUser: ((Long) -> Unit)? = null,
-    /** 富文本超链接点击（跳转用户/条目/外部网页等）。 */
+
     onUrlClick: ((String) -> Unit)? = null,
     viewModel: HomeFeedViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 消息中心内的已读操作只改服务端计数，首页快照会失效；
-    // 返回首页时重拉一次，红点不残留陈旧值（issue #195）。
     LifecycleResumeEffect(Unit) {
         viewModel.refreshUnreadMessages()
         onPauseOrDispose { }
@@ -206,7 +202,7 @@ private fun HomeFeedReadyContent(
     val imageViewer = LocalImageViewer.current
     val messages = LocalAppMessages.current
     val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
-    // ≥ 840dp 用锚定下拉菜单，其余用底部抽屉；两种呈现共享同一份分组与选中态。
+
     val useZoneSwitcherDropdown =
         windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)
     var zoneSwitcherExpanded by remember { mutableStateOf(false) }
@@ -303,7 +299,6 @@ private fun HomeFeedReadyContent(
         )
     }
 
-    // 活跃板块条目数与刷新态：仅由 activeSnapshot 驱动
     val boardItemCount = activeSnapshot.content.itemCount
     val isRefreshing = activeSnapshot.itemCount > 0 && activeSnapshot.pageView.isLoading
     val boardHasFilterBar = uiState.boards.isNotEmpty()
@@ -596,9 +591,6 @@ private fun HomeFeedReadyContent(
     }
 }
 
-/**
- * 单个板块页：四态 + 瀑布流内容 + 该板块自己的滚动状态与触底翻页。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeBoardPage(
@@ -874,12 +866,6 @@ private fun HomeBoardPage(
     }
 }
 
-/**
- * 动态瀑布流自适应列数：
- * - 横屏桌面端 / 超宽大屏 (≥ 1400dp)：3 列；
- * - 横屏平板 / 折叠屏展开 (≥ 600dp MEDIUM)：2 列；
- * - 竖屏状态（含手机竖屏、平板竖屏、折叠屏竖屏）及超窄横屏：统一 1 列。
- */
 @Composable
 fun rememberFeedStaggeredGridColumns(): StaggeredGridCells {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()

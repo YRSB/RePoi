@@ -36,17 +36,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * 专区子板块会话控制器实现类（深模块）。
- *
- * 封装专区 10 类子板块的生命周期调度、首屏懒加载、独立分页状态机、筛选不变性与滚动记忆。
- * 宿主只需通过 [activeSnapshot] 观察当前活跃板块的快照，或通过 [snapshotFor] 提取任意板块投影。
- */
 class ZoneBoardSessionImpl(
     private val coroutineScope: CoroutineScope,
     initialScope: ZoneQueryScope = ZoneQueryScope.All,
     initialBoard: ZoneBoard = ZoneBoard.Action,
-    /** 首屏加载延迟门闩：见 [ZoneBoardSession.resumeInitialLoad]（issue #198）。 */
+
     deferInitialLoad: Boolean = false,
     homeRepository: HomeRepository,
     albumRepository: AlbumRepository,
@@ -56,7 +50,6 @@ class ZoneBoardSessionImpl(
     viewPreferencesManager: ViewPreferencesManager
 ) : ZoneBoardSession {
 
-    /** 门闩状态：解除前所有首屏懒加载 / 重试 / 刷新与筛选重载挂起。 */
     private var initialLoadDeferred = deferInitialLoad
     private var currentScope: ZoneQueryScope = initialScope
     private var activeBoard: ZoneBoard = initialBoard
@@ -132,7 +125,7 @@ class ZoneBoardSessionImpl(
         actionSnapshot = _actionSnapshot.asStateFlow()
 
         if (!initialLoadDeferred) {
-            // 初始活跃板块触发首屏懒加载（门闩延迟场景由 resumeInitialLoad 统一触发）
+
             pagerFor(activeBoard).ensureLoaded(currentScope)
             if (activeBoard != ZoneBoard.Action) {
                 actionPager.ensureLoaded(currentScope)
@@ -140,7 +133,6 @@ class ZoneBoardSessionImpl(
         }
     }
 
-    /** 门闩期间把快照投影为「首屏加载中」，避免宿主四态判定闪空态（issue #198）。 */
     private fun pendingAwareSnapshot(
         pager: BoardPager,
         scroll: BoardScrollPosition
@@ -160,7 +152,7 @@ class ZoneBoardSessionImpl(
 
     override fun dispatch(intent: ZoneBoardIntent) {
         when (intent) {
-            // ── 核心通用生命周期意图 ──
+
             is ZoneBoardIntent.SelectBoard -> {
                 val previousBoard = activeBoard
                 activeBoard = intent.board
@@ -184,7 +176,6 @@ class ZoneBoardSessionImpl(
                 pagerFor(target).refresh(currentScope)
             }
 
-            // ── 筛选意图：Action ──
             is ZoneBoardIntent.SelectSubType -> {
                 scrollPositions[ZoneBoard.Action] = BoardScrollPosition()
                 if (initialLoadDeferred) {
@@ -194,7 +185,6 @@ class ZoneBoardSessionImpl(
                 }
             }
 
-            // ── 筛选意图：Album ──
             is ZoneBoardIntent.SelectAlbumOrder -> {
                 scrollPositions[ZoneBoard.Album] = BoardScrollPosition()
                 albumPager.setOrder(intent.order, currentScope)
@@ -204,13 +194,11 @@ class ZoneBoardSessionImpl(
                 albumPager.setCategory(intent.categoryId, currentScope)
             }
 
-            // ── 筛选意图：Posts ──
             is ZoneBoardIntent.SelectPostsOrder -> {
                 scrollPositions[ZoneBoard.Posts] = BoardScrollPosition()
                 postsPager.setOrder(intent.order, currentScope)
             }
 
-            // ── 筛选意图：Resale ──
             is ZoneBoardIntent.SelectResaleType -> {
                 scrollPositions[ZoneBoard.Resale] = BoardScrollPosition()
                 resalePager.setType(intent.type, currentScope)
@@ -227,7 +215,6 @@ class ZoneBoardSessionImpl(
                 resalePager.submitSearch(currentScope)
             }
 
-            // ── 筛选意图：Hobby ──
             is ZoneBoardIntent.SelectHobbyOrder -> {
                 scrollPositions[ZoneBoard.Hobby] = BoardScrollPosition()
                 hobbyPager.setOrder(intent.order, currentScope)
@@ -269,7 +256,6 @@ class ZoneBoardSessionImpl(
                 hobbyPager.submitSearch(currentScope)
             }
 
-            // ── 滚动记忆意图 ──
             is ZoneBoardIntent.SaveScrollPosition -> {
                 val current = scrollPositions[intent.board] ?: BoardScrollPosition()
                 val next = current.copy(index = intent.index, offset = intent.offset)
@@ -330,13 +316,11 @@ class ZoneBoardSessionImpl(
         if (activeBoard != ZoneBoard.Action) {
             actionPager.ensureLoaded(currentScope)
         }
-        // ensureLoaded 同步置「首屏加载中」并回调 handleBoardChanged 刷新快照流；
-        // 幂等重入（门闩已解除）直接短路。
+
     }
 
     private fun handleBoardChanged(board: ZoneBoard) {
-        // 门闩期间的任何回调（如 stageSubType）必须维持「首屏加载中」投影，
-        // 否则会把 pager 的「零条目 + 未加载」真实态推给宿主闪空态（issue #198）。
+
         if (board == ZoneBoard.Action) {
             val scroll = scrollPositions[ZoneBoard.Action] ?: BoardScrollPosition()
             _actionSnapshot.value = pendingAwareSnapshot(actionPager, scroll)
@@ -347,9 +331,6 @@ class ZoneBoardSessionImpl(
         }
     }
 
-    /**
-     * 会话控制器创建工厂。
-     */
     class Factory(
         private val homeRepository: HomeRepository,
         private val albumRepository: AlbumRepository,
@@ -380,7 +361,6 @@ class ZoneBoardSessionImpl(
     }
 }
 
-/** 内部子板块调度器通用接缝。 */
 private interface BoardPager {
     val board: ZoneBoard
     val isLoaded: Boolean
@@ -391,10 +371,6 @@ private interface BoardPager {
     fun onScopeChanged(newScope: ZoneQueryScope)
     fun currentSnapshot(scrollPosition: BoardScrollPosition): ZoneBoardSnapshot
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. ActionBoardPager（动态板块调度器）
-// ─────────────────────────────────────────────────────────────────────────────
 
 private class ActionBoardPager(
     private val homeRepository: HomeRepository,
@@ -541,13 +517,6 @@ private class ActionBoardPager(
         loadInitial(scope)
     }
 
-    /**
-     * 首屏延迟门闩期间的筛选落位：只登记 [subType] 不触发请求。
-     *
-     * 防坑契约：冷启动落盘 subType 与默认值不同时，若走 [setSubType] 会在门闩解除前
-     * 以「当前作用域 + 落盘子类」乐观发出一次首屏请求，落定切换作用域后作废重发（issue #198）；
-     * 登记后由 [ZoneBoardSessionImpl.resumeInitialLoad] 用最终参数一次性加载。
-     */
     fun stageSubType(newSubType: String) {
         if (newSubType == subType) return
         subType = newSubType
@@ -574,10 +543,6 @@ private class ActionBoardPager(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. AlbumBoardPager（分享板块调度器）
-// ─────────────────────────────────────────────────────────────────────────────
 
 private class AlbumBoardPager(
     private val albumRepository: AlbumRepository,
@@ -753,10 +718,6 @@ private class AlbumBoardPager(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. PostsBoardPager（讨论板块调度器）
-// ─────────────────────────────────────────────────────────────────────────────
 
 private class PostsBoardPager(
     private val zoneRepository: ZoneRepository,
@@ -935,10 +896,6 @@ private class PostsBoardPager(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. HobbyBoardPager（产品板块调度器）
-// ─────────────────────────────────────────────────────────────────────────────
 
 private class HobbyBoardPager(
     private val itemRepository: ItemRepository,
@@ -1169,10 +1126,6 @@ private class HobbyBoardPager(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ResaleBoardPager（二手板块调度器）
-// ─────────────────────────────────────────────────────────────────────────────
-
 private class ResaleBoardPager(
     private val resaleRepository: ResaleRepository,
     private val coroutineScope: CoroutineScope,
@@ -1373,10 +1326,6 @@ private class ResaleBoardPager(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. EntityBoardPager（实体 5 类板块调度器：厂商/系列/作品/角色/人物）
-// ─────────────────────────────────────────────────────────────────────────────
 
 private class EntityBoardPager(
     override val board: ZoneBoard,

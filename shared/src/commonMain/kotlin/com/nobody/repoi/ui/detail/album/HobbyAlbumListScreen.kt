@@ -68,9 +68,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 手办专属相关相册列表页面。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HobbyAlbumListScreen(
@@ -90,12 +87,10 @@ fun HobbyAlbumListScreen(
     val coroutineScope = rememberCoroutineScope()
     val staggeredGridState = rememberLazyStaggeredGridState()
 
-    // 切换排序 Tab 时重置滚动位置至顶部
     LaunchedEffect(uiState.selectedOrder) {
         staggeredGridState.scrollToItem(0)
     }
 
-    // 首次载入或排序切换后首屏数据到达时，确保停留在顶部
     LaunchedEffect(uiState.selectedOrder, uiState.albums.firstOrNull()?.id) {
         if (uiState.page == 1 && uiState.albums.isNotEmpty()) {
             staggeredGridState.scrollToItem(0)
@@ -138,7 +133,6 @@ fun HobbyAlbumListScreen(
                     )
                 )
 
-                // 排序 Tab 栏（最热、最新、最多图）
                 PrimaryTabRow(
                     selectedTabIndex = uiState.selectedOrder.ordinal,
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -200,7 +194,7 @@ fun HobbyAlbumListScreen(
                     HobbyAlbumListEmpty()
                 }
                 else -> {
-                        // 触底加载更多监听
+
                         val shouldLoadMore by remember {
                             derivedStateOf {
                                 val layoutInfo = staggeredGridState.layoutInfo
@@ -274,16 +268,13 @@ fun HobbyAlbumListScreen(
         }
     }
 
-/**
- * 手办相册卡片（自适应长宽比瀑布流）。
- */
 @Composable
 private fun HobbyAlbumStaggeredCard(
     album: HobbyAlbumItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 无封面判定统一交给管道：路径为空或官方缺省吉祥物（none.jpg）时沿用历史 17:24 纯文本卡
+
     val isNoCover = MediaPipeline.Default.isPlaceholder(album.cover)
 
     ElevatedCard(
@@ -295,7 +286,7 @@ private fun HobbyAlbumStaggeredCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // 有图时高度由 PoiAsyncImage 的自适应纵横比撑开，无图时固定 17:24
+
                     .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
                     .clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -306,7 +297,7 @@ private fun HobbyAlbumStaggeredCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // 相册服务端无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/
+
                     PoiAsyncImage(
                         path = album.cover,
                         category = MediaCategory.ALBUM,
@@ -337,7 +328,7 @@ private fun HobbyAlbumStaggeredCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // 左侧：头像 + 昵称
+
                     Row(
                         modifier = Modifier.weight(1f, fill = false),
                         verticalAlignment = Alignment.CenterVertically,
@@ -350,7 +341,7 @@ private fun HobbyAlbumStaggeredCard(
                                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                             contentAlignment = Alignment.Center
                         ) {
-                            // 头像走 head/ 家族方形缩略档，外层 16dp 圆形裁切
+
                             PoiAsyncImage(
                                 path = album.user?.header,
                                 category = MediaCategory.AVATAR,
@@ -368,7 +359,6 @@ private fun HobbyAlbumStaggeredCard(
                         )
                     }
 
-                    // 右侧：点赞图标 + 点赞数
                     val praiseCount = album.praiseCount ?: 0L
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -392,9 +382,6 @@ private fun HobbyAlbumStaggeredCard(
     }
 }
 
-/**
- * 手办相册列表加载失败页面。
- */
 @Composable
 private fun HobbyAlbumListError(
     errorMessage: String,
@@ -434,9 +421,6 @@ private fun HobbyAlbumListError(
     }
 }
 
-/**
- * 手办相册列表空状态。
- */
 @Composable
 private fun HobbyAlbumListEmpty(modifier: Modifier = Modifier) {
     Column(

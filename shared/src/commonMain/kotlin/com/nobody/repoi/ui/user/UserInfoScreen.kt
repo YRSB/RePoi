@@ -108,16 +108,6 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
 
-/**
- * 用户个人资料与主页展示页面。
- *
- * 遵循单流滚动设计规范（LazyColumn 平铺所有要素）：
- * - 顶部横幅（含返回、编辑/刷新及右下角节点 ID 胶囊）；
- * - 头部资料区（头像、关注/粉丝/获赞三列统计、关注按钮、昵称、普通文本等级、收藏相似度勋章、签名与可折叠介绍）；
- * - 手办 4 项统计栏（想买、预定、已入、总消费金额下拉弹窗）；
- * - 下游内容分区（相册、动态、二手）与平铺列表流；
- * - 底部详细基础信息卡片（可折叠查看全量字段并支持编辑）。
- */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun UserInfoScreen(
@@ -137,7 +127,7 @@ fun UserInfoScreen(
     val imageViewer = LocalImageViewer.current
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    // KMP 无 android Configuration：横屏判定经 BoxWithConstraints 宽高比（原 orientation==LANDSCAPE 语义）
+
     val isLandscapeState = remember { mutableStateOf(false) }
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
@@ -173,7 +163,7 @@ fun UserInfoScreen(
                 .consumeWindowInsets(innerPadding),
             contentAlignment = Alignment.TopCenter
         ) {
-            // BoxWithConstraints 宽高比回写横屏态（替代 Configuration.orientation）
+
             isLandscapeState.value = maxWidth > maxHeight
             val isLandscape = isLandscapeState.value
             val isDualPane = isLandscape && isWideScreen
@@ -233,11 +223,11 @@ fun UserInfoScreen(
                     val clipboard = LocalClipboard.current
 
                     if (isDualPane) {
-                        // 💻 横屏大屏（Medium / Expanded）：自适应双栏（左栏档案资产 + 右栏内容流）
+
                         Row(
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            // 左栏：用户身份与资产档案
+
                             UserProfileIdentityPane(
                                 profile = profile,
                                 uiState = uiState,
@@ -273,13 +263,11 @@ fun UserInfoScreen(
                                     .verticalScroll(rememberScrollState())
                             )
 
-                            // 分割线
                             VerticalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.fillMaxHeight()
                             )
 
-                            // 右栏：用户输出内容流（Tab 固定在顶部，内容独立滚动）
                             Column(
                                 modifier = Modifier
                                     .weight(0.62f)
@@ -315,7 +303,7 @@ fun UserInfoScreen(
                             }
                         }
                     } else {
-                        // 📱 竖屏（手机与平板竖屏）：单列流式平铺
+
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -324,7 +312,7 @@ fun UserInfoScreen(
                             contentPadding = PaddingValues(bottom = 32.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // 1. 顶部大横幅与悬浮操作
+
                             item(key = "banner") {
                                 UserProfileBanner(
                                     profile = profile,
@@ -339,7 +327,6 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            // 2. 用户头部基础资料与社交三项统计行
                             item(key = "header_info") {
                                 UserProfileHeader(
                                     profile = profile,
@@ -357,7 +344,6 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            // 3. 手办 4 项统计卡片（想买、预定、已入、总消费）
                             item(key = "order_stats") {
                                 UserOrderStatsCard(
                                     profile = profile,
@@ -367,7 +353,6 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            // 4. 基础档案常驻卡片（UID、性别、生日、城市、注册时间）
                             item(key = "basic_info") {
                                 BasicProfileSection(
                                     profile = profile,
@@ -380,7 +365,6 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            // 5. 下游内容分类 Tab 栏（相册、动态、二手）
                             item(key = "content_tabs") {
                                 UserContentTabs(
                                     selectedTab = uiState.selectedTab,
@@ -388,7 +372,6 @@ fun UserInfoScreen(
                                 )
                             }
 
-                            // 6. 根据选中 Tab 渲染单流列表内容（2 列相册）
                             userContentFeedItems(
                                 uiState = uiState,
                                 columns = 2,
@@ -409,7 +392,6 @@ fun UserInfoScreen(
         }
     }
 
-    // 年度消费明细弹窗
     if (uiState.showMoneyDialog) {
         YearlyMoneyBreakdownDialog(
             totalMoneyText = uiState.totalMoneyText,
@@ -418,7 +400,6 @@ fun UserInfoScreen(
         )
     }
 
-    // 编辑个人资料底部弹窗
     if (uiState.isEditing && uiState.profile != null) {
         EditProfileBottomSheet(
             profile = uiState.profile!!,
@@ -438,9 +419,6 @@ fun UserInfoScreen(
     }
 }
 
-/**
- * 用户主页相册/动态/二手 Feed 流列表渲染项。
- */
 private fun LazyListScope.userContentFeedItems(
     uiState: UserInfoUiState,
     columns: Int,
@@ -545,7 +523,7 @@ private fun LazyListScope.userContentFeedItems(
                                     }
                                 }
                             } else {
-                                // 头像/昵称等作者点击：relateItem 为空时落到动态作者主页
+
                                 val targetUserId = item.user?.actualUserId ?: 0L
                                 if (targetUserId > 0L) {
                                     onNavigateToUser(targetUserId)
@@ -569,9 +547,6 @@ private fun LazyListScope.userContentFeedItems(
     }
 }
 
-/**
- * 用户身份与资产档案侧边栏面板（用于横屏大屏双栏架构左侧主栏）。
- */
 @Composable
 private fun UserProfileIdentityPane(
     profile: UserProfile,
@@ -595,7 +570,7 @@ private fun UserProfileIdentityPane(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. 横幅与悬浮操作胶囊
+
         UserProfileBanner(
             profile = profile,
             isSelf = isSelf,
@@ -605,7 +580,6 @@ private fun UserProfileIdentityPane(
             onBannerClick = onBannerClick
         )
 
-        // 2. 头像与社交三列统计
         UserProfileHeader(
             profile = profile,
             uiState = uiState,
@@ -616,7 +590,6 @@ private fun UserProfileIdentityPane(
             onNavigateToChat = onNavigateToChat
         )
 
-        // 3. 手办四大消费统计卡片
         UserOrderStatsCard(
             profile = profile,
             uiState = uiState,
@@ -624,7 +597,6 @@ private fun UserProfileIdentityPane(
             onShowMoneyDialog = onShowMoneyDialog
         )
 
-        // 4. 常驻基础信息卡片
         BasicProfileSection(
             profile = profile,
             onCopyUid = onCopyUid
@@ -634,9 +606,6 @@ private fun UserProfileIdentityPane(
     }
 }
 
-/**
- * 顶部沉浸式横幅组件（含返回/编辑胶囊与右下角节点 ID）。
- */
 @Composable
 private fun UserProfileBanner(
     profile: UserProfile,
@@ -654,7 +623,7 @@ private fun UserProfileBanner(
             .fillMaxWidth()
             .height(200.dp)
     ) {
-        // 背景横幅图
+
         if (bannerUrl.isNotBlank()) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
@@ -682,7 +651,6 @@ private fun UserProfileBanner(
             )
         }
 
-        // 顶部轻量渐变暗色遮罩保障按钮全天候清晰度
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -697,7 +665,6 @@ private fun UserProfileBanner(
                 )
         )
 
-        // 顶部操作按钮（左返回，右编辑/刷新）
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -758,9 +725,6 @@ private fun UserProfileBanner(
     }
 }
 
-/**
- * 个人资料核心头部：圆形头像、关注/粉丝/获赞三列统计、关注按钮、昵称、普通文本等级、相似度勋章、签名与简介。
- */
 @Composable
 private fun UserProfileHeader(
     profile: UserProfile,
@@ -783,12 +747,12 @@ private fun UserProfileHeader(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // 第一行：头像（左）+ 社交三列统计（中）+ 他人关注胶囊（右）
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 圆形大头像（略微上移形成悬挂层次）
+
             Surface(
                 shape = CircleShape,
                 shadowElevation = 3.dp,
@@ -832,7 +796,6 @@ private fun UserProfileHeader(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 社交三项统计行（关注 | 粉丝 | 获赞）
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.SpaceAround,
@@ -867,7 +830,6 @@ private fun UserProfileHeader(
                 )
             }
 
-            // 若查看他人主页，展示关注胶囊操作按钮与私信按钮
             if (!uiState.isSelf) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Row(
@@ -894,7 +856,6 @@ private fun UserProfileHeader(
             }
         }
 
-        // 第二行：用户昵称 + 普通文本等级（需求 4）+ 收藏相似度勋章
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -914,7 +875,6 @@ private fun UserProfileHeader(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // 需求 4：用户等级直接显示为普通文本（如 Lv.3），不使用胶囊
                 Text(
                     text = "Lv.${profile.level}",
                     style = MaterialTheme.typography.labelLarge,
@@ -923,13 +883,11 @@ private fun UserProfileHeader(
                 )
             }
 
-            // 他人主页显示收藏相似度勋章（如 0% 收藏相似度）
             if (!uiState.isSelf) {
                 UserSimilarityBadge(similarity = uiState.similarity)
             }
         }
 
-        // 官方认证徽章
         if (profile.isVerified) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -949,7 +907,6 @@ private fun UserProfileHeader(
             }
         }
 
-        // 个性签名
         val signText = profile.sign?.ifBlank { null } ?: "还没有信仰_(:3」∠)_"
         Text(
             text = "签名：$signText",
@@ -957,7 +914,6 @@ private fun UserProfileHeader(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 个人介绍（支持展开/收起）
         val introText = profile.intro?.ifBlank { null } ?: "这个人很神秘，什么都没写~"
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -988,9 +944,6 @@ private fun UserProfileHeader(
     }
 }
 
-/**
- * 社交统计单列（垂直居中排列数字与标签）。
- */
 @Composable
 private fun UserSocialStatColumn(
     count: Int,
@@ -1019,9 +972,6 @@ private fun UserSocialStatColumn(
     }
 }
 
-/**
- * 他人主页关注胶囊按钮。
- */
 @Composable
 private fun UserFollowButton(
     isFollowed: Boolean,
@@ -1076,9 +1026,6 @@ private fun UserFollowButton(
     }
 }
 
-/**
- * 收藏相似度勋章组件（官方原版勋章式样）。
- */
 @Composable
 private fun UserSimilarityBadge(
     similarity: Int,
@@ -1112,9 +1059,6 @@ private fun UserSimilarityBadge(
     }
 }
 
-/**
- * 手办 4 项消费与收藏统计栏（想买、预定、已入、总消费）。
- */
 @Composable
 private fun UserOrderStatsCard(
     profile: UserProfile,
@@ -1140,7 +1084,7 @@ private fun UserOrderStatsCard(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 想买
+
             OrderStatColumn(
                 title = "想买",
                 value = wantCount.toString(),
@@ -1156,7 +1100,6 @@ private fun UserOrderStatsCard(
                 }
             )
 
-            // 预定
             OrderStatColumn(
                 title = "预定",
                 value = preorderCount.toString(),
@@ -1172,7 +1115,6 @@ private fun UserOrderStatsCard(
                 }
             )
 
-            // 已入
             OrderStatColumn(
                 title = "已入",
                 value = buyCount.toString(),
@@ -1188,7 +1130,6 @@ private fun UserOrderStatsCard(
                 }
             )
 
-            // 总消费（带下拉三角，点击展示年度细分弹窗）
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -1250,9 +1191,6 @@ private fun OrderStatColumn(
     }
 }
 
-/**
- * 个人主页下游内容分区 Tab 栏（相册、动态、二手）。
- */
 @Composable
 private fun UserContentTabs(
     selectedTab: Int,
@@ -1287,9 +1225,6 @@ private fun UserContentTabs(
     }
 }
 
-/**
- * 相册子分类筛选 Chips。
- */
 @Composable
 private fun UserAlbumSubChips(
     isSelf: Boolean,
@@ -1320,9 +1255,6 @@ private fun UserAlbumSubChips(
     }
 }
 
-/**
- * 空状态提示占位。
- */
 @Composable
 private fun EmptyTabPlaceholder(icon: DrawableResource,
     text: String,
@@ -1350,9 +1282,6 @@ private fun EmptyTabPlaceholder(icon: DrawableResource,
     }
 }
 
-/**
- * 基础信息常驻展示卡片（去重并保留 UID、性别、生日、城市与注册时间等核心档案）。
- */
 @Composable
 private fun BasicProfileSection(
     profile: UserProfile,
@@ -1371,7 +1300,7 @@ private fun BasicProfileSection(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 卡片标题行（常驻展示）
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1392,7 +1321,6 @@ private fun BasicProfileSection(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-            // 1. UID（带快捷复制）
             ProfileInfoRow(
                 icon = PoiIcons.Filled.Fingerprint,
                 label = "UID",
@@ -1414,35 +1342,30 @@ private fun BasicProfileSection(
                 }
             )
 
-            // 2. 性别
             ProfileInfoRow(
                 icon = PoiIcons.Filled.Wc,
                 label = "性别",
                 value = profile.genderText
             )
 
-            // 3. 生日
             ProfileInfoRow(
                 icon = PoiIcons.Filled.Cake,
                 label = "生日",
                 value = profile.birth?.ifBlank { null } ?: "未设置"
             )
 
-            // 4. 城市
             ProfileInfoRow(
                 icon = PoiIcons.Filled.LocationOn,
                 label = "城市",
                 value = profile.city?.ifBlank { null } ?: "未设置"
             )
 
-            // 5. 注册时间
             ProfileInfoRow(
                 icon = PoiIcons.Filled.CalendarMonth,
                 label = "注册时间",
                 value = profile.displayRegisterTime
             )
 
-            // 6. 官方认证（若有）
             if (profile.isVerified) {
                 ProfileInfoRow(
                     icon = PoiIcons.Filled.Verified,
@@ -1454,9 +1377,6 @@ private fun BasicProfileSection(
     }
 }
 
-/**
- * 个人资料单项只读展示行。
- */
 @Composable
 private fun ProfileInfoRow(icon: DrawableResource,
     label: String,
@@ -1502,9 +1422,6 @@ private fun ProfileInfoRow(icon: DrawableResource,
     }
 }
 
-/**
- * 年度消费细分弹窗。
- */
 @Composable
 private fun YearlyMoneyBreakdownDialog(
     totalMoneyText: String,
@@ -1594,9 +1511,6 @@ private fun YearlyMoneyBreakdownDialog(
     )
 }
 
-/**
- * 个人资料综合编辑底栏弹窗。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditProfileBottomSheet(

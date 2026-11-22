@@ -21,12 +21,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 手办收藏编辑页写侧测试：保存/取消收藏均委托 Domain UseCase（`SaveHobbyCollectUseCase` /
- * `DeleteHobbyCollectUseCase`），成功后收藏仓储状态池同步更新。
- *
- * 类名刻意不含 `ViewModel`，避免受既有 ViewModel 测试过滤规则影响。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CollectEditSaveTest {
 
@@ -57,7 +51,7 @@ class CollectEditSaveTest {
         assertTrue(viewModel.uiState.value.nodeId == 100L)
         assertNull(collectRepository.observeCollectState(100L).value)
         assertEquals(0L, collectRepository.collectMutationGeneration.value)
-        // 丢弃 initData 阶段已消费的请求（统计/标签/状态），下面断言只针对保存写入
+
         collectMock.drainPaths()
 
         viewModel.saveCollect()
@@ -99,12 +93,11 @@ class CollectEditSaveTest {
         assertEquals("100", form["nodeId"])
         assertTrue(form["json"]?.contains("\"state\":\"delete\"") == true)
         assertNull(collectRepository.observeCollectState(100L).value)
-        // 再次读回仍为未收藏，删除后的池值为 null 而非已删除占位对象
+
         assertNull(collectRepository.observeCollectState(100L).value)
         assertEquals(1L, collectRepository.collectMutationGeneration.value)
     }
 
-    /** 已收藏 → 变更档位：状态池只保留新档位，请求携带新档位，代数恰好 +1。 */
     @Test
     fun saveCollect_whenCollectedChangesTier_writesNewTierAndAdvancesGeneration() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -138,7 +131,6 @@ class CollectEditSaveTest {
         assertEquals(1L, collectRepository.collectMutationGeneration.value)
     }
 
-    /** 保存网络失败：状态池保持旧档位、代数不推进、UI 暴露 errorMessage。 */
     @Test
     fun saveCollect_onNetworkFailure_keepsPoolAndGenerationAndReportsError() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -168,7 +160,6 @@ class CollectEditSaveTest {
         assertEquals(0L, collectRepository.collectMutationGeneration.value)
     }
 
-    /** 删除网络失败：状态池保持已收藏、代数不推进、UI 暴露 errorMessage。 */
     @Test
     fun deleteCollect_onNetworkFailure_keepsPoolAndGenerationAndReportsError() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -197,7 +188,6 @@ class CollectEditSaveTest {
         assertEquals(0L, collectRepository.collectMutationGeneration.value)
     }
 
-    /** 消费并丢弃已排队的请求记录。 */
     private fun MockApi.drainPaths(): List<String?> = buildList {
         repeat(requestCount) { add(takeRequest().encodedPath) }
     }
@@ -212,7 +202,6 @@ class CollectEditSaveTest {
             DeleteHobbyCollectUseCase(collectRepository)
         )
 
-    /** 写成功后由服务端 `collectCount` 五分类总和写入计数快照，供详情页重置基线。 */
     @Test
     fun saveCollect_writesServerCountSnapshot() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -243,7 +232,6 @@ class CollectEditSaveTest {
         assertTrue(collectMock.drainPaths().any { it?.contains("hobby/collectCount") == true })
     }
 
-    /** 计数请求失败：快照保持未刷新，写成功、状态池与代数语义不受影响。 */
     @Test
     fun saveCollect_whenCountRequestFails_keepsSnapshotUnchanged() = runTest(testDispatcher) {
         val collectMock = MockApi()

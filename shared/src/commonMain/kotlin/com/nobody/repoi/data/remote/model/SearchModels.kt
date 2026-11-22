@@ -16,8 +16,6 @@ import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
 import kotlin.math.ceil
 
-// ── 5. 全局搜索 (Global Search) 模型 ─────────────────────────
-
 @Serializable
 data class SearchResponsePayload(
     val result: List<SearchResultItem>? = null,

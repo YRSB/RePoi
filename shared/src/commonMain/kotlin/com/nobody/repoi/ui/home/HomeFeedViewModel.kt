@@ -52,7 +52,6 @@ data class FeedCategory(
     val id: Int = nodeId.toInt()
 )
 
-/** 冷启动判定输入：`combine` 四路流的聚合体（关注专区 / 设置 / 关注数据就绪 / 落盘偏好就绪）。 */
 private data class ColdStartInputs(
     val focusZones: List<ZoneItem>,
     val settings: ZoneTabsSettings,
@@ -61,36 +60,26 @@ private data class ColdStartInputs(
 )
 
 data class HomeFeedUiState(
-    /** 冷启动首屏是否已落定就绪（等待凭据预热 + 专区首屏单次请求完成 + 目标专区与板块确定）。 */
+
     val isColdStartReady: Boolean = false,
-    /** 冷启动首屏加载错误（超时或网络异常）；非 null 时首屏渲染错误重试卡片。 */
+
     val coldStartError: String? = null,
     val categories: List<FeedCategory> = listOf(FeedCategory("all", "全部")),
     val selectedCategory: FeedCategory = FeedCategory("all", "全部"),
-    /** 顶栏专区切换器分组（「快捷」恒含全部/关注，「我的专区」遵循首页设置排序与隐藏）。 */
+
     val switcherGroups: List<ZoneSwitcherGroup> = defaultZoneSwitcherGroups(),
-    /**
-     * 二级板块列表（顺序即 Tab 顺序），唯一来源为 `ZoneBoardCapability` 能力矩阵：
-     * - 聚合态（全部）= `HOME_ORDER` 全 10 项；关注 = 去掉讨论/产品/二手的 7 项；
-     * - 单专区 = 服务端 `zone/info.tabs` ∩ 白名单（请求中/失败先回退 `[ZoneBoard.Action]`）。
-     *
-     * 为空表示该专区没有可用板块，宿主据此隐藏二级 TabRow 并展示板块空态（不渲染空 Tab 条）。
-     */
+
     val boards: List<ZoneBoard> = ZoneBoardCapability.ALL_BOARDS,
-    /**
-     * 单专区下各板块的服务端 Tab 文案（`zone/info.tabs[].title`）；聚合态恒为空 Map。
-     */
+
     val boardTitles: Map<ZoneBoard, String> = emptyMap(),
-    /** 当前选中的二级板块；切换专区时重置为该专区首板块。 */
+
     val selectedBoard: ZoneBoard = ZoneBoardCapability.ALL_BOARDS.firstOrNull() ?: ZoneBoard.Action,
-    /** 当前单专区相册分类候选（单专区且服务端下发 ≥2 个有效分类时非空；聚合态恒为空）。 */
+
     val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
     val userAvatar: String? = null,
     val unreadMessageCount: Int = 0,
     val actionItems: List<ActionItem> = emptyList(),
-    /**
-     * 当前活跃板块的只读快照镜像（由 `ZoneBoardSession.activeSnapshot` 收集驱动，避免散装字段）。
-     */
+
     val currentBoardSnapshot: ZoneBoardSnapshot = ZoneBoardSnapshot(
         board = ZoneBoard.Action,
         content = ZoneBoardContent.Action(emptyList(), ZoneBoardPageView(isLoading = true)),
@@ -98,7 +87,7 @@ data class HomeFeedUiState(
         pageView = ZoneBoardPageView(isLoading = true)
     )
 ) {
-    /** 二级 Tab 文案：单专区优先服务端 `tabTitle`，空则回退枚举文案；聚合态无服务端 title。 */
+
     fun boardTitle(board: ZoneBoard): String =
         boardTitles[board]?.takeIf { it.isNotBlank() } ?: board.label
 }
@@ -113,9 +102,6 @@ class HomeFeedViewModel(
     private val albumRepository: AlbumRepository? = null
 ) : ViewModel() {
 
-    /**
-     * 兼容存量构造函数（供存量测试桩与过渡调用，由 #169 最终收口）。
-     */
     constructor(
         homeRepository: HomeRepository,
         albumRepository: AlbumRepository,
@@ -152,77 +138,52 @@ class HomeFeedViewModel(
     val uiState: StateFlow<HomeFeedUiState> = _uiState.asStateFlow()
 
     private val _isColdStartReady = MutableStateFlow(false)
-    /** 冷启动首屏是否已就绪（供首屏门禁挂起渲染与解闩）。 */
+
     val isColdStartReady: StateFlow<Boolean> = _isColdStartReady.asStateFlow()
 
     private val _coldStartError = MutableStateFlow<String?>(null)
-    /** 冷启动专区拉取失败时的错误文案；非空时渲染重试卡片。 */
+
     val coldStartError: StateFlow<String?> = _coldStartError.asStateFlow()
 
-    /** 最近一次已用于同步专区的有效登录令牌。 */
     private var lastSyncedToken: String? = null
 
-    /** 冷启动首屏异步请求任务；支持重试取消与重建。 */
     private var coldStartJob: Job? = null
 
-    /**
-     * 专区子板块会话控制器（深模块）。
-     *
-     * 统合 10 类板块的生命周期、懒加载、分页状态机、筛选不变性与滚动记忆。
-     */
     val session: ZoneBoardSession = sessionFactory.create(
         coroutineScope = viewModelScope,
         initialScope = _uiState.value.zoneScope,
         initialBoard = _uiState.value.selectedBoard,
-        // issue #198：冷启动落盘偏好异步落定前挂起首屏加载，落定后 resumeInitialLoad()
-        // 一次性以最终「专区 + 板块 + 子类」参数加载，杜绝乐观默认请求作废重发导致的双指示器闪烁。
+
         deferInitialLoad = true
     )
 
-    /**
-     * 动态筛选项（key = 协议键值 `subType`，value = 2.43 中文文案）。
-     */
     val subTypes: List<Pair<String, String>> =
         ActionSubType.ordered.map { it.apiValue to it.label }
 
-    /**
-     * 产品分类树（`parentId -> 子分类`）：供筛选条子分类回显与分类级联弹层。
-     */
     val hobbyCategoryTree: StateFlow<Map<Int, List<CategoryItem>>> =
         categoryManager?.categoryMap ?: MutableStateFlow<Map<Int, List<CategoryItem>>>(emptyMap())
 
-    /** 冷启动落盘的一级 tabKey 与二级板块键（`{tabKey}|{type}`，未设置时为空串）。 */
     private var savedTabKey: String? = null
     private var savedBoardKey: String? = null
 
-    /** 冷启动偏好是否已落定（预热完成且 saved* 已读取）：[savedSelectionReady] 对外供分类流触发重算。 */
     private val savedSelectionReady = MutableStateFlow(false)
 
-    /** 关注专区数据就绪信号：`zone/home-tabs` 返回后置 true。 */
     private val focusZonesLoaded = MutableStateFlow(false)
 
-    /** 一级冷启动判定是否已完成。 */
     private var coldStartTabResolved: Boolean = false
 
-    /** 用户是否已主动切换过一级专区；是则预热落定后不再回填保存值。 */
     private var userSelectedCategory: Boolean = false
 
-    /** 当前生效的二级板块偏好键（`{tabKey}|{type}`）：恢复与写回共用，避免出现两套编码。 */
     private var currentBoardSelectionKey: String = ""
 
-    /** 手动切入单专区后，等 `zone/info.tabs` 返回再落到该专区首板块。 */
     private var pendingSingleZoneFirstBoard: Boolean = false
 
-    /** 二级板块列表的异步请求（单专区 `zone/info`）；切专区时先取消，避免过期响应覆盖。 */
     private var boardsJob: Job? = null
 
-    /** 分享板块分类候选请求（单专区；切专区时取消）。 */
     private var albumCategoriesJob: Job? = null
 
-    // 各「作用域 + 板块」的滚动记忆备份（跨专区切换保留）
     private val boardScrollMemories = mutableMapOf<String, HomeBoardScrollMemory>()
 
-    /** 当前生效的滚动记忆键：`{scope.stateKey()}|{board.type}`。 */
     val currentBoardMemoryKey: String
         get() = homeBoardMemoryKey(_uiState.value.zoneScope, _uiState.value.selectedBoard)
 
@@ -231,15 +192,12 @@ class HomeFeedViewModel(
         return ZoneBoard.fromType(boardType) ?: _uiState.value.selectedBoard
     }
 
-    /** 读取指定键的滚动记忆（未记录时返回全 0 默认值）。 */
     fun scrollMemoryFor(boardKey: String): HomeBoardScrollMemory {
         return boardScrollMemories[boardKey] ?: session.snapshotFor(boardFromKey(boardKey)).scrollPosition.toHomeScrollMemory()
     }
 
-    /** 读取指定键的滚动记忆；未记录过返回 `null`。 */
     fun scrollMemoryOrNull(boardKey: String): HomeBoardScrollMemory? = boardScrollMemories[boardKey]
 
-    /** 保存指定「作用域 + 板块」的筛选行横向滚动位置。 */
     fun saveBoardFilterRowScroll(boardKey: String, scrollX: Int) {
         if (scrollX < 0) return
         val board = boardFromKey(boardKey)
@@ -248,7 +206,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SaveFilterRowScroll(board, scrollX))
     }
 
-    /** 保存指定「作用域 + 板块」的滚动位置。 */
     fun saveBoardScrollPosition(boardKey: String, index: Int, offset: Int) {
         if (index < 0) return
         val board = boardFromKey(boardKey)
@@ -257,7 +214,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SaveScrollPosition(board, index, offset))
     }
 
-    /** 保存指定「作用域 + 板块」的筛选层折叠比例。 */
     fun saveBoardFilterCollapseFraction(boardKey: String, fraction: Float) {
         val board = boardFromKey(boardKey)
         val clamped = fraction.coerceIn(0f, 1f)
@@ -266,7 +222,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SaveFilterCollapseFraction(board, clamped))
     }
 
-    /** 清空指定「作用域 + 板块」的滚动记忆。 */
     fun resetBoardScrollMemory(boardKey: String) {
         val board = boardFromKey(boardKey)
         boardScrollMemories[boardKey] = HomeBoardScrollMemory()
@@ -293,14 +248,13 @@ class HomeFeedViewModel(
     }
 
     init {
-        // 收集会话控制器的活跃板块快照，同步更新 UI 状态快照镜像
+
         viewModelScope.launch {
             session.activeSnapshot.collect { snapshot ->
                 _uiState.update { it.copy(currentBoardSnapshot = snapshot) }
             }
         }
 
-        // 收集动态板块快照，同步维护 actionItems 兼容状态
         viewModelScope.launch {
             session.actionSnapshot.collect { snapshot ->
                 val items = (snapshot.content as? ZoneBoardContent.Action)?.items.orEmpty()
@@ -308,7 +262,6 @@ class HomeFeedViewModel(
             }
         }
 
-        // 监听专区与设置变化，构建动态分类列表与顶栏切换器分组
         viewModelScope.launch {
             combine(
                 zoneRepository.focusZonesFlow,
@@ -358,7 +311,7 @@ class HomeFeedViewModel(
                 if (categoryChanged) {
                     session.updateScope(scope)
                     session.dispatch(ZoneBoardIntent.SelectBoard(nextBoard))
-                    // 恢复该作用域目标板块已保存的滚动记忆
+
                     val memoryKey = homeBoardMemoryKey(scope, nextBoard)
                     boardScrollMemories[memoryKey]?.let { saved ->
                         session.dispatch(ZoneBoardIntent.SaveScrollPosition(nextBoard, saved.index, saved.offset))
@@ -410,12 +363,10 @@ class HomeFeedViewModel(
             _coldStartError.value = null
             _uiState.update { it.copy(coldStartError = null) }
 
-            // 1. 严格等待会话预热完毕（离开 Prewarming 态），确知是否有有效 utoken
             val initialSessionState = userSession.state.first { it !is SessionState.Prewarming }
             val currentToken = (initialSessionState as? SessionState.Authenticated)?.token
             lastSyncedToken = currentToken
 
-            // 2. 读取持久化偏好
             viewPreferencesManager.awaitPreheat()
             if (!userSelectedCategory) {
                 savedTabKey = viewPreferencesManager.getInitialFeedZoneTabKey()
@@ -427,7 +378,6 @@ class HomeFeedViewModel(
             }
             savedSelectionReady.value = true
 
-            // 3. 有界超时（5 秒）发起恰好一次专区首页数据请求
             val result = runCatching {
                 withTimeout(5000L) {
                     zoneRepository.getZoneHomeTabs()
@@ -488,7 +438,7 @@ class HomeFeedViewModel(
 
         session.dispatch(ZoneBoardIntent.SelectBoard(firstBoard))
         session.updateScope(scope)
-        // 用户已显式选定专区：无需等待冷启动落定，立即解闩防 loading 悬挂
+
         markColdStartReady()
         val memoryKey = homeBoardMemoryKey(scope, firstBoard)
         boardScrollMemories[memoryKey]?.let { saved ->
@@ -512,7 +462,7 @@ class HomeFeedViewModel(
         _uiState.update { it.copy(selectedBoard = board) }
         viewModelScope.launch { persistBoardSelection() }
         session.dispatch(ZoneBoardIntent.SelectBoard(board))
-        // 用户已显式切换板块：立即解闩防 loading 悬挂（落定前点击的极窄竞态兜底）
+
         markColdStartReady()
         if (board == ZoneBoard.Album) {
             syncAlbumCategories(current.zoneScope)
@@ -525,8 +475,6 @@ class HomeFeedViewModel(
         if (board !in state.boards) return
         session.snapshotFor(board)
     }
-
-    // ── 产品（Hobby）板块意图转发 ──
 
     fun selectHobbyOrder(order: String) {
         resetScrollPosition()
@@ -579,8 +527,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SubmitHobbySearch)
     }
 
-    // ── 分享（Album）板块意图转发 ──
-
     fun selectAlbumOrder(order: String) {
         if (order !in AlbumBoardOptions.ORDER_KEYS) return
         resetScrollPosition()
@@ -592,14 +538,10 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SelectAlbumCategory(categoryId))
     }
 
-    // ── 讨论（Posts）板块意图转发 ──
-
     fun selectPostsOrder(order: String) {
         resetScrollPosition()
         session.dispatch(ZoneBoardIntent.SelectPostsOrder(order))
     }
-
-    // ── 二手（Resale）板块意图转发 ──
 
     fun selectResaleType(type: Int) {
         if (!ResaleBoardOptions.isValidType(type)) return
@@ -622,8 +564,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.SubmitResaleSearch)
     }
 
-    // ── 动态（Action）板块意图转发 ──
-
     fun selectSubType(subType: String) {
         val normalized = ActionSubType.fromPersisted(subType).apiValue
         resetScrollPosition()
@@ -632,8 +572,6 @@ class HomeFeedViewModel(
             viewPreferencesManager.setFeedSubType(normalized)
         }
     }
-
-    // ── 通用生命周期与翻页重试分发 ──
 
     fun retrySelectedBoard(board: ZoneBoard? = null) {
         session.dispatch(ZoneBoardIntent.RetryInitial(board))
@@ -659,12 +597,6 @@ class HomeFeedViewModel(
         session.dispatch(ZoneBoardIntent.Refresh())
     }
 
-    /**
-     * 恢复感知重拉未读数：从消息中心返回首页（重新进入组合 / RESUMED）时由界面层调用。
-     *
-     * 防坑契约：消息中心内「一键全部已读」或逐条已读只改服务端计数，
-     * 首页 `unreadMessageCount` 是独立快照，不重拉会残留陈旧值导致红点不灭（issue #195）。
-     */
     fun refreshUnreadMessages() {
         fetchUnreadMessages()
     }

@@ -51,7 +51,7 @@ internal fun periodWindow(period: RankPeriod, diff: Int, now: LocalDateTime): Pa
     val date = now.date
     return when (period) {
         RankPeriod.WEEK -> {
-            // 周一起始（与原 WeekFields MONDAY,1 一致）
+
             val monday = date.minus(date.dayOfWeek.ordinal, DateTimeUnit.DAY).plus(diff * 7, DateTimeUnit.DAY)
             Pair(formatRankListTime(startOfDay(monday)), formatRankListTime(endOfDay(monday.plus(6, DateTimeUnit.DAY))))
         }

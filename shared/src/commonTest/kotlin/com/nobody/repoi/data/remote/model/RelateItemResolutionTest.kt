@@ -5,16 +5,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 关联条目 [RelateItem] 目标 ID 解析与相册/手办类型判定单元测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `RelateItemResolutionTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class RelateItemResolutionTest {
 
     @Test
     fun relateItem_whenAlbumWithFigureItemId_resolvesActualAlbumIdCorrectly() {
-        // 场景：对相册评价的动态，relateItem 中 id 为相册 ID (38307193)，itemId 为关联手办 ID (388930)
+
         val albumRelate = RelateItem(
             id = 38307193L,
             itemId = 388930L,
@@ -44,7 +39,7 @@ class RelateItemResolutionTest {
 
     @Test
     fun relateItem_whenFigure_resolvesActualHobbyIdCorrectly() {
-        // 场景：手办条目动态，itemId 为条目 ID (106044)，id 为节点 ID (29490234)
+
         val figureRelate = RelateItem(
             id = 29490234L,
             itemId = 106044L,

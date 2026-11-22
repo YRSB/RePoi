@@ -67,20 +67,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 作品收藏编辑页（原版 `net.hpoi.ui.collect.CollectWorksActivity`）。
- *
- * 整链走作品专属接口 `api/works/glean/get|add|del` + `api/user/glean/textTag/get`，
- * 与周边收藏编辑页（`CollectEditScreen`，`api/collect` 系列接口）**完全是两套接口**，故单独成页。
- *
- * 功能对齐：
- * - 三档收藏状态 RadioGroup，`categoryId == 10200`（游戏）时文案变体为「想玩/在玩/玩过」；
- * - 官方标签候选池 + 自定义标签（单标签 1~8 字、最多 15 个、去重，超限提示「单个作品最多设置15个标签」）；
- * - 简评选填，上限 500 字；
- * - 保存 / 取消收藏（二次确认「是否取消收藏后将移出收藏中心取消收藏」）。
- *
- * 保存成功后通过 [onResult] 回传当前收藏状态，供作品详情页刷新收藏标识。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorksCollectEditScreen(
@@ -96,7 +82,6 @@ fun WorksCollectEditScreen(
         viewModel.initData(param)
     }
 
-    // 保存成功：回传结果后退出，由作品详情页刷新收藏态
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             onResult(uiState.worksId, uiState.selectedState)
@@ -104,7 +89,6 @@ fun WorksCollectEditScreen(
         }
     }
 
-    // 取消收藏成功：state 回传 0 表示「已取消」（对齐原版 `CollectWorksActivity$a` 的 `putExtra("state", 0)`）
     LaunchedEffect(uiState.deleteSuccess) {
         if (uiState.deleteSuccess) {
             onResult(uiState.worksId, 0)
@@ -139,7 +123,7 @@ fun WorksCollectEditScreen(
                     }
                 },
                 actions = {
-                    // 原版 `CollectWorksActivity.java:469-474`：未收藏时隐藏删除入口
+
                     if (uiState.hasDelete) {
                         IconButton(
                             onClick = { viewModel.setDeleteConfirmDialogVisible(true) },
@@ -230,7 +214,6 @@ fun WorksCollectEditScreen(
                     )
                 }
 
-                // 三档收藏状态
                 item(key = "state_selector") {
                     WorksCollectEditSection {
                         Column(
@@ -268,7 +251,6 @@ fun WorksCollectEditScreen(
                     }
                 }
 
-                // 官方标签流 + 自定义标签
                 item(key = "tags_panel") {
                     WorksCollectTagsSection(
                         myTags = uiState.myTags,
@@ -279,7 +261,6 @@ fun WorksCollectEditScreen(
                     )
                 }
 
-                // 简评（选填，500 字上限）
                 item(key = "comment_panel") {
                     WorksCollectEditSection {
                         Column(
@@ -314,7 +295,6 @@ fun WorksCollectEditScreen(
                     }
                 }
 
-                // 保存 / 取消收藏
                 item(key = "actions") {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -372,9 +352,6 @@ fun WorksCollectEditScreen(
         }
     }
 
-    // ── 弹窗集合 ──
-
-    // 1. 添加自定义标签
     if (uiState.showAddTagDialog) {
         var inputTag by remember { mutableStateOf("") }
         AlertDialog(
@@ -400,7 +377,7 @@ fun WorksCollectEditScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // 校验失败时由 ViewModel 通过 errorMessage 提示原因，弹窗保持打开便于改正
+
                         if (viewModel.addTag(inputTag)) {
                             inputTag = ""
                         }
@@ -417,7 +394,6 @@ fun WorksCollectEditScreen(
         )
     }
 
-    // 2. 删除标签二次确认
     if (uiState.tagToDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRemoveTag() },
@@ -440,7 +416,6 @@ fun WorksCollectEditScreen(
         )
     }
 
-    // 3. 取消收藏二次确认（原版 strings.xml:1202 / :1205）
     if (uiState.showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.setDeleteConfirmDialogVisible(false) },
@@ -471,9 +446,6 @@ fun WorksCollectEditScreen(
     }
 }
 
-// ── 子组件 ────────────────────────────────────────────────
-
-/** 通用内容分区卡片。 */
 @Composable
 private fun WorksCollectEditSection(
     modifier: Modifier = Modifier,
@@ -487,7 +459,6 @@ private fun WorksCollectEditSection(
     }
 }
 
-/** 作品摘要头部（封面 + 名称）。 */
 @Composable
 private fun WorksCollectEditHeader(
     name: String?,
@@ -535,7 +506,6 @@ private fun WorksCollectEditHeader(
     }
 }
 
-/** 标签区：已选标签 + 官方标签流 + 自定义标签入口。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WorksCollectTagsSection(

@@ -9,9 +9,6 @@ import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.ZoneItem
 import com.nobody.repoi.ui.common.comment.CommentPagedUiState
 
-/**
- * 角色/要素详情页渐进式加载 UI 状态机。
- */
 data class CharacterDetailUiState(
     val characterId: Long = 0L,
     val characterNodeId: Long = 0L,
@@ -20,38 +17,30 @@ data class CharacterDetailUiState(
     val isInitialLoading: Boolean = true,
     val errorMessage: String? = null,
 
-    // 角色主体信息
     val character: CharacterData? = null,
     val isIntroExpanded: Boolean = false,
 
-    // 收藏状态
     val isCollected: Boolean = false,
     val originalCollected: Boolean = false,
     val collectCountDelta: Int = 0,
-    /** 写成功后由服务端计数刷新的基线；null 时回落到详情接口的 collect 字段 */
+
     val collectCountBase: Int? = null,
 
-    // 分区/属性标签
     val isZonesLoading: Boolean = false,
     val zones: List<ZoneItem> = emptyList(),
 
-    // 登场作品
     val isWorksLoading: Boolean = false,
     val works: List<CharacterWorksItem> = emptyList(),
 
-    // 周边手办
     val isHobbysLoading: Boolean = false,
     val hobbys: List<HobbyItemSummary> = emptyList(),
 
-    // 相关相册
     val isAlbumsLoading: Boolean = false,
     val albums: List<AlbumData> = emptyList(),
 
-    // 推荐要素/相关角色
     val isRelevantLoading: Boolean = false,
     val relevantCharacters: List<CharacterRelevantItem> = emptyList(),
 
-    // 评论系统（神评 + 无限流）
     override val isCommentsLoading: Boolean = false,
     override val hotComments: List<CommentItem> = emptyList(),
     override val latestComments: List<CommentItem> = emptyList(),
@@ -63,7 +52,6 @@ data class CharacterDetailUiState(
     override val commentActionMessage: String? = null
 ) : CommentPagedUiState {
 
-    /** 计算展示的收藏数量（基准数 + 本地乐观增量） */
     val displayCollectCount: Int
         get() = ((collectCountBase ?: (character?.collect ?: 0)) + collectCountDelta).coerceAtLeast(0)
 

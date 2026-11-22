@@ -30,9 +30,6 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
 
-/**
- * 专区右下角「+」悬浮按钮唤起的发布操作底部弹窗
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZonePublishSheet(

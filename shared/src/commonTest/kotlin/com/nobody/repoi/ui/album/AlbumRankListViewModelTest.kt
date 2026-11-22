@@ -21,14 +21,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
-/**
- * 相册榜单 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `AlbumRankListViewModelTest`（逐用例；Mockito `mock(AlbumRepository)` →
- * 真实 AlbumRepository 背后 [MockApi] MockEngine（`thenReturn` 序列 →
- * routeWhen 计数闭包；`java.time.LocalDateTime` → kotlinx-datetime）；
- * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumRankListViewModelTest {
 
@@ -66,7 +58,7 @@ class AlbumRankListViewModelTest {
     ) {
         var call = 0
         routeWhen(
-            // M7 fix-2：getAlbums 为 POST + form——form 匹配保持；本注释锚定传输以便复核。
+
             predicate = { path, form ->
                 path.contains("api/album") &&
                     (releaseStart == null || form["releaseStart"] == releaseStart) &&
@@ -79,8 +71,7 @@ class AlbumRankListViewModelTest {
     private fun MockApi.stubPraiseTop(bodies: List<String>) {
         var call = 0
         routeWhen(
-            // M7 fix-2：getPraiseTop 为 GET + query——按 query["type"] 匹配
-            //（encodedPath 不含查询串；request.url.parameters 由 MockApi 透传）。
+
             predicate = { path, _, query ->
                 path.contains("api/item/praise/top") &&
                     (query["type"].isNullOrEmpty() || query["type"] == "month")

@@ -116,12 +116,12 @@ fun AlbumFeedCard(
 
 @Composable
 private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifier = Modifier) {
-    // 无封面判定统一交给管道：显式 hasCover 为假，或路径为空/官方缺省吉祥物（none.jpg）时走纯文本卡
+
     val isNoCover = !item.hasCover || MediaPipeline.Default.isPlaceholder(item.cover)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            // 文本卡沿用历史 17:24 黄金比例；有封面时高度由 PoiAsyncImage 的 adaptiveRatio 撑开
+
             .then(if (isNoCover) Modifier.aspectRatio(17f / 24f) else Modifier)
     ) {
         if (isNoCover) {
@@ -130,7 +130,7 @@ private fun AlbumCover(item: AlbumListItem, rank: Int? = null, modifier: Modifie
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // 相册无 cover/n/ 目录，ADAPTIVE_GRID 由管道裁决到保留纵横比的 cover/sr/
+
             PoiAsyncImage(
                 path = item.cover,
                 category = MediaCategory.ALBUM,

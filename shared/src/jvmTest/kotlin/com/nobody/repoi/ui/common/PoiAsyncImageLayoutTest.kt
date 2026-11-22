@@ -24,34 +24,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * [PoiAsyncImage] 的**真实组件**约束语义测试（Compose UI，桌面 JVM）。
- *
- * 只验证「比例是否真的参与布局」，不验证图片像素：路径留空时组件走官方缺省图分支，
- * 但 `Modifier.aspectRatio` 与外部约束的交互和真实加载时完全一致。
- *
- * 这组用例锁住一个真实踩过的坑：`adaptiveRatio = true` 依赖至少一轴自由伸缩，
- * 若父容器把宽高都锁死，`aspectRatio` 会静默失效——编译、纯 JVM 单测、旧 CI 全绿也发现不了。
- * 文本静态检查无法解析父容器约束（实测全是假阳性），只有真正布局一次才能验证。
- *
- * **零网络**：测试前把 Coil 单例换成不带任何 fetcher 的 `ImageLoader`，
- * 请求会立即失败（组件落到破损图标分支），因此不引入 `coil-test` 依赖、不访问 CDN。
- *
- * 各用例刻意使用**不同的** `purpose`，使内部比例缓存键（含用途桶）互不相同，避免互相污染。
- *
- * 有效性已通过变异测试验证：临时摘掉基元的 `Modifier.aspectRatio` 后，
- * 前三条断言比例的用例全部 FAILED（`653 tests completed, 3 failed`），
- * 第四条 `adaptiveRatioDisabled_...` 仍通过（符合预期，它不依赖比例）。
- *
- * 注：`runComposeUiTest` 目前有 v2 新 API，但 v2 改用 `StandardTestDispatcher`
- * 改变协程调度语义；本测试只做一次同步布局测量，无异步等待，故暂留旧 API 以保证确定性。
- */
 @OptIn(ExperimentalTestApi::class, coil3.annotation.DelicateCoilApi::class)
 class PoiAsyncImageLayoutTest {
 
     @BeforeTest
     fun installOfflineImageLoader() {
-        // 空组件注册表 = 无网络 fetcher、无解码器 → 请求快速失败，绝不出网
+
         SingletonImageLoader.setUnsafe(
             ImageLoader.Builder(PlatformContext.INSTANCE).build()
         )
@@ -59,11 +37,10 @@ class PoiAsyncImageLayoutTest {
 
     @AfterTest
     fun clearAspectRatioCache() {
-        // 比例缓存为全局单例，测试之间必须清空，否则用例互相影响
+
         com.nobody.repoi.util.ImageAspectRatioCache.clear()
     }
 
-    /** 比例 2:1，宽度由外部撑满 → 高度应为宽度的一半。 */
     @Test
     fun adaptiveRatio_withWidthFixed_derivesHeightFromRatio() = runComposeUiTest {
         setContent {
@@ -87,7 +64,6 @@ class PoiAsyncImageLayoutTest {
         assertEquals(width / 2f, height, 1f, "比例 2:1 时高度应为宽度的一半（实际 w=$width h=$height）")
     }
 
-    /** 高度钉死 120dp、宽度不定 → 比例 2:1 时宽度应为 240dp。 */
     @Test
     fun adaptiveRatio_withHeightFixed_derivesWidthFromRatio() = runComposeUiTest {
         setContent {
@@ -109,7 +85,6 @@ class PoiAsyncImageLayoutTest {
         assertEquals(240f, bounds.width.value, 2f, "比例 2:1 时宽度应为高度的两倍")
     }
 
-    /** `fallbackRatio` 必须真正参与首帧占位：0.5 → 高是宽的两倍。 */
     @Test
     fun fallbackRatio_drivesInitialPlaceholder() = runComposeUiTest {
         setContent {
@@ -132,7 +107,6 @@ class PoiAsyncImageLayoutTest {
         assertEquals(width * 2f, height, 1f, "比例 0.5 时高度应为宽度的两倍（实际 w=$width h=$height）")
     }
 
-    /** `adaptiveRatio = false` 时不应追加比例约束：尺寸完全由外部决定。 */
     @Test
     fun adaptiveRatioDisabled_respectsExternalSizeOnly() = runComposeUiTest {
         setContent {

@@ -71,9 +71,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 角色专属登场作品列表页面。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterWorksListScreen(
@@ -148,7 +145,6 @@ fun CharacterWorksListScreen(
                 else -> {
                     val gridState = rememberLazyGridState()
 
-                        // 触底加载更多监听
                         val shouldLoadMore by remember {
                             derivedStateOf {
                                 val totalItems = gridState.layoutInfo.totalItemsCount
@@ -236,7 +232,6 @@ private fun CharacterWorksContentList(
             )
         }
 
-        // 分页加载与触底状态
         item(
             span = { GridItemSpan(maxLineSpan) },
             key = "footer_state"
@@ -273,9 +268,6 @@ private fun CharacterWorksContentList(
     }
 }
 
-/**
- * 单部登场作品卡片，包含封面、标题、发售日期、角色定位、演职员 CV 列表。
- */
 @Composable
 private fun CharacterWorksListItemCard(
     work: CharacterWorksItem,
@@ -293,7 +285,7 @@ private fun CharacterWorksListItemCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 作品主信息区域（点击直达作品详情）
+
             Surface(
                 onClick = onWorkClick,
                 shape = MaterialTheme.shapes.large,
@@ -304,7 +296,7 @@ private fun CharacterWorksListItemCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    // 作品封面
+
                     Box(
                         modifier = Modifier
                             .width(84.dp)
@@ -325,7 +317,6 @@ private fun CharacterWorksListItemCard(
                         }
                     }
 
-                    // 文本信息列
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -339,7 +330,6 @@ private fun CharacterWorksListItemCard(
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        // 角色在作品中的定位徽章
                         work.characterRoleText?.let { role ->
                             Surface(
                                 shape = MaterialTheme.shapes.small,
@@ -356,7 +346,6 @@ private fun CharacterWorksListItemCard(
                             }
                         }
 
-                        // 发售日期
                         val releaseDateText = work.formattedReleaseDate
                         if (!releaseDateText.isNullOrBlank()) {
                             Row(
@@ -390,7 +379,6 @@ private fun CharacterWorksListItemCard(
                 }
             }
 
-            // 演职员 / 配音（CV）胶囊横滑列表
             if (work.validPerformers.isNotEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -426,9 +414,6 @@ private fun CharacterWorksListItemCard(
     }
 }
 
-/**
- * 演职员（CV）胶囊药丸
- */
 @Composable
 private fun PerformerPill(
     performer: CharacterPerformerItem,

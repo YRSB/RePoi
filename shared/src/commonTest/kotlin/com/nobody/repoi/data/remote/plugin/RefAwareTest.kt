@@ -59,7 +59,7 @@ class RefAwareTest {
 
     @Test
     fun decodeRefAware_decodesDoubleEncodedResponseSuccessfully() = runTest {
-        // 模拟 Hpoi 真实 API 在 Accept: application/json 时返回的 Spring MVC 双重 JSON 序列化字符串
+
         val doubleEncoded = """"{\"@id\":\"1\",\"success\":true,\"msg\":\"操作成功\",\"code\":200,\"data\":{\"userList\":[{\"def\":2,\"nickname\":\"碧蓝航线\",\"sign\":\"还没有信仰_(:з」∠)_\",\"hp\":0,\"header\":\"none.jpg\",\"atk\":0,\"id\":939873,\"userId\":160541}]}}""""
 
         val mock = MockEngine { _ ->

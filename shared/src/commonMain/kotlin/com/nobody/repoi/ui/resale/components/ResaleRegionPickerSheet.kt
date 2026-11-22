@@ -42,13 +42,6 @@ import androidx.compose.foundation.shape.CircleShape
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 二手交易地区双栏级联选择底板（100% 对齐条目页 CategoryPickerSheet 与 Hpoi 原版体系）
- *
- * 规范约束：
- * - 左栏：全国 34 个省级行政区（省/自治区/直辖市/特别行政区）及首项“全部区域”，支持高亮胶囊指示；
- * - 右栏：根据左栏联动展示下辖地级市/区县，首项为“全省/全市”全域筛选，即点即生效选中并关闭底板。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResaleRegionPickerSheet(
@@ -66,7 +59,6 @@ fun ResaleRegionPickerSheet(
         listOf(ResaleProvince(id = 0, name = "全部区域")) + ResaleRegionData.provinces
     }
 
-    // 由领域层集中反查所属省级区划 ID，避免 UI 特性依恋
     val initialProvinceId = remember(selectedRegionId) {
         val selId = selectedRegionId?.toIntOrNull()
         ResaleRegionData.findProvinceId(selId)
@@ -87,7 +79,7 @@ fun ResaleRegionPickerSheet(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // ── 1. 顶栏标题与关闭按钮 ──
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,13 +109,12 @@ fun ResaleRegionPickerSheet(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // ── 2. 双栏选择区域（高度 360dp，遵循 CategoryPickerSheet 规范） ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
             ) {
-                // ── 左侧：省级列表 ──
+
                 LazyColumn(
                     modifier = Modifier
                         .width(112.dp)
@@ -188,7 +179,6 @@ fun ResaleRegionPickerSheet(
 
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                // ── 右侧：城市列表（即点即生效关闭） ──
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -197,7 +187,7 @@ fun ResaleRegionPickerSheet(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     if (activeProvince.id == 0) {
-                        // 全部区域 -> 全国
+
                         item(key = "region_all_china") {
                             val isAllSelected = selectedRegionId.isNullOrBlank() || selectedRegionId == "0"
                             RegionSubItemRow(
@@ -210,7 +200,7 @@ fun ResaleRegionPickerSheet(
                             )
                         }
                     } else {
-                        // 省级第一项：全省/全市/全区
+
                         val allLabel = when {
                             activeProvince.name.endsWith("市") -> "全市"
                             activeProvince.name.endsWith("省") -> "全省"
@@ -228,7 +218,6 @@ fun ResaleRegionPickerSheet(
                             )
                         }
 
-                        // 省级后续项：下辖地级市/区县
                         items(activeProvince.cities, key = { it.id }) { city ->
                             val isSelected = selectedRegionId == city.id.toString()
                             RegionSubItemRow(
@@ -247,9 +236,6 @@ fun ResaleRegionPickerSheet(
     }
 }
 
-/**
- * 右侧子项单元格
- */
 @Composable
 private fun RegionSubItemRow(
     name: String,

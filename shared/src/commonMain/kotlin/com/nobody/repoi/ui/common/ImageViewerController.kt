@@ -14,42 +14,21 @@ import com.nobody.repoi.ui.navigation.ImageViewerNavKey
 import com.nobody.repoi.ui.navigation.RePoiNavigator
 import com.nobody.repoi.ui.navigation.navigateToImageViewer
 
-/**
- * 全局全屏大图画廊操作控制器。
- * 向整棵 Compose 视图树暴露极简的展示、动态更新与关闭能力。
- */
 @Stable
 interface ImageViewerController {
-    /** 当前查看器是否处于打开状态 */
+
     val isVisible: Boolean
 
-    /**
-     * 打开全屏大图画廊。
-     * @param images 图片完整 URL 列表
-     * @param initialIndex 初始定位下标
-     * @param onLoadMore 翻页临近末尾时的续拉回调（可选）
-     */
     fun show(
         images: List<String>,
         initialIndex: Int = 0,
         onLoadMore: (() -> Unit)? = null
     )
 
-    /** 单图便捷展示重载 */
     fun show(image: String) = show(listOf(image), 0, null)
 
-    /**
-     * 动态同步最新的图片列表（适用于画廊正处于打开状态且列表后台静默续拉出新图时）。
-     * 若当前查看器未打开，本操作自动空操作（No-op）。
-     */
     fun updateImages(images: List<String>)
 
-    /**
-     * 关闭大图查看器。
-     *
-     * 与 Navigation 单根栈联动时，本操作在复位状态后会同步弹出承载路由；
-     * 未接入导航的宿主（如预览或测试）仅复位状态。
-     */
     fun dismiss()
 }
 
@@ -60,18 +39,10 @@ internal val NoOpImageViewerController = object : ImageViewerController {
     override fun dismiss() {}
 }
 
-/**
- * 根部大图控制器 CompositionLocal。
- * 默认提供空实现，确保 Preview 与单元测试无需挂载脚手架即可安全调用。
- */
 val LocalImageViewer = staticCompositionLocalOf<ImageViewerController> {
     NoOpImageViewerController
 }
 
-/**
- * 大图宿主内部状态持有者，实现 [ImageViewerController] 接口，
- * 供顶层脚手架（如 `RePoiApp`）与大图弹窗宿主交互。
- */
 @Stable
 class ImageViewerStateHolder internal constructor(
     initialImages: List<String> = emptyList(),
@@ -89,10 +60,8 @@ class ImageViewerStateHolder internal constructor(
     var onLoadMoreCallback by mutableStateOf<(() -> Unit)?>(null)
         internal set
 
-    /** 联动导航路由入栈回调（当注入 [RePoiNavigator] 时） */
     var onShowInNavigator: ((images: List<String>, initialIndex: Int) -> Unit)? = null
 
-    /** 联动导航路由退栈回调（当注入 [RePoiNavigator] 时） */
     var onDismissInNavigator: (() -> Unit)? = null
 
     override val isVisible: Boolean
@@ -108,13 +77,6 @@ class ImageViewerStateHolder internal constructor(
         onShowInNavigator?.invoke(validImages, safeIndex)
     }
 
-    /**
-     * 动态同步图片列表。
-     *
-     * 以「当前图片 URL」为锚点重新定位：进程重建后 [Saver] 只恢复以当前图为中心的 50 项窗口，
-     * 此时窗口下标是相对值，直接 clamp 会把全量列表中的另一张图当成当前图。
-     * 若新列表在同一位置仍是同一张图（续拉追加的常规路径），保持原下标不变。
-     */
     override fun updateImages(images: List<String>) {
         if (!isVisible) return
         val validImages = images.filter { it.isNotBlank() }
@@ -139,9 +101,6 @@ class ImageViewerStateHolder internal constructor(
         }
     }
 
-    /**
-     * 内部状态复位：仅清空图片列表与索引，不反向触发导航出栈（供路由退出完成时调用）。
-     */
     internal fun resetInternal() {
         imageUrls = emptyList()
         currentIndex = 0
@@ -156,7 +115,7 @@ class ImageViewerStateHolder internal constructor(
                 val urls = holder.imageUrls
                 val current = holder.currentIndex
                 val (savedUrls, savedIndex) = if (urls.size > MAX_SAVED_IMAGES) {
-                    // 仅截取以当前索引为中心的安全窗口（最多 50 项），防止 Binder TransactionTooLargeException
+
                     val halfWindow = MAX_SAVED_IMAGES / 2
                     val start = (current - halfWindow).coerceAtLeast(0)
                     val end = (start + MAX_SAVED_IMAGES).coerceAtMost(urls.size)
@@ -181,13 +140,6 @@ class ImageViewerStateHolder internal constructor(
     }
 }
 
-/**
- * 在 Compose 树中记住并恢复大图宿主状态。
- *
- * 依托 [rememberSaveable] 保障屏幕旋转或折叠屏折叠展开重建 Activity 时大图状态与进度不丢失。
- * 必须传入 [navigator]：展示/关闭会自动联动压入/弹出 [ImageViewerNavKey] 路由，
- * 从而获得 MaterialSharedAxis.Z 转场与系统级预测性返回动画。
- */
 @Composable
 fun rememberImageViewerState(
     navigator: RePoiNavigator

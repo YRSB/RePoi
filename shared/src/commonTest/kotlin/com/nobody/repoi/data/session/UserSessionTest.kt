@@ -19,12 +19,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 用户会话核心契约测试：只断言外部可观测的状态流与存储结果，不窥探私有字段 / 私有协程。
- *
- * 调度器三件套：`Dispatchers.setMain(testDispatcher)`、`runTest(testDispatcher)`、
- * `mock.api(testDispatcher)`，保证内部预热协程、后台档案刷新与 MockEngine 响应落在同一虚拟时间轴。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserSessionTest {
 
@@ -71,11 +65,10 @@ class UserSessionTest {
         val tokenManager = FakeTokenManager(token = "tok-1", userId = 7L, userName = "缓存昵称")
 
         val session = sessionOf(mock, tokenManager)
-        // 构造不阻塞：预热完成前维持 Prewarming。
+
         assertEquals(SessionState.Prewarming, session.state.value)
         advanceUntilIdle()
 
-        // 凭据已就绪即已认证，网络档案仍在后台等待。
         val restored = session.state.value as SessionState.Authenticated
         assertEquals(7L, restored.userId)
         assertEquals("tok-1", restored.token)
@@ -130,7 +123,6 @@ class UserSessionTest {
         assertFalse(session.isAuthenticated)
         assertEquals("", session.exportActiveToken())
 
-        // 幂等：重复通知不再重复清理存储。
         session.notifyTokenExpired()
         assertEquals(SessionState.Unauthenticated, session.state.value)
         assertEquals(1, tokenManager.clearTokenCalls)
@@ -143,15 +135,12 @@ class UserSessionTest {
         val session = sessionOf(mock, tokenManager)
         advanceUntilIdle()
 
-        // 旧在途请求携带 old-token 收到 4001
         session.notifyTokenExpired(triggeredToken = "old-token")
 
-        // 当前会话保持 Authenticated，存储未被清空
         assertTrue(session.isAuthenticated)
         assertEquals("new-token", session.currentToken)
         assertEquals(0, tokenManager.clearTokenCalls)
 
-        // 匹配当前 token 的失效通知则正常清理
         session.notifyTokenExpired(triggeredToken = "new-token")
         assertFalse(session.isAuthenticated)
         assertEquals(1, tokenManager.clearTokenCalls)
@@ -183,7 +172,6 @@ class UserSessionTest {
         assertEquals("token-a", authenticated.token)
         assertEquals("token-a", session.exportActiveToken())
 
-        // 后台静默刷新补齐档案，不影响登录结果本身。
         advanceUntilIdle()
         assertEquals("爱丽丝", (session.state.value as SessionState.Authenticated).profile?.displayName)
     }
@@ -428,7 +416,6 @@ class UserSessionTest {
         assertEquals("知名手办摄影师", profile.verify)
         assertTrue(profile.isVerified)
 
-        // 性别的另外取值与未认证兜底
         val femaleProfile = profile.copy(sex = 0, verify = null)
         assertEquals("女", femaleProfile.genderText)
         assertFalse(femaleProfile.isVerified)
@@ -440,11 +427,9 @@ class UserSessionTest {
         val unsetProfile = profile.copy(sex = null)
         assertEquals("未设置", unsetProfile.genderText)
 
-        // 注册时间回退到 addTime
         val addTimeOnlyProfile = profile.copy(regTime = null)
         assertEquals("2016-04-20", addTimeOnlyProfile.displayRegisterTime)
 
-        // 档案已写回会话状态
         val authenticated = session.state.value as SessionState.Authenticated
         assertEquals(88888L, authenticated.userId)
         assertEquals(profile, authenticated.profile)

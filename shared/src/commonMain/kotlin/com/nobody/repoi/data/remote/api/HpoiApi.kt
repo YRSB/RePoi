@@ -114,24 +114,12 @@ import io.ktor.http.Parameters
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-/**
- * Hpoi 核心 API 的 Ktor 实现（Retrofit `HpoiApiService` 136 接口的逐一移植）。
- *
- * 约定：
- * - GET：`parameter()` 逐个声明；可空 Query 为 null 时跳过（Retrofit 省略 null 语义）。
- * - `@QueryMap`：Map 条目逐个 `parameter()`。
- * - POST form：`FormDataContent`；可空 Field 为 null 时跳过；空 POST 发仅含公共参数的 form
- *   （公共参数由 `CommonParamsPlugin` 统一合并，此处只放业务字段）。
- * - `@Path`：字符串模板拼接。
- * - 解码统一走 `decodeRefAware`（触发条件与 `FastJsonRefConverterFactory` 一致）。
- */
+
 class HpoiApi(
     private val client: HttpClient,
     private val json: Json,
     private val onTokenExpired: suspend (triggeredToken: String) -> Unit = {},
 ) {
-
-    // ── 私有解包模板：信封剥离、异常分流与令牌失效自愈的唯一入口 ──
 
     private suspend inline fun <reified T> HttpResponse.unwrapData(
         json: Json,
@@ -155,7 +143,6 @@ class HpoiApi(
         return envelope.data
     }
 
-    /** 复用 CommonResponse 的白名单与边缘码判定；4001 经在途快照回调惰性自愈。 */
     private suspend fun HttpResponse.checkBusinessSuccess(
         envelope: CommonResponse<*>,
         fallbackMessage: String,
@@ -170,7 +157,6 @@ class HpoiApi(
         throw ApiException(envelope.code, message)
     }
 
-    /** 登录端点 quirk：白名单外 code 但 success=true 且 utoken 非空仍算成功；4001 始终先在途自愈。 */
     private suspend fun HttpResponse.unwrapLogin(json: Json, fallbackMessage: String): LoginData {
         val envelope = decodeRefAware<CommonResponse<LoginData>>(json)
         if (envelope.isTokenExpired) checkBusinessSuccess(envelope, fallbackMessage)
@@ -179,8 +165,6 @@ class HpoiApi(
         if (!accepted) checkBusinessSuccess(envelope, fallbackMessage)
         return envelope.data ?: throw ApiException(envelope.code, "服务器未返回登录数据")
     }
-
-    // ── 首页动态/关注 ──────────────────────────────────────────────
 
     suspend fun getActionList(
         categoryId: Int = 0,
@@ -216,8 +200,6 @@ class HpoiApi(
         if (isHome != null) parameter("isHome", isHome)
     }.unwrapData(json, "获取关注动态失败")
 
-    // ── 手办列表/分类 ──────────────────────────────────────────────
-
     suspend fun queryHobbyList(params: Map<String, String>): HobbyListData =
         client.post("api/hobby/query-v2") {
             setBody(formOf(params))
@@ -227,8 +209,6 @@ class HpoiApi(
         client.post("api/category/web/all") {
             setBody(FormDataContent(Parameters.Empty))
         }.unwrapData(json, "分类加载失败")
-
-    // ── 条目详情/时间轴/分组 ────────────────────────────────────────
 
     suspend fun getHobbyDetail(itemId: Long, itemType: String): HobbyDetailPayload =
         client.get("api/item/get-v2") {
@@ -260,8 +240,6 @@ class HpoiApi(
         client.post("api/hobby/push/list/V2") {
             setBody(formOf("page" to page, "pageSize" to pageSize))
         }.unwrapData(json, "获取推荐手办失败")
-
-    // ── 图片/相册 ──────────────────────────────────────────────────
 
     suspend fun getPicList(
         itemId: Long,
@@ -306,8 +284,6 @@ class HpoiApi(
             setBody(formOf("id" to albumId))
         }.unwrapData(json, "获取相册标签失败")
 
-    // ── 专区 ───────────────────────────────────────────────────────
-
     suspend fun getZoneHomeTabs(): ZoneHomeTabsPayload =
         client.get("api/zone/home-tabs").unwrapData(json, "获取专区数据失败")
 
@@ -316,12 +292,6 @@ class HpoiApi(
             parameter("nodeId", nodeId)
         }.unwrapData(json, "获取专区详情失败")
 
-    /**
-     * 专区板块分类选项（相册板块传 `itemType = "album"`）。
-     *
-     * 证据：反编译 `ZoneDetailSortablePageFragment.m()`（原版分类菜单来源）。单专区专用；
-     * 分类 id 与手办分类树不同域，禁止与 `CategoryManager` 混用。
-     */
     suspend fun getZoneCategories(
         nodeId: Long,
         itemType: String,
@@ -331,17 +301,6 @@ class HpoiApi(
             parameter("itemType", itemType)
         }.unwrapData(json, "获取专区分类失败")
 
-    /**
-     * 专区关联实体条目（厂商/系列/作品/角色/人物）。
-     *
-     * 作用域只通过 `zones` 表达：单专区传 `zones=<nodeId>`；全部聚合省略（服务端等价全站）；
-     * 关注聚合传 `zones=<逗号串>`（实测为并集）。**不得下发 `homeScope`**——实测只要 `homeScope`
-     * 非空，服务端就会忽略 `zones` 退化为全站（`docs/research/aggregate-api-verification.md` §4.3/§5）。
-     *
-     * @param itemType 实体类型：`company`/`series`/`works`/`charactar`/`person`
-     *   （`charactar` 是服务端历史拼写，勿写 `character`）
-     * @param zones 专区集合参数；`null` 时省略（全部聚合）
-     */
     suspend fun getZoneItems(
         itemType: String,
         zones: String? = null,
@@ -355,8 +314,6 @@ class HpoiApi(
         parameter("page", page)
         parameter("pageSize", pageSize)
     }.unwrapData(json, "获取专区条目失败")
-
-    // ── 二手 ───────────────────────────────────────────────────────
 
     suspend fun searchResale(params: Map<String, String>): ResaleSearchPayload =
         client.post("api/resale/search") {
@@ -391,8 +348,6 @@ class HpoiApi(
         client.post("api/zone/home-tabs/visited") {
             setBody(formOf("nodeId" to nodeId))
         }.unwrapUnit(json, "专区访问上报失败")
-
-    // ── 讨论/帖子 ───────────────────────────────────────────────────
 
     suspend fun searchPosts(
         zoneNodeId: Long? = null,
@@ -471,8 +426,6 @@ class HpoiApi(
         client.post("api/posts/del") {
             setBody(formOf("nodeId" to nodeId))
         }.unwrapUnit(json, "删除帖子失败")
-
-    // ── 相册频道/点赞/评论 ──────────────────────────────────────────
 
     suspend fun getAlbumList(
         page: Int = 1,
@@ -600,22 +553,11 @@ class HpoiApi(
     suspend fun getStickerBuyTime(): StickerBuyTimePayload? =
         client.get("api/sticker/pack/buyTime").unwrapDataOrNull<StickerBuyTimePayload>(json, "获取表情包购买时间失败")
 
-    // ── 用户/社交 ──────────────────────────────────────────────────
-
     suspend fun getUserSelf(): UserSelfPayload =
         client.post("api/user/self") {
             setBody(FormDataContent(Parameters.Empty))
         }.unwrapData(json, "获取用户信息失败")
 
-    /**
-     * Token 登录验权直达通道：候选令牌经请求体 `utoken` 显式透传，不依赖全局注入。
-     *
-     * 背景：`CommonParamsPlugin` 按发包时内存镜像合并公共参数，候选令牌热切换存在竞态；
-     * 此处按调用方传入值写入 `utoken` 字段（`merge` 保留调用方同名参数不覆盖），
-     * 验权语义与批量并发隔离，行为与 `getUserSelf` 一致。
-     * 验权旁路：请求显式标记 [BypassTokenSelfHealingAttributeKey]，4001 只抛异常，
-     * 绝不触发当前设备活跃会话失效（ADR-0005）。
-     */
     suspend fun getUserSelfWithToken(candidateToken: String): UserSelfPayload =
         client.post("api/user/self") {
             attributes.put(BypassTokenSelfHealingAttributeKey, true)
@@ -752,8 +694,6 @@ class HpoiApi(
             params.forEach { (k, v) -> parameter(k, v) }
         }.unwrapDataOrNull<UserCollectPicPayload>(json, "获取图片收藏列表失败")
 
-    // ── 登录/搜索 ──────────────────────────────────────────────────
-
     suspend fun login(
         account: String,
         password: String,
@@ -785,8 +725,6 @@ class HpoiApi(
         headers[HttpHeaders.Accept] = "*/*"
         setBody(formOf("keyword" to keyword, "page" to page, "pageSize" to pageSize))
     }.unwrapDataOrNull(json, "搜索用户失败")
-
-    // ── 厂商 ───────────────────────────────────────────────────────
 
     suspend fun getElementAttributes(categoryId: Int): AttributeListPayload =
         client.get("api/charactar/attribute/list") {
@@ -837,8 +775,6 @@ class HpoiApi(
     ): Unit = client.post("api/company/tag/vote") {
         setBody(formOf("companyId" to companyId, "normalTagIds" to normalTagIds, "scoreTagIds" to scoreTagIds))
     }.unwrapUnit(json, "提交印象投票失败")
-
-    // ── 收藏 ───────────────────────────────────────────────────────
 
     suspend fun getCollectState(id: Long): CollectStatePayload? =
         client.post("api/collect/state") {
@@ -930,8 +866,6 @@ class HpoiApi(
         client.get("api/mask/state-v2") {
             parameter("itemNodeId", itemNodeId)
         }.unwrapData(json, "获取屏蔽状态失败")
-
-    // ── 系列/人物/作品/角色 ─────────────────────────────────────────
 
     suspend fun getSeriesDetail(itemId: Long, itemType: String = "series"): SeriesDetailPayload =
         client.get("api/item/get-v2") {
@@ -1067,8 +1001,6 @@ class HpoiApi(
         parameter("pageSize", pageSize)
     }.unwrapData(json, "获取推荐要素失败")
 
-    // ── 历史/消息/黑名单 ────────────────────────────────────────────
-
     suspend fun getItemZones(nodeId: Long): ZoneItemPayload =
         client.get("api/zone/item") {
             parameter("nodeId", nodeId)
@@ -1117,7 +1049,7 @@ class HpoiApi(
 
     suspend fun markPushRead(type: Int, messageId: Long? = null, page: Int? = null, pageSize: Int? = null): Unit =
         client.post("api/push/read") {
-            // page/pageSize 供系统通知浏览即清当前页（对齐官方 MessageNoticeActivity 的调用形态）
+
             setBody(formOf("type" to type, "messageId" to messageId, "page" to page, "pageSize" to pageSize))
         }.unwrapUnit(json, "标记已读失败")
 
@@ -1161,10 +1093,6 @@ class HpoiApi(
         setBody(formOf("toId" to toId, "resaleId" to resaleId, "content" to content))
     }.unwrapUnit(json, "发送二手卡片失败")
 
-    /**
-     * 上传并发送私信图片（`api/message/upload-v2`, Multipart）。
-     * 原 OkHttp 版以 `File` 入参；Ktor 版改为字节 + 文件名（FileKit 跨平台）。
-     */
     suspend fun uploadChatMessagePicture(
         toId: Long,
         fileName: String,
@@ -1252,9 +1180,6 @@ class HpoiApi(
         }.unwrapUnit(json, "更新黑名单状态失败")
 }
 
-/**
- * 业务 form 构造：跳过 null 值（对齐 Retrofit `@Field nullable` 省略 null）。
- */
 private fun formOf(vararg pairs: Pair<String, Any?>): FormDataContent =
     FormDataContent(
         Parameters.build {

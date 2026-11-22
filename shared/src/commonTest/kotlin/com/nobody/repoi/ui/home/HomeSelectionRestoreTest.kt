@@ -4,22 +4,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * 首页三级选择恢复规则纯函数测试（#156）。
- *
- * 覆盖：二级键编码/解码往返与非法值、一级三分支回落（follow / 不可用专区 / 合法专区）、
- * 二级前缀不匹配与 type 不在可用板块列表、空板块列表退化。
- */
 class HomeSelectionRestoreTest {
-
-    // ── 编码 / 解码 ─────────────────────────────────────────────────────
 
     @Test
     fun encodeBoardKey_producesTabKeyAndType() {
         assertEquals("all|action", encodeBoardKey("all", "action"))
         assertEquals("follow|album", encodeBoardKey("follow", "album"))
         assertEquals("z33476094|hobby", encodeBoardKey("z33476094", "hobby"))
-        // 首尾空白归一，避免脏值进入偏好
+
         assertEquals("all|action", encodeBoardKey(" all ", " action "))
     }
 
@@ -46,28 +38,26 @@ class HomeSelectionRestoreTest {
         assertNull(decodeBoardKey(null))
         assertNull(decodeBoardKey(""))
         assertNull(decodeBoardKey("   "))
-        // 缺少分隔符
+
         assertNull(decodeBoardKey("action"))
         assertNull(decodeBoardKey("all action"))
-        // 分隔符两侧为空
+
         assertNull(decodeBoardKey("|action"))
         assertNull(decodeBoardKey("all|"))
         assertNull(decodeBoardKey(" | "))
-        // 段数不为 2
+
         assertNull(decodeBoardKey("all|action|album"))
-        // 仅一级的旧值（无二级板块）按非法处理
+
         assertNull(decodeBoardKey("z100"))
     }
-
-    // ── 一级恢复 ───────────────────────────────────────────────────────
 
     private val availableTabKeys = listOf("all", "follow", "z100", "z200")
 
     @Test
     fun resolveInitialTabKey_followRestoresFollowWhenAvailable() {
-        // 冷启动规则（#212）：允许恢复上次保存的「关注」聚合态
+
         assertEquals(ZONE_TAB_KEY_FOLLOW, resolveInitialTabKey(ZONE_TAB_KEY_FOLLOW, availableTabKeys))
-        // 若可用集合中不含「关注」，安全回落「全部」
+
         assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey(ZONE_TAB_KEY_FOLLOW, listOf("all", "z100")))
     }
 
@@ -87,13 +77,13 @@ class HomeSelectionRestoreTest {
 
     @Test
     fun resolveInitialTabKey_unavailableSingleZoneFallsBackToAll() {
-        // 专区已取关 / 被首页设置隐藏 → 回落「全部」
+
         assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey("z999", availableTabKeys))
     }
 
     @Test
     fun resolveInitialTabKey_allAlwaysRestoresAll() {
-        // 「全部」可在设置隐藏后仍经切换器选中，恢复时保持 all 而非退化成首个分类
+
         assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey(ZONE_TAB_KEY_ALL, availableTabKeys))
         assertEquals(ZONE_TAB_KEY_ALL, resolveInitialTabKey(ZONE_TAB_KEY_ALL, listOf("follow", "z100")))
     }
@@ -111,8 +101,6 @@ class HomeSelectionRestoreTest {
         assertNull(zoneTabKeyNodeId("zabc"))
     }
 
-    // ── 二级恢复 ───────────────────────────────────────────────────────
-
     @Test
     fun resolveInitialBoardType_restoresMatchingPrefixAndAvailableType() {
         assertEquals(
@@ -127,7 +115,7 @@ class HomeSelectionRestoreTest {
 
     @Test
     fun resolveInitialBoardType_prefixMismatchFallsBackToFirst() {
-        // 上次在别的专区选的板块不跨专区恢复
+
         assertEquals(
             "action",
             resolveInitialBoardType("z200|album", "z100", listOf("action", "album"))
@@ -140,7 +128,7 @@ class HomeSelectionRestoreTest {
 
     @Test
     fun resolveInitialBoardType_typeNotInBoardsFallsBackToFirst() {
-        // 前缀匹配但该板块当前不可用（未接入 / 服务端未下发）→ 该专区首板块
+
         assertEquals("action", resolveInitialBoardType("all|hobby", "all", listOf("action")))
         assertEquals(
             "action",

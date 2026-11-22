@@ -10,21 +10,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 收藏仓储单测：批量取消收藏、作品收藏整链（标签池/读取/保存/取消）、图片关联条目、
- * 以及收藏中心 4 类列表查询（周边 / 通用实体 / 相册 / 图片，自 `UserRepositoryTest` 迁入）。
- *
- * 对齐 PoiShelf `CollectRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test；
- * `URLDecoder` form 解析 → [RecordedHttpRequest.formEntries]）。
- */
 class CollectRepositoryTest {
 
     private fun setup(): Pair<MockApi, CollectRepository> {
         val mock = MockApi()
         return mock to CollectRepository(mock.api(), mock.json)
     }
-
 
     @Test
     fun cancelCollectBatch_postsJsonArrayOfOuterNodeIds() = runTest {
@@ -36,7 +27,7 @@ class CollectRepositoryTest {
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
         assertEquals("POST", recorded.method)
-        // 服务端要求 "[1,2,3]" 形式的 JSON 数组字符串
+
         assertEquals("[1,2,3]", recorded.formEntries()["idArr"])
     }
 
@@ -70,7 +61,6 @@ class CollectRepositoryTest {
 
         val tags = repository.getWorksCollectTags(page = 1, pageSize = 20).getOrThrow()
 
-        // 空串与纯空白项被过滤
         assertEquals(listOf("热血", "校园", "悬疑"), tags)
 
         val recorded = mock.takeRequest()
@@ -221,7 +211,7 @@ class CollectRepositoryTest {
         assertTrue(result.isSuccess)
         val recorded = mock.takeRequest()
         assertEquals("POST", recorded.method)
-        // ⚠️ 原版字段名是 objId / userReason / type，不是 nodeId / content
+
         val form = recorded.formEntries()
         assertEquals("90001", form["objId"])
         assertEquals("图片内容违规", form["userReason"])
@@ -255,8 +245,6 @@ class CollectRepositoryTest {
         assertEquals(0, mock.requestCount)
     }
 
-    // ==================== 收藏中心 4 类列表查询（自 UserRepositoryTest 迁入） ====================
-
     @Test
     fun getUserCollectHobbyList_passesAllRequiredParamsAndParsesItems() = runTest {
         val (mock, repository) = setup()
@@ -279,7 +267,6 @@ class CollectRepositoryTest {
         val items = result.getOrThrow()
         assertEquals(2, items.size)
 
-        // 验证计算属性
         val item1 = items[0]
         assertEquals(2001L, item1.actualItemId)
         assertEquals("covers/hobby1.jpg", item1.actualCover)
@@ -292,7 +279,6 @@ class CollectRepositoryTest {
         assertEquals("No CN Name", item2.displayName)
         assertNull(item2.formattedOrderMoneyText)
 
-        // 验证请求中传递的参数 (GET Query)
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)
         assertEquals("/api/collect/hobby-v2", recorded.encodedPath)
@@ -305,7 +291,7 @@ class CollectRepositoryTest {
         assertEquals("2", recorded.queryParameter("page"))
         assertEquals("24", recorded.queryParameter("limit"))
         assertEquals("24", recorded.queryParameter("pageSize"))
-        // tag 需 URL 解码后比对
+
         assertTrue(recorded.path!!.contains("tag="))
     }
 
@@ -367,7 +353,7 @@ class CollectRepositoryTest {
         assertEquals("88888", recorded.queryParameter("userId"))
         assertEquals("88888", recorded.queryParameter("userNodeId"))
         assertEquals("200", recorded.queryParameter("category"))
-        // 全部状态时 collectState 参数为空字符串，不应包含非空 collectState
+
         assertTrue(recorded.queryParameter("collectState").isNullOrEmpty())
     }
 
@@ -400,9 +386,9 @@ class CollectRepositoryTest {
         val recorded = mock.takeRequest()
         assertEquals("GET", recorded.method)
         assertTrue(recorded.encodedPath!!.startsWith("/api/collect/common-v3"))
-        // R1：type 必须按分类下发 company，绝不是原版不存在的 "care"
+
         assertEquals("company", recorded.queryParameter("type"))
-        // R4：orderTime 不在原版白名单内，必须收敛为 actionDate
+
         assertEquals("actionDate", recorded.queryParameter("order"))
         assertEquals("88888", recorded.queryParameter("userId"))
         assertEquals("40000", recorded.queryParameter("categoryId"))
@@ -431,7 +417,7 @@ class CollectRepositoryTest {
         assertEquals("actionDate", recorded.queryParameter("order"))
         assertEquals("2", recorded.queryParameter("state"))
         assertEquals("false", recorded.queryParameter("isAsc"))
-        // tagValue 需解码后比对
+
         assertTrue(recorded.path!!.contains("tagValue="))
     }
 
@@ -492,10 +478,6 @@ class CollectRepositoryTest {
         assertEquals("fav", recorded.queryParameter("type"))
     }
 
-    /**
-     * 「我创建的」相册走 `api/album/user-v2`（type=upload），与「我收藏的」
-     * （`api/collect/album-v2`，type=fav）是两套语料（issue #97 Story 5）。
-     */
     @Test
     fun getUserCreationAlbumList_sendsUploadTypeAndDerivesHasMore() = runTest {
         val (mock, repository) = setup()
@@ -509,7 +491,7 @@ class CollectRepositoryTest {
         val page = result.getOrThrow()
         assertEquals(1, page.items.size)
         assertEquals(7001L, page.items[0].id)
-        // 未满一页 → 没有下一页
+
         assertFalse(page.hasMore)
 
         val recorded = mock.takeRequest()
@@ -533,10 +515,6 @@ class CollectRepositoryTest {
         assertEquals("相册服务异常", (result.exceptionOrNull() as ApiException).message)
     }
 
-    /**
-     * 空白 URL 条目被过滤，但 `hasMore` 仍以**未过滤**条数判定，
-     * 避免服务端补全路径时提前终止翻页。
-     */
     @Test
     fun getUserCreationPicList_filtersBlankUrlsAndKeepsRawHasMore() = runTest {
         val (mock, repository) = setup()
@@ -560,7 +538,7 @@ class CollectRepositoryTest {
     @Test
     fun getUserCollectPicList_passesParamsAndParsesItems() = runTest {
         val (mock, repository) = setup()
-        // JSON 结构对齐真机实测响应（2026-10-02）：图片地址只有 `path`，记录为扁平结构
+
         mock.enqueue(
             """{"success":true,"code":200,"msg":"ok","data":{"list":[{"id":9001,"categoryId":80001,"itemId":4235086,"itemType":"picture","collect":2,"path":"2026/09/f8e12c472e2f4fc2b63f54f96f3a6f9b.jpg"}]}}"""
         )
@@ -595,12 +573,11 @@ class CollectRepositoryTest {
     @Test
     fun getUserCollectAlbumList_sendsOrderAndDefaultsToAddTime() = runTest {
         val (mock, repository) = setup()
-        // 默认排序 = 发布时间
+
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectAlbumList(userId = 88888L, page = 1).getOrThrow()
         assertEquals("addTime", mock.takeRequest().queryParameter("order"))
 
-        // 显式指定收藏时间 / 点赞量
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectAlbumList(userId = 88888L, order = "actionDate", page = 2).getOrThrow()
         assertEquals("actionDate", mock.takeRequest().queryParameter("order"))
@@ -609,7 +586,6 @@ class CollectRepositoryTest {
         repository.getUserCollectAlbumList(userId = 88888L, order = "praiseCount", page = 3).getOrThrow()
         assertEquals("praiseCount", mock.takeRequest().queryParameter("order"))
 
-        // 越界值收敛回发布时间
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectAlbumList(userId = 88888L, order = "orderTime", page = 4).getOrThrow()
         assertEquals("addTime", mock.takeRequest().queryParameter("order"))
@@ -628,7 +604,6 @@ class CollectRepositoryTest {
         repository.getUserCollectPicList(userId = 88888L, order = "actionDate", page = 2).getOrThrow()
         assertEquals("actionDate", mock.takeRequest().queryParameter("order"))
 
-        // 越界值收敛
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectPicList(userId = 88888L, order = "garbage", page = 3).getOrThrow()
         assertEquals("addTime", mock.takeRequest().queryParameter("order"))
@@ -637,7 +612,7 @@ class CollectRepositoryTest {
     @Test
     fun getUserCollectHobbyList_orderTimeOnlyAllowedForBuyState() = runTest {
         val (mock, repository) = setup()
-        // 已入档：入手时间合法
+
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectHobbyList(
             userId = 88888L,
@@ -647,7 +622,6 @@ class CollectRepositoryTest {
         ).getOrThrow()
         assertEquals("orderTime", mock.takeRequest().queryParameter("order"))
 
-        // 非已入档：回落收藏时间
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectHobbyList(
             userId = 88888L,
@@ -657,7 +631,6 @@ class CollectRepositoryTest {
         ).getOrThrow()
         assertEquals("actionDate", mock.takeRequest().queryParameter("order"))
 
-        // 越界值回落收藏时间
         mock.enqueue("""{"success":true,"code":200,"msg":"ok","data":{"list":[]}}""")
         repository.getUserCollectHobbyList(
             userId = 88888L,
@@ -680,9 +653,9 @@ class CollectRepositoryTest {
         ).getOrThrow()
 
         val recorded = mock.takeRequest()
-        // 原版用 10000 表示「全部」，不使用 null
+
         assertEquals("10000", recorded.queryParameter("category"))
-        // 缺省为降序
+
         assertEquals("2", recorded.queryParameter("sortType"))
     }
 }

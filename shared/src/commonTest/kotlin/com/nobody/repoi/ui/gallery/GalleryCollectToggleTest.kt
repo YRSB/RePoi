@@ -24,12 +24,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
-/**
- * 全屏画廊收藏切换测试：写侧直接调用 [CollectRepository.toggleItemCollect]，
- * 成功后由仓储推进收藏变更代数（不再向事件总线广播）。
- *
- * 类名刻意不含 `ViewModel`，避免受既有 ViewModel 测试过滤规则影响。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryCollectToggleTest {
 
@@ -58,7 +52,7 @@ class GalleryCollectToggleTest {
 
         assertTrue(nextCollected)
         assertTrue(viewModel.uiState.value.isCollected)
-        // 徽章在乐观更新时 +1（初始 0，列表项自带的 collect 由切页回填，不在本用例路径内）
+
         assertEquals(1, viewModel.uiState.value.collectCount)
         assertEquals(CollectConstants.STATE_CARE, collectRepository.observeCollectState(88L).value?.state)
         assertEquals(generationBefore + 1, collectRepository.collectMutationGeneration.value)
@@ -216,7 +210,6 @@ class GalleryCollectToggleTest {
         assertEquals("/api/collect/del", collectMock.takeRequest().encodedPath)
     }
 
-
     @Test
     fun toggleCollect_refreshesCountFromServer() = runTest(testDispatcher) {
         val collectMock = MockApi()
@@ -271,19 +264,17 @@ class GalleryCollectToggleTest {
         advanceUntilIdle()
         assertEquals(41, viewModel.uiState.value.collectCount)
 
-        // 切图后服务端基线属于上一张图，徽章必须立即回到新图自身的人数
         viewModel.onPageChanged(second, 1)
         assertEquals(9, viewModel.uiState.value.collectCount, "切图后徽章必须重置为新图基线")
         advanceTimeBy(501)
         advanceUntilIdle()
         assertEquals(9, viewModel.uiState.value.collectCount, "切图后的延迟回填也不得沿用上一张图的计数")
     }
-    /** 消费并丢弃切页阶段产生的请求记录，保证后续断言只针对切换收藏。 */
+
     private fun MockApi.drainRequests() {
         repeat(requestCount) { takeRequest() }
     }
 
-    /** 写后会追加 collectCount 计数请求，故按路径筛选写请求而不是按 FIFO 首位断言。 */
     private fun MockApi.assertWriteRequest(path: String) {
         val recorded = (0 until requestCount).map { takeRequest() }
             .first { it.encodedPath == path }
@@ -294,7 +285,7 @@ class GalleryCollectToggleTest {
         CollectRepository(collectMock.api(testDispatcher), collectMock.json)
 
     private fun newViewModel(collectRepository: CollectRepository): PictureGalleryViewModel {
-        // 本用例不触发原图下载，下载 HttpClient 用空响应 MockEngine 占位
+
         val downloadClient = HttpClient(MockEngine { respond(content = "", status = HttpStatusCode.OK) })
         return PictureGalleryViewModel(
             collectRepository,

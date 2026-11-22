@@ -45,5 +45,4 @@ fun initPoiShelfPlatformContext(context: Context) {
 
 private fun appContextForIntent(): Context = appContextHolder
 
-/** 同模块共享的应用上下文（AppInfo/LogShare/AppDirs/ImageModule 共用）。 */
 internal fun poiShelfAppContext(): Context = appContextHolder

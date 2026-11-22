@@ -4,12 +4,6 @@ import com.nobody.repoi.data.remote.model.ZoneQueryScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * 一级分类 → 查询作用域的纯函数契约（issue #156 恢复规则 / #162 聚合参数）。
- *
- * 板块可见性矩阵的断言在 `ui/board/ZoneBoardCapabilityTest`；本类只验证 `ui.home` 剩下的
- * 真实逻辑：tabKey/zoneIds 解析与非法值回落，防止调用点散拼 zone 参数。
- */
 class HomeBoardSelectionTest {
 
     @Test
@@ -25,7 +19,7 @@ class HomeBoardSelectionTest {
 
     @Test
     fun toZoneQueryScope_emptyFollow_keepsEmptyFollow() {
-        // 短路（关注为空即不发请求）在 HomeFeedViewModel 侧断言，本用例只钉作用域解析结果
+
         val scope = FeedCategory(tabKey = "follow", zoneIds = "-1").toZoneQueryScope()
         assertEquals(ZoneQueryScope.Follow(emptyList()), scope)
     }

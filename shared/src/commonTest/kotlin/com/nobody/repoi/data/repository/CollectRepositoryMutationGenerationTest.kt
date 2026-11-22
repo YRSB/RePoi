@@ -13,16 +13,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/**
- * 收藏变更代数单测（ADR-0025 写侧闭环缝隙）。
- *
- * 覆盖：全量写操作在网络成功后原子自增 [CollectRepository.collectMutationGeneration]、
- * 失败与校验拦截绝不递增、`toggleItemCollect` 统一切换接缝的各分支与状态池流转幂等、
- * 并发 CAS 下「同 nodeId 同实例」与代数计数的稳定性。
- *
- * 断言全部经由 [CollectRepository] 公开接口进行，不触达私有实现；
- * 命名刻意避开 `*ViewModelTest`（CI `excludeTestsMatching` 隔离名单）。
- */
 class CollectRepositoryMutationGenerationTest {
 
     private fun setup(): Pair<MockApi, CollectRepository> {
@@ -36,7 +26,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(0L, repository.collectMutationGeneration.value)
     }
 
-    /** 七类写操作（手办保存/删除、条目增/删、批量取消、作品保存/取消）各自成功推进 1 代。 */
     @Test
     fun allWriteOps_onNetworkSuccess_advanceGenerationOnceEach() = runTest {
         val (mock, repository) = setup()
@@ -78,7 +67,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(++generation, repository.collectMutationGeneration.value)
     }
 
-    /** 网络失败时七类写操作全部不推进代数（也不写池，池行为由状态池测试另行锁定）。 */
     @Test
     fun allWriteOps_onNetworkFailure_neverAdvanceGeneration() = runTest {
         val (mock, repository) = setup()
@@ -105,7 +93,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(0L, repository.collectMutationGeneration.value)
     }
 
-    /** 空集合批量取消属校验拦截：成功短路、零请求、不推进代数。 */
     @Test
     fun cancelCollectBatch_emptyIds_shortCircuitsWithoutAdvancingGeneration() = runTest {
         val (mock, repository) = setup()
@@ -176,7 +163,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(1L, repository.collectMutationGeneration.value)
     }
 
-    /** 收藏 → 取消 → 再收藏：池值往返流转，观察句柄全程同一实例，每次成功推进 1 代。 */
     @Test
     fun toggleItemCollect_roundTrip_transitionsPoolAndKeepsSingleInstance() = runTest {
         val (mock, repository) = setup()
@@ -196,10 +182,6 @@ class CollectRepositoryMutationGenerationTest {
         assertEquals(3L, repository.collectMutationGeneration.value)
     }
 
-    /**
-     * 并发首访 + 并发写：多线程同时观察与切换同一批 nodeId，
-     * CAS 状态池仍保证「同 nodeId 同实例」，代数恰好等于成功写操作数。
-     */
     @Test
     fun concurrentObserveAndToggle_casPoolStaysSingleInstancePerNode() = runTest {
         val (mock, repository) = setup()
@@ -220,16 +202,12 @@ class CollectRepositoryMutationGenerationTest {
                 repository.observeCollectState(1000L + index).value?.state
             )
         }
-        // 8 个并发首访句柄与写后再观察逐 nodeId 对位仍是同一实例（CAS 幂等）
+
         raced.forEachIndexed { index, flow ->
             assertSame(flow, repository.observeCollectState(1001L + index))
         }
     }
 
-    /**
-     * 并发混合结局：按 id 奇偶确定性分发成功/失败响应，
-     * 代数只计成功次数，失败条目状态池保持原值（null）。
-     */
     @Test
     fun concurrentItemAdds_mixedNetworkOutcomes_generationCountsSuccessesOnly() = runTest {
         val (mock, repository) = setup()

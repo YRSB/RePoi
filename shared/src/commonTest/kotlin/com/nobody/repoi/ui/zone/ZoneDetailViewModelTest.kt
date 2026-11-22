@@ -30,19 +30,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 专区详情页 ViewModel（ZoneDetailViewModel）单测。
- *
- * 验证：
- * 1. 构造初始化与 [ZoneBoardSession] 创建；
- * 2. [ZoneDetailViewModel.setNodeId] 作用域更新与专区信息加载；
- * 3. 板块切换意图派发与相册分类懒同步；
- * 4. 关注状态切换（toggleFocus）；
- * 5. 各板块筛选/排序/搜索意图向 [ZoneBoardSession] 的转发；
- * 6. 滚动记忆的保存与读取委托；
- * 7. 二手交易举报提交；
- * 8. 刷新意图分发。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ZoneDetailViewModelTest {
 
@@ -166,7 +153,6 @@ class ZoneDetailViewModelTest {
         assertFalse(state.isInfoLoading)
         assertEquals(5, state.availableTabs.size)
 
-        // 验证当前板块为 Action 且已完成加载
         assertEquals(ZoneBoard.Action, vm.activeSnapshot.value.board)
         val actionContent = vm.activeSnapshot.value.content as ZoneBoardContent.Action
         assertEquals(2, actionContent.items.size)
@@ -182,7 +168,6 @@ class ZoneDetailViewModelTest {
         vm.setNodeId(100L)
         advanceUntilIdle()
 
-        // 切换到相册 Tab
         vm.selectTab("album")
         advanceUntilIdle()
 
@@ -191,7 +176,6 @@ class ZoneDetailViewModelTest {
         val albumContent = vm.activeSnapshot.value.content as ZoneBoardContent.Album
         assertEquals(1, albumContent.items.size)
 
-        // 验证相册单专区分类已同步
         assertEquals(2, vm.uiState.value.albumCategoryOptions.size)
         assertEquals(1, vm.uiState.value.albumCategoryOptions[0].id)
         assertEquals("手办", vm.uiState.value.albumCategoryOptions[0].name)
@@ -227,12 +211,10 @@ class ZoneDetailViewModelTest {
         vm.setNodeId(100L)
         advanceUntilIdle()
 
-        // 1. Action 板块子分类切换
         vm.selectSubType("create")
         advanceUntilIdle()
         assertEquals("create", vm.activeSnapshot.value.filters.subType)
 
-        // 2. Album 板块排序与分类切换
         vm.selectTab("album")
         advanceUntilIdle()
         vm.selectAlbumOrder("hits")
@@ -242,14 +224,12 @@ class ZoneDetailViewModelTest {
         advanceUntilIdle()
         assertEquals(1, vm.activeSnapshot.value.filters.albumCategory)
 
-        // 3. Posts 板块排序切换
         vm.selectTab("posts")
         advanceUntilIdle()
         vm.selectPostsOrder("add")
         advanceUntilIdle()
         assertEquals("add", vm.activeSnapshot.value.filters.postsOrder)
 
-        // 4. Resale 板块类型、成色与搜索
         vm.selectTab("resale_item")
         advanceUntilIdle()
         vm.setResaleType(2)
@@ -263,7 +243,6 @@ class ZoneDetailViewModelTest {
         vm.submitResaleSearch()
         advanceUntilIdle()
 
-        // 5. Hobby 板块排序、分类、高级筛选、搜索与视图切换
         vm.selectTab("hobby")
         advanceUntilIdle()
         vm.setHobbyOrder("release")
@@ -375,7 +354,6 @@ class ZoneDetailViewModelTest {
         vm.refresh()
         advanceUntilIdle()
 
-        // 验证刷新后数据保持完整
         assertEquals(100L, vm.nodeId)
         val actionContent = vm.activeSnapshot.value.content as ZoneBoardContent.Action
         assertEquals(2, actionContent.items.size)

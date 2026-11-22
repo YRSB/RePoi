@@ -17,10 +17,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.RelateItem
 
-/**
- * 社交列表 UI 项数据模型。
- * 兼容关注列表 (0)、粉丝列表 (1) 以及获赞条目列表 (3)。
- */
 data class FriendListItemModel(
     val id: Long = 0L,
     val userId: Long = 0L,
@@ -40,10 +36,10 @@ data class FriendListItemModel(
             val uid = item.userId
             val isMutual = item.both == 1 || item.both == 2
             val isFollowed = if (currentTab == 1) {
-                // 粉丝列表中：只有 both == 1 或 both == 2 才表示我也关注了该粉丝（互相关注）；both == 0 表示我尚未关注
+
                 isMutual
             } else {
-                // 关注列表中：both == 0（已关注单向）或 both == 1 / 2（互相关注双向）
+
                 item.both == 0 || item.both == 1 || item.both == 2
             }
             return FriendListItemModel(
@@ -80,18 +76,6 @@ data class FriendListItemModel(
     }
 }
 
-/**
- * 社交关系列表界面 UI 状态。
- * @property currentTab 当前选中的分类 Tab（0=关注, 1=粉丝, 3=获赞）
- * @property items 列表项集合
- * @property isLoading 初始加载中状态
- * @property isRefreshing 下拉刷新中状态
- * @property isLoadingMore 底部加载更多中状态
- * @property hasMore 是否还有下一页数据
- * @property page 当前页码
- * @property errorMessage 全局或加载失败异常信息
- * @property userMessage 一次性提示信息（如关注失败回滚通知）
- */
 data class FriendListUiState(
     val currentTab: Int = 0,
     val items: List<FriendListItemModel> = emptyList(),
@@ -104,10 +88,6 @@ data class FriendListUiState(
     val userMessage: String? = null
 )
 
-/**
- * 好友与社交关系 ViewModel。
- * 驱动关注列表、粉丝列表与获赞条目列表的展示、分页、下拉刷新与关注/取关乐观更新。
- */
 class FriendListViewModel(
     private val userRepository: UserRepository,
     private val followRepository: FollowRepository,
@@ -160,11 +140,6 @@ class FriendListViewModel(
         }
     }
 
-    /**
-     * 初始化社交列表数据。
-     * @param userId 目标用户 ID
-     * @param initialType 初始分类（0=关注, 1=粉丝, 3=获赞）
-     */
     fun init(userId: Long, initialType: Int = 0) {
         if (initialized && currentUserId == userId) {
             return
@@ -188,10 +163,6 @@ class FriendListViewModel(
         loadData(page = 1, isRefresh = false)
     }
 
-    /**
-     * 切换分类 Tab。
-     * @param type 目标分类（0=关注, 1=粉丝, 3=获赞）
-     */
     fun switchTab(type: Int) {
         val validTab = if (type in listOf(0, 1, 3)) type else 0
         if (_uiState.value.currentTab == validTab && _uiState.value.items.isNotEmpty()) {
@@ -214,9 +185,6 @@ class FriendListViewModel(
         loadData(page = 1, isRefresh = false)
     }
 
-    /**
-     * 下拉刷新当前分类数据。
-     */
     fun refresh() {
         loadJob?.cancel()
         _uiState.update {
@@ -228,9 +196,6 @@ class FriendListViewModel(
         loadData(page = 1, isRefresh = true)
     }
 
-    /**
-     * 滑动触底加载更多。
-     */
     fun loadMore() {
         val current = _uiState.value
         if (current.isLoading || current.isRefreshing || current.isLoadingMore || !current.hasMore) {
@@ -240,12 +205,6 @@ class FriendListViewModel(
         loadData(page = current.page + 1, isRefresh = false, isLoadMore = true)
     }
 
-    /**
-     * 切换用户关注状态。
-     * 执行即时乐观更新（立即翻转 UI 状态），随后发起网络请求；若请求失败则自动回滚原状态并提示。
-     * @param targetUserId 目标用户 ID
-     * @param currentFollowState 当前是否已关注
-     */
     fun toggleFollow(targetUserId: Long, currentFollowState: Boolean) {
         val currentItems = _uiState.value.items
         val targetIndex = currentItems.indexOfFirst { it.userId == targetUserId }
@@ -255,7 +214,6 @@ class FriendListViewModel(
         val newFollowState = !currentFollowState
         val isFansTab = _uiState.value.currentTab == 1
 
-        // 1. 立即乐观更新 UI
         val optimisticItem = targetItem.copy(
             isFollowed = newFollowState,
             both = if (newFollowState) {
@@ -271,11 +229,10 @@ class FriendListViewModel(
             )
         }
 
-        // 2. 异步调用后端更新 API
         viewModelScope.launch {
             val result = followRepository.updateFriend(userId = targetUserId, isFollow = newFollowState)
             if (result.isFailure) {
-                // 失败时回滚状态并提示用户
+
                 val ex = result.exceptionOrNull()
                 _uiState.update { state ->
                     state.copy(
@@ -288,9 +245,6 @@ class FriendListViewModel(
         }
     }
 
-    /**
-     * 消费一次性用户提示信息。
-     */
     fun userMessageShown() {
         _uiState.update { it.copy(userMessage = null) }
     }

@@ -6,14 +6,6 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-/**
- * Material Symbols 全量迁移架构与门禁测试（Issue #189）。
- *
- * 验证：
- * 1. 源码层：全工程 `shared/src/commonMain/kotlin` 下零残留 `androidx.compose.material.icons` 引用。
- * 2. 依赖层：`gradle/libs.versions.toml` 与 `shared/build.gradle.kts` 彻底移除 `material-icons-extended`。
- * 3. 资产层：`shared/src/commonMain/composeResources/drawable` 下所有 `ic_ms_*_rounded.xml` 资产均有效且不含 Android 私有主题属性。
- */
 class PoiIconsArchitectureTest {
 
     private val projectRoot = File(".").canonicalFile.let {

@@ -7,12 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 搜索历史管理器测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `SearchHistoryManagerTest`（逐用例；JUnit4 → kotlin.test，
- * Robolectric → [TestDataStore] 真实 DataStore 隔离目录）。
- */
 class SearchHistoryManagerTest {
 
     private val json = Json {

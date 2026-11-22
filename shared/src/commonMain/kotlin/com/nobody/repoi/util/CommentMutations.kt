@@ -3,36 +3,22 @@ package com.nobody.repoi.util
 import com.nobody.repoi.data.remote.model.CommentItem
 import com.nobody.repoi.data.remote.model.CommentReplyItem
 
-/**
- * 评论点赞与回复的纯列表变换（乐观更新与回滚共用，供各详情 ViewModel 调用）。
- */
 object CommentMutations {
 
-    /** 预览上限：内联子评论最多展示 3 条，超出走评论详情页（对齐原版）。 */
     const val REPLY_PREVIEW_LIMIT = 3
 
-    /** 内联预览子评论（过滤屏蔽项后取前 3 条，与渲染侧同一口径）。 */
     fun previewReplies(item: CommentItem): List<CommentReplyItem> {
         return filterShielded(item.replys ?: emptyList()).take(REPLY_PREVIEW_LIMIT)
     }
 
-    /** 是否为已被屏蔽的主楼评论。 */
     fun isShielded(item: CommentItem): Boolean = item.isShielded
 
-    /** 是否为已被屏蔽的子回复。 */
     fun isShielded(reply: CommentReplyItem): Boolean = reply.isShielded
 
-    /** 屏蔽项过滤（详情页与内联同一口径）。 */
     fun filterShielded(replies: List<CommentReplyItem>): List<CommentReplyItem> {
         return replies.filterNot { isShielded(it) }
     }
 
-    /**
-     * 过滤已屏蔽的主楼评论，并级联剔除保留主楼下的已屏蔽子评论。
-     *
-     * - 当主楼被屏蔽时，整楼及其下挂子评论彻底移除；
-     * - 正常主楼保留，且其下挂的已屏蔽子评论被过滤。
-     */
     fun filterShieldedComments(comments: List<CommentItem>): List<CommentItem> {
         return comments.filterNot { isShielded(it) }.map { comment ->
             if (comment.replys != null) {
@@ -43,7 +29,6 @@ object CommentMutations {
         }
     }
 
-    /** 回复目标用户 ID：取首个非零值，双零时传空（与展示侧判定对齐）。 */
     fun resolveReplyToUserId(target: CommentReplyItem?): Long? {
         val user = target?.user ?: return null
         return when {
@@ -53,13 +38,11 @@ object CommentMutations {
         }
     }
 
-    /** 是否需要展示“共 X 条回复”（总数或实际有效列表超出预览窗口即展示）。 */
     fun hasMoreReplies(item: CommentItem): Boolean {
         val validReplies = filterShielded(item.replys ?: emptyList())
         return item.reply > REPLY_PREVIEW_LIMIT || validReplies.size > REPLY_PREVIEW_LIMIT
     }
 
-    /** 点赞乐观应用：取反 praiseState 并 ±1。 */
     fun applyPraise(comments: List<CommentItem>, commentId: Long): List<CommentItem> {
         return comments.map { item ->
             if (item.id != commentId) {
@@ -74,7 +57,6 @@ object CommentMutations {
         }
     }
 
-    /** 回复发表成功：追加子评论并 reply + 1（按 id 去重，避免降级回捞重复）。 */
     fun applyReplyAppended(
         comments: List<CommentItem>,
         commentId: Long,
@@ -120,7 +102,6 @@ object CommentMutations {
         }
     }
 
-    /** 外部更新合并：点赞态/计数与总数以新值为准，子评论按 id 增量合并（避免空列表冲掉预览）。 */
     fun applyExternalUpdate(comments: List<CommentItem>, updated: CommentItem): List<CommentItem> {
         if (comments.none { it.id == updated.id }) return comments
         return comments.map { existing ->

@@ -3,10 +3,6 @@ package com.nobody.repoi.data.remote.model
 import com.nobody.repoi.platform.DateTimeFormats
 import kotlinx.serialization.Serializable
 
-/**
- * 角色/要素主体详情响应 (api/charactar/get)
- * ⚠️ "charactar" 为服务端历史拼写
- */
 @Serializable
 data class CharacterDetailPayload(
     val charactar: CharacterData? = null,
@@ -19,9 +15,6 @@ data class CharacterDetailPayload(
         )
 }
 
-/**
- * 角色主体数据结构
- */
 @Serializable
 data class CharacterData(
     val id: Long = 0L,
@@ -74,9 +67,6 @@ data class CharacterData(
         }
 }
 
-/**
- * 角色登场作品响应 (api/charactar/works/get)
- */
 @Serializable
 data class CharacterWorksPayload(
     val worksList: List<CharacterWorksItem>? = null,
@@ -86,9 +76,6 @@ data class CharacterWorksPayload(
         get() = worksList ?: list ?: emptyList()
 }
 
-/**
- * 登场作品条目
- */
 @Serializable
 data class CharacterWorksItem(
     val worksId: Long = 0L,
@@ -131,9 +118,6 @@ data class CharacterWorksItem(
         get() = performers.filter { it.isValid }
 }
 
-/**
- * 作品演职员/配音（CV）条目
- */
 @Serializable
 data class CharacterPerformerItem(
     val personId: Long = 0L,
@@ -154,9 +138,6 @@ data class CharacterPerformerItem(
         get() = personId > 0L && (!pNameCN.isNullOrBlank() || !pNames.isNullOrBlank() || !pName.isNullOrBlank())
 }
 
-/**
- * 角色相关相册响应 (api/charactar/album/get)
- */
 @Serializable
 data class CharacterAlbumPayload(
     val albumList: List<AlbumData>? = null,
@@ -166,9 +147,6 @@ data class CharacterAlbumPayload(
         get() = albumList ?: list ?: emptyList()
 }
 
-/**
- * 推荐要素/相关角色响应 (api/charactar/relevant/get)
- */
 @Serializable
 data class CharacterRelevantPayload(
     val charactarList: List<CharacterRelevantItem>? = null,
@@ -178,9 +156,6 @@ data class CharacterRelevantPayload(
         get() = charactarList ?: list ?: emptyList()
 }
 
-/**
- * 推荐要素/相关角色条目
- */
 @Serializable
 data class CharacterRelevantItem(
     val id: Long = 0L,
@@ -200,9 +175,6 @@ data class CharacterRelevantItem(
         get() = if (itemId > 0L) itemId else id
 }
 
-/**
- * 条目所属分区/属性标签响应 (api/zone/item)
- */
 @Serializable
 data class ZoneItemPayload(
     val zones: List<ZoneItem>? = null

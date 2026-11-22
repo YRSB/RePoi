@@ -10,9 +10,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nobody.repoi.data.remote.model.BlockItem
 
-/**
- * 黑名单管理 ViewModel。
- */
 class MessageBlockViewModel(
     private val messageRepository: MessageRepository
 ) : ViewModel() {
@@ -26,9 +23,6 @@ class MessageBlockViewModel(
         loadData(refresh = false)
     }
 
-    /**
-     * 加载黑名单列表。
-     */
     fun loadData(refresh: Boolean = false) {
         viewModelScope.launch {
             if (refresh) {
@@ -62,9 +56,6 @@ class MessageBlockViewModel(
         }
     }
 
-    /**
-     * 加载下一页黑名单。
-     */
     fun loadMore() {
         val currentState = _uiState.value
         if (currentState.isLoading || currentState.isRefreshing || !currentState.hasMore) return
@@ -96,23 +87,14 @@ class MessageBlockViewModel(
         }
     }
 
-    /**
-     * 弹出解除屏蔽确认弹窗。
-     */
     fun confirmUnblock(item: BlockItem) {
         _uiState.update { it.copy(unblockTarget = item) }
     }
 
-    /**
-     * 关闭解除屏蔽确认弹窗。
-     */
     fun dismissUnblockDialog() {
         _uiState.update { it.copy(unblockTarget = null) }
     }
 
-    /**
-     * 执行解除屏蔽操作。
-     */
     fun executeUnblock() {
         val target = _uiState.value.unblockTarget ?: return
         viewModelScope.launch {

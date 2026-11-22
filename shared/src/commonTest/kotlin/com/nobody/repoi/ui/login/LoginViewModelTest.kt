@@ -20,12 +20,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * 登录 ViewModel 测试（KMP commonTest 移植）。
- *
- * 登录动作已收敛到 `UserSession`：本测试以 [FakeUserSession] 预置成功/失败结果，
- * 断言 ViewModel 的加载态、错误文案、输入保留与成功回调；网络语义见 `UserSessionTest`。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
 

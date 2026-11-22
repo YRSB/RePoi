@@ -26,12 +26,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 专区详情页宿主 UI 状态。
- *
- * 板块内容、分页状态机、筛选条件与滚动记忆已全部收敛至 [ZoneBoardSession]，
- * 宿主 UI 状态仅保留专区头图/关注等固有元数据、Tab 列表、相册单专区分类候选与发布弹层显隐。
- */
 data class ZoneDetailUiState(
     val nodeId: Long = 0L,
     val zoneInfo: ZoneInfoPayload? = null,
@@ -42,10 +36,8 @@ data class ZoneDetailUiState(
     val availableTabs: List<Pair<String, String>> = listOf("action" to "动态"),
     val selectedTab: String = "action",
 
-    // 相册单专区分类候选（GET api/zone/categories?nodeId=&itemType=album）
     val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
 
-    // 悬浮发布弹窗显隐
     val showPublishSheet: Boolean = false
 ) {
     val isAlbumTab: Boolean
@@ -68,13 +60,6 @@ data class ZoneDetailUiState(
     }
 }
 
-/**
- * 专区详情页 ViewModel。
- *
- * 构造注入 [sessionFactory]，由深模块 [ZoneBoardSession] 接管专区 10 类子板块的
- * 分页加载、首屏懒加载、筛选不变性与滚动记忆。宿主只管理专区基础信息、关注状态、
- * 专区专属分类与发布弹层等页面级元数据。
- */
 class ZoneDetailViewModel(
     private val zoneRepository: ZoneRepository,
     private val collectRepository: CollectRepository,
@@ -86,21 +71,17 @@ class ZoneDetailViewModel(
     var nodeId: Long = 0L
         private set
 
-    /** 当前专区查询作用域：专区详情固定单专区。 */
     val zoneScope: ZoneQueryScope
         get() = ZoneQueryScope.Single(nodeId)
 
-    /** 子板块会话控制器（深模块）。 */
     val session: ZoneBoardSession = sessionFactory.create(
         coroutineScope = viewModelScope,
         initialScope = ZoneQueryScope.Single(nodeId),
         initialBoard = ZoneBoard.Action
     )
 
-    /** 当前活跃板块的响应式状态快照流。 */
     val activeSnapshot: StateFlow<ZoneBoardSnapshot> = session.activeSnapshot
 
-    /** 动态筛选项（key = 协议键值 subType，value = 2.43 中文文案）。 */
     val subTypes: List<Pair<String, String>> =
         ActionSubType.ordered.map { it.apiValue to it.label }
 
@@ -262,7 +243,6 @@ class ZoneDetailViewModel(
         _uiState.update { it.copy(showPublishSheet = show) }
     }
 
-    // ── 滚动记忆委托 ──
     fun saveTabScrollPosition(tab: String, index: Int, offset: Int) {
         val board = ZoneBoard.fromType(tab) ?: return
         session.dispatch(ZoneBoardIntent.SaveScrollPosition(board, index, offset))
@@ -274,7 +254,6 @@ class ZoneDetailViewModel(
         return Pair(pos.index, pos.offset)
     }
 
-    // ── 板块意图转发 ──
     fun selectSubType(subType: String) = session.dispatch(ZoneBoardIntent.SelectSubType(subType))
     fun selectAlbumOrder(order: String) = session.dispatch(ZoneBoardIntent.SelectAlbumOrder(order))
     fun selectAlbumCategory(categoryId: Int?) = session.dispatch(ZoneBoardIntent.SelectAlbumCategory(categoryId))

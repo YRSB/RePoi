@@ -57,12 +57,6 @@ private fun privacyTitle(key: String): String = when (key) {
     else -> "隐私设置"
 }
 
-/**
- * 浏览与内容详情 Pane：承载 R18 过滤、ExHobby 扩展图库、屏蔽与黑名单入口、隐私可见性配置。
- *
- * 遵循 Zhihu-Hyperion 范式：云端设置项在未登录时原生置灰禁用（enabled = false），
- * 对应说明绑定在条目自身 subtitle 与分组 footer 描述中，杜绝弹窗拦截打扰。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContentPane(

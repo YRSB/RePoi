@@ -64,16 +64,16 @@ internal fun formatBytes(bytes: Long): String {
 }
 
 internal val CacheLimitValues: List<Long> = listOf(
-    100L * 1024L * 1024L,       // 0: 100 MB
-    200L * 1024L * 1024L,       // 1: 200 MB
-    300L * 1024L * 1024L,       // 2: 300 MB
-    500L * 1024L * 1024L,       // 3: 500 MB (默认)
-    750L * 1024L * 1024L,       // 4: 750 MB
-    1024L * 1024L * 1024L,      // 5: 1.0 GB
-    1280L * 1024L * 1024L,      // 6: 1.25 GB
-    1536L * 1024L * 1024L,      // 7: 1.5 GB
-    2048L * 1024L * 1024L,      // 8: 2.0 GB
-    Long.MAX_VALUE              // 9: 无限制
+    100L * 1024L * 1024L,
+    200L * 1024L * 1024L,
+    300L * 1024L * 1024L,
+    500L * 1024L * 1024L,
+    750L * 1024L * 1024L,
+    1024L * 1024L * 1024L,
+    1280L * 1024L * 1024L,
+    1536L * 1024L * 1024L,
+    2048L * 1024L * 1024L,
+    Long.MAX_VALUE
 )
 
 internal fun formatCacheLimit(bytes: Long): String = when (bytes) {
@@ -95,9 +95,6 @@ internal fun cacheLimitToIndex(bytes: Long): Int {
     return if (idx >= 0) idx else 3
 }
 
-/**
- * 设置中心一级主列表 Pane：承载用户卡片、三大偏好分组入口与系统通用配置项。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsListPane(

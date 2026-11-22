@@ -6,12 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 首页动态仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HomeRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；JUnit4 → kotlin.test + `runTest`）。
- */
 class HomeRepositoryTest {
 
     private fun setup(): Pair<MockApi, HomeRepository> {
@@ -51,7 +45,7 @@ class HomeRepositoryTest {
     @Test
     fun getHomeFeed_tokenExpiredNotifiesSessionSelfHealing() = runTest {
         val mock = MockApi()
-        // 深管道必须以在途快照驱动会话自愈：仓储不再自己做 4001 分支
+
         mock.enqueue(mock.failure(4001, "登录已过期"))
         val repository = HomeRepository(mock.api(tokenProvider = { "tok-home" }))
 

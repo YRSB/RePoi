@@ -83,9 +83,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 关注屏（顶层关注目的地，承载关注条目/用户模块）。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowScreen(
@@ -114,13 +111,12 @@ fun FollowScreen(
     }
     val density = LocalDensity.current
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    // 实测高度用于折叠行程与位移，内容边距取估高与实测的最大值避免遮盖
+
     var tabRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
     var filterRowHeightPx by remember { mutableFloatStateOf(with(density) { 48.dp.toPx() }) }
 
     val isItemsTab = uiState.selectedTab == FollowTab.ITEMS
 
-    // 无缝同步滚动控制器：仅在条目动态且有数据时允许折叠筛选栏
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
         initialHeightOffsetLimit = -filterRowHeightPx,
         state = rememberTopAppBarState(
@@ -141,7 +137,6 @@ fun FollowScreen(
         }
     }
 
-    // 首批数据到达前不记录，避免初始位置覆盖已保存位置
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(gridState, scrollBehavior.state) {
         snapshotFlow {
@@ -208,7 +203,7 @@ fun FollowScreen(
         topPermanentHeightDp
     }
     val topContentPadding = totalHeaderHeight
-    // 实测 tabRowHeightPx 仅用于下方折叠栏位移锚点，不回灌内容边距
+
     val feedColumns = rememberFeedStaggeredGridColumns()
 
     val onCardImageClick = remember(imageViewer) {
@@ -222,7 +217,7 @@ fun FollowScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 1. 底层：内容数据流（铺满全屏，受 topContentPadding 约束）
+
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = {
@@ -360,8 +355,6 @@ fun FollowScreen(
         }
     }
 
-        // 2. 次级折叠筛选栏（仅 ITEMS 标签页存在，位于常驻顶栏下方，跟随手势平滑 tuck 进 TabRow 底下）
-        // 实测高度仅用于位移锚点与折叠上限，不回灌内容边距
         if (isItemsTab) {
             val tabsHeightDp = statusBarTopPadding + with(density) { tabRowHeightPx.toDp() }
             Box(
@@ -395,7 +388,6 @@ fun FollowScreen(
             }
         }
 
-        // 3. 常驻顶栏（状态栏占位 + TabRow），位于 Z 轴最上层，Surface 遮盖上浮的筛选栏
         Surface(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
@@ -424,7 +416,6 @@ fun FollowScreen(
             }
         }
 
-        // 4. 回到顶部 FAB
         AnimatedVisibility(
             visible = showRefreshFab,
             enter = fadeIn() + scaleIn(),
@@ -450,10 +441,9 @@ fun FollowScreen(
     }
 }
 
-
 @Composable
 private fun FollowEmptyState(selectedTab: FollowTab) {
-    // 按页签区分空状态，避免用户动态页误显示条目文案
+
     val title = if (selectedTab == FollowTab.USERS) "暂无用户动态" else "暂无条目动态"
     val hint = if (selectedTab == FollowTab.USERS) "去关注感兴趣的用户吧" else "去关注感兴趣的条目吧"
     Box(

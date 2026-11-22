@@ -14,13 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * ExHobby 裸数组端点纯逻辑测试（W4-W5 pure-logic；KMP commonTest）。
- *
- * `picture/{id}` 返回裸 JSON 数组（无 envelope；见 [ExHobbyApi] KDoc）；
- * MockEngine 直配 `[...]`
- *（HobbyDetailEnv 的 exhobbyEngine 同形；plain `runTest`，无 Main/DataStore）。
- */
 class ExHobbyApiTest {
 
     private val json: Json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }

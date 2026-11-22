@@ -13,18 +13,12 @@ import kotlinx.serialization.json.longOrNull
 import com.nobody.repoi.util.PriceFormatter
 import com.nobody.repoi.util.parseEmoticonUrls
 
-// ── 3.1 评论区模型 ───────────────────────────────
-
-/** 平台服务端屏蔽占位纯文本 */
 const val SHIELDED_COMMENT_TEXT = "(已屏蔽)"
 
-/**
- * 脱除评论回复正文开头的服务端模板或冗余回复目标前缀（如 `<span>回复<a...>xxx: </a></span>` 或 `回复xxx:`）。
- */
 internal fun stripReplyPrefix(raw: String?, toNickname: String? = null): String {
     if (raw.isNullOrBlank()) return ""
     var result = raw.trim()
-    // 1. 服务端模板标签前缀：如 <span>回复<a ...>xxx: </a></span> 或 &lt;span&gt;回复...&lt;/span&gt;
+
     result = result.replace(
         Regex("(?i)^\\s*(?:&lt;|<)span(?:&gt;|>)\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*(?:&lt;|<)/span(?:&gt;|>)\\s*[:：]?\\s*"),
         ""
@@ -33,17 +27,17 @@ internal fun stripReplyPrefix(raw: String?, toNickname: String? = null): String 
         Regex("(?i)^\\s*(?:&lt;|<)span(?:&gt;|>)\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*(?:&lt;|<)/span(?:&gt;|>)\\s*"),
         ""
     )
-    // 2. 裸 a 标签包含回复前缀：如 <a href="...">回复xxx:</a> 或 &lt;a...&gt;回复xxx:&lt;/a&gt;
+
     result = result.replace(
         Regex("(?i)^\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>)\\s*回复.*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*"),
         ""
     )
-    // 3. 回复前缀包含 a 标签用户链接：如 回复<a href="...">xxx</a>: 或 回复 <a href="...">xxx</a>:
+
     result = result.replace(
         Regex("(?i)^\\s*回复\\s*(?:&lt;|<)a\\b[^>]*?(?:&gt;|>).*?(?:&lt;|<)/a(?:&gt;|>)\\s*[:：]?\\s*"),
         ""
     )
-    // 4. 指定被回复人昵称的纯文本前缀（必须包含冒号结尾）：如 回复 死亡宣告: 或 回复死亡宣告：
+
     if (!toNickname.isNullOrBlank()) {
         val cleanName = toNickname.trim().removePrefix("@").removeSuffix(":").removeSuffix("：").trim()
         if (cleanName.isNotBlank()) {
@@ -56,9 +50,6 @@ internal fun stripReplyPrefix(raw: String?, toNickname: String? = null): String 
     return result.trim()
 }
 
-/**
- * 清洗服务端返回的 HTML 富文本为纯文本，正确处理实体转义标签与换行。
- */
 internal fun cleanHtmlToPlainText(raw: String?): String {
     if (raw.isNullOrBlank()) return ""
     return raw
@@ -94,14 +85,13 @@ data class CommentItem(
     val replys: List<CommentReplyItem>? = null,
     val emoticon: JsonElement? = null
 ) {
-    /** 纯文本评论内容（脱除 HTML 标签与回车格式化） */
+
     val contentCleanText: String
         get() = cleanHtmlToPlainText(content)
 
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
 
-    /** 是否为已被服务端或本地屏蔽的内容 */
     val isShielded: Boolean
         get() = contentCleanText == SHIELDED_COMMENT_TEXT || isMask == 1
 }
@@ -131,13 +121,13 @@ data class CommentReplyItem(
     val addTime: String? = null,
     val addDateString: String? = null,
     val user: CommentUser? = null,
-    /** 被回复的目标用户（直接回复主楼时为空） */
+
     val toUser: CommentUser? = null,
-    /** 服务端渲染后的富文本正文（可空，缺失时用 content） */
+
     val htmlContent: String? = null,
     val emoticon: JsonElement? = null
 ) {
-    /** 纯文本回复内容（优先真实用户正文，脱除 HTML 标签、回复前缀与回车格式化） */
+
     val contentCleanText: String
         get() {
             val raw = content?.ifBlank { null } ?: htmlContent
@@ -148,30 +138,22 @@ data class CommentReplyItem(
     val emoticonUrls: List<String>
         get() = parseEmoticonUrls(emoticon)
 
-    /** 是否为已被服务端或本地屏蔽的内容 */
     val isShielded: Boolean
         get() = contentCleanText == SHIELDED_COMMENT_TEXT
 }
 
-// ── 3.2 子评论详情与回复发表模型 ───────────────────────────────
-
-/** 子评论详情页载荷（api/comment/getreply）：主楼快照 + 子评论分页列表 */
 @Serializable
 data class CommentReplyPayload(
     val comment: CommentItem? = null,
     val list: List<CommentReplyItem>? = null
 )
 
-/**
- * 子评论详情分页数据模型：主楼快照 + 子评论列表。
- */
 @Serializable
 data class CommentThreadPage(
     val comment: CommentItem? = null,
     val replies: List<CommentReplyItem> = emptyList()
 )
 
-/** 回复发表结果载荷（api/comment/add/reply）：新建的子评论对象 */
 @Serializable
 data class CommentReplyAddPayload(
     val reply: CommentReplyItem? = null

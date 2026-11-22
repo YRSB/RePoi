@@ -44,7 +44,6 @@ class SettingsSubNavKeysTest {
         assertEquals(2, stack.size)
         assertEquals(SettingsAppearanceNavKey, stack.last())
 
-        // 切换到 Content：替换栈顶
         val target1 = SettingsContentNavKey
         if (stack.lastOrNull() != target1) {
             if (stack.size > 1) {
@@ -56,7 +55,6 @@ class SettingsSubNavKeysTest {
         assertEquals(SettingsContentNavKey, stack.last())
         assertEquals(SettingsListNavKey, stack.first())
 
-        // 重复点击 Content：无操作
         if (stack.lastOrNull() != target1) {
             if (stack.size > 1) {
                 stack.removeLastOrNull()
@@ -66,7 +64,6 @@ class SettingsSubNavKeysTest {
         assertEquals(2, stack.size)
         assertEquals(SettingsContentNavKey, stack.last())
 
-        // 切换到 Account：替换栈顶
         val target2 = SettingsAccountNavKey
         if (stack.lastOrNull() != target2) {
             if (stack.size > 1) {
@@ -85,12 +82,10 @@ class SettingsSubNavKeysTest {
         assertEquals(1, stack.size)
         assertEquals(SettingsListNavKey, stack.single())
 
-        // 点击进入 Appearance：压栈
         stack.add(SettingsAppearanceNavKey)
         assertEquals(2, stack.size)
         assertEquals(SettingsAppearanceNavKey, stack.last())
 
-        // 返回：出栈回退到 List
         val popped = stack.removeLastOrNull()
         assertEquals(SettingsAppearanceNavKey, popped)
         assertEquals(1, stack.size)
@@ -110,13 +105,11 @@ class SettingsSubNavKeysTest {
             }
         }
 
-        // 仅有一级列表时，按返回触发退出回调，不破坏返回栈
         localOnBack()
         assertEquals(true, exitCalled)
         assertEquals(1, stack.size)
         assertEquals(SettingsListNavKey, stack.single())
 
-        // 压入二级详情后，按返回出栈且不触发退出
         exitCalled = false
         stack.add(SettingsAppearanceNavKey)
         assertEquals(2, stack.size)
@@ -126,7 +119,6 @@ class SettingsSubNavKeysTest {
         assertEquals(1, stack.size)
         assertEquals(SettingsListNavKey, stack.single())
 
-        // 再次返回，触发退出
         localOnBack()
         assertEquals(true, exitCalled)
         assertEquals(1, stack.size)
@@ -146,7 +138,6 @@ class SettingsSubNavKeysTest {
         assertEquals(2, stack.size)
         assertEquals(SettingsAppearanceNavKey, stack.last())
 
-        // 重复点击同一分组，不应重复压栈
         onSelectGroup(SettingsGroup.Appearance)
         assertEquals(2, stack.size)
         assertEquals(SettingsAppearanceNavKey, stack.last())
@@ -183,13 +174,12 @@ class SettingsSubNavKeysTest {
         )
 
         keys.forEach { key ->
-            // 验证基于 NavKey 基类的多态反序列化
+
             val navKeySerializer = PolymorphicSerializer(NavKey::class)
             val encodedNavKey = jsonWithModule.encodeToString(navKeySerializer, key)
             val decodedNavKey = jsonWithModule.decodeFromString(navKeySerializer, encodedNavKey)
             assertEquals(key, decodedNavKey)
 
-            // 验证基于 SettingsSubNavKey 密封接口的多态反序列化
             val subKeySerializer = PolymorphicSerializer(SettingsSubNavKey::class)
             val encodedSubKey = jsonWithModule.encodeToString(subKeySerializer, key)
             val decodedSubKey = jsonWithModule.decodeFromString(subKeySerializer, encodedSubKey)
@@ -197,4 +187,3 @@ class SettingsSubNavKeysTest {
         }
     }
 }
-

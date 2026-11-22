@@ -7,14 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 人物详情仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `PersonDetailRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito `mock(CollectRepository)` →
- * 真实 CollectRepository 背后独立 MockApi 队列（`verify(times(4))` →
- * `collectMock.requestCount == 4`）；JUnit4 → kotlin.test）。
- */
 class PersonDetailRepositoryTest {
 
     private fun setup(): Triple<MockApi, MockApi, PersonDetailRepository> {
@@ -136,7 +128,7 @@ class PersonDetailRepositoryTest {
     @Test
     fun getCollectState_delegatesAndMapsCollectData() = runTest {
         val (_, collectMock, repository) = setup()
-        // care → 已收藏；delete → 未收藏；无 collect → 未收藏；401 → 透传
+
         collectMock.enqueue(collectMock.ok("""{"collect":{"state":"care"}}"""))
         collectMock.enqueue(collectMock.ok("""{"collect":{"state":"delete"}}"""))
         collectMock.enqueue(collectMock.ok("""{}"""))

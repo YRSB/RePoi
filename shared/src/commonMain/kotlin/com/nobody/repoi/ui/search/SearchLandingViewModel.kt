@@ -13,11 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 搜索落地页 UI 状态模型。
- *
- * 聚合搜索输入草稿、搜索历史、大家在找热词及实时输入联想建议。
- */
 data class SearchLandingUiState(
     val keyword: String = "",
     val searchHistory: List<String> = emptyList(),
@@ -27,12 +22,6 @@ data class SearchLandingUiState(
     val category: Int = HobbyAllCategory.id
 )
 
-/**
- * 搜索落地页专用 ViewModel。
- *
- * 职责单一：管理搜索历史记录的响应式流变迁与增删清空、异步拉取并刷新大家在找热词榜、
- * 300ms 防抖的实时输入联想词建议拉取以及输入草稿生命周期管理。
- */
 class SearchLandingViewModel(
     private val searchHistoryManager: SearchHistoryManager,
     private val searchRepository: SearchRepository
@@ -53,9 +42,6 @@ class SearchLandingViewModel(
         loadHotwords(HobbyAllCategory.id)
     }
 
-    /**
-     * 响应式初始化导航参数。仅在首次进入时生效，防止配置变更或重组覆写用户当前草稿。
-     */
     fun initParam(navParam: SearchNavParam) {
         if (paramsInitialized) return
         paramsInitialized = true
@@ -79,9 +65,6 @@ class SearchLandingViewModel(
         }
     }
 
-    /**
-     * 响应搜索草稿输入变迁。当内容变为空时立即清空联想列表并取消防抖任务；非空时触发 300ms 防抖联想。
-     */
     fun onKeywordChange(newKeyword: String) {
         if (newKeyword.isBlank()) {
             autoFillJob?.cancel()
@@ -98,9 +81,6 @@ class SearchLandingViewModel(
         loadSuggestions(newKeyword, debounce = true)
     }
 
-    /**
-     * 一键清空搜索输入草稿。
-     */
     fun onClearKeyword() {
         autoFillJob?.cancel()
         _uiState.update {
@@ -111,9 +91,6 @@ class SearchLandingViewModel(
         }
     }
 
-    /**
-     * 异步拉取大家在找热词榜。
-     */
     fun loadHotwords(category: Int = _uiState.value.category) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingHotwords = true) }
@@ -131,19 +108,10 @@ class SearchLandingViewModel(
         }
     }
 
-    /**
-     * 刷新大家在找热词榜。
-     */
     fun refreshHotwords() {
         loadHotwords(_uiState.value.category)
     }
 
-    /**
-     * 拉取关键词联想建议列表。
-     *
-     * @param query 查询关键词
-     * @param debounce 是否启用 300ms 防抖延迟（直接填充或由外部参数拉起时可传入 false）
-     */
     fun loadSuggestions(query: String, debounce: Boolean = true) {
         autoFillJob?.cancel()
         autoFillJob = viewModelScope.launch {
@@ -161,32 +129,23 @@ class SearchLandingViewModel(
                     _uiState.update { it.copy(suggestions = suggestions) }
                 }
             }.onFailure {
-                // 失败时保持现有建议不变
+
             }
         }
     }
 
-    /**
-     * 单项删除历史记录。
-     */
     fun onRemoveHistory(keyword: String) {
         viewModelScope.launch {
             searchHistoryManager.removeKeyword(keyword)
         }
     }
 
-    /**
-     * 一键清空全部历史记录。
-     */
     fun onClearHistory() {
         viewModelScope.launch {
             searchHistoryManager.clearAll()
         }
     }
 
-    /**
-     * 提交搜索时持久化保存到历史记录。
-     */
     fun onSearch(targetKeyword: String? = null) {
         val searchWord = (targetKeyword ?: _uiState.value.keyword).trim()
         if (searchWord.isBlank()) return

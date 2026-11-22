@@ -13,14 +13,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 手办详情关联推荐 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailViewModelRelatedTest`（逐用例；
- * Mockito 仓储/代理 mock → [HobbyDetailEnv] 真实 6 依赖 + MockEngine，
- * 关联走 api/hobby/group + api/hobby/push 路由；`MainDispatcherRule` →
- * `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HobbyDetailViewModelRelatedTest {
 

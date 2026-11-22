@@ -7,13 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 
-/**
- * 相册瀑布流自适应列数策略：
- * - 超大屏/桌面端 (≥ 1400dp)：5 列；
- * - 大平板横竖屏/展开态大屏 (840dp ~ 1400dp EXPANDED)：4 列；
- * - 折叠屏内屏/中屏 (600dp ~ 840dp MEDIUM)：3 列；
- * - 手机端 (< 600dp COMPACT)：稳定 2 列。
- */
 @Composable
 fun rememberAlbumStaggeredGridColumns(): StaggeredGridCells {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()

@@ -64,9 +64,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * ExHobby 扩展图库二级全量列表页面。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExHobbyListScreen(
@@ -83,11 +80,6 @@ fun ExHobbyListScreen(
 
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // 提取所有高清大图链接，供全屏画廊查看：
-    // 画廊消费的是纯 URL 字符串（非 PoiAsyncImage 下游），故此处保留 Pipeline 直调；
-    // EX_HOBBY 的非缩略档位由管道裁决为 `n/` 高清变体，因此与列表卡片共享同一份 Coil **磁盘**缓存；
-    // 但卡片走语义化重载（内存键含分类/用途桶），画廊以纯 URL 为内存键，二者不共享内存缓存，
-    // 首次打开画廊会有一次解码，不保证「秒开」
     val allFullUrls = remember(uiState.items) {
         uiState.items.map {
             MediaPipeline.Default.resolveUrl(it.path, MediaCategory.EX_HOBBY, ImagePurpose.CARD_STANDARD)
@@ -96,7 +88,6 @@ fun ExHobbyListScreen(
 
     val imageViewer = LocalImageViewer.current
 
-    // 当列表静默追加新图片时，若画廊正处于打开状态，同步更新画廊图片列表
     LaunchedEffect(allFullUrls) {
         imageViewer.updateImages(allFullUrls)
     }
@@ -104,7 +95,7 @@ fun ExHobbyListScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            // 极简顶栏：返回键 + 居中标题与数量
+
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -167,7 +158,6 @@ fun ExHobbyListScreen(
                 else -> {
                     val staggeredGridState = rememberLazyStaggeredGridState()
 
-                    // 触底加载更多监听
                     val shouldLoadMore by remember {
                         derivedStateOf {
                             val layoutInfo = staggeredGridState.layoutInfo
@@ -216,7 +206,6 @@ fun ExHobbyListScreen(
                             )
                         }
 
-                        // 底部加载状态指示
                         if (uiState.isAppending || uiState.loadMoreError != null || !uiState.hasMore) {
                             item(
                                 span = StaggeredGridItemSpan.FullLine,
@@ -238,9 +227,6 @@ fun ExHobbyListScreen(
     }
 }
 
-/**
- * 瀑布流扩展相片卡片项（高度由图片真实纵横比自适应）。
- */
 @Composable
 private fun ExHobbyGridCard(
     item: ExHobbyImageItem,
@@ -248,8 +234,7 @@ private fun ExHobbyGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 采用与全屏大图画廊一致的 /n/ 高清变体（EX_HOBBY 的非缩略档位），
-    // 使列表与查看器共享 Coil 缓存，实现点击卡片 0 延迟秒开
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -265,7 +250,7 @@ private fun ExHobbyGridCard(
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
-            // 空路径/缺省图由基元直接落官方缺省图，失败态由基元渲染破损图标
+
             PoiAsyncImage(
                 path = item.path,
                 category = MediaCategory.EX_HOBBY,
@@ -279,9 +264,6 @@ private fun ExHobbyGridCard(
     }
 }
 
-/**
- * 瀑布流底部加载/提示区。
- */
 @Composable
 private fun ExHobbyListFooter(
     isAppending: Boolean,
@@ -340,10 +322,6 @@ private fun ExHobbyListFooter(
     }
 }
 
-
-/**
- * 空数据占位。
- */
 @Composable
 private fun ExHobbyListEmpty(
     modifier: Modifier = Modifier
@@ -380,9 +358,6 @@ private fun ExHobbyListEmpty(
     }
 }
 
-/**
- * 错误占位。
- */
 @Composable
 private fun ExHobbyListError(
     errorMessage: String,

@@ -13,14 +13,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/**
- * 搜索仓储测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `SearchRepositoryTest`（逐用例；Retrofit+MockWebServer →
- * [MockApi] MockEngine+真实 HpoiApi；Mockito `mock(SearchHistoryManager)` →
- * 真实 SearchHistoryManager（[TestDataStore] 隔离目录；`verify` 调用计数断言 →
- * 真实状态流转断言，委托语义等价）；JUnit4 → kotlin.test）。
- */
 class SearchRepositoryTest {
 
     private val json = Json {
@@ -152,7 +144,7 @@ class SearchRepositoryTest {
     @Test
     fun searchUsers_emptyDataPayloadReturnsEmptyListInsteadOfThrowing() = runTest {
         val (mock, _, repository) = setup()
-        // 真实无匹配结果响应：无 data 字段
+
         mock.enqueue("""{"@id":"1","success":true,"msg":"操作成功","code":200}""")
 
         val result = repository.searchUsers("不存在的用户")
@@ -183,7 +175,6 @@ class SearchRepositoryTest {
         assertTrue(success.isSuccess)
         assertEquals("初音", success.getOrThrow().first().word)
 
-        // 深管道不再把业务失败静默降级为空列表
         mock.enqueue(mock.failure(500, "error"))
         val failure = repository.getHotwords(10000)
         assertTrue(failure.isFailure)
@@ -264,7 +255,7 @@ class SearchRepositoryTest {
     @Test
     fun search_tokenExpiredNotifiesSessionSelfHealing() = runTest {
         val mock = MockApi()
-        // 搜索业务失败码 4001 由深管道以在途快照驱动会话自愈
+
         mock.enqueue(mock.failure(4001, "登录已过期"))
         val historyManager = SearchHistoryManager(TestDataStore.searchHistoryPrefs(), json)
         val repository = SearchRepository(mock.api(tokenProvider = { "tok-search" }), historyManager)

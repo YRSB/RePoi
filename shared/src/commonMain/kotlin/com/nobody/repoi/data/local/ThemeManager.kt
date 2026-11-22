@@ -51,15 +51,6 @@ enum class ThemeMode(val title: String) {
     DARK("深色模式")
 }
 
-/**
- * 主题配置快照：六维设置的完整取值。
- *
- * 为什么要打成一个整体而不是六条独立流：六条流各自带 `initialValue` 时，
- * 冷启动会先拿六个内存默认值渲染一帧，DataStore 读完再逐个跳到真实值。
- * 配合 `ColorScheme.animateAsState`，这段跳变会被渲染成一段可见渐变。
- * 合成一条流后，**「未就绪」由 `null` 表达**，首帧门禁成为类型系统的自然结果，
- * 不再需要额外的 `getInitialXxx()` 与启动快照。
- */
 data class ThemeSettings(
     val themeMode: ThemeMode,
     val dynamicColor: Boolean,
@@ -69,7 +60,6 @@ data class ThemeSettings(
     val specVersion: ColorSpec.SpecVersion,
 )
 
-/** 无持久化配置时的平台默认值（动态取色能力与可用种子随平台不同）。 */
 fun defaultThemeSettings(): ThemeSettings = ThemeSettings(
     themeMode = ThemeMode.SYSTEM,
     dynamicColor = supportsDynamicColor,
@@ -85,13 +75,6 @@ class ThemeManager(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /**
-     * 唯一的主题状态流。
-     *
-     * `null` 表示**首次读盘尚未完成**：宿主以 [awaitSettings] 把启动遮罩保持到读盘落定（ADR-0012），
-     * 一旦读出（成功或回落默认值）就只可能是非空。尚无遮罩的桌面端可直接以默认值渲染首帧，
-     * 其后的配色跃迁由主题动画层的首态落定门禁瞬间落定，不会播放补间。
-     */
     private val state = MutableStateFlow<ThemeSettings?>(null)
 
     val settings: StateFlow<ThemeSettings?> = state.asStateFlow()
@@ -103,12 +86,6 @@ class ThemeManager(
         }
     }
 
-    /**
-     * 确保首次读盘已落定；失败时回落默认值，避免 `settings` 永远停在 `null`。
-     *
-     * 幂等且并发安全：`compareAndSet(null, ...)` 保证只有第一个调用者写入，
-     * 其余调用者直接返回（此时 `state` 已非空）。
-     */
     private suspend fun ensureLoaded() {
         if (state.value != null) return
         val loaded = runCatching { readSettings(dataStore.data.first()) }
@@ -141,21 +118,8 @@ class ThemeManager(
         )
     }
 
-    /**
-     * 等到首次读盘落定后再返回非空主题配置。
-     *
-     * 供宿主启动门禁使用（Android 启动遮罩，ADR-0012）：在那里只关心「主题配色是否已就绪」，
-     * 不该由调用方自行判空或触碰状态流内部。返回非空即意味着 UI 首帧能用上持久化配色。
-     *
-     * 收到取消（如 Activity 销毁导致启动遮罩流程终止）会立即抛出，不吞异常。
-     */
     suspend fun awaitSettings(): ThemeSettings = settings.first { it != null }!!
 
-    /**
-     * 乐观更新内存状态并返回新值：UI 立即生效，DataStore 只负责持久化。
-     *
-     * 先等首次读盘落定再改，否则改动会以默认值为基底，把其他已持久化字段一起冲掉。
-     */
     private suspend fun update(transform: (ThemeSettings) -> ThemeSettings): ThemeSettings {
         ensureLoaded()
         val next = transform(state.value ?: defaultThemeSettings())
@@ -208,7 +172,7 @@ class ThemeManager(
         update { it.copy(paletteStyle = style) }
         dataStore.edit { prefs ->
             prefs[PALETTE_STYLE_KEY] = style.name
-            // 遗留键仅作一次性迁移来源，写入新键后清除
+
             prefs.remove(EXPRESSIVE_COLOR_KEY)
         }
     }
@@ -225,7 +189,7 @@ class ThemeManager(
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("app_dynamic_color")
         private val THEME_SEED_KEY = stringPreferencesKey("app_theme_seed")
         private val AMOLED_KEY = booleanPreferencesKey("app_amoled")
-        /** 遗留键：仅供一次性迁移到 [PALETTE_STYLE_KEY]，写入新键后即清除 */
+
         private val EXPRESSIVE_COLOR_KEY = booleanPreferencesKey("app_expressive_color")
         private val PALETTE_STYLE_KEY = stringPreferencesKey("app_palette_style")
         private val SPEC_VERSION_KEY = stringPreferencesKey("app_spec_version")

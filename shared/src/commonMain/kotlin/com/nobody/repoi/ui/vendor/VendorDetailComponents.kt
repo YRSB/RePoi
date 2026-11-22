@@ -83,12 +83,6 @@ import androidx.compose.material3.ElevatedCard
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-
-
-// ─────────────────────────────────────────────────────────────
-// 区块 0：厂商主体头部 (VendorHeaderSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun VendorHeaderSection(
     company: CompanyData?,
@@ -115,13 +109,13 @@ internal fun VendorHeaderSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 上半部分：Logo 封面 + 中英文名称 + 评分 + 胶囊
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Logo 封面
+
                 Box(
                     modifier = Modifier
                         .size(86.dp)
@@ -138,7 +132,6 @@ internal fun VendorHeaderSection(
                     }
                 }
 
-                // 右侧：中文品名 / 主标题 + 外文原名 + 评分 + 属性胶囊
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -162,13 +155,12 @@ internal fun VendorHeaderSection(
                         )
                     }
 
-                    // 胶囊列表：评分、周边款数、地区
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
-                        // 1. 评分简化为单个胶囊，放置在“xx款周边”前
+
                         if (score > 0.0) {
                             Surface(
                                 shape = CircleShape,
@@ -195,7 +187,6 @@ internal fun VendorHeaderSection(
                             }
                         }
 
-                        // 2. 周边款数胶囊
                         if (company != null && company.hobbyCount > 0) {
                             Surface(
                                 shape = CircleShape,
@@ -211,7 +202,6 @@ internal fun VendorHeaderSection(
                             }
                         }
 
-                        // 3. 地区胶囊
                         val region = company?.region
                         if (!region.isNullOrBlank()) {
                             Surface(
@@ -230,7 +220,6 @@ internal fun VendorHeaderSection(
                 }
             }
 
-            // 中部：厂商简介（点击可查看厂商详情抽屉）
             if (detailText.isNotBlank()) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -269,10 +258,6 @@ internal fun VendorHeaderSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 1：动态卡片 (VendorActionSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun VendorActionSection(
     actions: List<CompanyActionItem>,
@@ -290,7 +275,7 @@ internal fun VendorActionSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题栏 + 查看更多 >
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -313,7 +298,7 @@ internal fun VendorActionSection(
             if (isLoading && actions.isEmpty()) {
                 PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(32.dp))
             } else if (actions.isEmpty()) {
-                // 空状态占位
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -327,7 +312,7 @@ internal fun VendorActionSection(
                     )
                 }
             } else {
-                // 展示最新的一条动态，无缝复用动态页与关注页现有统一 ActionCard
+
                 val latest = actions.first()
                 ActionCard(
                     actionItem = latest.toActionItem(),
@@ -338,10 +323,6 @@ internal fun VendorActionSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 2：品牌标签 (VendorTagsSection)
-// ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -360,7 +341,7 @@ internal fun VendorTagsSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题与“我的印象 ›”
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -381,12 +362,11 @@ internal fun VendorTagsSection(
                 )
             }
 
-            // 标签流
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 点击可增加印象的快捷胶囊
+
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -422,10 +402,6 @@ internal fun VendorTagsSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 3：产品 (3x3 九宫格推荐, VendorProductsSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun VendorProductsSection(
     products: List<RelatedHobbyItem>,
@@ -443,7 +419,7 @@ internal fun VendorProductsSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题 + 查看更多 ›
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -479,7 +455,7 @@ internal fun VendorProductsSection(
                     )
                 }
             } else {
-                // 自适应网格排布（手机3列，平板4~6列）
+
                 AdaptiveChunkedGrid(
                     items = products,
                     maxRows = 3,
@@ -508,10 +484,6 @@ internal fun VendorProductsSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 区块 4：旗下系列 (VendorSeriesSection)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun VendorSeriesSection(
     seriesList: List<CompanySeriesItem>,
@@ -529,7 +501,7 @@ internal fun VendorSeriesSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题 + 查看更多 ›
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -578,7 +550,7 @@ internal fun VendorSeriesSection(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // 系列 Logo/封面
+
                                 Box(
                                     modifier = Modifier
                                         .size(56.dp)
@@ -621,10 +593,6 @@ internal fun VendorSeriesSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 底部悬浮操作胶囊 (VendorFloatingActionBar)
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 internal fun VendorFloatingActionBar(
     collectCount: Long,
@@ -638,7 +606,7 @@ internal fun VendorFloatingActionBar(
     showCommentButton: Boolean = true
 ) {
     ExpressiveFloatingToolbar(modifier = modifier) {
-        // 1. 收藏（只显示数字，无数字时只显示图标）
+
         ExpressiveToolbarButton(
             onClick = onToggleCollect,
             text = if (collectCount > 0) "$collectCount" else null,
@@ -650,19 +618,17 @@ internal fun VendorFloatingActionBar(
             iconTint = if (isCollected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // 2. 评论（小屏显示，统一显示数字，没有则显示0；大屏隐藏）
         if (showCommentButton) {
             ExpressiveToolbarButton(
                 onClick = onCommentClick,
                 text = "${commentCount.coerceAtLeast(0)}",
                 icon = PoiIcons.AutoMirrored.Filled.Comment,
                 contentDescription = "评论",
-                // 评论是导航类操作，无激活态；只让收藏这类切换控件着色
+
                 isProminent = false
             )
         }
 
-        // 3. 分享（次级操作，纯图标）
         ExpressiveToolbarButton(
             onClick = onShareClick,
             icon = PoiIcons.Filled.Share,
@@ -671,10 +637,6 @@ internal fun VendorFloatingActionBar(
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 错误重试状态占位
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 internal fun VendorErrorState(
@@ -730,9 +692,6 @@ internal fun VendorErrorState(
     }
 }
 
-/**
- * 厂商“我的印象”打分与品牌标签选择底部弹窗 (ModalBottomSheet)。
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun VendorImpressionBottomSheet(
@@ -769,7 +728,7 @@ internal fun VendorImpressionBottomSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 顶栏：取消、标题、提交按钮
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -823,7 +782,6 @@ internal fun VendorImpressionBottomSheet(
                 val scoreTags = remember(allTags) { allTags.filter { it.isScoreTag } }
                 val normalTags = remember(allTags) { allTags.filter { !it.isScoreTag } }
 
-                // ── 评分维度区块 ──
                 if (scoreTags.isNotEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -869,7 +827,6 @@ internal fun VendorImpressionBottomSheet(
                     }
                 }
 
-                // ── 印象标签多选区块 ──
                 if (normalTags.isNotEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -921,9 +878,6 @@ internal fun VendorImpressionBottomSheet(
     }
 }
 
-/**
- * 交互式 5 颗星星打分条。
- */
 @Composable
 private fun StarRatingBar(
     rating: Double,
@@ -950,10 +904,6 @@ private fun StarRatingBar(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// 区块 8：厂商详细信息底部抽屉 (VendorInfoBottomSheet)
-// ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -988,7 +938,7 @@ internal fun VendorInfoBottomSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 顶栏：标题 + 关闭按钮
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1010,7 +960,6 @@ internal fun VendorInfoBottomSheet(
                 }
             }
 
-            // 属性表格卡片
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1018,7 +967,7 @@ internal fun VendorInfoBottomSheet(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // 别名
+
                     val aliasesText = company?.aliases?.filter { it.isNotBlank() }?.joinToString(" / ")
                     VendorInfoRow(
                         label = "别名",
@@ -1027,7 +976,6 @@ internal fun VendorInfoBottomSheet(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                    // 官网
                     val rawWebsite = company?.website?.trim().orEmpty()
                     val isNoneWebsite = rawWebsite.isBlank() ||
                         rawWebsite.equals("暂无", ignoreCase = true) ||
@@ -1060,14 +1008,12 @@ internal fun VendorInfoBottomSheet(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                    // 地区
                     val region = company?.region?.ifBlank { null }
                     VendorInfoRow(
                         label = "地区",
                         value = region ?: "暂无"
                     )
 
-                    // 扩展属性（如推特以及 otherInfo 中剩余项）
                     val otherItems = company?.parsedOtherInfo.orEmpty().filter { it.key != "地区" && !it.value.isNullOrBlank() }
                     if (otherItems.isNotEmpty()) {
                         otherItems.forEach { item ->
@@ -1117,7 +1063,6 @@ internal fun VendorInfoBottomSheet(
                 }
             }
 
-            // 简介全文
             val detailText = company?.detailPlainText.orEmpty()
             if (detailText.isNotBlank()) {
                 Column(

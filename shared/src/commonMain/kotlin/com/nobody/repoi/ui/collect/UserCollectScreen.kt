@@ -53,14 +53,6 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 全量用户收藏中枢界面（对标 Hpoi 2.39 原版架构）。
- * 支持 8 大实体大类联动切换、手办双模视图（网格/资产账本卡）、5 档收藏状态胶囊、排序与多维高级筛选抽屉。
- *
- * 本文件仅承载宿主层：大类 Pager 分发、TopAppBar、snackbar、大图画廊跳转与筛选抽屉挂载。
- * 图片全屏大图画廊已升级为独立 Nav3 路由（`PictureGalleryNavKey`），不再以组合内覆盖层形式挂在本页。
- * 各子页实现位于 `ui/collect/subpage/`，共享组件位于 `ui/collect/components/`。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserCollectScreen(
@@ -74,7 +66,7 @@ fun UserCollectScreen(
     onNavigateToPerson: ((PersonNavParam) -> Unit)? = null,
     onNavigateToAlbum: ((AlbumNavParam) -> Unit)? = null,
     onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
-    /** 打开图片全屏大图画廊（独立 Nav3 路由） */
+
     onNavigateToPictureGallery: ((PictureGalleryNavParam) -> Unit)? = null,
     viewModel: UserCollectViewModel = koinViewModel()
 ) {
@@ -85,8 +77,6 @@ fun UserCollectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 恢复感知：页面每次重新进入组合（含二级页出栈返回）派发 OnResume；
-    // 幂等由 ViewModel 的代数游标保证，不在 UI 侧用 resumeCount 跳过首次组合。
     CollectResumeEffect { viewModel.onIntent(UserCollectIntent.OnResume) }
 
     val categories = remember { UserCollectCategory.entries }
@@ -95,8 +85,6 @@ fun UserCollectScreen(
     }
     val pagerState = rememberPagerState(initialPage = initialIndex) { categories.size }
 
-    // 监听 ViewModel 分类切换，单向驱动 Pager 瞬时跳转。
-    // 严禁添加反向 LaunchedEffect(pagerState.currentPage)，避免形成双向事件死循环振荡（Ping-Pong livelock）。
     LaunchedEffect(uiState.selectedCategory, uiState.isInitialized) {
         if (!uiState.isInitialized) return@LaunchedEffect
         val targetIndex = categories.indexOf(uiState.selectedCategory)
@@ -105,7 +93,6 @@ fun UserCollectScreen(
         }
     }
 
-    // 错误消息浮层
     LaunchedEffect(uiState.errorMessage) {
         val error = uiState.errorMessage
         if (error != null && uiState.currentHasItems) {
@@ -134,7 +121,7 @@ fun UserCollectScreen(
                     }
                 },
                 actions = {
-                    // 仅手办周边页显示网格/列表切换按钮
+
                     if (uiState.selectedCategory == UserCollectCategory.HOBBY) {
                         IconButton(onClick = { viewModel.onIntent(UserCollectIntent.ToggleViewMode) }) {
                             Icon(
@@ -161,7 +148,7 @@ fun UserCollectScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // 8 大实体大类横向滑动 TabRow
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface
@@ -198,9 +185,6 @@ fun UserCollectScreen(
                 }
             }
 
-            // 各大类 Pager 页面
-            // userScrollEnabled = false：禁用左右滑动切换大类，只能点顶部 Tab 切换。
-            // 原版 `UserCollectActivity` 的 ViewPager2 未开滑动（仅 MagicIndicator 点击 + setCurrentItem）。
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = false,
@@ -217,7 +201,7 @@ fun UserCollectScreen(
                             onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchOrder(it)) },
                             onSwitchSortDirection = { viewModel.onIntent(UserCollectIntent.SwitchSortDirection(it)) },
                             onOpenFilter = { viewModel.onIntent(UserCollectIntent.SetFilterSheetVisible(true)) },
-                            // 多选与批量取消收藏：入参为外层收藏节点 id
+
                             onToggleSelect = { viewModel.onIntent(UserCollectIntent.ToggleSelect(it)) },
                             onSelectAll = { viewModel.onIntent(UserCollectIntent.SelectAll(UserCollectCategory.HOBBY)) },
                             onClearSelection = { viewModel.onIntent(UserCollectIntent.ClearSelection(UserCollectCategory.HOBBY)) },
@@ -252,7 +236,7 @@ fun UserCollectScreen(
                             onItemClick = { item ->
                                 onNavigateToAlbum?.invoke(
                                     AlbumNavParam(
-                                        // 「我收藏的」用内层真实相册 id；「我创建的」接口的 id 本身就是相册 id
+
                                         albumId = if (uiState.albumType == AlbumTypeOption.UPLOAD) {
                                             item.id
                                         } else {
@@ -263,7 +247,7 @@ fun UserCollectScreen(
                                     )
                                 )
                             },
-                            // 多选：入参为外层收藏节点 id
+
                             onToggleSelect = { viewModel.onIntent(UserCollectIntent.ToggleSelect(it)) },
                             onSelectAll = { viewModel.onIntent(UserCollectIntent.SelectAll(UserCollectCategory.ALBUM)) },
                             onCancelSelection = { viewModel.onIntent(UserCollectIntent.ClearSelection(UserCollectCategory.ALBUM)) },
@@ -280,12 +264,11 @@ fun UserCollectScreen(
                             onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.PICTURE)) },
                             onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.PICTURE)) },
                             onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchPicOrder(it)) },
-                            // 画廊是独立 Nav3 路由：只传「图片 id + 收藏页当前下标 + 排序档」，
-                            // 由画廊路由自行按同一接口/排序加载列表并定位，返回时由 back stack 出栈。
+
                             onItemClick = { index ->
                                 val item = uiState.picData.items.getOrNull(index)
                                 if (item != null) {
-                                    // 兼容极少数未透传 userId 的收藏入口：回落到 ViewModel 解析出的用户 id
+
                                     val galleryUserId = param.userId.takeIf { it > 0L } ?: viewModel.userId
                                     onNavigateToPictureGallery?.invoke(
                                         PictureGalleryNavParam(
@@ -302,7 +285,7 @@ fun UserCollectScreen(
                     }
 
                     UserCollectCategory.WORKS -> {
-                        // 作品页在原版是独立实现：3 档收藏状态 + 收藏时间升降序 + 标签筛选
+
                         WorksCollectSubPage(
                             subPageData = uiState.worksData,
                             worksState = uiState.worksState,
@@ -321,7 +304,7 @@ fun UserCollectScreen(
                             onResetTag = { viewModel.onIntent(UserCollectIntent.ResetWorksTag) },
                             onDismissFilter = { viewModel.onIntent(UserCollectIntent.SetWorksFilterSheetVisible(false)) },
                             onItemClick = { item ->
-                                // 嵌套实体无法确定真实条目 id 时，子页已禁掉点击，此处兜底再判一次
+
                                 if (worksDetailItemId(item) > 0L) {
                                     onNavigateToWorks?.invoke(
                                         WorksNavParam(
@@ -358,7 +341,7 @@ fun UserCollectScreen(
                             onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(category)) },
                             onSwitchOrder = { viewModel.onIntent(UserCollectIntent.SwitchCommonOrder(it)) },
                             onToggleViewMode = { viewModel.onIntent(UserCollectIntent.ToggleViewMode) },
-                            // 系列已建站条目走单例入口（对标原版 CommonItemListAdapter.java:51-52）
+
                             onSeriesSubPageClick = { item ->
                                 onNavigateToSeries?.invoke(
                                     SeriesNavParam(
@@ -369,7 +352,7 @@ fun UserCollectScreen(
                                     )
                                 )
                             },
-                            // 角色页跳转（对标原版 u2.java:1650-1651 charactar -> CharacterDetailActivity）
+
                             onCharacterClick = { item ->
                                 onNavigateToCharacter?.invoke(
                                     CharacterNavParam(
@@ -417,7 +400,6 @@ fun UserCollectScreen(
         }
     }
 
-    // 周边页筛选抽屉（暂存-确定语义：点「确定」才提交）
     if (uiState.showFilterSheet) {
         CollectFilterBottomSheet(
             subCategoryId = uiState.subCategoryId,
@@ -433,12 +415,6 @@ fun UserCollectScreen(
     }
 }
 
-/**
- * 页面恢复感知触发器：每次进入组合都派发一次 [onResume]。
- *
- * 幂等由 ViewModel 的收藏变更代数游标保证；UI 侧若用 `resumeCount > 1` 跳过首次组合，
- * 二级页覆盖导致页面退出组合后计数重置，返回时的 ON_RESUME 会被吞掉。
- */
 @Composable
 internal fun CollectResumeEffect(onResume: () -> Unit) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {

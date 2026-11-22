@@ -7,11 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 评论流条目构建测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `CommentFeedEntriesTest`（逐用例，JUnit4 → kotlin.test）。
- */
 class CommentFeedEntriesTest {
 
     private fun comments(range: IntRange): List<CommentItem> {
@@ -223,7 +218,6 @@ class CommentFeedEntriesTest {
             CommentItem(id = 12L, content = "违规最新", isMask = 1)
         )
 
-        // 1. DEFAULT 模式全屏蔽 -> 降级为 Empty，hasAny = false
         val defaultEntries = buildCommentFeedEntries(
             filterMode = CommentFilterMode.DEFAULT,
             hotComments = shieldedHot,
@@ -238,7 +232,6 @@ class CommentFeedEntriesTest {
         val defaultFooter = defaultEntries.filterIsInstance<CommentFeedEntry.PagedFooter>().single()
         assertFalse(defaultFooter.hasAny)
 
-        // 2. HOT 模式全屏蔽 -> 降级为 Empty
         val hotEntries = buildCommentFeedEntries(
             filterMode = CommentFilterMode.HOT,
             hotComments = shieldedHot,
@@ -251,7 +244,6 @@ class CommentFeedEntriesTest {
         val hotEmpty = hotEntries.filterIsInstance<CommentFeedEntry.Empty>().single()
         assertEquals("empty_hot_comments", hotEmpty.key)
 
-        // 3. LATEST 模式全屏蔽 -> 降级为 Empty
         val latestEntries = buildCommentFeedEntries(
             filterMode = CommentFilterMode.LATEST,
             hotComments = shieldedHot,

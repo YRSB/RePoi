@@ -12,12 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 用户投稿页 ViewModel；是否为本人由 [UserSession.currentUserId] 判定。
- *
- * 「我创建的」相册/图片查询归属 [CollectRepository]（收藏语料唯一真相源），
- * 与收藏中心相册页的「我创建的」分档共用同一份查询实现。
- */
 class UserCreationViewModel(
     private val collectRepository: CollectRepository,
     private val userSession: UserSession,
@@ -38,9 +32,6 @@ class UserCreationViewModel(
         private const val PAGE_SIZE = 20
     }
 
-    /**
-     * 根据导航参数初始化页面状态。
-     */
     fun initParam(param: UserCreationNavParam) {
         if (isInitialized && _uiState.value.userId == param.userId) {
             return
@@ -60,13 +51,9 @@ class UserCreationViewModel(
             )
         }
 
-        // 加载选中的一级分类
         loadCategoryData(category = initialCategory, isRefresh = true)
     }
 
-    /**
-     * 切换一级分类（相册 / 图片）。
-     */
     fun switchCategory(category: UserCreationCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
@@ -80,9 +67,6 @@ class UserCreationViewModel(
         }
     }
 
-    /**
-     * 切换二级排序。
-     */
     fun switchOrder(category: UserCreationCategory, orderKey: String) {
         val currentOrder = when (category) {
             UserCreationCategory.ALBUM -> _uiState.value.albumState.order
@@ -122,16 +106,10 @@ class UserCreationViewModel(
         loadCategoryData(category = category, isRefresh = true)
     }
 
-    /**
-     * 下拉刷新指定分类。
-     */
     fun refresh(category: UserCreationCategory) {
         loadCategoryData(category = category, isRefresh = true)
     }
 
-    /**
-     * 加载下一页。
-     */
     fun loadNextPage(category: UserCreationCategory) {
         val currentState = when (category) {
             UserCreationCategory.ALBUM -> _uiState.value.albumState
@@ -145,9 +123,6 @@ class UserCreationViewModel(
         loadCategoryData(category = category, isRefresh = false)
     }
 
-    /**
-     * 重试当前失败的分类。
-     */
     fun retry(category: UserCreationCategory) {
         loadCategoryData(category = category, isRefresh = true)
     }

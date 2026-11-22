@@ -118,10 +118,10 @@ fun ProfileScreen(
     val isDark = LocalIsDarkTheme.current
     val scrollState = rememberScrollState()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    // KMP：横屏判定经 expect/actual 垫片（Android 读 Configuration，桌面恒竖屏 + 宽度断点兜底）。
+
     val isLandscape = isLandscapeOrientation()
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
-    // 仅在横屏且宽度达到 Medium / Expanded 时启用双列布局，平板竖屏及手机竖屏均采用单列流式布局
+
     val isDualPane = isLandscape && isWideScreen
     val extraBottomPadding = if (isDualPane) 28.dp else 20.dp
     val bottomPadding = rememberBottomBarContentPadding(extraBottomPadding)
@@ -162,7 +162,7 @@ fun ProfileScreen(
                     .verticalScroll(scrollState)
             ) {
                 if (!uiState.isLoggedIn) {
-                    // ═══════════ 1. 未登录引导态：复用已登录骨架，数据锁定 ═══════════
+
                     UnauthenticatedProfileContent(
                         isDark = isDark,
                         isDualPane = isDualPane,
@@ -173,7 +173,7 @@ fun ProfileScreen(
                         onToggleTheme = { viewModel.toggleTheme(isDark) }
                     )
                 } else {
-                    // ═══════════ 2. 已登录态 ═══════════
+
                     if ((uiState.isLoading || uiState.isRefreshing) && uiState.profile == null) {
                         Box(modifier = Modifier.statusBarsPadding())
                         PoiLoadingView(modifier = Modifier.fillMaxWidth().padding(top = 120.dp, bottom = 48.dp))
@@ -188,7 +188,6 @@ fun ProfileScreen(
                     } else if (uiState.profile != null) {
                         val profile = uiState.profile!!
 
-                        // ── 顶部全幅沉浸式横幅背景 Header ──
                         ProfileImmersiveHeader(
                             profile = profile,
                             fellow = uiState.fellow,
@@ -205,9 +204,8 @@ fun ProfileScreen(
                             onNavigateToUserInfo = onNavigateToUserInfo
                         )
 
-                        // ── 内容主体根据横竖屏与屏幕断点自适应 ──
                         if (!isDualPane) {
-                            // 📱 竖屏（手机与平板竖屏）：单列纵向流式平铺
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -215,7 +213,7 @@ fun ProfileScreen(
                                     .padding(bottom = bottomPadding),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                // 四大功能金刚区
+
                                 ProfileQuickActionGrid(
                                     profileId = profile.id,
                                     isCompact = true,
@@ -227,7 +225,6 @@ fun ProfileScreen(
                                     }
                                 )
 
-                                // 预购与待补款一体化卡片
                                 PreorderShowcaseCard(
                                     order = uiState.order,
                                     finance = uiState.finance,
@@ -248,7 +245,6 @@ fun ProfileScreen(
                                     onItemClick = onNavigateToHobby
                                 )
 
-                                // 已入与资产一体化卡片
                                 BuyShowcaseCard(
                                     order = uiState.order,
                                     finance = uiState.finance,
@@ -269,7 +265,6 @@ fun ProfileScreen(
                                     onItemClick = onNavigateToHobby
                                 )
 
-                                // 我的相册展柜
                                 ProfileAlbumShowcaseCard(
                                     userAlbums = uiState.userAlbums,
                                     isDark = isDark,
@@ -287,7 +282,6 @@ fun ProfileScreen(
                                     }
                                 )
 
-                                // 我的二手交易展位
                                 ProfileResaleCard(
                                     onPublishClick = {
                                         appMessages.show("二手发布与交易即将推出")
@@ -295,7 +289,7 @@ fun ProfileScreen(
                                 )
                             }
                         } else {
-                            // 💻 横屏大屏（Medium / Expanded 平板与大屏横屏）：自适应双列布局
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -304,7 +298,7 @@ fun ProfileScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.Top
                             ) {
-                                // 左栏：核心导航与附属信息
+
                                 Column(
                                     modifier = Modifier.weight(0.42f),
                                     verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -344,7 +338,6 @@ fun ProfileScreen(
                                     )
                                 }
 
-                                // 右栏：资产流水与手办展示流
                                 Column(
                                     modifier = Modifier.weight(0.58f),
                                     verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -407,9 +400,6 @@ fun ProfileScreen(
     }
 }
 
-/**
- * 沉浸式全幅大图 Header（包含悬浮顶栏、用户信息、打卡胶囊与社交统计）
- */
 @Composable
 private fun ProfileImmersiveHeader(
     profile: UserProfile,
@@ -434,7 +424,7 @@ private fun ProfileImmersiveHeader(
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        // 全幅背景大图与渐变暗色遮罩
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -455,7 +445,6 @@ private fun ProfileImmersiveHeader(
                 )
             }
 
-            // 渐变与状态栏遮罩，确保文字全天候清晰
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -476,7 +465,7 @@ private fun ProfileImmersiveHeader(
                 .fillMaxWidth()
                 .statusBarsPadding()
         ) {
-            // ── 顶部透明悬浮操作栏（深浅色、消息、设置） ──
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -517,14 +506,13 @@ private fun ProfileImmersiveHeader(
                 }
             }
 
-            // ── 用户核心信息区（头像 + 昵称 + 等级 + 积分 + 签到胶囊） ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 圆形头像
+
                 Box(
                     modifier = Modifier
                         .size(62.dp)
@@ -553,7 +541,6 @@ private fun ProfileImmersiveHeader(
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                // 昵称与等级/积分行
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         modifier = Modifier
@@ -584,7 +571,7 @@ private fun ProfileImmersiveHeader(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // 等级胶囊
+
                         Surface(
                             shape = MaterialTheme.shapes.small,
                             color = MaterialTheme.colorScheme.primary,
@@ -599,7 +586,6 @@ private fun ProfileImmersiveHeader(
                             )
                         }
 
-                        // Hpoi 积分
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -626,7 +612,6 @@ private fun ProfileImmersiveHeader(
                             )
                         }
 
-                        // 个人二维码图标
                         Icon(
                             painter = painterResource(PoiIcons.Filled.QrCode),
                             contentDescription = "个人二维码",
@@ -636,7 +621,6 @@ private fun ProfileImmersiveHeader(
                     }
                 }
 
-                // 签到胶囊按钮
                 Surface(
                     shape = CircleShape,
                     color = if (isSignedInToday) Color.White.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary,
@@ -656,7 +640,6 @@ private fun ProfileImmersiveHeader(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ── 社交三列统计（关注 / 粉丝 / 获赞） ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -733,9 +716,6 @@ private fun SocialStatColumn(
     }
 }
 
-/**
- * 四大核心功能金刚区（我的收藏、我的发布、我的二手、浏览历史）
- */
 @Composable
 private fun ProfileQuickActionGrid(
     profileId: Long,
@@ -914,9 +894,6 @@ private fun QuickActionButton(icon: DrawableResource,
     }
 }
 
-/**
- * 预购与待补款一体化卡片（想买 / 预定 / 待补款 + 预定手办封面横滑）
- */
 @Composable
 private fun PreorderShowcaseCard(
     order: com.nobody.repoi.data.remote.model.OrderCount?,
@@ -943,7 +920,7 @@ private fun PreorderShowcaseCard(
                 .fillMaxWidth()
                 .padding(vertical = 12.dp, horizontal = 14.dp)
         ) {
-            // 顶端三列：想买 / 预定 / 待补款 ▼
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround,
@@ -972,7 +949,6 @@ private fun PreorderShowcaseCard(
                 )
             }
 
-            // 若有预定手办条目，则紧随下方平铺横滑缩略图
             if (preorderItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(
@@ -1006,9 +982,6 @@ private fun PreorderShowcaseCard(
     }
 }
 
-/**
- * 已入与资产一体化卡片（已入 / 总消费 ▼ / 日亚涨跌 + 已入手办封面横滑）
- */
 @Composable
 private fun BuyShowcaseCard(
     order: com.nobody.repoi.data.remote.model.OrderCount?,
@@ -1040,7 +1013,7 @@ private fun BuyShowcaseCard(
                 .fillMaxWidth()
                 .padding(vertical = 12.dp, horizontal = 14.dp)
         ) {
-            // 顶端三列：已入 / 总消费 ▼ / 日亚涨跌
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround,
@@ -1070,7 +1043,6 @@ private fun BuyShowcaseCard(
                 )
             }
 
-            // 若有已入手办条目，紧随下方平铺横滑展柜
             if (buyItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(
@@ -1138,9 +1110,6 @@ private fun IntegratedStatColumn(
     }
 }
 
-/**
- * 我的相册横滑展柜组件
- */
 @Composable
 private fun ProfileAlbumShowcaseCard(
     userAlbums: List<AlbumListItem>,
@@ -1286,7 +1255,6 @@ private fun ProfileAlbumCard(
                 }
             }
 
-            // 点赞数角标
             Surface(
                 shape = MaterialTheme.shapes.small,
                 color = Color.Black.copy(alpha = 0.6f),
@@ -1314,7 +1282,6 @@ private fun ProfileAlbumCard(
                 }
             }
 
-            // 底部标题蒙版
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1338,9 +1305,6 @@ private fun ProfileAlbumCard(
     }
 }
 
-/**
- * 二手交易展位卡片
- */
 @Composable
 private fun ProfileResaleCard(
     onPublishClick: () -> Unit
@@ -1431,9 +1395,6 @@ private fun ProfileResaleCard(
     }
 }
 
-/**
- * 单个手办封面卡片
- */
 @Composable
 private fun CollectFigureCard(
     item: CollectTopItem,
@@ -1475,9 +1436,6 @@ private fun CollectFigureCard(
     }
 }
 
-/**
- * 未登录内容：复用已登录三段式骨架，全部锁定跳登录
- */
 @Composable
 private fun UnauthenticatedProfileContent(
     isDark: Boolean,
@@ -1493,7 +1451,7 @@ private fun UnauthenticatedProfileContent(
         modifier = modifier
             .fillMaxWidth()
     ) {
-        // 顶部占位头图：保留消息、深浅切换、设置入口
+
         UnauthenticatedImmersiveHeader(
             isDark = isDark,
             onLoginClick = onLoginClick,
@@ -1503,7 +1461,7 @@ private fun UnauthenticatedProfileContent(
         )
 
         if (!isDualPane) {
-            // 竖屏：单列纵向平铺，与已登录一致
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1547,7 +1505,7 @@ private fun UnauthenticatedProfileContent(
                 ProfileResaleCard(onPublishClick = onLoginClick)
             }
         } else {
-            // 横屏大屏：双列布局，与已登录一致
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1605,9 +1563,6 @@ private fun UnauthenticatedProfileContent(
     }
 }
 
-/**
- * 未登录占位头图：无横幅时用主色容器 + 暗色渐变，保证文字清晰
- */
 @Composable
 private fun UnauthenticatedImmersiveHeader(
     isDark: Boolean,
@@ -1793,9 +1748,6 @@ private fun UnauthenticatedImmersiveHeader(
     }
 }
 
-/**
- * 个人中心错误卡片
- */
 @Composable
 private fun ProfileErrorCard(
     isDark: Boolean,
@@ -1847,9 +1799,6 @@ private fun ProfileErrorCard(
     }
 }
 
-/**
- * 资产金额明细弹窗：展示总折合人民币与各分类下多币种细分明细
- */
 @Composable
 fun SupplementedMoneyDialog(
     finance: com.nobody.repoi.data.remote.model.OrderFinanceSummary,
@@ -1877,7 +1826,7 @@ fun SupplementedMoneyDialog(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 顶栏：标题与关闭按钮
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1903,7 +1852,6 @@ fun SupplementedMoneyDialog(
                     }
                 }
 
-                // 分类切换 Tab
                 PrimaryTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
@@ -1936,7 +1884,6 @@ fun SupplementedMoneyDialog(
                     )
                 }
 
-                // 统计折合总额卡片
                 Surface(
                     shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -1969,7 +1916,6 @@ fun SupplementedMoneyDialog(
                     }
                 }
 
-                // 明细列表区域
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2050,7 +1996,6 @@ fun SupplementedMoneyDialog(
                     }
                 }
 
-                // 底部确定按钮
                 Button(
                     onClick = onDismissRequest,
                     shape = CircleShape,
@@ -2062,7 +2007,6 @@ fun SupplementedMoneyDialog(
         }
     }
 }
-
 
 private fun formatRmb(amount: Double?): String {
     val value = amount ?: 0.0
@@ -2088,10 +2032,6 @@ private fun formatCompactRmb(amount: Double?): String {
     }
 }
 
-/**
- * 千分位分组格式化（`DecimalFormat("#,##0[.##]")` 的 KMP 等价实现，行为对齐原版）：
- * - 整数部分按千分位插逗号；小数部分保留至多两位、去尾零。
- */
 private fun formatGrouped(value: Long): String = formatGrouped(value.toDouble())
 
 private fun formatGrouped(value: Double): String {

@@ -36,14 +36,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * 手办详情 ExHobby 图包链路 ViewModel 测试（KMP commonTest 移植）。
- *
- * 对齐 PoiShelf `HobbyDetailViewModelExHobbyTest`（逐用例；Mockito 仓储/开关桩 →
- * 真实 6 依赖 + MockEngine（ExHobby 引擎可配成功/失败响应）+ 真实 VPM
- * （[TestDataStore] 隔离目录；开关翻转驱动真实 `isExHobbyEnabledFlow`）；
- * `MainDispatcherRule` → `Dispatchers.setMain`；JUnit4 → kotlin.test + `runTest`）。
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HobbyDetailViewModelExHobbyTest {
 
@@ -186,14 +178,12 @@ class HobbyDetailViewModelExHobbyTest {
 
         val viewModel = env.build()
 
-        // 初始加载：禁用状态
         viewModel.loadDetail(DetailNavParam(itemId = 59570L))
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isExHobbyEnabled)
         assertTrue(viewModel.uiState.value.exHobbyPics.isEmpty())
 
-        // 动态开启开关：触发自动拉取与状态翻转
         env.preferences.setExHobbyEnabled(true)
         advanceUntilIdle()
 
@@ -201,7 +191,6 @@ class HobbyDetailViewModelExHobbyTest {
         assertEquals(1, viewModel.uiState.value.exHobbyPics.size)
         assertEquals("path/pic1.jpg", viewModel.uiState.value.exHobbyPics[0].path)
 
-        // 动态关闭开关：状态翻转
         env.preferences.setExHobbyEnabled(false)
         advanceUntilIdle()
 

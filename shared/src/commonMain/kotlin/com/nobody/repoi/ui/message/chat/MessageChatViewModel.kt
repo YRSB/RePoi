@@ -14,9 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * 1v1 私信聊天 ViewModel，支持消息收发、撤回、图片上传与协程长轮询。
- */
 class MessageChatViewModel(
     private val repository: MessageRepository
 ) : ViewModel() {
@@ -75,9 +72,6 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 启动生命周期感知的新消息长轮询（每 3 秒检测一次最新消息 ID）。
-     */
     fun startPolling() {
         if (pollingJob?.isActive == true || targetUserId <= 0L) return
         pollingJob = viewModelScope.launch {
@@ -86,7 +80,7 @@ class MessageChatViewModel(
                 val latestResult = repository.getLatestMsgId(userId = targetUserId)
                 latestResult.onSuccess { latestId ->
                     if (latestId > maxKnownMessageId) {
-                        // 有新消息，拉取最新一页并合并
+
                         val refreshResult = repository.getChatMessages(fromId = targetUserId, page = 1, pageSize = pageSize)
                         refreshResult.onSuccess { payload ->
                             val updatedList = payload.messages
@@ -101,17 +95,11 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 暂停长轮询。
-     */
     fun stopPolling() {
         pollingJob?.cancel()
         pollingJob = null
     }
 
-    /**
-     * 合并新旧消息列表并按时间正序排列，确保已加载历史不被覆写且 ID 唯一。
-     */
     private fun mergeMessages(
         currentList: List<ChatMessageItem>,
         incomingList: List<ChatMessageItem>
@@ -121,9 +109,6 @@ class MessageChatViewModel(
         return messageMap.values.toList().sortedBy { it.date }
     }
 
-    /**
-     * 下拉或滚动分页加载更早的历史消息。
-     */
     fun loadMoreHistory() {
         val state = _uiState.value
         if (state.isLoadingMore || !state.hasMore || state.isLoading) return
@@ -169,9 +154,6 @@ class MessageChatViewModel(
         _uiState.update { it.copy(inputContent = it.inputContent + emoji) }
     }
 
-    /**
-     * 发送文本消息。
-     */
     fun sendTextMessage() {
         val content = _uiState.value.inputContent.trim()
         if (content.isEmpty() || targetUserId <= 0L) return
@@ -181,7 +163,7 @@ class MessageChatViewModel(
             val result = repository.sendTextMessage(toId = targetUserId, content = content)
             result.onSuccess {
                 _uiState.update { it.copy(inputContent = "", isSending = false) }
-                // 立即拉取刷新最新消息
+
                 val refreshResult = repository.getChatMessages(fromId = targetUserId, page = 1, pageSize = pageSize)
                 refreshResult.onSuccess { payload ->
                     _uiState.update { current ->
@@ -200,9 +182,6 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 上传并发送图片消息（字节入参；图片选择器由 M5  UI 层经 FileKit 提供）。
-     */
     fun sendPicture(fileName: String, fileBytes: ByteArray, mimeType: String = "image/jpeg") {
         if (targetUserId <= 0L) return
 
@@ -234,9 +213,6 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 撤回消息。
-     */
     fun withdrawMessage(message: ChatMessageItem) {
         viewModelScope.launch {
             val result = repository.withdrawMessage(messageId = message.actualMessageId)
@@ -253,9 +229,6 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 屏蔽用户。
-     */
     fun blockUser() {
         viewModelScope.launch {
             val result = repository.updateUserBlock(userId = targetUserId, blockState = 1)
@@ -267,9 +240,6 @@ class MessageChatViewModel(
         }
     }
 
-    /**
-     * 解除屏蔽。
-     */
     fun unblockUser() {
         viewModelScope.launch {
             val result = repository.updateUserBlock(userId = targetUserId, blockState = 0)
