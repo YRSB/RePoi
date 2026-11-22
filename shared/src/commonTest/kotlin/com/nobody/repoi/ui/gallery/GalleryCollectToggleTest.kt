@@ -271,6 +271,72 @@ class GalleryCollectToggleTest {
         assertEquals(9, viewModel.uiState.value.collectCount, "切图后的延迟回填也不得沿用上一张图的计数")
     }
 
+    @Test
+    fun loadRelate_withPathWhenPicIdZero_requestsRelateByPath() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(collectRepository)
+        collectMock.route(
+            "pic/relate",
+            """
+            {"success":true,"code":200,"msg":"ok","data":{"list":[
+                {"relateItem":{"id":1,"itemId":11,"itemType":"album","name":"Album","categoryId":70000}}
+            ]}}
+            """.trimIndent()
+        )
+
+        val item = UserCollectPicItem(id = 0L, path = "files/test.jpg")
+        viewModel.loadRelate(item)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.relateItems.size)
+        assertEquals(11L, viewModel.uiState.value.relateItems[0].itemId)
+        assertFalse(viewModel.uiState.value.isRelateLoading)
+
+        val recorded = collectMock.takeRequest()
+        assertEquals("files/test.jpg", recorded.formEntries()["path"])
+        assertNull(recorded.formEntries()["picId"])
+    }
+
+    @Test
+    fun loadRelate_withZeroIdAndEmptyPath_setsEmptyWithoutRequest() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(collectRepository)
+
+        val item = UserCollectPicItem(id = 0L, path = null)
+        viewModel.loadRelate(item)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.relateItems.isEmpty())
+        assertFalse(viewModel.uiState.value.isRelateLoading)
+        assertEquals(0, collectMock.requestCount)
+    }
+
+    @Test
+    fun loadRelate_secondCallHitsCache() = runTest(testDispatcher) {
+        val collectMock = MockApi()
+        val collectRepository = newRepository(collectMock)
+        val viewModel = newViewModel(collectRepository)
+        collectMock.route(
+            "pic/relate",
+            """
+            {"success":true,"code":200,"msg":"ok","data":{"list":[
+                {"relateItem":{"id":1,"itemId":11,"itemType":"album","name":"Album","categoryId":70000}}
+            ]}}
+            """.trimIndent()
+        )
+
+        val item = UserCollectPicItem(id = 0L, path = "files/cached.jpg")
+        viewModel.loadRelate(item)
+        advanceUntilIdle()
+        assertEquals(1, collectMock.requestCount)
+
+        viewModel.loadRelate(item)
+        advanceUntilIdle()
+        assertEquals(1, collectMock.requestCount)
+    }
+
     private fun MockApi.drainRequests() {
         repeat(requestCount) { takeRequest() }
     }

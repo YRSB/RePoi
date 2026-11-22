@@ -74,9 +74,9 @@ class PictureGalleryViewModel(
 
     private var relateJob: Job? = null
 
-    private val relateCache = LinkedHashMap<Long, List<PictureRelateItem>>()
+    private val relateCache = LinkedHashMap<String, List<PictureRelateItem>>()
 
-    private var currentRelatePicId: Long = 0L
+    private var currentRelateKey: String = ""
 
     private var initialRequestKey: String? = null
 
@@ -277,36 +277,42 @@ class PictureGalleryViewModel(
     }
 
     fun loadRelate(item: UserCollectPicItem) {
-        val picId = item.id
-        currentRelatePicId = picId
-        if (picId <= 0L) {
+        val targetId = item.actualId
+        val targetPath = item.actualUrl
+        val relateKey = when {
+            targetId > 0L -> "id:$targetId"
+            targetPath.isNotBlank() -> "path:$targetPath"
+            else -> ""
+        }
+        currentRelateKey = relateKey
+        if (relateKey.isEmpty()) {
             _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
             return
         }
-        relateCache[picId]?.let { cached ->
+        relateCache[relateKey]?.let { cached ->
             _uiState.update { it.copy(relateItems = cached, isRelateLoading = false) }
             return
         }
         relateJob?.cancel()
         relateJob = viewModelScope.launch {
             _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = true) }
-            collectRepository.getPictureRelate(picId)
+            collectRepository.getPictureRelate(picId = targetId, path = targetPath)
                 .onSuccess { list ->
-                    putRelateCache(picId, list)
-                    if (currentRelatePicId == picId) {
+                    putRelateCache(relateKey, list)
+                    if (currentRelateKey == relateKey) {
                         _uiState.update { it.copy(relateItems = list, isRelateLoading = false) }
                     }
                 }
                 .onFailure {
-                    if (currentRelatePicId == picId) {
+                    if (currentRelateKey == relateKey) {
                         _uiState.update { it.copy(relateItems = emptyList(), isRelateLoading = false) }
                     }
                 }
         }
     }
 
-    private fun putRelateCache(picId: Long, list: List<PictureRelateItem>) {
-        relateCache[picId] = list
+    private fun putRelateCache(key: String, list: List<PictureRelateItem>) {
+        relateCache[key] = list
         while (relateCache.size > RELATE_CACHE_MAX) {
             val eldest = relateCache.keys.firstOrNull() ?: break
             relateCache.remove(eldest)

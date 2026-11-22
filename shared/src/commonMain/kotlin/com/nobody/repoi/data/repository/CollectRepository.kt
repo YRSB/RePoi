@@ -343,8 +343,13 @@ class CollectRepository(
         advanceMutationGeneration()
     }
 
-    suspend fun getPictureRelate(picId: Long): Result<List<PictureRelateItem>> = runCatching {
-        api.getPictureRelate(picId = picId)?.list?.mapNotNull { it.relateItem } ?: emptyList()
+    suspend fun getPictureRelate(
+        picId: Long = 0L,
+        path: String? = null,
+    ): Result<List<PictureRelateItem>> = runCatching {
+        if (picId <= 0L && path.isNullOrBlank()) return@runCatching emptyList()
+        api.getPictureRelate(picId = picId.takeIf { it > 0L }, path = path?.trim()?.ifBlank { null })
+            ?.list?.mapNotNull { it.relateItem } ?: emptyList()
     }
 
     suspend fun submitReport(
