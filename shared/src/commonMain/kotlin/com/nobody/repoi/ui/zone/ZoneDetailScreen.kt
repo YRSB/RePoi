@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.zone
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +16,11 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -39,24 +43,29 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
@@ -65,10 +74,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.nobody.repoi.data.local.CategoryItem
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
@@ -84,14 +95,24 @@ import com.nobody.repoi.ui.board.ZoneBoardContent
 import com.nobody.repoi.ui.board.ZoneBoardHobbySheets
 import com.nobody.repoi.ui.board.ZoneBoardItemActions
 import com.nobody.repoi.ui.board.ZoneBoardPane
+import com.nobody.repoi.ui.board.boardFilterToken
 import com.nobody.repoi.ui.board.components.ZoneBoardFilterBar
+import com.nobody.repoi.ui.board.components.ZoneEmptyPlaceholder
+import com.nobody.repoi.ui.board.components.ZoneErrorPlaceholder
+import com.nobody.repoi.ui.board.itemCount
 import com.nobody.repoi.ui.board.rememberResaleStaggeredGridColumns
 import com.nobody.repoi.ui.board.session.ZoneBoardIntent
+import com.nobody.repoi.ui.board.session.ZoneBoardSession
+import com.nobody.repoi.ui.board.session.ZoneBoardSnapshot
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.rememberSynchronousTopAppBarScrollBehavior
 import com.nobody.repoi.ui.detail.DetailNavParam
+import com.nobody.repoi.ui.home.HomeHeaderStackState
+import com.nobody.repoi.ui.home.homeBoardMemoryKey
 import com.nobody.repoi.ui.home.rememberFeedStaggeredGridColumns
+import com.nobody.repoi.ui.home.rememberHomeHeaderStack
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.resale.components.ResaleMoreBottomSheet
@@ -102,9 +123,8 @@ import com.nobody.repoi.ui.works.WorksNavParam
 import com.nobody.repoi.ui.zone.components.ZonePublishSheet
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import org.koin.compose.viewmodel.koinViewModel
-import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +146,6 @@ fun ZoneDetailScreen(
     onNavigateToResaleDetail: ((Long) -> Unit)? = null,
     onNavigateToResaleMarket: ((Long, String?) -> Unit)? = null,
     onActionClick: ((ActionItem) -> Unit)? = null,
-
     onUrlClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: ZoneDetailViewModel = koinViewModel()
@@ -138,7 +157,6 @@ fun ZoneDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeSnapshot by viewModel.activeSnapshot.collectAsStateWithLifecycle()
     val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
-    val staggeredGridState = rememberLazyStaggeredGridState()
     val pullRefreshState = rememberPullToRefreshState()
     val messages = LocalAppMessages.current
     val focusManager = LocalFocusManager.current
@@ -151,40 +169,61 @@ fun ZoneDetailScreen(
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomContentPadding = if (!isWideScreen) 16.dp else (16.dp + navBarBottomPadding)
 
-    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    val isHobbyOrResale = activeSnapshot.board == ZoneBoard.Hobby || activeSnapshot.board == ZoneBoard.Resale
-    val defaultPinnedPx = with(density) { (if (isHobbyOrResale) 96.dp else 48.dp).toPx() }
-    val defaultCollapsiblePx = with(density) { (if (activeSnapshot.board.isEntity) 0.dp else 48.dp).toPx() }
-    var pinnedHeaderHeightPx by remember { mutableFloatStateOf(defaultPinnedPx) }
-    var collapsibleHeightPx by remember { mutableFloatStateOf(defaultCollapsiblePx) }
-    val pinnedHeaderHeightDp = with(density) { pinnedHeaderHeightPx.toDp() }
-    val pinnedEstimatedDp = if (isHobbyOrResale) 96.dp else 48.dp
-    val collapsibleEstimatedDp = if (activeSnapshot.board.isEntity) 0.dp else 48.dp
-    val collapsibleMeasuredDp = with(density) { collapsibleHeightPx.toDp() }
-    val totalHeaderHeightDp = (if (pinnedHeaderHeightDp > pinnedEstimatedDp) pinnedHeaderHeightDp else pinnedEstimatedDp) +
-        if (collapsibleMeasuredDp > collapsibleEstimatedDp) collapsibleMeasuredDp else collapsibleEstimatedDp
+    val boardItemCount = activeSnapshot.content.itemCount
+    val isRefreshing = boardItemCount > 0 && (activeSnapshot.pageView.isLoading || uiState.isInfoLoading)
 
-    val currentTabTotalItemsCount = when (val c = activeSnapshot.content) {
-        is ZoneBoardContent.Action -> c.items.size
-        is ZoneBoardContent.Album -> c.items.size
-        is ZoneBoardContent.Posts -> c.items.size + c.pinnedPosts.size
-        is ZoneBoardContent.Hobby -> c.items.size
-        is ZoneBoardContent.Resale -> c.items.size
-        is ZoneBoardContent.Entity -> c.items.size
-    }
+    val headerStack = rememberHomeHeaderStack(topBarHeight = 0.dp)
+    val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
 
     val scrollBehavior = rememberSynchronousTopAppBarScrollBehavior(
-        initialHeightOffsetLimit = -collapsibleHeightPx,
-        canScroll = { currentTabTotalItemsCount > 0 }
+        initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
+        state = rememberTopAppBarState(
+            initialHeightOffsetLimit = -headerStack.collapsibleHeightPx,
+            initialHeightOffset = -activeSnapshot.scrollPosition.filterCollapseFraction * headerStack.collapsibleHeightPx
+        ),
+        canScroll = { boardItemCount > 0 }
     )
 
-    LaunchedEffect(collapsibleHeightPx) {
-        scrollBehavior.state.heightOffsetLimit = -collapsibleHeightPx
-        if (collapsibleHeightPx == 0f) {
-            scrollBehavior.state.heightOffset = 0f
+    LaunchedEffect(uiState.boards.isEmpty()) {
+        if (uiState.boards.isEmpty()) headerStack.clearMeasuredRows()
+    }
+
+    LaunchedEffect(uiState.selectedBoard) {
+        val board = uiState.selectedBoard
+        if (board.isEntity) {
+            headerStack.resetCollapsibleHeight()
+        } else {
+            boardFilterHeights[board]?.let { heightPx ->
+                if (heightPx > 0f) headerStack.onCollapsibleMeasured(heightPx.roundToInt())
+            }
         }
+    }
+
+    val currentFilterHeightPx: Float = if (uiState.selectedBoard.isEntity) {
+        0f
+    } else {
+        boardFilterHeights[uiState.selectedBoard]
+            ?: if (headerStack.collapsibleHeightPx > 0f) {
+                headerStack.collapsibleHeightPx
+            } else {
+                with(LocalDensity.current) { 48.dp.toPx() }
+            }
+    }
+
+    val isConfirmedEmptyOrError =
+        (boardItemCount == 0 && !activeSnapshot.pageView.isLoading) || activeSnapshot.pageView.errorMessage != null
+    LaunchedEffect(activeSnapshot.board, currentFilterHeightPx, isConfirmedEmptyOrError) {
+        val fraction = if (isConfirmedEmptyOrError) {
+            0f
+        } else {
+            activeSnapshot.scrollPosition.filterCollapseFraction
+        }
+        scrollBehavior.state.heightOffsetLimit = -currentFilterHeightPx
+        scrollBehavior.state.contentOffset = 0f
+        scrollBehavior.state.heightOffset =
+            (-fraction * currentFilterHeightPx).coerceIn(-currentFilterHeightPx, 0f)
     }
 
     val feedColumns = rememberFeedStaggeredGridColumns()
@@ -196,64 +235,39 @@ fun ZoneDetailScreen(
         }
     }
     val resaleColumns = rememberResaleStaggeredGridColumns()
-    val gridColumns = when {
-        activeSnapshot.board.isEntity -> entityColumns
-        activeSnapshot.board == ZoneBoard.Resale -> resaleColumns
-        else -> feedColumns
-    }
 
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val totalCount = staggeredGridState.layoutInfo.totalItemsCount
-            val lastVisibleIndex = staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalCount > 0 && lastVisibleIndex >= totalCount - 3
-        }
+    val boards = uiState.boards
+    val selectedBoardIndex = boards.indexOf(uiState.selectedBoard).coerceAtLeast(0)
+    val pagerState = rememberPagerState(initialPage = selectedBoardIndex) {
+        boards.size.coerceAtLeast(1)
     }
+    val pageGridStates = remember { mutableStateMapOf<ZoneBoard, LazyStaggeredGridState>() }
 
-    LaunchedEffect(shouldLoadMore, currentTabTotalItemsCount, activeSnapshot.board) {
-        if (shouldLoadMore) {
-            val page = activeSnapshot.pageView
-            if (!page.isEndReached && !page.isLoadingMore && page.loadMoreError == null && !page.isLoading) {
-                viewModel.session.dispatch(ZoneBoardIntent.LoadMore())
+    val currentBoards by rememberUpdatedState(boards)
+    val currentSelectedBoard by rememberUpdatedState(uiState.selectedBoard)
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            val board = currentBoards.getOrNull(page)
+            if (board != null && board != currentSelectedBoard && !pagerState.isScrollInProgress) {
+                viewModel.selectBoard(board)
             }
         }
     }
 
-    LaunchedEffect(staggeredGridState, activeSnapshot.board) {
-        snapshotFlow {
-            Pair(staggeredGridState.firstVisibleItemIndex, staggeredGridState.firstVisibleItemScrollOffset)
-        }.collect { (index, offset) ->
-            if (staggeredGridState.layoutInfo.totalItemsCount > 0) {
-                viewModel.session.dispatch(ZoneBoardIntent.SaveScrollPosition(activeSnapshot.board, index, offset))
-            }
+    LaunchedEffect(selectedBoardIndex, boards.size, pagerState.pageCount) {
+        if (boards.isNotEmpty() &&
+            selectedBoardIndex in 0 until pagerState.pageCount &&
+            pagerState.currentPage != selectedBoardIndex
+        ) {
+            pagerState.scrollToPage(selectedBoardIndex)
         }
     }
 
-    var lastSelectedBoard by rememberSaveable { mutableStateOf<ZoneBoard?>(null) }
-    LaunchedEffect(activeSnapshot.board) {
-        val isInitial = lastSelectedBoard == null
-        val isBoardChanged = !isInitial && lastSelectedBoard != activeSnapshot.board
-
-        if (isBoardChanged) {
-            val saved = activeSnapshot.scrollPosition
-            staggeredGridState.scrollToItem(saved.index, saved.offset)
-            scrollBehavior.state.heightOffset = -saved.filterCollapseFraction * collapsibleHeightPx
-            scrollBehavior.state.contentOffset = 0f
-        }
-        lastSelectedBoard = activeSnapshot.board
-    }
-
-    var hasRestoredCurrentTabPosition by remember(activeSnapshot.board) { mutableStateOf(false) }
-    LaunchedEffect(activeSnapshot.board, currentTabTotalItemsCount > 0) {
-        if (!hasRestoredCurrentTabPosition && currentTabTotalItemsCount > 0) {
-            hasRestoredCurrentTabPosition = true
-            val saved = activeSnapshot.scrollPosition
-            if (saved.index > 0 || saved.offset > 0) {
-                if (staggeredGridState.firstVisibleItemIndex == 0) {
-                    staggeredGridState.scrollToItem(saved.index, saved.offset)
-                }
-            }
-        }
+    val scrollCurrentBoardToTop: suspend () -> Unit = {
+        pageGridStates[uiState.selectedBoard]?.scrollToItem(0)
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
     }
 
     val onCardImageClick = remember(imageViewer) {
@@ -530,16 +544,10 @@ fun ZoneDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val isRefreshing = (activeSnapshot.pageView.isLoading && currentTabTotalItemsCount > 0) || uiState.isInfoLoading
-
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
-                    scope.launch {
-                        staggeredGridState.scrollToItem(0)
-                        scrollBehavior.state.heightOffset = 0f
-                        scrollBehavior.state.contentOffset = 0f
-                    }
+                    scope.launch { scrollCurrentBoardToTop() }
                     viewModel.refresh()
                 },
                 state = pullRefreshState,
@@ -550,7 +558,7 @@ fun ZoneDetailScreen(
                         isRefreshing = isRefreshing,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = totalHeaderHeightDp)
+                            .padding(top = headerStack.totalHeaderHeight)
                     )
                 }
             ) {
@@ -559,285 +567,83 @@ fun ZoneDetailScreen(
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                 ) {
-                    val isCurrentTabLoading = activeSnapshot.pageView.isLoading && currentTabTotalItemsCount == 0
-
-                    if (isCurrentTabLoading) {
-                        PoiLoadingView(
+                    if (boards.isEmpty()) {
+                        ZoneEmptyPlaceholder(
+                            text = "该专区暂无可用板块",
+                            onRefresh = { viewModel.refresh() },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    top = totalHeaderHeightDp + 8.dp,
-                                    bottom = bottomContentPadding
-                                )
+                                .align(Alignment.Center)
+                                .padding(top = headerStack.totalHeaderHeight)
+                                .padding(24.dp)
                         )
                     } else {
-                        ZoneBoardPane(
-                            board = activeSnapshot.board,
-                            content = activeSnapshot.content,
-                            gridState = staggeredGridState,
-                            contentPadding = PaddingValues(
-                                start = 8.dp,
-                                end = 8.dp,
-                                top = totalHeaderHeightDp + 8.dp,
-                                bottom = bottomContentPadding
-                            ),
-                            onIntent = viewModel.session::dispatch,
-                            itemActions = boardItemActions,
-                            columns = gridColumns,
-                            showPinnedPosts = true,
+                        HorizontalPager(
+                            state = pagerState,
+                            key = { index -> boards.getOrNull(index) ?: index },
+                            beyondViewportPageCount = 0,
                             modifier = Modifier.fillMaxSize()
-                        )
+                        ) { page ->
+                            val board = boards.getOrNull(page) ?: return@HorizontalPager
+                            val snapshot = if (board == activeSnapshot.board) activeSnapshot else viewModel.session.snapshotFor(board)
+                            ZoneBoardPage(
+                                board = board,
+                                snapshot = snapshot,
+                                session = viewModel.session,
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                headerStack = headerStack,
+                                scrollBehavior = scrollBehavior,
+                                columns = when {
+                                    board.isEntity -> entityColumns
+                                    board == ZoneBoard.Resale -> resaleColumns
+                                    else -> feedColumns
+                                },
+                                bottomContentPadding = bottomContentPadding,
+                                boardItemActions = boardItemActions,
+                                categoryTree = categoryTree,
+                                onFilterHeightMeasured = { heightPx ->
+                                    boardFilterHeights[board] = heightPx.toFloat()
+                                },
+                                isCurrentProvider = { uiState.selectedBoard == board },
+                                onGridStateReady = { boardKey, state -> pageGridStates[boardKey] = state },
+                                focusManager = focusManager
+                            )
+                        }
                     }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = pinnedHeaderHeightDp)
-                    .offset { IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt()) }
-                    .onSizeChanged { size ->
-                        collapsibleHeightPx = size.height.toFloat()
-                    }
-                    .clipToBounds()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                ZoneBoardFilterBar(
-                    board = activeSnapshot.board,
-                    filters = activeSnapshot.filters,
-                    subTypeOptions = viewModel.subTypes,
-                    onIntent = viewModel.session::dispatch,
-                    albumCategoryOptions = uiState.albumCategoryOptions,
-                    hobbyCategoryTree = categoryTree,
-                    hobbyIsGridMode = (activeSnapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true,
-                    showHobbyControlActions = false
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .onSizeChanged { size ->
-                        pinnedHeaderHeightPx = size.height.toFloat()
-                    }
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                val selectedTabIndex = uiState.availableTabs.indexOfFirst { it.first == activeSnapshot.board.type }
-                    .coerceAtLeast(0)
+            if (boards.isNotEmpty()) {
+                val currentPage = pagerState.currentPage.coerceIn(0, boards.lastIndex)
                 PrimaryScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
+                    selectedTabIndex = currentPage,
                     edgePadding = 16.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    divider = {},
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .onSizeChanged { size -> headerStack.onTabRowMeasured(size.height) }
                 ) {
-                    uiState.availableTabs.forEachIndexed { index, (tabType, tabTitle) ->
-                        val isSelected = index == selectedTabIndex
+                    boards.forEachIndexed { index, board ->
+                        val isSelected = index == currentPage
                         Tab(
                             selected = isSelected,
-                            onClick = { viewModel.selectTab(tabType) },
+                            onClick = { viewModel.selectBoard(board) },
                             text = {
                                 Text(
-                                    text = tabTitle,
+                                    text = uiState.boardTitle(board),
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
                         )
                     }
                 }
-
-                when (activeSnapshot.board) {
-                    ZoneBoard.Hobby -> {
-                        val hobbyFilter = activeSnapshot.filters.hobby
-                        val isGridMode = (activeSnapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.Filled.Search),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    BasicTextField(
-                                        value = hobbyFilter.keyword,
-                                        onValueChange = { viewModel.updateHobbyKeyword(it) },
-                                        singleLine = true,
-                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                        keyboardActions = KeyboardActions(
-                                            onSearch = {
-                                                focusManager.clearFocus()
-                                                viewModel.submitHobbySearch()
-                                            }
-                                        ),
-                                        decorationBox = { innerTextField ->
-                                            if (hobbyFilter.keyword.isEmpty()) {
-                                                Text(
-                                                    text = "在专区产品中搜索",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                )
-                                            }
-                                            innerTextField()
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (hobbyFilter.keyword.isNotEmpty()) {
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.updateHobbyKeyword("")
-                                                viewModel.submitHobbySearch()
-                                            },
-                                            modifier = Modifier.size(20.dp)
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(PoiIcons.Filled.Close),
-                                                contentDescription = "清空搜索",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            IconButton(
-                                onClick = { viewModel.toggleHobbyViewMode() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(if (isGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
-                                    contentDescription = if (isGridMode) "切换列表模式" else "切换网格模式",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { viewModel.openHobbyFilterSheet(true) },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                val hasAdvancedFilters = isHobbyAdvancedFilterActive(
-                                    sex = hobbyFilter.sex,
-                                    specs = hobbyFilter.specs,
-                                    scale = hobbyFilter.scale,
-                                    r18 = hobbyFilter.r18
-                                )
-                                BadgedBox(
-                                    badge = {
-                                        if (hasAdvancedFilters) {
-                                            Badge()
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.Filled.FilterList),
-                                        contentDescription = "高级筛选",
-                                        tint = if (hasAdvancedFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    ZoneBoard.Resale -> {
-                        val resaleKeyword = activeSnapshot.filters.resaleKeyword
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.Filled.Search),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    BasicTextField(
-                                        value = resaleKeyword,
-                                        onValueChange = { viewModel.updateResaleKeyword(it) },
-                                        singleLine = true,
-                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                        keyboardActions = KeyboardActions(
-                                            onSearch = {
-                                                focusManager.clearFocus()
-                                                viewModel.submitResaleSearch()
-                                            }
-                                        ),
-                                        decorationBox = { innerTextField ->
-                                            if (resaleKeyword.isEmpty()) {
-                                                Text(
-                                                    text = "在二手交易中搜索",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                )
-                                            }
-                                            innerTextField()
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (resaleKeyword.isNotEmpty()) {
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.updateResaleKeyword("")
-                                                viewModel.submitResaleSearch()
-                                            },
-                                            modifier = Modifier.size(20.dp)
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(PoiIcons.Filled.Close),
-                                                contentDescription = "清空搜索",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else -> Unit
-                }
             }
         }
     }
 
-    if (activeSnapshot.board == ZoneBoard.Hobby) {
+    if (uiState.selectedBoard == ZoneBoard.Hobby) {
         ZoneBoardHobbySheets(
             filters = activeSnapshot.filters,
             hobbyCategoryTree = categoryTree,
@@ -895,5 +701,477 @@ fun ZoneDetailScreen(
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ZoneBoardPage(
+    board: ZoneBoard,
+    snapshot: ZoneBoardSnapshot,
+    session: ZoneBoardSession,
+    uiState: ZoneDetailUiState,
+    viewModel: ZoneDetailViewModel,
+    headerStack: HomeHeaderStackState,
+    scrollBehavior: TopAppBarScrollBehavior,
+    columns: StaggeredGridCells,
+    bottomContentPadding: Dp,
+    boardItemActions: ZoneBoardItemActions,
+    categoryTree: Map<Int, List<CategoryItem>>,
+    onFilterHeightMeasured: (Int) -> Unit,
+    isCurrentProvider: () -> Boolean,
+    onGridStateReady: (ZoneBoard, LazyStaggeredGridState) -> Unit,
+    focusManager: FocusManager
+) {
+    val gridState = rememberLazyStaggeredGridState()
+    LaunchedEffect(gridState, board) { onGridStateReady(board, gridState) }
+
+    val isCurrent = isCurrentProvider()
+    val memoryKey = homeBoardMemoryKey(viewModel.zoneScope, board)
+    val itemCount = snapshot.content.itemCount
+    val errorMessage = snapshot.pageView.errorMessage
+    val contentEmpty = itemCount == 0 && errorMessage == null && !snapshot.pageView.isLoading
+    val errorEmpty = errorMessage != null && itemCount == 0
+    var restoredKey by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(board, viewModel.zoneScope) {
+        viewModel.ensureBoardLoaded(board)
+    }
+
+    var collapseFraction by remember(memoryKey) {
+        mutableFloatStateOf(snapshot.scrollPosition.filterCollapseFraction)
+    }
+    LaunchedEffect(itemCount, isCurrent, snapshot.pageView.isLoading) {
+        if (isCurrent && itemCount == 0 && !snapshot.pageView.isLoading) collapseFraction = 0f
+    }
+    var filterRestored by remember(memoryKey) { mutableStateOf(false) }
+    LaunchedEffect(memoryKey, isCurrent) {
+        if (!isCurrent) {
+            filterRestored = false
+            return@LaunchedEffect
+        }
+        val targetFraction = snapshot.scrollPosition.filterCollapseFraction
+        collapseFraction = targetFraction
+        filterRestored = true
+    }
+
+    var filterBarHeightPx by rememberSaveable { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val ownFilterHeight = if (board.isEntity) {
+        0.dp
+    } else if (filterBarHeightPx > 0) {
+        with(density) { filterBarHeightPx.toDp() }
+    } else {
+        headerStack.collapsibleHeight
+    }
+    val topInset = headerStack.pinnedHeight + ownFilterHeight
+
+    val shouldLoadMore by remember(gridState) {
+        derivedStateOf {
+            val totalCount = gridState.layoutInfo.totalItemsCount
+            val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalCount > 0 && lastVisibleIndex >= totalCount - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMore, isCurrent, snapshot.pageView.isEndReached, snapshot.pageView.isLoadingMore, snapshot.pageView.loadMoreError) {
+        if (isCurrent && shouldLoadMore && !snapshot.pageView.isEndReached &&
+            !snapshot.pageView.isLoadingMore && snapshot.pageView.loadMoreError == null
+        ) {
+            session.dispatch(ZoneBoardIntent.LoadMore(board))
+        }
+    }
+
+    LaunchedEffect(memoryKey, itemCount > 0) {
+        if (itemCount <= 0) return@LaunchedEffect
+        if (restoredKey == memoryKey) return@LaunchedEffect
+        val memory = snapshot.scrollPosition
+        val inRange = memory.index in 0 until itemCount
+        if (inRange && (memory.index != 0 || memory.offset != 0)) {
+            gridState.scrollToItem(memory.index, memory.offset)
+        } else {
+            if (!inRange) session.dispatch(ZoneBoardIntent.ResetScrollMemory(board))
+            gridState.scrollToItem(0)
+        }
+        restoredKey = memoryKey
+    }
+
+    LaunchedEffect(gridState, scrollBehavior.state, memoryKey) {
+        snapshotFlow {
+            val driverHeight = if (board.isEntity) {
+                0f
+            } else if (filterBarHeightPx > 0) {
+                filterBarHeightPx.toFloat()
+            } else {
+                headerStack.collapsibleHeightPx
+            }
+            Triple(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset,
+                if (driverHeight > 0f) {
+                    (-scrollBehavior.state.heightOffset / driverHeight).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            )
+        }.collect { (index, offset, filterCollapseFraction) ->
+            if (!isCurrentProvider()) return@collect
+            if (filterRestored) {
+                collapseFraction = filterCollapseFraction
+                session.dispatch(ZoneBoardIntent.SaveFilterCollapseFraction(board, filterCollapseFraction))
+            }
+            if (restoredKey == memoryKey) {
+                session.dispatch(ZoneBoardIntent.SaveScrollPosition(board, index, offset))
+            }
+        }
+    }
+
+    val filterToken = boardFilterToken(snapshot.filters, board)
+    var lastFilterToken by remember(memoryKey) { mutableStateOf(filterToken) }
+    LaunchedEffect(filterToken, memoryKey) {
+        if (filterToken == lastFilterToken) return@LaunchedEffect
+        lastFilterToken = filterToken
+        session.dispatch(ZoneBoardIntent.ResetScrollMemory(board))
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
+        gridState.scrollToItem(0)
+        restoredKey = memoryKey
+    }
+
+    val isRefreshing = snapshot.content.itemCount > 0 && snapshot.pageView.isLoading
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing) {
+        if (wasRefreshing && !isRefreshing && errorMessage == null && isCurrentProvider()) {
+            gridState.scrollToItem(0)
+            scrollBehavior.state.heightOffset = 0f
+            scrollBehavior.state.contentOffset = 0f
+        }
+        wasRefreshing = isRefreshing
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            snapshot.pageView.isLoading && itemCount == 0 -> {
+                PoiLoadingView(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = topInset, bottom = bottomContentPadding)
+                )
+            }
+            errorEmpty -> {
+                ZoneErrorPlaceholder(
+                    message = errorMessage.ifBlank { "数据加载失败" },
+                    onRetry = { if (isCurrent) session.dispatch(ZoneBoardIntent.RetryInitial(board)) },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = topInset)
+                        .padding(24.dp)
+                )
+            }
+            contentEmpty -> {
+                ZoneEmptyPlaceholder(
+                    text = board.emptyText,
+                    onRefresh = { if (isCurrent) session.dispatch(ZoneBoardIntent.Refresh(board)) },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = topInset)
+                        .padding(24.dp)
+                )
+            }
+            else -> {
+                ZoneBoardPane(
+                    board = board,
+                    content = snapshot.content,
+                    gridState = gridState,
+                    contentPadding = PaddingValues(
+                        start = 8.dp,
+                        end = 8.dp,
+                        top = topInset + 6.dp,
+                        bottom = bottomContentPadding
+                    ),
+                    onIntent = session::dispatch,
+                    itemActions = boardItemActions,
+                    columns = columns,
+                    showPinnedPosts = true,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        if (!board.isEntity) {
+            LaunchedEffect(filterBarHeightPx) {
+                if (filterBarHeightPx > 0) onFilterHeightMeasured(filterBarHeightPx)
+            }
+            LaunchedEffect(isCurrent, filterBarHeightPx) {
+                if (isCurrent && filterBarHeightPx > 0) {
+                    headerStack.onCollapsibleMeasured(filterBarHeightPx)
+                }
+            }
+
+            val filterRowScroll = remember { ScrollState(0) }
+            var filterRowRestored by remember(memoryKey) { mutableStateOf(false) }
+            LaunchedEffect(memoryKey, filterRowScroll.maxValue) {
+                if (filterRowRestored) return@LaunchedEffect
+                val savedX = snapshot.scrollPosition.filterRowScrollX
+                if (savedX > 0 && filterRowScroll.maxValue <= 0) return@LaunchedEffect
+                if (savedX > 0) filterRowScroll.scrollTo(savedX)
+                filterRowRestored = true
+            }
+            LaunchedEffect(memoryKey, filterRowScroll) {
+                snapshotFlow { filterRowScroll.value }.collect { scrollX ->
+                    if (filterRowRestored) session.dispatch(ZoneBoardIntent.SaveFilterRowScroll(board, scrollX))
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = headerStack.pinnedHeight)
+                    .offset {
+                        val heightPx = if (filterBarHeightPx > 0) {
+                            filterBarHeightPx
+                        } else {
+                            headerStack.collapsibleHeightPx.roundToInt()
+                        }
+                        val offsetY = if (isCurrentProvider() && filterRestored) {
+                            scrollBehavior.state.heightOffset
+                        } else {
+                            -(collapseFraction * heightPx)
+                        }
+                        IntOffset(0, offsetY.roundToInt())
+                    }
+                    .onSizeChanged { filterBarHeightPx = it.height }
+                    .clipToBounds()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                if (board == ZoneBoard.Hobby) {
+                    val hobbyFilter = snapshot.filters.hobby
+                    val isGridMode = (snapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true
+                    val hasAdvancedFilters = isHobbyAdvancedFilterActive(
+                        sex = hobbyFilter.sex,
+                        specs = hobbyFilter.specs,
+                        scale = hobbyFilter.scale,
+                        r18 = hobbyFilter.r18
+                    )
+                    ZoneHobbySearchBar(
+                        keyword = hobbyFilter.keyword,
+                        isGridMode = isGridMode,
+                        hasAdvancedFilters = hasAdvancedFilters,
+                        onKeywordChange = { viewModel.updateHobbyKeyword(it) },
+                        onSearch = {
+                            focusManager.clearFocus()
+                            viewModel.submitHobbySearch()
+                        },
+                        onToggleViewMode = { viewModel.toggleHobbyViewMode() },
+                        onOpenFilterSheet = { viewModel.openHobbyFilterSheet(true) }
+                    )
+                } else if (board == ZoneBoard.Resale) {
+                    val resaleKeyword = snapshot.filters.resaleKeyword
+                    ZoneResaleSearchBar(
+                        keyword = resaleKeyword,
+                        onKeywordChange = { viewModel.updateResaleKeyword(it) },
+                        onSearch = {
+                            focusManager.clearFocus()
+                            viewModel.submitResaleSearch()
+                        }
+                    )
+                }
+
+                ZoneBoardFilterBar(
+                    board = board,
+                    filters = snapshot.filters,
+                    subTypeOptions = viewModel.subTypes,
+                    onIntent = session::dispatch,
+                    albumCategoryOptions = uiState.albumCategoryOptions,
+                    hobbyCategoryTree = categoryTree,
+                    hobbyIsGridMode = (snapshot.content as? ZoneBoardContent.Hobby)?.isGridMode ?: true,
+                    showHobbyControlActions = false,
+                    rowScrollState = filterRowScroll
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoneHobbySearchBar(
+    keyword: String,
+    isGridMode: Boolean,
+    hasAdvancedFilters: Boolean,
+    onKeywordChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onToggleViewMode: () -> Unit,
+    onOpenFilterSheet: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    painter = painterResource(PoiIcons.Filled.Search),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                BasicTextField(
+                    value = keyword,
+                    onValueChange = onKeywordChange,
+                    singleLine = true,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    decorationBox = { innerTextField ->
+                        if (keyword.isEmpty()) {
+                            Text(
+                                text = "在专区产品中搜索",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        innerTextField()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                if (keyword.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onKeywordChange("")
+                            onSearch()
+                        },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Close),
+                            contentDescription = "清空搜索",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        IconButton(
+            onClick = onToggleViewMode,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                painter = painterResource(if (isGridMode) PoiIcons.AutoMirrored.Filled.List else PoiIcons.Filled.GridView),
+                contentDescription = if (isGridMode) "切换列表模式" else "切换网格模式",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        IconButton(
+            onClick = onOpenFilterSheet,
+            modifier = Modifier.size(36.dp)
+        ) {
+            BadgedBox(
+                badge = {
+                    if (hasAdvancedFilters) {
+                        Badge()
+                    }
+                }
+            ) {
+                Icon(
+                    painter = painterResource(PoiIcons.Filled.FilterList),
+                    contentDescription = "高级筛选",
+                    tint = if (hasAdvancedFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoneResaleSearchBar(
+    keyword: String,
+    onKeywordChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    painter = painterResource(PoiIcons.Filled.Search),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                BasicTextField(
+                    value = keyword,
+                    onValueChange = onKeywordChange,
+                    singleLine = true,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    decorationBox = { innerTextField ->
+                        if (keyword.isEmpty()) {
+                            Text(
+                                text = "在二手交易中搜索",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        innerTextField()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                if (keyword.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onKeywordChange("")
+                            onSearch()
+                        },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Close),
+                            contentDescription = "清空搜索",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

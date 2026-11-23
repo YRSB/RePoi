@@ -182,6 +182,35 @@ class ZoneDetailViewModelTest {
     }
 
     @Test
+    fun testSelectBoardAndEnsureBoardLoaded() = runTest(testDispatcher) {
+        val mockApi = MockApi()
+        setupDefaultRoutes(mockApi)
+        val env = TestEnv(this, mockApi)
+
+        val vm = env.createViewModel()
+        vm.setNodeId(100L)
+        advanceUntilIdle()
+
+        assertEquals(5, vm.uiState.value.boards.size)
+        assertEquals(ZoneBoard.Action, vm.uiState.value.selectedBoard)
+        assertEquals("动态", vm.uiState.value.boardTitle(ZoneBoard.Action))
+        assertEquals("集市", vm.uiState.value.boardTitle(ZoneBoard.Resale))
+
+        vm.ensureBoardLoaded(ZoneBoard.Hobby)
+        advanceUntilIdle()
+        val hobbySnapshot = vm.session.snapshotFor(ZoneBoard.Hobby)
+        val hobbyContent = hobbySnapshot.content as ZoneBoardContent.Hobby
+        assertEquals(1, hobbyContent.items.size)
+
+        vm.selectBoard(ZoneBoard.Resale)
+        advanceUntilIdle()
+
+        assertEquals("resale_item", vm.uiState.value.selectedTab)
+        assertEquals(ZoneBoard.Resale, vm.uiState.value.selectedBoard)
+        assertEquals(ZoneBoard.Resale, vm.activeSnapshot.value.board)
+    }
+
+    @Test
     fun testToggleFocus() = runTest(testDispatcher) {
         val mockApi = MockApi()
         setupDefaultRoutes(mockApi)

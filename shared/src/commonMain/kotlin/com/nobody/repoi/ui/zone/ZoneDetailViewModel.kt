@@ -34,12 +34,17 @@ data class ZoneDetailUiState(
     val focusState: Boolean = false,
     val followCount: Long = 0L,
     val availableTabs: List<Pair<String, String>> = listOf("action" to "动态"),
+    val boards: List<ZoneBoard> = listOf(ZoneBoard.Action),
+    val selectedBoard: ZoneBoard = ZoneBoard.Action,
     val selectedTab: String = "action",
 
     val albumCategoryOptions: List<AlbumCategoryOption> = emptyList(),
 
     val showPublishSheet: Boolean = false
 ) {
+    fun boardTitle(board: ZoneBoard): String =
+        availableTabs.firstOrNull { it.first == board.type }?.second ?: board.label
+
     val isAlbumTab: Boolean
         get() = selectedTab == "album" || selectedTab == "share"
 
@@ -113,6 +118,8 @@ class ZoneDetailViewModel(
                     )
                 ),
                 selectedTab = "action",
+                boards = listOf(ZoneBoard.Action),
+                selectedBoard = ZoneBoard.Action,
                 albumCategoryOptions = emptyList(),
                 showPublishSheet = false
             )
@@ -129,12 +136,17 @@ class ZoneDetailViewModel(
             val result = zoneRepository.getZoneInfo(nodeId)
             result.onSuccess { info ->
                 val tabs = parseTabs(info.tabs)
+                val boards = tabs.mapNotNull { ZoneBoard.fromType(it.first) }.ifEmpty { listOf(ZoneBoard.Action) }
+                val currentSelected = boards.firstOrNull { it.type == _uiState.value.selectedTab } ?: boards.first()
                 _uiState.update {
                     it.copy(
                         zoneInfo = info,
                         focusState = info.focusState,
                         followCount = info.followCount,
                         availableTabs = tabs,
+                        boards = boards,
+                        selectedBoard = currentSelected,
+                        selectedTab = currentSelected.type,
                         isInfoLoading = false
                     )
                 }
@@ -162,14 +174,28 @@ class ZoneDetailViewModel(
         }
     }
 
-    fun selectTab(tabType: String) {
-        val board = ZoneBoard.fromType(tabType) ?: ZoneBoard.Action
-        if (_uiState.value.selectedTab == board.type && session.activeSnapshot.value.board == board) return
-        _uiState.update { it.copy(selectedTab = board.type) }
+    fun selectBoard(board: ZoneBoard) {
+        if (_uiState.value.selectedBoard == board && session.activeSnapshot.value.board == board) return
+        _uiState.update {
+            it.copy(
+                selectedTab = board.type,
+                selectedBoard = board
+            )
+        }
         session.dispatch(ZoneBoardIntent.SelectBoard(board))
         if (board == ZoneBoard.Album) {
             syncAlbumCategories()
         }
+    }
+
+    fun selectTab(tabType: String) {
+        val board = ZoneBoard.fromType(tabType) ?: ZoneBoard.Action
+        selectBoard(board)
+    }
+
+    fun ensureBoardLoaded(board: ZoneBoard) {
+        if (board !in _uiState.value.boards) return
+        session.snapshotFor(board)
     }
 
     fun toggleFocus() {
