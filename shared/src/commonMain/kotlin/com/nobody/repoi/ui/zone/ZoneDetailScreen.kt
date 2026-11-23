@@ -255,8 +255,11 @@ fun ZoneDetailScreen(
         }
     }
 
-    LaunchedEffect(selectedBoardIndex, boards.size) {
-        if (boards.isNotEmpty() && pagerState.currentPage != selectedBoardIndex) {
+    LaunchedEffect(selectedBoardIndex, boards.size, pagerState.pageCount) {
+        if (boards.isNotEmpty() &&
+            selectedBoardIndex in 0 until pagerState.pageCount &&
+            pagerState.currentPage != selectedBoardIndex
+        ) {
             pagerState.scrollToPage(selectedBoardIndex)
         }
     }
@@ -576,11 +579,11 @@ fun ZoneDetailScreen(
                     } else {
                         HorizontalPager(
                             state = pagerState,
-                            key = { index -> boards[index] },
+                            key = { index -> boards.getOrNull(index) ?: index },
                             beyondViewportPageCount = 0,
                             modifier = Modifier.fillMaxSize()
                         ) { page ->
-                            val board = boards[page]
+                            val board = boards.getOrNull(page) ?: return@HorizontalPager
                             val snapshot = if (board == activeSnapshot.board) activeSnapshot else viewModel.session.snapshotFor(board)
                             ZoneBoardPage(
                                 board = board,
