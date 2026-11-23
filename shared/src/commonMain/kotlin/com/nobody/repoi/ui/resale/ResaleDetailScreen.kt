@@ -22,7 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -227,7 +227,7 @@ fun ResaleDetailScreen(
                             .padding(innerPadding),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(36.dp)
                         )

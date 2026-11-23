@@ -31,7 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -274,10 +274,9 @@ fun PictureGalleryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                     ) {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("正在保存原图…", color = Color.White)
@@ -485,10 +484,9 @@ private fun GalleryBottomPanel(
 
         when {
             isRelateLoading -> {
-                CircularProgressIndicator(
+                LoadingIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = Color.White.copy(alpha = 0.7f),
-                    strokeWidth = 2.dp
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
 

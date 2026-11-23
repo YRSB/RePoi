@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -146,7 +146,7 @@ fun SettingsShieldListContent(
                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator()
+                LoadingIndicator()
             }
         } else if (state.loadFailed) {
             ElevatedCard(

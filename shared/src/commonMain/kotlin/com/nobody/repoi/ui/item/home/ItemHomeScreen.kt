@@ -34,7 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -186,7 +186,7 @@ fun ItemHomeScreen(
                                         .height(280.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(
+                                    LoadingIndicator(
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(36.dp)
                                     )

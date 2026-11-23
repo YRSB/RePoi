@@ -11,7 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -482,10 +482,9 @@ fun PoiZoomableImage(
             )
 
             if (isImageLoading) {
-                CircularProgressIndicator(
+                LoadingIndicator(
                     modifier = Modifier.size(36.dp),
-                    color = Color.White.copy(alpha = 0.7f),
-                    strokeWidth = 3.dp
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
         }

@@ -23,7 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -141,9 +141,8 @@ fun WorksCollectEditScreen(
                         enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.isLoading && !uiState.loadFailed
                     ) {
                         if (uiState.isSaving) {
-                            CircularProgressIndicator(
+                            LoadingIndicator(
                                 modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
@@ -168,7 +167,7 @@ fun WorksCollectEditScreen(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                LoadingIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             LazyColumn(
@@ -309,9 +308,8 @@ fun WorksCollectEditScreen(
                             enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.isLoading && !uiState.loadFailed
                         ) {
                             if (uiState.isSaving) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
@@ -336,9 +334,8 @@ fun WorksCollectEditScreen(
                                 enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.loadFailed
                             ) {
                                 if (uiState.isDeleting) {
-                                    CircularProgressIndicator(
+                                    LoadingIndicator(
                                         modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 } else {

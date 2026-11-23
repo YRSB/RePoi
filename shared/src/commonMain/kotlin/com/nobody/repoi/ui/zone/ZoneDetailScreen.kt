@@ -29,7 +29,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -479,9 +479,8 @@ fun ZoneDetailScreen(
                                 .padding(end = 8.dp)
                         ) {
                             if (isFocusToggling) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(14.dp),
-                                    strokeWidth = 2.dp
+                                LoadingIndicator(
+                                    modifier = Modifier.size(14.dp)
                                 )
                             } else {
                                 Text(
@@ -505,10 +504,9 @@ fun ZoneDetailScreen(
                                 .padding(end = 8.dp)
                         ) {
                             if (isFocusToggling) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(14.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
                                 Text(
