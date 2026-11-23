@@ -657,47 +657,17 @@ private fun UserInfoTopAppBar(
                 onClick = onBack
             )
 
-            Box(
+            UserInfoTopBarTitle(
+                profile = profile,
+                isSelf = isSelf,
+                isFollowed = isFollowed,
+                visible = isTitleVisible,
+                onAvatarClick = onAvatarClick,
+                onToggleFollow = onToggleFollow,
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                AnimatedVisibility(
-                    visible = isTitleVisible,
-                    enter = fadeIn() + slideInVertically { it / 2 },
-                    exit = fadeOut() + slideOutVertically { it / 2 }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp)
-                    ) {
-                        UserAvatar(
-                            avatarUrl = profile.header,
-                            size = 32.dp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable(onClick = onAvatarClick)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = profile.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        if (!isSelf && !isFollowed) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            SmallFollowButton(
-                                isFollowed = false,
-                                onClick = onToggleFollow
-                            )
-                        }
-                    }
-                }
-            }
+                    .fillMaxHeight()
+            )
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -718,6 +688,57 @@ private fun UserInfoTopAppBar(
                     isSolid = isSolid,
                     onClick = onRefresh
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserInfoTopBarTitle(
+    profile: UserProfile,
+    isSelf: Boolean,
+    isFollowed: Boolean,
+    visible: Boolean,
+    onAvatarClick: () -> Unit,
+    onToggleFollow: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.CenterStart
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+            ) {
+                UserAvatar(
+                    avatarUrl = profile.header,
+                    size = 32.dp,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onAvatarClick)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = profile.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (!isSelf && !isFollowed) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SmallFollowButton(
+                        isFollowed = false,
+                        onClick = onToggleFollow
+                    )
+                }
             }
         }
     }
