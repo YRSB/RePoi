@@ -10,8 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -350,7 +350,6 @@ fun UserInfoScreen(
                         val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                         val topBarHeight = statusBarTopPadding + 56.dp
                         val tabRowHeight = 48.dp
-                        val pagerHeight = (maxHeight - topBarHeight - tabRowHeight).coerceAtLeast(0.dp)
 
                         val topBarHeightPx = with(density) { topBarHeight.toPx() }
                         val bannerHeightPx = with(density) { 200.dp.toPx() }
@@ -359,36 +358,44 @@ fun UserInfoScreen(
                         }
 
                         var headerContentHeightPx by remember { mutableFloatStateOf(0f) }
-                        val maxScrollUpPx = remember(headerContentHeightPx, topBarHeightPx) {
-                            (headerContentHeightPx - topBarHeightPx).coerceAtLeast(0f)
+                        val maxScrollUpPx by remember(headerContentHeightPx, topBarHeightPx) {
+                            derivedStateOf {
+                                (headerContentHeightPx - topBarHeightPx).coerceAtLeast(0f)
+                            }
                         }
 
-                        var headerOffsetPx by remember { mutableFloatStateOf(0f) }
+                        var scrollOffsetPx by remember { mutableFloatStateOf(0f) }
 
                         LaunchedEffect(maxScrollUpPx) {
-                            if (headerOffsetPx < -maxScrollUpPx) {
-                                headerOffsetPx = -maxScrollUpPx
+                            if (scrollOffsetPx > maxScrollUpPx) {
+                                scrollOffsetPx = maxScrollUpPx
                             }
                         }
 
                         val collapseProgress by remember(bannerThresholdPx) {
                             derivedStateOf {
                                 if (bannerThresholdPx <= 0f) 0f
-                                else (-headerOffsetPx / bannerThresholdPx).coerceIn(0f, 1f)
+                                else (scrollOffsetPx / bannerThresholdPx).coerceIn(0f, 1f)
                             }
                         }
 
-                        val nestedScrollConnection = remember(maxScrollUpPx, pagerState) {
+                        val isTitleVisible by remember(bannerHeightPx) {
+                            derivedStateOf {
+                                scrollOffsetPx >= bannerHeightPx
+                            }
+                        }
+
+                        val nestedScrollConnection = remember(pagerState) {
                             object : NestedScrollConnection {
                                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                                     if (pagerState.isScrollInProgress) {
                                         return Offset.Zero
                                     }
                                     val delta = available.y
-                                    return if (delta < 0f && headerOffsetPx > -maxScrollUpPx) {
-                                        val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
-                                        val consumed = newOffset - headerOffsetPx
-                                        headerOffsetPx = newOffset
+                                    return if (delta < 0f && scrollOffsetPx < maxScrollUpPx) {
+                                        val newOffset = (scrollOffsetPx - delta).coerceIn(0f, maxScrollUpPx)
+                                        val consumed = -(newOffset - scrollOffsetPx)
+                                        scrollOffsetPx = newOffset
                                         Offset(0f, consumed)
                                     } else {
                                         Offset.Zero
@@ -404,10 +411,10 @@ fun UserInfoScreen(
                                         return Offset.Zero
                                     }
                                     val delta = available.y
-                                    return if (delta > 0f && headerOffsetPx < 0f) {
-                                        val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
-                                        val consumedY = newOffset - headerOffsetPx
-                                        headerOffsetPx = newOffset
+                                    return if (delta > 0f && scrollOffsetPx > 0f) {
+                                        val newOffset = (scrollOffsetPx - delta).coerceIn(0f, maxScrollUpPx)
+                                        val consumedY = -(newOffset - scrollOffsetPx)
+                                        scrollOffsetPx = newOffset
                                         Offset(0f, consumedY)
                                     } else {
                                         Offset.Zero
@@ -416,9 +423,21 @@ fun UserInfoScreen(
                             }
                         }
 
-                        val headerDraggableState = rememberDraggableState { delta ->
-                            val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
-                            headerOffsetPx = newOffset
+                        val headerScrollableState = rememberScrollableState { delta ->
+                            val old = scrollOffsetPx
+                            val target = (scrollOffsetPx - delta).coerceIn(0f, maxScrollUpPx)
+                            scrollOffsetPx = target
+                            -(target - old)
+                        }
+
+                        val currentTabRowYPx by remember(topBarHeightPx) {
+                            derivedStateOf {
+                                (headerContentHeightPx - scrollOffsetPx).coerceAtLeast(topBarHeightPx)
+                            }
+                        }
+
+                        val remainingHeightDp = with(density) {
+                            (maxHeight.toPx() - currentTabRowYPx).coerceAtLeast(0f).toDp()
                         }
 
                         Box(
@@ -432,78 +451,80 @@ fun UserInfoScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .offset { IntOffset(x = 0, y = headerOffsetPx.roundToInt()) }
+                                    .offset { IntOffset(x = 0, y = -scrollOffsetPx.roundToInt()) }
+                                    .scrollable(
+                                        state = headerScrollableState,
+                                        orientation = Orientation.Vertical
+                                    )
+                                    .onGloballyPositioned { coordinates ->
+                                        val h = coordinates.size.height.toFloat()
+                                        if (headerContentHeightPx != h) {
+                                            headerContentHeightPx = h
+                                        }
+                                    }
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .draggable(
-                                            state = headerDraggableState,
-                                            orientation = Orientation.Vertical
-                                        )
-                                        .onGloballyPositioned { coordinates ->
-                                            val h = coordinates.size.height.toFloat()
-                                            if (headerContentHeightPx != h) {
-                                                headerContentHeightPx = h
-                                            }
+                                UserProfileBanner(
+                                    profile = profile,
+                                    isSelf = uiState.isSelf,
+                                    onBack = onNavigateBack,
+                                    onEdit = { viewModel.startEditing() },
+                                    onRefresh = { viewModel.loadProfile(profile.id) },
+                                    onBannerClick = {
+                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
+                                        if (raw.isNotBlank()) imageViewer.show(raw)
+                                    },
+                                    showNavigationActions = false
+                                )
+
+                                UserProfileHeader(
+                                    profile = profile,
+                                    uiState = uiState,
+                                    onAvatarClick = {
+                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                        if (raw.isNotBlank()) imageViewer.show(raw)
+                                    },
+                                    onNavigateToFriendList = { tab ->
+                                        onNavigateToFriendList(profile.id, tab)
+                                    },
+                                    onToggleFollow = { viewModel.toggleFollow() },
+                                    onToggleIntro = { viewModel.toggleIntroExpanded() },
+                                    onNavigateToChat = onNavigateToChat
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                UserOrderStatsCard(
+                                    profile = profile,
+                                    uiState = uiState,
+                                    onNavigateToCollect = onNavigateToCollect,
+                                    onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                BasicProfileSection(
+                                    profile = profile,
+                                    onCopyUid = { uid ->
+                                        coroutineScope.launch {
+                                            clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
+                                            snackbarHostState.showSnackbar("UID 已复制")
                                         }
-                                ) {
-                                    UserProfileBanner(
-                                        profile = profile,
-                                        isSelf = uiState.isSelf,
-                                        onBack = onNavigateBack,
-                                        onEdit = { viewModel.startEditing() },
-                                        onRefresh = { viewModel.loadProfile(profile.id) },
-                                        onBannerClick = {
-                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
-                                            if (raw.isNotBlank()) imageViewer.show(raw)
-                                        },
-                                        showNavigationActions = false
-                                    )
+                                    }
+                                )
 
-                                    UserProfileHeader(
-                                        profile = profile,
-                                        uiState = uiState,
-                                        onAvatarClick = {
-                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                            if (raw.isNotBlank()) imageViewer.show(raw)
-                                        },
-                                        onNavigateToFriendList = { tab ->
-                                            onNavigateToFriendList(profile.id, tab)
-                                        },
-                                        onToggleFollow = { viewModel.toggleFollow() },
-                                        onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                        onNavigateToChat = onNavigateToChat
-                                    )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
 
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    UserOrderStatsCard(
-                                        profile = profile,
-                                        uiState = uiState,
-                                        onNavigateToCollect = onNavigateToCollect,
-                                        onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    BasicProfileSection(
-                                        profile = profile,
-                                        onCopyUid = { uid ->
-                                            coroutineScope.launch {
-                                                clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
-                                                snackbarHostState.showSnackbar("UID 已复制")
-                                            }
-                                        }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .offset { IntOffset(x = 0, y = currentTabRowYPx.roundToInt()) }
+                                    .height(remainingHeightDp)
+                            ) {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
                                     color = MaterialTheme.colorScheme.surface,
-                                    tonalElevation = if (collapseProgress > 0.9f) 1.dp else 0.dp
+                                    tonalElevation = if (currentTabRowYPx <= topBarHeightPx) 2.dp else 0.dp
                                 ) {
                                     UserContentTabs(
                                         selectedTab = pagerState.currentPage,
@@ -519,7 +540,7 @@ fun UserInfoScreen(
                                     state = pagerState,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(pagerHeight)
+                                        .weight(1f)
                                 ) { page ->
                                     when (page) {
                                         0 -> UserAlbumPage(
@@ -551,6 +572,7 @@ fun UserInfoScreen(
                                 isSelf = uiState.isSelf,
                                 isFollowed = uiState.isFollowed,
                                 collapseProgress = collapseProgress,
+                                isTitleVisible = isTitleVisible,
                                 onBack = onNavigateBack,
                                 onEdit = { viewModel.startEditing() },
                                 onRefresh = { viewModel.loadProfile(profile.id) },
@@ -601,6 +623,7 @@ private fun UserInfoTopAppBar(
     isSelf: Boolean,
     isFollowed: Boolean,
     collapseProgress: Float,
+    isTitleVisible: Boolean = collapseProgress >= 0.85f,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onRefresh: () -> Unit,
@@ -612,19 +635,24 @@ private fun UserInfoTopAppBar(
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val backgroundColor = remember(collapseProgress, surfaceColor) {
-        surfaceColor.copy(alpha = collapseProgress.coerceIn(0f, 1f))
+        if (collapseProgress <= 0.02f) {
+            Color.Transparent
+        } else if (collapseProgress >= 0.98f) {
+            surfaceColor
+        } else {
+            surfaceColor.copy(alpha = collapseProgress.coerceIn(0f, 1f))
+        }
     }
 
     Surface(
         color = backgroundColor,
-        modifier = modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(56.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .height(56.dp)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -636,7 +664,7 @@ private fun UserInfoTopAppBar(
             )
 
             AnimatedVisibility(
-                visible = isSolid,
+                visible = isTitleVisible,
                 enter = fadeIn() + slideInVertically { it / 2 },
                 exit = fadeOut() + slideOutVertically { it / 2 },
                 modifier = Modifier.weight(1f)
