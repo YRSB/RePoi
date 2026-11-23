@@ -1,7 +1,10 @@
 package com.nobody.repoi.ui.user
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -10,9 +13,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.FlingBehavior
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,6 +40,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -82,6 +86,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,7 +103,11 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -135,8 +144,6 @@ import com.nobody.repoi.ui.common.PoiIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
 
-private const val OUTER_HEADER_ITEM_COUNT = 4
-
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UserInfoScreen(
@@ -160,7 +167,6 @@ fun UserInfoScreen(
     val isLandscapeState = remember { mutableStateOf(false) }
     val isWideScreen = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-    val outerListState = rememberLazyListState()
     val albumListState = rememberLazyListState()
     val actionListState = rememberLazyListState()
     val resaleListState = rememberLazyListState()
@@ -179,6 +185,33 @@ fun UserInfoScreen(
     LaunchedEffect(uiState.selectedTab) {
         if (!pagerState.isScrollInProgress && pagerState.currentPage != uiState.selectedTab && uiState.selectedTab in 0..2) {
             pagerState.animateScrollToPage(uiState.selectedTab)
+        }
+    }
+
+    var collapsibleHeightPx by remember { mutableFloatStateOf(0f) }
+    var headerOffsetPx by remember { mutableFloatStateOf(0f) }
+
+    val density = LocalDensity.current
+    val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val statusBarTopPaddingPx = with(density) { statusBarTopPadding.toPx() }
+    val maxCollapsePx = (collapsibleHeightPx - statusBarTopPaddingPx).coerceAtLeast(0f)
+
+    LaunchedEffect(maxCollapsePx) {
+        if (maxCollapsePx > 0f && headerOffsetPx < -maxCollapsePx) {
+            headerOffsetPx = -maxCollapsePx
+        }
+    }
+
+    val isTabsSticky by remember(maxCollapsePx) {
+        derivedStateOf {
+            maxCollapsePx > 0f && headerOffsetPx <= -maxCollapsePx + 1f
+        }
+    }
+
+    val statusBarAlpha by remember(maxCollapsePx) {
+        derivedStateOf {
+            if (maxCollapsePx <= 0f) 0f
+            else (-headerOffsetPx / maxCollapsePx).coerceIn(0f, 1f)
         }
     }
 
@@ -201,6 +234,13 @@ fun UserInfoScreen(
                 coroutineScope.launch {
                     activeListState.animateScrollToItem(0)
                 }
+            } else if (headerOffsetPx < 0f) {
+                coroutineScope.launch {
+                    Animatable(headerOffsetPx).animateTo(0f) {
+                        headerOffsetPx = value
+                    }
+                }
+                viewModel.refreshActiveTab()
             } else {
                 viewModel.refreshActiveTab()
             }
@@ -214,77 +254,34 @@ fun UserInfoScreen(
                 1 -> actionListState.animateScrollToItem(0)
                 2 -> resaleListState.animateScrollToItem(0)
             }
+            if (headerOffsetPx < 0f) {
+                Animatable(headerOffsetPx).animateTo(0f) {
+                    headerOffsetPx = value
+                }
+            }
             viewModel.refreshActiveTab()
         }
     }
 
-    val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
-
-    val outerFlingBehavior: FlingBehavior = remember(defaultFlingBehavior, outerListState, pagerState, albumListState, actionListState, resaleListState, coroutineScope) {
-        object : FlingBehavior {
-            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                val remainingVelocity = with(defaultFlingBehavior) {
-                    performFling(initialVelocity)
-                }
-                if (remainingVelocity > 50f) {
-                    val activeList = when (pagerState.currentPage) {
-                        0 -> albumListState
-                        1 -> actionListState
-                        2 -> resaleListState
-                        else -> null
-                    }
-                    activeList?.let { targetList ->
-                        coroutineScope.launch {
-                            targetList.scroll {
-                                with(defaultFlingBehavior) {
-                                    performFling(remainingVelocity)
-                                }
-                            }
-                        }
-                    }
-                }
-                return remainingVelocity
-            }
-        }
-    }
-
-    val nestedScrollConnection = remember(outerListState, pagerState, albumListState, actionListState, resaleListState, outerFlingBehavior, defaultFlingBehavior, coroutineScope) {
+    val nestedScrollConnection = remember(maxCollapsePx, pagerState, albumListState, actionListState, resaleListState, coroutineScope) {
         object : NestedScrollConnection {
-            private fun currentChildCanScrollBackward(): Boolean {
-                val activeListState = when (pagerState.currentPage) {
+            private fun activeListCanScrollBackward(): Boolean {
+                val activeList = when (pagerState.currentPage) {
                     0 -> albumListState
                     1 -> actionListState
                     2 -> resaleListState
                     else -> null
                 }
-                return activeListState?.canScrollBackward == true
+                return activeList?.canScrollBackward == true
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
-                if (delta < 0) {
-                    val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
-                    val canScrollOuter = if (tabsItem != null) {
-                        tabsItem.offset > 0
-                    } else {
-                        outerListState.firstVisibleItemIndex < OUTER_HEADER_ITEM_COUNT
-                    }
-                    if (canScrollOuter) {
-                        val maxAllowedScroll = if (tabsItem != null) tabsItem.offset.toFloat() else Float.MAX_VALUE
-                        val toScroll = min(-delta, maxAllowedScroll)
-                        if (toScroll > 0f) {
-                            val consumed = outerListState.dispatchRawDelta(toScroll)
-                            return Offset(0f, -consumed)
-                        }
-                    }
-                }
-
-                if (delta > 0 && !currentChildCanScrollBackward()) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        val consumed = outerListState.dispatchRawDelta(-delta)
-                        return Offset(0f, -consumed)
-                    }
+                if (delta < 0f && headerOffsetPx > -maxCollapsePx) {
+                    val newOffset = (headerOffsetPx + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumed = newOffset - headerOffsetPx
+                    headerOffsetPx = newOffset
+                    return Offset(0f, consumed)
                 }
                 return Offset.Zero
             }
@@ -295,31 +292,23 @@ fun UserInfoScreen(
                 source: NestedScrollSource
             ): Offset {
                 val delta = available.y
-                if (delta > 0) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        val consumedDelta = outerListState.dispatchRawDelta(-delta)
-                        return Offset(0f, -consumedDelta)
-                    }
+                if (delta > 0f && !activeListCanScrollBackward() && headerOffsetPx < 0f) {
+                    val newOffset = (headerOffsetPx + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumed = newOffset - headerOffsetPx
+                    headerOffsetPx = newOffset
+                    return Offset(0f, consumed)
                 }
                 return Offset.Zero
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 val deltaY = available.y
-                val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
-                val canScrollOuter = if (tabsItem != null) {
-                    tabsItem.offset > 0
-                } else {
-                    outerListState.firstVisibleItemIndex < OUTER_HEADER_ITEM_COUNT
-                }
-                if (deltaY < 0 && canScrollOuter) {
-                    coroutineScope.launch {
-                        outerListState.scroll {
-                            with(outerFlingBehavior) {
-                                performFling(-deltaY)
-                            }
-                        }
+                if (deltaY < -50f && headerOffsetPx > -maxCollapsePx) {
+                    Animatable(headerOffsetPx).animateTo(
+                        targetValue = -maxCollapsePx,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) {
+                        headerOffsetPx = value
                     }
                     return available
                 }
@@ -331,40 +320,51 @@ fun UserInfoScreen(
                 available: Velocity
             ): Velocity {
                 val deltaY = available.y
-                if (deltaY > 0) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        coroutineScope.launch {
-                            outerListState.scroll {
-                                with(defaultFlingBehavior) {
-                                    performFling(-deltaY)
-                                }
-                            }
-                        }
-                        return Velocity(0f, deltaY)
+                if (deltaY > 50f && !activeListCanScrollBackward() && headerOffsetPx < 0f) {
+                    Animatable(headerOffsetPx).animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    ) {
+                        headerOffsetPx = value
                     }
+                    return Velocity(0f, deltaY)
                 }
                 return Velocity.Zero
             }
         }
     }
 
-    val isTabsSticky by remember(outerListState) {
-        derivedStateOf {
-            val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == OUTER_HEADER_ITEM_COUNT }
-            if (tabsItem != null) {
-                tabsItem.offset <= 0
+    val headerScrollableState = remember(maxCollapsePx, pagerState, albumListState, actionListState, resaleListState) {
+        ScrollableState { delta ->
+            val activeList = when (pagerState.currentPage) {
+                0 -> albumListState
+                1 -> actionListState
+                2 -> resaleListState
+                else -> null
+            }
+            if (delta < 0f) {
+                if (headerOffsetPx > -maxCollapsePx) {
+                    val newOffset = (headerOffsetPx + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumed = newOffset - headerOffsetPx
+                    headerOffsetPx = newOffset
+                    consumed
+                } else {
+                    activeList?.dispatchRawDelta(-delta)?.let { -it } ?: 0f
+                }
             } else {
-                outerListState.firstVisibleItemIndex >= OUTER_HEADER_ITEM_COUNT
+                if (activeList?.canScrollBackward == true) {
+                    activeList.dispatchRawDelta(-delta).let { -it }
+                } else if (headerOffsetPx < 0f) {
+                    val newOffset = (headerOffsetPx + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumed = newOffset - headerOffsetPx
+                    headerOffsetPx = newOffset
+                    consumed
+                } else {
+                    0f
+                }
             }
         }
     }
-
-    val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val tabRowTopPadding by animateDpAsState(
-        targetValue = if (isTabsSticky) statusBarTopPadding else 0.dp,
-        label = "tabRowTopPadding"
-    )
 
     LaunchedEffect(userId) {
         viewModel.initUserId(userId)
@@ -550,21 +550,34 @@ fun UserInfoScreen(
                         }
                     } else {
 
-                        Box(
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .widthIn(max = 720.dp)
                                 .fillMaxWidth()
+                                .nestedScroll(nestedScrollConnection)
                         ) {
-                            LazyColumn(
-                                state = outerListState,
-                                flingBehavior = outerFlingBehavior,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
+                            val pagerHeight = (maxHeight - statusBarTopPadding - 48.dp).coerceAtLeast(200.dp)
 
-                                item(key = "banner", contentType = "banner") {
-                                    UserProfileBanner(
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .offset { IntOffset(x = 0, y = headerOffsetPx.roundToInt()) }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onSizeChanged { size ->
+                                            collapsibleHeightPx = size.height.toFloat()
+                                        }
+                                        .scrollable(
+                                            state = headerScrollableState,
+                                            orientation = Orientation.Vertical
+                                        )
+                                ) {
+                                    UserProfileIdentityPane(
                                         profile = profile,
+                                        uiState = uiState,
                                         isSelf = uiState.isSelf,
                                         onBack = onNavigateBack,
                                         onEdit = { viewModel.startEditing() },
@@ -573,14 +586,6 @@ fun UserInfoScreen(
                                             val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
                                             if (raw.isNotBlank()) imageViewer.show(raw)
                                         },
-                                        modifier = Modifier.padding(bottom = 12.dp)
-                                    )
-                                }
-
-                                item(key = "header_info", contentType = "header_info") {
-                                    UserProfileHeader(
-                                        profile = profile,
-                                        uiState = uiState,
                                         onAvatarClick = {
                                             val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
                                             if (raw.isNotBlank()) imageViewer.show(raw)
@@ -590,78 +595,64 @@ fun UserInfoScreen(
                                         },
                                         onToggleFollow = { viewModel.toggleFollow() },
                                         onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                        onNavigateToChat = onNavigateToChat,
-                                        modifier = Modifier.padding(bottom = 12.dp)
-                                    )
-                                }
-
-                                item(key = "order_stats", contentType = "order_stats") {
-                                    UserOrderStatsCard(
-                                        profile = profile,
-                                        uiState = uiState,
                                         onNavigateToCollect = onNavigateToCollect,
                                         onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) },
-                                        modifier = Modifier.padding(bottom = 12.dp)
-                                    )
-                                }
-
-                                item(key = "basic_info", contentType = "basic_info") {
-                                    BasicProfileSection(
-                                        profile = profile,
                                         onCopyUid = { uid ->
                                             coroutineScope.launch {
                                                 clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
                                                 snackbarHostState.showSnackbar("UID 已复制")
                                             }
                                         },
-                                        modifier = Modifier.padding(bottom = 12.dp)
+                                        onNavigateToChat = onNavigateToChat,
+                                        bottomSpacer = 0.dp,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
 
-                                stickyHeader(key = "content_tabs", contentType = "content_tabs") {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        UserContentTabs(
-                                            selectedTab = pagerState.currentPage,
-                                            onSelectTab = handleTabClick,
-                                            modifier = Modifier.padding(top = tabRowTopPadding)
-                                        )
-                                    }
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    UserContentTabs(
+                                        selectedTab = pagerState.currentPage,
+                                        onSelectTab = handleTabClick
+                                    )
                                 }
 
-                                item(key = "content_pager", contentType = "content_pager") {
-                                    BoxWithConstraints(
-                                        modifier = Modifier
-                                            .fillParentMaxHeight()
-                                            .fillMaxWidth()
-                                    ) {
-                                        val minPageHeight = maxHeight
-                                        UserPagerContent(
-                                            pagerState = pagerState,
-                                            albumListState = albumListState,
-                                            actionListState = actionListState,
-                                            resaleListState = resaleListState,
-                                            uiState = uiState,
-                                            columns = 2,
-                                            minHeight = minPageHeight,
-                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
-                                            onNavigateToAlbum = onNavigateToAlbum,
-                                            onNavigateToHobby = onNavigateToHobby,
-                                            onNavigateToUser = onNavigateToUser,
-                                            onImageClick = { images, index ->
-                                                if (images.isNotEmpty()) {
-                                                    imageViewer.show(images, index)
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .nestedScroll(nestedScrollConnection)
-                                        )
-                                    }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(pagerHeight)
+                                ) {
+                                    UserPagerContent(
+                                        pagerState = pagerState,
+                                        albumListState = albumListState,
+                                        actionListState = actionListState,
+                                        resaleListState = resaleListState,
+                                        uiState = uiState,
+                                        columns = 2,
+                                        minHeight = pagerHeight,
+                                        onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) },
+                                        onNavigateToAlbum = onNavigateToAlbum,
+                                        onNavigateToHobby = onNavigateToHobby,
+                                        onNavigateToUser = onNavigateToUser,
+                                        onImageClick = { images, index ->
+                                            if (images.isNotEmpty()) {
+                                                imageViewer.show(images, index)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
                                 }
                             }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(statusBarTopPadding)
+                                    .align(Alignment.TopCenter)
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = statusBarAlpha))
+                            )
 
                             AnimatedVisibility(
                                 visible = isTabsSticky,
@@ -1000,6 +991,7 @@ private fun UserProfileIdentityPane(
     onShowMoneyDialog: () -> Unit,
     onCopyUid: (Long) -> Unit,
     onNavigateToChat: (targetUserId: Long, targetUserName: String, targetUserHeader: String?) -> Unit = { _, _, _ -> },
+    bottomSpacer: Dp = 24.dp,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1038,7 +1030,9 @@ private fun UserProfileIdentityPane(
             onCopyUid = onCopyUid
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        if (bottomSpacer > 0.dp) {
+            Spacer(modifier = Modifier.height(bottomSpacer))
+        }
     }
 }
 

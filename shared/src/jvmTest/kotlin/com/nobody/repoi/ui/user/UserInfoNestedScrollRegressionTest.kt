@@ -1,20 +1,27 @@
 package com.nobody.repoi.ui.user
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.ui.graphics.Color
-import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -25,50 +32,35 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import kotlin.math.min
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalTestApi::class)
 class UserInfoNestedScrollRegressionTest {
 
-    private fun createConnection(
-        outerListState: LazyListState,
+    private fun createSingleScrollConnection(
+        getHeaderOffset: () -> Float,
+        setHeaderOffset: (Float) -> Unit,
+        maxCollapsePx: Float,
         childCanScrollBackward: () -> Boolean,
-        outerHeaderItemCount: Int = 4,
-        coroutineScope: kotlinx.coroutines.CoroutineScope? = null,
-        defaultFlingBehavior: androidx.compose.foundation.gestures.FlingBehavior? = null,
-        outerFlingBehavior: androidx.compose.foundation.gestures.FlingBehavior? = null
+        coroutineScope: CoroutineScope? = null
     ): NestedScrollConnection {
         return object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
-                if (delta < 0) {
-                    val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == outerHeaderItemCount }
-                    val canScrollOuter = if (tabsItem != null) {
-                        tabsItem.offset > 0
-                    } else {
-                        outerListState.firstVisibleItemIndex < outerHeaderItemCount
-                    }
-                    if (canScrollOuter) {
-                        val maxAllowedScroll = if (tabsItem != null) tabsItem.offset.toFloat() else Float.MAX_VALUE
-                        val toScroll = min(-delta, maxAllowedScroll)
-                        if (toScroll > 0f) {
-                            val consumed = outerListState.dispatchRawDelta(toScroll)
-                            return Offset(0f, -consumed)
-                        }
-                    }
-                }
-
-                if (delta > 0 && !childCanScrollBackward()) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        val consumed = outerListState.dispatchRawDelta(-delta)
-                        return Offset(0f, -consumed)
-                    }
+                val currentOffset = getHeaderOffset()
+                if (delta < 0f && currentOffset > -maxCollapsePx) {
+                    val newOffset = (currentOffset + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumed = newOffset - currentOffset
+                    setHeaderOffset(newOffset)
+                    return Offset(0f, consumed)
                 }
                 return Offset.Zero
             }
@@ -79,31 +71,26 @@ class UserInfoNestedScrollRegressionTest {
                 source: NestedScrollSource
             ): Offset {
                 val delta = available.y
-                if (delta > 0) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        val consumedDelta = outerListState.dispatchRawDelta(-delta)
-                        return Offset(0f, -consumedDelta)
-                    }
+                val currentOffset = getHeaderOffset()
+                if (delta > 0f && !childCanScrollBackward() && currentOffset < 0f) {
+                    val newOffset = (currentOffset + delta).coerceIn(-maxCollapsePx, 0f)
+                    val consumedDelta = newOffset - currentOffset
+                    setHeaderOffset(newOffset)
+                    return Offset(0f, consumedDelta)
                 }
                 return Offset.Zero
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 val deltaY = available.y
-                val tabsItem = outerListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == outerHeaderItemCount }
-                val canScrollOuter = if (tabsItem != null) {
-                    tabsItem.offset > 0
-                } else {
-                    outerListState.firstVisibleItemIndex < outerHeaderItemCount
-                }
-                if (deltaY < 0 && canScrollOuter && coroutineScope != null && defaultFlingBehavior != null) {
-                    val fling = outerFlingBehavior ?: defaultFlingBehavior
-                    coroutineScope.launch {
-                        outerListState.scroll {
-                            with(fling) {
-                                performFling(-deltaY)
-                            }
+                val currentOffset = getHeaderOffset()
+                if (deltaY < -50f && currentOffset > -maxCollapsePx) {
+                    coroutineScope?.launch {
+                        Animatable(currentOffset).animateTo(
+                            targetValue = -maxCollapsePx,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                        ) {
+                            setHeaderOffset(value)
                         }
                     }
                     return available
@@ -116,18 +103,17 @@ class UserInfoNestedScrollRegressionTest {
                 available: Velocity
             ): Velocity {
                 val deltaY = available.y
-                if (deltaY > 0 && coroutineScope != null && defaultFlingBehavior != null) {
-                    val canScrollOuter = outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-                    if (canScrollOuter) {
-                        coroutineScope.launch {
-                            outerListState.scroll {
-                                with(defaultFlingBehavior) {
-                                    performFling(-deltaY)
-                                }
-                            }
+                val currentOffset = getHeaderOffset()
+                if (deltaY > 50f && !childCanScrollBackward() && currentOffset < 0f) {
+                    coroutineScope?.launch {
+                        Animatable(currentOffset).animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                        ) {
+                            setHeaderOffset(value)
                         }
-                        return Velocity(0f, deltaY)
                     }
+                    return Velocity(0f, deltaY)
                 }
                 return Velocity.Zero
             }
@@ -135,140 +121,134 @@ class UserInfoNestedScrollRegressionTest {
     }
 
     @Test
-    fun swipeDown_shouldScrollOuterListBackwardTowardsTop() = runComposeUiTest {
-        var outerState: LazyListState? = null
-        setContent {
-            val listState = rememberLazyListState()
-            outerState = listState
-            LazyColumn(state = listState, modifier = Modifier.height(300.dp)) {
-                items(10) { _ ->
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp))
-                }
-            }
-        }
-        waitForIdle()
-        val outerListState = outerState!!
+    fun scrollUp_shouldCollapseHeaderOffsetFirst() {
+        var offset = 0f
+        val connection = createSingleScrollConnection(
+            getHeaderOffset = { offset },
+            setHeaderOffset = { offset = it },
+            maxCollapsePx = 200f,
+            childCanScrollBackward = { false }
+        )
 
-        outerListState.dispatchRawDelta(200f)
-        waitForIdle()
-        val initialIndex = outerListState.firstVisibleItemIndex
-        val initialOffset = outerListState.firstVisibleItemScrollOffset
-        assertEquals(2, initialIndex)
+        val consumed = connection.onPreScroll(Offset(0f, -80f), NestedScrollSource.UserInput)
+        assertEquals(-80f, consumed.y)
+        assertEquals(-80f, offset)
 
-        val connection = createConnection(
-            outerListState = outerListState,
+        val consumedMore = connection.onPreScroll(Offset(0f, -150f), NestedScrollSource.UserInput)
+        assertEquals(-120f, consumedMore.y)
+        assertEquals(-200f, offset)
+
+        val consumedBeyond = connection.onPreScroll(Offset(0f, -50f), NestedScrollSource.UserInput)
+        assertEquals(0f, consumedBeyond.y)
+        assertEquals(-200f, offset)
+    }
+
+    @Test
+    fun scrollDown_whenChildCannotScrollBackward_shouldExpandHeaderOffset() {
+        var offset = -200f
+        val connection = createSingleScrollConnection(
+            getHeaderOffset = { offset },
+            setHeaderOffset = { offset = it },
+            maxCollapsePx = 200f,
             childCanScrollBackward = { false }
         )
 
         val preConsumed = connection.onPreScroll(Offset(0f, 50f), NestedScrollSource.UserInput)
-        waitForIdle()
+        assertEquals(0f, preConsumed.y)
 
-        assertTrue(preConsumed.y > 0f)
-        assertTrue(
-            outerListState.firstVisibleItemIndex < initialIndex ||
-                (outerListState.firstVisibleItemIndex == initialIndex && outerListState.firstVisibleItemScrollOffset < initialOffset)
-        )
+        val postConsumed = connection.onPostScroll(Offset.Zero, Offset(0f, 50f), NestedScrollSource.UserInput)
+        assertEquals(50f, postConsumed.y)
+        assertEquals(-150f, offset)
     }
 
     @Test
-    fun swipeUp_shouldScrollOuterListForwardTowardsTabs() = runComposeUiTest {
-        var outerState: LazyListState? = null
-        setContent {
-            val listState = rememberLazyListState()
-            outerState = listState
-            LazyColumn(state = listState, modifier = Modifier.height(300.dp)) {
-                items(10) { _ ->
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp))
-                }
-            }
-        }
-        waitForIdle()
-        val outerListState = outerState!!
-        assertEquals(0, outerListState.firstVisibleItemIndex)
-
-        val connection = createConnection(
-            outerListState = outerListState,
-            childCanScrollBackward = { false }
+    fun scrollDown_whenChildCanScrollBackward_shouldNotExpandHeader() {
+        var offset = -200f
+        val connection = createSingleScrollConnection(
+            getHeaderOffset = { offset },
+            setHeaderOffset = { offset = it },
+            maxCollapsePx = 200f,
+            childCanScrollBackward = { true }
         )
 
-        val preConsumed = connection.onPreScroll(Offset(0f, -50f), NestedScrollSource.UserInput)
-        waitForIdle()
-
-        assertTrue(preConsumed.y < 0f)
-        assertTrue(
-            outerListState.firstVisibleItemIndex > 0 || outerListState.firstVisibleItemScrollOffset > 0
-        )
+        val postConsumed = connection.onPostScroll(Offset.Zero, Offset(0f, 50f), NestedScrollSource.UserInput)
+        assertEquals(0f, postConsumed.y)
+        assertEquals(-200f, offset)
     }
 
     @Test
-    fun testRealGestureFixedNestedScroll() = runComposeUiTest {
-        var outerState: LazyListState? = null
+    fun testRealGestureSingleScrollCollapsingHeader() = runComposeUiTest {
+        var headerOffsetValue = 0f
         var innerState: LazyListState? = null
 
         setContent {
-            val outerListState = rememberLazyListState()
+            var headerOffsetPx by remember { mutableFloatStateOf(0f) }
             val innerListState = rememberLazyListState()
-            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-            val fling = ScrollableDefaults.flingBehavior()
-            outerState = outerListState
+            val coroutineScope = rememberCoroutineScope()
             innerState = innerListState
 
-            val connection = createConnection(
-                outerListState = outerListState,
-                childCanScrollBackward = { innerListState.canScrollBackward },
-                outerHeaderItemCount = 4,
-                coroutineScope = coroutineScope,
-                defaultFlingBehavior = fling
-            )
+            val connection = remember {
+                createSingleScrollConnection(
+                    getHeaderOffset = { headerOffsetPx },
+                    setHeaderOffset = {
+                        headerOffsetPx = it
+                        headerOffsetValue = it
+                    },
+                    maxCollapsePx = 200f,
+                    childCanScrollBackward = { innerListState.canScrollBackward },
+                    coroutineScope = coroutineScope
+                )
+            }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = outerListState,
-                    flingBehavior = fling,
-                    modifier = Modifier.fillMaxSize().testTag("outer_list")
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(connection)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset { IntOffset(0, headerOffsetPx.roundToInt()) }
                 ) {
-                    items(4) { idx ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .background(if (idx % 2 == 0) Color.LightGray else Color.Gray)
-                        ) {
-                            Text("Header item $idx")
-                        }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .background(Color.Blue)
+                            .testTag("collapsible_header")
+                    ) {
+                        Text("Collapsible Header")
                     }
-                    stickyHeader {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .background(Color.Yellow)
-                                .testTag("tab_row")
-                        ) {
-                            Text("Sticky Tab Row")
-                        }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .background(Color.Yellow)
+                            .testTag("sticky_tab")
+                    ) {
+                        Text("Sticky Tab")
                     }
-                    item {
-                        Box(
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp)
+                    ) {
+                        LazyColumn(
+                            state = innerListState,
                             modifier = Modifier
-                                .fillParentMaxHeight()
-                                .fillMaxWidth()
-                                .nestedScroll(connection)
-                                .testTag("pager_content")
+                                .fillMaxSize()
+                                .testTag("inner_list")
                         ) {
-                            LazyColumn(
-                                state = innerListState,
-                                modifier = Modifier.fillMaxSize().testTag("inner_list")
-                            ) {
-                                items(30) { idx ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(60.dp)
-                                            .background(if (idx % 2 == 0) Color.Cyan else Color.Magenta)
-                                    ) {
-                                        Text("Inner item $idx")
-                                    }
+                            items(40) { idx ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp)
+                                        .background(if (idx % 2 == 0) Color.LightGray else Color.White)
+                                ) {
+                                    Text("Item $idx")
                                 }
                             }
                         }
@@ -278,71 +258,20 @@ class UserInfoNestedScrollRegressionTest {
         }
 
         waitForIdle()
-        val outer = outerState!!
+        assertEquals(0f, headerOffsetValue)
 
         onNodeWithTag("inner_list").performTouchInput {
             swipeUp()
         }
         waitForIdle()
-        assertTrue(outer.firstVisibleItemIndex > 0 || outer.firstVisibleItemScrollOffset > 0)
 
-        val stickyIndex = outer.firstVisibleItemIndex
-        val stickyOffset = outer.firstVisibleItemScrollOffset
+        assertTrue(headerOffsetValue < 0f)
 
         onNodeWithTag("inner_list").performTouchInput {
             swipeDown()
         }
         waitForIdle()
-        assertTrue(
-            outer.firstVisibleItemIndex < stickyIndex ||
-                (outer.firstVisibleItemIndex == stickyIndex && outer.firstVisibleItemScrollOffset <= stickyOffset)
-        )
-    }
 
-    @Test
-    fun testOnPostFlingRelaysDownwardFlingToOuterList() = runComposeUiTest {
-        var outerState: LazyListState? = null
-        var flingBehavior: androidx.compose.foundation.gestures.FlingBehavior? = null
-        var testScope: kotlinx.coroutines.CoroutineScope? = null
-
-        setContent {
-            val listState = rememberLazyListState()
-            outerState = listState
-            flingBehavior = ScrollableDefaults.flingBehavior()
-            testScope = androidx.compose.runtime.rememberCoroutineScope()
-            LazyColumn(state = listState, modifier = Modifier.height(300.dp)) {
-                items(20) { _ ->
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp))
-                }
-            }
-        }
-        waitForIdle()
-        val listState = outerState!!
-        val fling = flingBehavior!!
-        val scope = testScope!!
-
-        listState.scrollToItem(4)
-        waitForIdle()
-        assertEquals(4, listState.firstVisibleItemIndex)
-
-        scope.launch {
-            listState.scroll {
-                with(fling) {
-                    performFling(3000f)
-                }
-            }
-        }
-        waitForIdle()
-        assertTrue(listState.firstVisibleItemIndex >= 4)
-
-        scope.launch {
-            listState.scroll {
-                with(fling) {
-                    performFling(-3000f)
-                }
-            }
-        }
-        waitForIdle()
-        assertTrue(listState.firstVisibleItemIndex < 4)
+        assertTrue(headerOffsetValue >= -200f)
     }
 }
