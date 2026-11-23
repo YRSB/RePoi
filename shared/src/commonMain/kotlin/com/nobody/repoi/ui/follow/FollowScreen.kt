@@ -41,11 +41,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Surface
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -189,7 +187,6 @@ fun FollowScreen(
 
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
-    val pullRefreshState = rememberPullToRefreshState()
     val showRefreshFab by remember {
         derivedStateOf { gridState.firstVisibleItemIndex > 3 && uiState.items.isNotEmpty() }
     }
@@ -218,7 +215,7 @@ fun FollowScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = {
                 scope.launch {
@@ -228,17 +225,8 @@ fun FollowScreen(
                 }
                 viewModel.refresh()
             },
-            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = totalHeaderHeight)
-                )
-            }
+            indicatorPaddingTop = totalHeaderHeight,
         ) {
             Box(
                 modifier = Modifier

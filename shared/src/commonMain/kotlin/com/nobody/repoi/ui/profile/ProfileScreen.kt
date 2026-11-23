@@ -50,7 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
@@ -151,7 +151,7 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
             modifier = Modifier.fillMaxSize()

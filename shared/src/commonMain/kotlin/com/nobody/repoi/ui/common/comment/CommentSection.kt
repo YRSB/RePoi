@@ -78,7 +78,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -1724,7 +1724,7 @@ fun CommentFeedPane(
                 }
             }
 
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = isCommentsLoading && (hotComments.isNotEmpty() || latestComments.isNotEmpty()),
                 onRefresh = { onRefreshComments?.invoke() },
                 modifier = Modifier

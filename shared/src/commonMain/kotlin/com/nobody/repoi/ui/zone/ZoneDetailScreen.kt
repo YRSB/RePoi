@@ -45,9 +45,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -157,7 +155,6 @@ fun ZoneDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeSnapshot by viewModel.activeSnapshot.collectAsStateWithLifecycle()
     val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
-    val pullRefreshState = rememberPullToRefreshState()
     val messages = LocalAppMessages.current
     val focusManager = LocalFocusManager.current
     val imageViewer = LocalImageViewer.current
@@ -542,23 +539,14 @@ fun ZoneDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
                     scope.launch { scrollCurrentBoardToTop() }
                     viewModel.refresh()
                 },
-                state = pullRefreshState,
                 modifier = Modifier.fillMaxSize(),
-                indicator = {
-                    PullToRefreshDefaults.LoadingIndicator(
-                        state = pullRefreshState,
-                        isRefreshing = isRefreshing,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = headerStack.totalHeaderHeight)
-                    )
-                }
+                indicatorPaddingTop = headerStack.totalHeaderHeight,
             ) {
                 Box(
                     modifier = Modifier

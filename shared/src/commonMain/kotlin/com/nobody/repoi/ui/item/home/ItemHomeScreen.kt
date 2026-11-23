@@ -43,7 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -137,7 +137,7 @@ fun ItemHomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = {
                     scope.launch {

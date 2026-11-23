@@ -57,7 +57,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -315,7 +315,7 @@ private fun HistoryTabContent(
     onCoverLoadFailed: (rowId: Long, detailId: Long, category: UserHistoryCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    PullToRefreshBox(
+    PoiPullToRefreshBox(
         isRefreshing = tabState.isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize()

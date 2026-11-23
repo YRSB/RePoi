@@ -34,9 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.LaunchedEffect
@@ -89,7 +87,6 @@ fun ResaleDetailScreen(
         viewModel.setResaleId(resaleId)
     }
 
-    val pullRefreshState = rememberPullToRefreshState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -204,19 +201,10 @@ fun ResaleDetailScreen(
             }
         }
     ) { innerPadding ->
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
-            state = pullRefreshState,
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = innerPadding.calculateTopPadding())
-                )
-            },
+            indicatorPaddingTop = innerPadding.calculateTopPadding(),
             modifier = Modifier.fillMaxSize()
         ) {
             when {

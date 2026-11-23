@@ -29,8 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -62,7 +61,6 @@ fun ZoneBrowseScreen(
     viewModel: ZoneBrowseViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val pullRefreshState = rememberPullToRefreshState()
 
     Scaffold(
         topBar = {
@@ -95,10 +93,9 @@ fun ZoneBrowseScreen(
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
-            state = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())

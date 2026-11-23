@@ -52,9 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
@@ -222,7 +220,6 @@ fun HobbyListScreen(
 
     val quickFilterMeasuredDp = with(density) { quickFilterBarHeightPx.toDp() }
     val topContentPadding = topBarHeightDp + if (quickFilterMeasuredDp > 48.dp) quickFilterMeasuredDp else 48.dp
-    val pullRefreshState = rememberPullToRefreshState()
 
     Box(
         modifier = Modifier
@@ -234,7 +231,7 @@ fun HobbyListScreen(
             modifier = Modifier.fillMaxSize()
         ) {
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = {
                 scope.launch {
@@ -248,17 +245,8 @@ fun HobbyListScreen(
                 }
                 viewModel.refresh()
             },
-            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = topContentPadding)
-                )
-            }
+            indicatorPaddingTop = topContentPadding,
         ) {
             Box(
                 modifier = Modifier
