@@ -172,7 +172,7 @@ fun ZoneDetailScreen(
     val scope = rememberCoroutineScope()
 
     val boardItemCount = activeSnapshot.content.itemCount
-    val isRefreshing = (activeSnapshot.pageView.isLoading && boardItemCount > 0) || uiState.isInfoLoading
+    val isRefreshing = boardItemCount > 0 && (activeSnapshot.pageView.isLoading || uiState.isInfoLoading)
 
     val headerStack = rememberHomeHeaderStack(topBarHeight = 0.dp)
     val boardFilterHeights = remember { mutableStateMapOf<ZoneBoard, Float>() }
