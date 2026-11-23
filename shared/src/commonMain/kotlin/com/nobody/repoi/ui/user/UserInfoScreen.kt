@@ -1,40 +1,49 @@
 package com.nobody.repoi.ui.user
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +57,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -57,12 +67,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,24 +81,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.nobody.repoi.ui.common.plainTextClipEntry
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.ActionItem
 import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
@@ -96,17 +113,17 @@ import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.album.AlbumNavParam
 import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.common.LocalImageViewer
+import com.nobody.repoi.ui.common.PoiIcons
+import com.nobody.repoi.ui.common.UserAvatar
+import com.nobody.repoi.ui.common.plainTextClipEntry
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
-import androidx.compose.material3.ElevatedCard
-import com.nobody.repoi.data.media.ImagePurpose
-import com.nobody.repoi.data.media.MediaCategory
-import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
-import com.nobody.repoi.ui.common.PoiIcons
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -163,10 +180,10 @@ fun UserInfoScreen(
                 .consumeWindowInsets(innerPadding),
             contentAlignment = Alignment.TopCenter
         ) {
-
             isLandscapeState.value = maxWidth > maxHeight
             val isLandscape = isLandscapeState.value
             val isDualPane = isLandscape && isWideScreen
+
             when {
                 uiState.isLoading && uiState.profile == null -> {
                     Column(
@@ -222,12 +239,26 @@ fun UserInfoScreen(
                     val profile = uiState.profile!!
                     val clipboard = LocalClipboard.current
 
-                    if (isDualPane) {
+                    val pagerState = rememberPagerState(
+                        initialPage = uiState.selectedTab.coerceIn(0, 2)
+                    ) { 3 }
 
+                    LaunchedEffect(pagerState.currentPage) {
+                        if (uiState.selectedTab != pagerState.currentPage) {
+                            viewModel.selectTab(pagerState.currentPage)
+                        }
+                    }
+
+                    LaunchedEffect(uiState.selectedTab) {
+                        if (pagerState.currentPage != uiState.selectedTab) {
+                            pagerState.scrollToPage(uiState.selectedTab)
+                        }
+                    }
+
+                    if (isDualPane) {
                         Row(
                             modifier = Modifier.fillMaxSize()
                         ) {
-
                             UserProfileIdentityPane(
                                 profile = profile,
                                 uiState = uiState,
@@ -275,115 +306,260 @@ fun UserInfoScreen(
                                     .padding(top = 8.dp)
                             ) {
                                 UserContentTabs(
-                                    selectedTab = uiState.selectedTab,
-                                    onSelectTab = { viewModel.selectTab(it) }
+                                    selectedTab = pagerState.currentPage,
+                                    onSelectTab = { index ->
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
+                                    }
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(bottom = 32.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    userContentFeedItems(
-                                        uiState = uiState,
-                                        columns = 3,
-                                        onNavigateToAlbum = onNavigateToAlbum,
-                                        onNavigateToHobby = onNavigateToHobby,
-                                        onNavigateToUser = onNavigateToUser,
-                                        onImageClick = { images, index ->
-                                            if (images.isNotEmpty()) {
-                                                imageViewer.show(images, index)
+                                HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+                                    when (page) {
+                                        0 -> UserAlbumPage(
+                                            uiState = uiState,
+                                            columns = 3,
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
+                                        )
+                                        1 -> UserDynamicPage(
+                                            uiState = uiState,
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onNavigateToHobby = onNavigateToHobby,
+                                            onNavigateToUser = onNavigateToUser,
+                                            onImageClick = { images, index ->
+                                                if (images.isNotEmpty()) {
+                                                    imageViewer.show(images, index)
+                                                }
                                             }
-                                        },
-                                        onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
-                                    )
+                                        )
+                                        2 -> UserResalePage(
+                                            isSelf = uiState.isSelf
+                                        )
+                                    }
                                 }
                             }
                         }
                     } else {
+                        val density = LocalDensity.current
+                        val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                        val topBarHeight = statusBarTopPadding + 56.dp
+                        val tabRowHeight = 48.dp
+                        val pagerHeight = (maxHeight - topBarHeight - tabRowHeight).coerceAtLeast(0.dp)
 
-                        LazyColumn(
+                        val topBarHeightPx = with(density) { topBarHeight.toPx() }
+                        val bannerHeightPx = with(density) { 200.dp.toPx() }
+                        val bannerThresholdPx = remember(bannerHeightPx, topBarHeightPx) {
+                            (bannerHeightPx - topBarHeightPx).coerceAtLeast(1f)
+                        }
+
+                        var headerContentHeightPx by remember { mutableFloatStateOf(0f) }
+                        val maxScrollUpPx = remember(headerContentHeightPx, topBarHeightPx) {
+                            (headerContentHeightPx - topBarHeightPx).coerceAtLeast(0f)
+                        }
+
+                        var headerOffsetPx by remember { mutableFloatStateOf(0f) }
+
+                        LaunchedEffect(maxScrollUpPx) {
+                            if (headerOffsetPx < -maxScrollUpPx) {
+                                headerOffsetPx = -maxScrollUpPx
+                            }
+                        }
+
+                        val collapseProgress by remember(bannerThresholdPx) {
+                            derivedStateOf {
+                                if (bannerThresholdPx <= 0f) 0f
+                                else (-headerOffsetPx / bannerThresholdPx).coerceIn(0f, 1f)
+                            }
+                        }
+
+                        val nestedScrollConnection = remember(maxScrollUpPx, pagerState) {
+                            object : NestedScrollConnection {
+                                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                    if (pagerState.isScrollInProgress) {
+                                        return Offset.Zero
+                                    }
+                                    val delta = available.y
+                                    return if (delta < 0f && headerOffsetPx > -maxScrollUpPx) {
+                                        val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
+                                        val consumed = newOffset - headerOffsetPx
+                                        headerOffsetPx = newOffset
+                                        Offset(0f, consumed)
+                                    } else {
+                                        Offset.Zero
+                                    }
+                                }
+
+                                override fun onPostScroll(
+                                    consumed: Offset,
+                                    available: Offset,
+                                    source: NestedScrollSource
+                                ): Offset {
+                                    if (pagerState.isScrollInProgress) {
+                                        return Offset.Zero
+                                    }
+                                    val delta = available.y
+                                    return if (delta > 0f && headerOffsetPx < 0f) {
+                                        val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
+                                        val consumedY = newOffset - headerOffsetPx
+                                        headerOffsetPx = newOffset
+                                        Offset(0f, consumedY)
+                                    } else {
+                                        Offset.Zero
+                                    }
+                                }
+                            }
+                        }
+
+                        val headerDraggableState = rememberDraggableState { delta ->
+                            val newOffset = (headerOffsetPx + delta).coerceIn(-maxScrollUpPx, 0f)
+                            headerOffsetPx = newOffset
+                        }
+
+                        Box(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .widthIn(max = 720.dp)
-                                .fillMaxWidth(),
-                            contentPadding = PaddingValues(bottom = 32.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                .fillMaxWidth()
+                                .nestedScroll(nestedScrollConnection),
+                            contentAlignment = Alignment.TopCenter
                         ) {
-
-                            item(key = "banner") {
-                                UserProfileBanner(
-                                    profile = profile,
-                                    isSelf = uiState.isSelf,
-                                    onBack = onNavigateBack,
-                                    onEdit = { viewModel.startEditing() },
-                                    onRefresh = { viewModel.loadProfile(profile.id) },
-                                    onBannerClick = {
-                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
-                                        if (raw.isNotBlank()) imageViewer.show(raw)
-                                    }
-                                )
-                            }
-
-                            item(key = "header_info") {
-                                UserProfileHeader(
-                                    profile = profile,
-                                    uiState = uiState,
-                                    onAvatarClick = {
-                                        val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
-                                        if (raw.isNotBlank()) imageViewer.show(raw)
-                                    },
-                                    onNavigateToFriendList = { tab ->
-                                        onNavigateToFriendList(profile.id, tab)
-                                    },
-                                    onToggleFollow = { viewModel.toggleFollow() },
-                                    onToggleIntro = { viewModel.toggleIntroExpanded() },
-                                    onNavigateToChat = onNavigateToChat
-                                )
-                            }
-
-                            item(key = "order_stats") {
-                                UserOrderStatsCard(
-                                    profile = profile,
-                                    uiState = uiState,
-                                    onNavigateToCollect = onNavigateToCollect,
-                                    onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
-                                )
-                            }
-
-                            item(key = "basic_info") {
-                                BasicProfileSection(
-                                    profile = profile,
-                                    onCopyUid = { uid ->
-                                        coroutineScope.launch {
-                                            clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
-                                            snackbarHostState.showSnackbar("UID 已复制")
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .offset { IntOffset(x = 0, y = headerOffsetPx.roundToInt()) }
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .draggable(
+                                            state = headerDraggableState,
+                                            orientation = Orientation.Vertical
+                                        )
+                                        .onGloballyPositioned { coordinates ->
+                                            val h = coordinates.size.height.toFloat()
+                                            if (headerContentHeightPx != h) {
+                                                headerContentHeightPx = h
+                                            }
                                         }
+                                ) {
+                                    UserProfileBanner(
+                                        profile = profile,
+                                        isSelf = uiState.isSelf,
+                                        onBack = onNavigateBack,
+                                        onEdit = { viewModel.startEditing() },
+                                        onRefresh = { viewModel.loadProfile(profile.id) },
+                                        onBannerClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.bnr, MediaCategory.BANNER)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        showNavigationActions = false
+                                    )
+
+                                    UserProfileHeader(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onAvatarClick = {
+                                            val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                            if (raw.isNotBlank()) imageViewer.show(raw)
+                                        },
+                                        onNavigateToFriendList = { tab ->
+                                            onNavigateToFriendList(profile.id, tab)
+                                        },
+                                        onToggleFollow = { viewModel.toggleFollow() },
+                                        onToggleIntro = { viewModel.toggleIntroExpanded() },
+                                        onNavigateToChat = onNavigateToChat
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    UserOrderStatsCard(
+                                        profile = profile,
+                                        uiState = uiState,
+                                        onNavigateToCollect = onNavigateToCollect,
+                                        onShowMoneyDialog = { viewModel.setShowMoneyDialog(true) }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    BasicProfileSection(
+                                        profile = profile,
+                                        onCopyUid = { uid ->
+                                            coroutineScope.launch {
+                                                clipboard.setClipEntry(plainTextClipEntry(uid.toString()))
+                                                snackbarHostState.showSnackbar("UID 已复制")
+                                            }
+                                        }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    tonalElevation = if (collapseProgress > 0.9f) 1.dp else 0.dp
+                                ) {
+                                    UserContentTabs(
+                                        selectedTab = pagerState.currentPage,
+                                        onSelectTab = { index ->
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(index)
+                                            }
+                                        }
+                                    )
+                                }
+
+                                HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(pagerHeight)
+                                ) { page ->
+                                    when (page) {
+                                        0 -> UserAlbumPage(
+                                            uiState = uiState,
+                                            columns = 2,
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
+                                        )
+                                        1 -> UserDynamicPage(
+                                            uiState = uiState,
+                                            onNavigateToAlbum = onNavigateToAlbum,
+                                            onNavigateToHobby = onNavigateToHobby,
+                                            onNavigateToUser = onNavigateToUser,
+                                            onImageClick = { images, index ->
+                                                if (images.isNotEmpty()) {
+                                                    imageViewer.show(images, index)
+                                                }
+                                            }
+                                        )
+                                        2 -> UserResalePage(
+                                            isSelf = uiState.isSelf
+                                        )
                                     }
-                                )
+                                }
                             }
 
-                            item(key = "content_tabs") {
-                                UserContentTabs(
-                                    selectedTab = uiState.selectedTab,
-                                    onSelectTab = { viewModel.selectTab(it) }
-                                )
-                            }
-
-                            userContentFeedItems(
-                                uiState = uiState,
-                                columns = 2,
-                                onNavigateToAlbum = onNavigateToAlbum,
-                                onNavigateToHobby = onNavigateToHobby,
-                                onNavigateToUser = onNavigateToUser,
-                                onImageClick = { images, index ->
-                                    if (images.isNotEmpty()) {
-                                        imageViewer.show(images, index)
-                                    }
+                            UserInfoTopAppBar(
+                                profile = profile,
+                                isSelf = uiState.isSelf,
+                                isFollowed = uiState.isFollowed,
+                                collapseProgress = collapseProgress,
+                                onBack = onNavigateBack,
+                                onEdit = { viewModel.startEditing() },
+                                onRefresh = { viewModel.loadProfile(profile.id) },
+                                onToggleFollow = { viewModel.toggleFollow() },
+                                onAvatarClick = {
+                                    val raw = MediaPipeline.Default.resolveRawUrl(profile.header, MediaCategory.AVATAR)
+                                    if (raw.isNotBlank()) imageViewer.show(raw)
                                 },
-                                onSelectAlbumSubTab = { viewModel.selectAlbumSubTab(it) }
+                                modifier = Modifier.align(Alignment.TopCenter)
                             )
                         }
                     }
@@ -419,82 +595,253 @@ fun UserInfoScreen(
     }
 }
 
-private fun LazyListScope.userContentFeedItems(
-    uiState: UserInfoUiState,
-    columns: Int,
-    onNavigateToAlbum: (AlbumNavParam) -> Unit,
-    onNavigateToHobby: (Long) -> Unit,
-    onNavigateToUser: (Long) -> Unit,
-    onImageClick: (List<String>, Int) -> Unit,
-    onSelectAlbumSubTab: (Int) -> Unit
+@Composable
+private fun UserInfoTopAppBar(
+    profile: UserProfile,
+    isSelf: Boolean,
+    isFollowed: Boolean,
+    collapseProgress: Float,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onRefresh: () -> Unit,
+    onToggleFollow: () -> Unit,
+    onAvatarClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    when (uiState.selectedTab) {
-        0 -> {
-            item(key = "album_sub_chips", contentType = "album_sub_chips") {
-                UserAlbumSubChips(
-                    isSelf = uiState.isSelf,
-                    selectedSubTab = uiState.selectedAlbumSubTab,
-                    onSelectSubTab = onSelectAlbumSubTab
-                )
-            }
+    val isSolid = collapseProgress >= 0.85f
 
-            if (uiState.isAlbumLoading && uiState.albums.isEmpty()) {
-                item(key = "album_loading_${uiState.selectedAlbumSubTab}", contentType = "album_loading") {
-                    Box(
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val backgroundColor = remember(collapseProgress, surfaceColor) {
+        surfaceColor.copy(alpha = collapseProgress.coerceIn(0f, 1f))
+    }
+
+    Surface(
+        color = backgroundColor,
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(56.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TopBarActionIconButton(
+                icon = PoiIcons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "返回",
+                isSolid = isSolid,
+                onClick = onBack
+            )
+
+            AnimatedVisibility(
+                visible = isSolid,
+                enter = fadeIn() + slideInVertically { it / 2 },
+                exit = fadeOut() + slideOutVertically { it / 2 },
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+                ) {
+                    UserAvatar(
+                        avatarUrl = profile.header,
+                        size = 32.dp,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 3.dp
+                            .clip(CircleShape)
+                            .clickable(onClick = onAvatarClick)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = profile.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!isSelf && !isFollowed) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        SmallFollowButton(
+                            isFollowed = false,
+                            onClick = onToggleFollow
                         )
                     }
                 }
-            } else if (uiState.albums.isEmpty()) {
-                item(key = "empty_albums_${uiState.selectedAlbumSubTab}", contentType = "empty_albums") {
-                    val emptyText = when (uiState.selectedAlbumSubTab) {
-                        0 -> if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
-                        1 -> if (uiState.isSelf) "你还没有收藏相册" else "该用户暂无收藏相册"
-                        2 -> if (uiState.isSelf) "你还没有发布作品" else "该用户暂无作品"
-                        else -> "暂无相册"
-                    }
-                    EmptyTabPlaceholder(
-                        icon = PoiIcons.Filled.PhotoLibrary,
-                        text = emptyText
+            }
+
+            if (!isSolid) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isSelf) {
+                    TopBarActionIconButton(
+                        icon = PoiIcons.Filled.Edit,
+                        contentDescription = "编辑资料",
+                        isSolid = isSolid,
+                        onClick = onEdit
                     )
                 }
-            } else {
-                item(key = "user_albums_waterfall_${uiState.selectedAlbumSubTab}", contentType = "user_albums_waterfall") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        for (colIndex in 0 until columns) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                uiState.albums.forEachIndexed { index, album ->
-                                    if (index % columns == colIndex) {
-                                        AlbumFeedCard(
-                                            item = album,
-                                            onClick = {
-                                                onNavigateToAlbum(
-                                                    AlbumNavParam(
-                                                        albumId = album.targetAlbumId,
-                                                        initialTitle = album.nameCN?.ifBlank { null } ?: album.name,
-                                                        initialCover = album.cover
-                                                    )
+
+                TopBarActionIconButton(
+                    icon = PoiIcons.Filled.Refresh,
+                    contentDescription = "刷新",
+                    isSolid = isSolid,
+                    onClick = onRefresh
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopBarActionIconButton(
+    icon: DrawableResource,
+    contentDescription: String,
+    isSolid: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!isSolid) {
+        Surface(
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = 0.35f),
+            modifier = modifier.size(36.dp)
+        ) {
+            IconButton(onClick = onClick) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = contentDescription,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    } else {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier.size(36.dp)
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SmallFollowButton(
+    isFollowed: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!isFollowed) {
+        Button(
+            onClick = onClick,
+            shape = CircleShape,
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = modifier.height(28.dp)
+        ) {
+            Icon(
+                painter = painterResource(PoiIcons.Add),
+                contentDescription = null,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(
+                text = "关注",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun UserAlbumPage(
+    uiState: UserInfoUiState,
+    columns: Int = 2,
+    onNavigateToAlbum: (AlbumNavParam) -> Unit,
+    onSelectAlbumSubTab: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item(key = "album_sub_chips", contentType = "album_sub_chips") {
+            UserAlbumSubChips(
+                isSelf = uiState.isSelf,
+                selectedSubTab = uiState.selectedAlbumSubTab,
+                onSelectSubTab = onSelectAlbumSubTab
+            )
+        }
+
+        if (uiState.isAlbumLoading && uiState.albums.isEmpty()) {
+            item(key = "album_loading_${uiState.selectedAlbumSubTab}", contentType = "album_loading") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
+        } else if (uiState.albums.isEmpty()) {
+            item(key = "empty_albums_${uiState.selectedAlbumSubTab}", contentType = "empty_albums") {
+                val emptyText = when (uiState.selectedAlbumSubTab) {
+                    0 -> if (uiState.isSelf) "你还没有发布相册" else "该用户暂无相册"
+                    1 -> if (uiState.isSelf) "你还没有收藏相册" else "该用户暂无收藏相册"
+                    2 -> if (uiState.isSelf) "你还没有发布作品" else "该用户暂无作品"
+                    else -> "暂无相册"
+                }
+                EmptyTabPlaceholder(
+                    icon = PoiIcons.Filled.PhotoLibrary,
+                    text = emptyText
+                )
+            }
+        } else {
+            item(key = "user_albums_waterfall_${uiState.selectedAlbumSubTab}", contentType = "user_albums_waterfall") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    for (colIndex in 0 until columns) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            uiState.albums.forEachIndexed { index, album ->
+                                if (index % columns == colIndex) {
+                                    AlbumFeedCard(
+                                        item = album,
+                                        onClick = {
+                                            onNavigateToAlbum(
+                                                AlbumNavParam(
+                                                    albumId = album.targetAlbumId,
+                                                    initialTitle = album.nameCN?.ifBlank { null } ?: album.name,
+                                                    initialCover = album.cover
                                                 )
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         }
@@ -502,68 +849,96 @@ private fun LazyListScope.userContentFeedItems(
                 }
             }
         }
+    }
+}
 
-        1 -> {
-            if (uiState.actions.isEmpty()) {
-                item(key = "empty_actions") {
-                    EmptyTabPlaceholder(
-                        icon = PoiIcons.Filled.Timeline,
-                        text = if (uiState.isSelf) "你还没有发布动态" else "该用户暂无动态"
-                    )
-                }
-            } else {
-                items(
-                    items = uiState.actions,
-                    key = { it.id }
-                ) { action ->
-                    ActionCard(
-                        actionItem = action,
-                        fallbackAvatarUrl = MediaPipeline.Default.resolveUrl(uiState.profile?.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        onActionClick = { item ->
-                            val targetRelate = item.relateItem
-                            if (targetRelate != null) {
-                                val isAlbum = targetRelate.isAlbum || item.actionType == 3
-                                if (isAlbum) {
-                                    val targetAlbumId = targetRelate.actualAlbumId
-                                    if (targetAlbumId > 0L) {
-                                        onNavigateToAlbum(
-                                            AlbumNavParam(
-                                                albumId = targetAlbumId,
-                                                initialTitle = targetRelate.nameCN?.ifBlank { null } ?: targetRelate.name,
-                                                initialCover = targetRelate.cover ?: targetRelate.path
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    val targetHobbyId = targetRelate.actualHobbyId
-                                    if (targetHobbyId > 0L) {
-                                        onNavigateToHobby(targetHobbyId)
-                                    }
-                                }
-                            } else {
-
-                                val targetUserId = item.user?.actualUserId ?: 0L
-                                if (targetUserId > 0L) {
-                                    onNavigateToUser(targetUserId)
-                                }
-                            }
-                        },
-                        onImageClick = onImageClick
-                    )
-                }
-            }
-        }
-
-        2 -> {
-            item(key = "empty_resale") {
+@Composable
+private fun UserDynamicPage(
+    uiState: UserInfoUiState,
+    onNavigateToAlbum: (AlbumNavParam) -> Unit,
+    onNavigateToHobby: (Long) -> Unit,
+    onNavigateToUser: (Long) -> Unit,
+    onImageClick: (List<String>, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (uiState.actions.isEmpty()) {
+            item(key = "empty_actions", contentType = "empty_actions") {
                 EmptyTabPlaceholder(
-                    icon = PoiIcons.Filled.Sell,
-                    text = if (uiState.isSelf) "你暂无在售二手条目" else "该用户暂无在售二手条目"
+                    icon = PoiIcons.Filled.Timeline,
+                    text = if (uiState.isSelf) "你还没有发布动态" else "该用户暂无动态"
                 )
             }
+        } else {
+            items(
+                items = uiState.actions,
+                key = { it.id },
+                contentType = { "action_card" }
+            ) { action ->
+                ActionCard(
+                    actionItem = action,
+                    fallbackAvatarUrl = MediaPipeline.Default.resolveUrl(
+                        uiState.profile?.header,
+                        MediaCategory.AVATAR,
+                        ImagePurpose.CARD_STANDARD
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    onActionClick = { item ->
+                        val targetRelate = item.relateItem
+                        if (targetRelate != null) {
+                            val isAlbum = targetRelate.isAlbum || item.actionType == 3
+                            if (isAlbum) {
+                                val targetAlbumId = targetRelate.actualAlbumId
+                                if (targetAlbumId > 0L) {
+                                    onNavigateToAlbum(
+                                        AlbumNavParam(
+                                            albumId = targetAlbumId,
+                                            initialTitle = targetRelate.nameCN?.ifBlank { null } ?: targetRelate.name,
+                                            initialCover = targetRelate.cover ?: targetRelate.path
+                                        )
+                                    )
+                                }
+                            } else {
+                                val targetHobbyId = targetRelate.actualHobbyId
+                                if (targetHobbyId > 0L) {
+                                    onNavigateToHobby(targetHobbyId)
+                                }
+                            }
+                        } else {
+                            val targetUserId = item.user?.actualUserId ?: 0L
+                            if (targetUserId > 0L) {
+                                onNavigateToUser(targetUserId)
+                            }
+                        }
+                    },
+                    onImageClick = onImageClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserResalePage(
+    isSelf: Boolean,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item(key = "empty_resale", contentType = "empty_resale") {
+            EmptyTabPlaceholder(
+                icon = PoiIcons.Filled.Sell,
+                text = if (isSelf) "你暂无在售二手条目" else "该用户暂无在售二手条目"
+            )
         }
     }
 }
@@ -591,14 +966,14 @@ private fun UserProfileIdentityPane(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
         UserProfileBanner(
             profile = profile,
             isSelf = isSelf,
             onBack = onBack,
             onEdit = onEdit,
             onRefresh = onRefresh,
-            onBannerClick = onBannerClick
+            onBannerClick = onBannerClick,
+            showNavigationActions = true
         )
 
         UserProfileHeader(
@@ -631,10 +1006,11 @@ private fun UserProfileIdentityPane(
 private fun UserProfileBanner(
     profile: UserProfile,
     isSelf: Boolean,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onRefresh: () -> Unit,
-    onBannerClick: () -> Unit,
+    onBack: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onBannerClick: () -> Unit = {},
+    showNavigationActions: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val bannerUrl = MediaPipeline.Default.resolveUrl(profile.bnr, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
@@ -644,7 +1020,6 @@ private fun UserProfileBanner(
             .fillMaxWidth()
             .height(200.dp)
     ) {
-
         if (bannerUrl.isNotBlank()) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
@@ -672,73 +1047,75 @@ private fun UserProfileBanner(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.45f),
-                            Color.Transparent
+        if (showNavigationActions) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(84.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.45f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.35f),
-                modifier = Modifier.size(36.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                        contentDescription = "返回",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isSelf) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.35f),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        IconButton(onClick = onEdit) {
-                            Icon(
-                                painter = painterResource(PoiIcons.Filled.Edit),
-                                contentDescription = "编辑资料",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
                 Surface(
                     shape = CircleShape,
                     color = Color.Black.copy(alpha = 0.35f),
                     modifier = Modifier.size(36.dp)
                 ) {
-                    IconButton(onClick = onRefresh) {
+                    IconButton(onClick = onBack) {
                         Icon(
-                            painter = painterResource(PoiIcons.Filled.Refresh),
-                            contentDescription = "刷新",
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                            contentDescription = "返回",
                             tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isSelf) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.35f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            IconButton(onClick = onEdit) {
+                                Icon(
+                                    painter = painterResource(PoiIcons.Filled.Edit),
+                                    contentDescription = "编辑资料",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.35f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        IconButton(onClick = onRefresh) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Refresh),
+                                contentDescription = "刷新",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -768,12 +1145,10 @@ private fun UserProfileHeader(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Surface(
                 shape = CircleShape,
                 shadowElevation = 3.dp,
@@ -1105,7 +1480,6 @@ private fun UserOrderStatsCard(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             OrderStatColumn(
                 title = "想买",
                 value = wantCount.toString(),
@@ -1277,7 +1651,8 @@ private fun UserAlbumSubChips(
 }
 
 @Composable
-private fun EmptyTabPlaceholder(icon: DrawableResource,
+private fun EmptyTabPlaceholder(
+    icon: DrawableResource,
     text: String,
     modifier: Modifier = Modifier
 ) {
@@ -1321,7 +1696,6 @@ private fun BasicProfileSection(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1399,7 +1773,8 @@ private fun BasicProfileSection(
 }
 
 @Composable
-private fun ProfileInfoRow(icon: DrawableResource,
+private fun ProfileInfoRow(
+    icon: DrawableResource,
     label: String,
     value: String = "",
     customValue: (@Composable () -> Unit)? = null,
