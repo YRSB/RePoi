@@ -42,7 +42,6 @@ import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import com.nobody.repoi.ui.profile.components.ResaleSummarySection
 import com.nobody.repoi.ui.profile.components.UserCreationSection
-import com.nobody.repoi.ui.theme.LocalIsDarkTheme
 import com.nobody.repoi.ui.user.creation.UserCreationCategory
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -62,7 +61,6 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isDark = LocalIsDarkTheme.current
     val scrollState = rememberScrollState()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
 
@@ -132,9 +130,7 @@ fun ProfileScreen(
                         userMp = uiState.userMp,
                         isSignedInToday = uiState.isSignedInToday,
                         isCheckingIn = uiState.isCheckingIn,
-                        isDark = isDark,
                         hasUnreadNotice = uiState.hasUnreadNotice,
-                        onToggleTheme = { viewModel.toggleTheme(isDark) },
                         onCheckInClick = { viewModel.checkIn() },
                         onMailClick = { if (isLoggedIn) onNavigateToMessage() else onNavigateToLogin() },
                         onSettingsClick = onNavigateToSettings,
@@ -148,7 +144,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .padding(top = 10.dp, bottom = bottomPadding),
+                                .padding(top = 14.dp, bottom = bottomPadding),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             ProfileQuickActionBar(
@@ -235,7 +231,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp)
-                                .padding(top = 10.dp, bottom = bottomPadding),
+                                .padding(top = 14.dp, bottom = bottomPadding),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.Top
                         ) {

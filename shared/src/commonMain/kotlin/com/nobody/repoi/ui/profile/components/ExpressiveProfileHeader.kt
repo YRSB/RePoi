@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -54,9 +57,7 @@ fun ExpressiveProfileHeader(
     userMp: Int,
     isSignedInToday: Boolean,
     isCheckingIn: Boolean,
-    isDark: Boolean,
     hasUnreadNotice: Boolean,
-    onToggleTheme: () -> Unit,
     onCheckInClick: () -> Unit,
     onMailClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -85,7 +86,7 @@ fun ExpressiveProfileHeader(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .matchParentSize()
+                .height(180.dp)
         ) {
             if (bannerUrl.isNotBlank()) {
                 AsyncImage(
@@ -104,26 +105,20 @@ fun ExpressiveProfileHeader(
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .height(84.dp)
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.55f),
-                            0.30f to Color.Black.copy(alpha = 0.18f),
-                            0.70f to Color.Black.copy(alpha = 0.55f),
-                            1.0f to Color.Black.copy(alpha = 0.82f)
+                            0.0f to Color.Black.copy(alpha = 0.40f),
+                            1.0f to Color.Transparent
                         )
                     )
             )
-        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
@@ -154,22 +149,6 @@ fun ExpressiveProfileHeader(
                     }
 
                     FilledTonalIconButton(
-                        onClick = onToggleTheme,
-                        modifier = Modifier.size(38.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = Color.Black.copy(alpha = 0.35f),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Icon(
-                            painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
-                            contentDescription = "切换深浅色主题",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    FilledTonalIconButton(
                         onClick = onSettingsClick,
                         modifier = Modifier.size(38.dp),
                         shape = CircleShape,
@@ -186,191 +165,215 @@ fun ExpressiveProfileHeader(
                     }
                 }
             }
+        }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 132.dp)
+                .padding(horizontal = 16.dp)
+        ) {
+            ElevatedCard(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.85f))
-                        .padding(2.5.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                        },
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    if (avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "头像",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
-                            contentDescription = "默认头像",
-                            modifier = Modifier.size(40.dp),
-                            tint = Color.White
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
                     Row(
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable {
-                                if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                            },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = profile?.displayName ?: "点击登录",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.ChevronRight),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = Color.White.copy(alpha = 0.85f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    if (isLoggedIn) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .clickable {
+                                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.padding(vertical = 1.dp)
+                            if (avatarUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = "头像",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
+                                    contentDescription = "默认头像",
+                                    modifier = Modifier.size(38.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(MaterialTheme.shapes.small)
+                                    .clickable {
+                                        if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                                    },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = "Lv.${profile.level}",
-                                    fontSize = 11.sp,
+                                    text = profile?.displayName ?: "点击登录",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Icon(
+                                    painter = painterResource(PoiIcons.Filled.ChevronRight),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
-                            Surface(
-                                shape = MaterialTheme.shapes.pill,
-                                color = Color.Black.copy(alpha = 0.36f)
-                            ) {
+                            if (isLoggedIn) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = "H",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = Color(0xFFFFB800)
-                                    )
-                                    Text(
-                                        text = if (userMp > 0) userMp.toString() else "0",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            text = "Lv.${profile.level}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                        )
+                                    }
+
+                                    Surface(
+                                        shape = MaterialTheme.shapes.pill,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "H",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color(0xFFFFB800)
+                                            )
+                                            Text(
+                                                text = if (userMp > 0) userMp.toString() else "0",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    Icon(
+                                        painter = painterResource(PoiIcons.Filled.QrCode),
+                                        contentDescription = "个人二维码",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                            } else {
+                                Text(
+                                    text = "登录后同步心愿与手账",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+                        }
 
-                            Icon(
-                                painter = painterResource(PoiIcons.Filled.QrCode),
-                                contentDescription = "个人二维码",
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White.copy(alpha = 0.85f)
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        if (isLoggedIn) {
+                            CheckInSpringButton(
+                                isSignedInToday = isSignedInToday,
+                                isCheckingIn = isCheckingIn,
+                                onClick = onCheckInClick
+                            )
+                        } else {
+                            Button(
+                                onClick = onLoginClick,
+                                shape = MaterialTheme.shapes.pill,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Text(
+                                    text = "登录",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SocialStatColumn(
+                                count = fellow?.friendCount ?: 0,
+                                label = "关注",
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                                }
+                            )
+
+                            SocialStatColumn(
+                                count = fellow?.fanCount ?: 0,
+                                label = "粉丝",
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                                }
+                            )
+
+                            SocialStatColumn(
+                                count = fellow?.praiseCount ?: 0,
+                                label = "获赞",
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                                }
                             )
                         }
-                    } else {
-                        Text(
-                            text = "登录后同步心愿与手账",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f)
-                        )
                     }
                 }
-
-                if (isLoggedIn) {
-                    CheckInSpringButton(
-                        isSignedInToday = isSignedInToday,
-                        isCheckingIn = isCheckingIn,
-                        onClick = onCheckInClick
-                    )
-                } else {
-                    Button(
-                        onClick = onLoginClick,
-                        shape = MaterialTheme.shapes.pill,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text(
-                            text = "登录",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 22.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SocialStatColumn(
-                    count = fellow?.friendCount ?: 0,
-                    label = "关注",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                    }
-                )
-
-                SocialStatColumn(
-                    count = fellow?.fanCount ?: 0,
-                    label = "粉丝",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                    }
-                )
-
-                SocialStatColumn(
-                    count = fellow?.praiseCount ?: 0,
-                    label = "获赞",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                    }
-                )
             }
         }
     }
@@ -392,16 +395,16 @@ private fun SocialStatColumn(
     ) {
         Text(
             text = count.toString(),
-            fontSize = 18.sp,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.85f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
