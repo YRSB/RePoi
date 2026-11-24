@@ -80,8 +80,8 @@ fun ExpressiveProfileHeader(
 
     val isLoggedIn = profile != null
     val bannerHeight = 200.dp
-    val avatarSize = 74.dp
-    val avatarOverlap = 36.dp
+    val avatarSize = 72.dp
+    val avatarOverlap = 24.dp
 
     Box(
         modifier = modifier.fillMaxWidth()
