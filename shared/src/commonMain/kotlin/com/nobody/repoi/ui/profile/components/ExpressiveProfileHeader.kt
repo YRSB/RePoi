@@ -82,6 +82,7 @@ fun ExpressiveProfileHeader(
     val bannerHeight = 200.dp
     val avatarSize = 72.dp
     val avatarOverlap = 24.dp
+    val avatarExposedHeight = avatarSize - avatarOverlap
 
     Box(
         modifier = modifier.fillMaxWidth()
@@ -211,7 +212,7 @@ fun ExpressiveProfileHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .height(avatarExposedHeight),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
