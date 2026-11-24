@@ -135,8 +135,7 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("天天才十二").assertIsDisplayed()
-        onNodeWithText("Lv.3").assertIsDisplayed()
-        onNodeWithText("H币 7980").assertIsDisplayed()
+        onNodeWithText("Lv.3   H币 7980").assertIsDisplayed()
         onNodeWithText("已签到 ✓").assertIsDisplayed()
         onNodeWithText("关注").assertIsDisplayed().performClick()
         assertTrue(friendListType == 0)

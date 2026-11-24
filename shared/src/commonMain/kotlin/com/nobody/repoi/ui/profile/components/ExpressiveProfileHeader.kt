@@ -207,57 +207,23 @@ fun ExpressiveProfileHeader(
                     }
                 },
                 headlineContent = {
-                    Row(
+                    Text(
+                        text = profile?.displayName ?: "点击登录",
                         modifier = Modifier
                             .clip(MaterialTheme.shapes.small)
                             .clickable {
                                 if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
                             },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = profile?.displayName ?: "点击登录",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.ChevronRight),
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 supportingContent = {
-                    if (isLoggedIn) {
-                        Row(
-                            modifier = Modifier.padding(top = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Lv.${profile.level}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "H币 ${if (userMp > 0) userMp else 0}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "登录后同步心愿与手账",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = if (isLoggedIn) "Lv.${profile.level}   H币 ${if (userMp > 0) userMp else 0}" else "登录后同步心愿与手账",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 trailingContent = {
                     if (isLoggedIn) {
