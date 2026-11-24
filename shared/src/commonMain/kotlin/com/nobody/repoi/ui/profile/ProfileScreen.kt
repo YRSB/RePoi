@@ -147,8 +147,8 @@ fun ProfileScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .padding(bottom = bottomPadding),
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 10.dp, bottom = bottomPadding),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             ProfileQuickActionBar(
@@ -234,8 +234,8 @@ fun ProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 14.dp)
-                                .padding(bottom = bottomPadding),
+                                .padding(horizontal = 20.dp)
+                                .padding(top = 10.dp, bottom = bottomPadding),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.Top
                         ) {

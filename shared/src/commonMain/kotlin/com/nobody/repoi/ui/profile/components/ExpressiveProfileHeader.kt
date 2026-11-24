@@ -1,16 +1,12 @@
 package com.nobody.repoi.ui.profile.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,17 +15,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -85,9 +80,7 @@ fun ExpressiveProfileHeader(
     val isLoggedIn = profile != null
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+        modifier = modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
@@ -114,11 +107,10 @@ fun ExpressiveProfileHeader(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.52f),
-                                Color.Black.copy(alpha = 0.38f),
-                                Color.Black.copy(alpha = 0.72f)
-                            )
+                            0.0f to Color.Black.copy(alpha = 0.55f),
+                            0.30f to Color.Black.copy(alpha = 0.18f),
+                            0.70f to Color.Black.copy(alpha = 0.55f),
+                            1.0f to Color.Black.copy(alpha = 0.82f)
                         )
                     )
             )
@@ -137,57 +129,60 @@ fun ExpressiveProfileHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(
+                    FilledTonalIconButton(
+                        onClick = onMailClick,
+                        modifier = Modifier.size(38.dp),
                         shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.28f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
+                        )
                     ) {
-                        IconButton(onClick = onMailClick, modifier = Modifier.size(38.dp)) {
-                            BadgedBox(
-                                badge = {
-                                    if (hasUnreadNotice) {
-                                        Badge(containerColor = MaterialTheme.colorScheme.error)
-                                    }
+                        BadgedBox(
+                            badge = {
+                                if (hasUnreadNotice) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.error)
                                 }
-                            ) {
-                                Icon(
-                                    painter = painterResource(PoiIcons.Filled.Mail),
-                                    contentDescription = "消息中心",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
                             }
-                        }
-                    }
-
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.28f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-                    ) {
-                        IconButton(onClick = onToggleTheme, modifier = Modifier.size(38.dp)) {
+                        ) {
                             Icon(
-                                painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
-                                contentDescription = "切换深浅色主题",
-                                tint = Color.White,
+                                painter = painterResource(PoiIcons.Filled.Mail),
+                                contentDescription = "消息中心",
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
-                    Surface(
+                    FilledTonalIconButton(
+                        onClick = onToggleTheme,
+                        modifier = Modifier.size(38.dp),
                         shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.28f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
+                        )
                     ) {
-                        IconButton(onClick = onSettingsClick, modifier = Modifier.size(38.dp)) {
-                            Icon(
-                                painter = painterResource(PoiIcons.Filled.Settings),
-                                contentDescription = "设置",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
+                            contentDescription = "切换深浅色主题",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    FilledTonalIconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(38.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Settings),
+                            contentDescription = "设置",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -200,16 +195,11 @@ fun ExpressiveProfileHeader(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(68.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .border(
-                            width = 2.dp,
-                            brush = Brush.linearGradient(
-                                listOf(Color.White, Color.White.copy(alpha = 0.45f))
-                            ),
-                            shape = RoundedCornerShape(22.dp)
-                        )
-                        .background(Color.White.copy(alpha = 0.15f))
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.85f))
+                        .padding(2.5.dp)
+                        .clip(CircleShape)
                         .clickable {
                             if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
                         },
@@ -226,7 +216,7 @@ fun ExpressiveProfileHeader(
                         Icon(
                             painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
                             contentDescription = "默认头像",
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(40.dp),
                             tint = Color.White
                         )
                     }
@@ -282,20 +272,19 @@ fun ExpressiveProfileHeader(
                             }
 
                             Surface(
-                                shape = CircleShape,
-                                color = Color.Black.copy(alpha = 0.35f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                                shape = MaterialTheme.shapes.pill,
+                                color = Color.Black.copy(alpha = 0.36f)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text(
                                         text = "H",
-                                        fontSize = 10.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Black,
-                                        color = MaterialTheme.colorScheme.primaryContainer
+                                        color = Color(0xFFFFB800)
                                     )
                                     Text(
                                         text = if (userMp > 0) userMp.toString() else "0",
@@ -346,15 +335,14 @@ fun ExpressiveProfileHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-                    .padding(horizontal = 8.dp)
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 22.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SocialStatColumn(
@@ -366,13 +354,6 @@ fun ExpressiveProfileHeader(
                     }
                 )
 
-                VerticalDivider(
-                    modifier = Modifier
-                        .fillMaxHeight(0.55f)
-                        .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
-                )
-
                 SocialStatColumn(
                     count = fellow?.fanCount ?: 0,
                     label = "粉丝",
@@ -380,13 +361,6 @@ fun ExpressiveProfileHeader(
                     onClick = {
                         if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
                     }
-                )
-
-                VerticalDivider(
-                    modifier = Modifier
-                        .fillMaxHeight(0.55f)
-                        .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
                 )
 
                 SocialStatColumn(
@@ -411,23 +385,23 @@ private fun SocialStatColumn(
 ) {
     Column(
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
+            .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
-            .padding(vertical = 2.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = count.toString(),
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.8f)
+            color = Color.White.copy(alpha = 0.85f)
         )
     }
 }
