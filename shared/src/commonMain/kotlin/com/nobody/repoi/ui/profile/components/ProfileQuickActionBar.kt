@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.ui.common.PoiIcons
@@ -40,20 +44,25 @@ fun ProfileQuickActionBar(
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            ExpressiveBentoTile(
+            QuickActionButton(
                 icon = PoiIcons.Filled.Star,
-                title = "我的收藏",
-                subtitle = "手办周边",
+                label = "我的收藏",
                 tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                 modifier = Modifier.weight(1f),
                 onClick = {
                     if (isLoggedIn) {
@@ -69,12 +78,10 @@ fun ProfileQuickActionBar(
                 }
             )
 
-            ExpressiveBentoTile(
+            QuickActionButton(
                 icon = PoiIcons.Filled.PhotoLibrary,
-                title = "我的发布",
-                subtitle = "图集摄影",
+                label = "我的发布",
                 tint = MaterialTheme.colorScheme.secondary,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
                 modifier = Modifier.weight(1f),
                 onClick = {
                     if (isLoggedIn) {
@@ -89,34 +96,21 @@ fun ProfileQuickActionBar(
                     }
                 }
             )
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ExpressiveBentoTile(
+            QuickActionButton(
                 icon = PoiIcons.Filled.ShoppingBag,
-                title = "我的二手",
-                subtitle = "闲置集市",
+                label = "我的二手",
                 tint = MaterialTheme.colorScheme.tertiary,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    if (isLoggedIn) {
-                        onShowMessage("二手闲置市场功能即将上线")
-                    } else {
-                        onLoginClick()
-                    }
+                    if (isLoggedIn) onShowMessage("二手闲置市场功能即将上线") else onLoginClick()
                 }
             )
 
-            ExpressiveBentoTile(
+            QuickActionButton(
                 icon = PoiIcons.Filled.History,
-                title = "浏览历史",
-                subtitle = "足迹回溯",
+                label = "浏览历史",
                 tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.weight(1f),
                 onClick = {
                     if (isLoggedIn) onNavigateToHistory() else onLoginClick()
@@ -127,62 +121,43 @@ fun ProfileQuickActionBar(
 }
 
 @Composable
-private fun ExpressiveBentoTile(
+private fun QuickActionButton(
     icon: DrawableResource,
-    title: String,
-    subtitle: String,
+    label: String,
     tint: Color,
-    containerColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Surface(
+    Column(
         modifier = modifier
-            .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
-        color = containerColor,
-        tonalElevation = 2.dp
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .size(44.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(tint.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(tint.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = title,
-                    modifier = Modifier.size(20.dp),
-                    tint = tint
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = label,
+                modifier = Modifier.size(22.dp),
+                tint = tint
+            )
         }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

@@ -346,66 +346,57 @@ fun ExpressiveProfileHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Surface(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .height(IntrinsicSize.Min)
+                    .padding(horizontal = 8.dp)
                     .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = Color.Black.copy(alpha = 0.32f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
+                SocialStatColumn(
+                    count = fellow?.friendCount ?: 0,
+                    label = "关注",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                    }
+                )
+
+                VerticalDivider(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min)
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SocialStatColumn(
-                        count = fellow?.friendCount ?: 0,
-                        label = "关注",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                        }
-                    )
+                        .fillMaxHeight(0.55f)
+                        .width(1.dp),
+                    color = Color.White.copy(alpha = 0.25f)
+                )
 
-                    VerticalDivider(
-                        modifier = Modifier
-                            .fillMaxHeight(0.6f)
-                            .width(1.dp),
-                        color = Color.White.copy(alpha = 0.25f)
-                    )
+                SocialStatColumn(
+                    count = fellow?.fanCount ?: 0,
+                    label = "粉丝",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                    }
+                )
 
-                    SocialStatColumn(
-                        count = fellow?.fanCount ?: 0,
-                        label = "粉丝",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                        }
-                    )
+                VerticalDivider(
+                    modifier = Modifier
+                        .fillMaxHeight(0.55f)
+                        .width(1.dp),
+                    color = Color.White.copy(alpha = 0.25f)
+                )
 
-                    VerticalDivider(
-                        modifier = Modifier
-                            .fillMaxHeight(0.6f)
-                            .width(1.dp),
-                        color = Color.White.copy(alpha = 0.25f)
-                    )
-
-                    SocialStatColumn(
-                        count = fellow?.praiseCount ?: 0,
-                        label = "获赞",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                        }
-                    )
-                }
+                SocialStatColumn(
+                    count = fellow?.praiseCount ?: 0,
+                    label = "获赞",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                    }
+                )
             }
         }
     }
