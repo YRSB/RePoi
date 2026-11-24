@@ -174,7 +174,7 @@ fun ExpressiveProfileHeader(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp)
-                .clip(MaterialTheme.shapes.extraLarge),
+                .clip(MaterialTheme.shapes.large),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             ListItem(
