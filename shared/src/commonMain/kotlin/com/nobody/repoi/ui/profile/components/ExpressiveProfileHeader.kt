@@ -330,28 +330,31 @@ fun ExpressiveProfileHeader(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SocialStatItem(
+                SocialStatColumn(
                     count = fellow?.friendCount ?: 0,
                     label = "关注",
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
                     }
                 )
 
-                SocialStatItem(
+                SocialStatColumn(
                     count = fellow?.fanCount ?: 0,
                     label = "粉丝",
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
                     }
                 )
 
-                SocialStatItem(
+                SocialStatColumn(
                     count = fellow?.praiseCount ?: 0,
                     label = "获赞",
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
                     }
@@ -364,19 +367,18 @@ fun ExpressiveProfileHeader(
 }
 
 @Composable
-private fun SocialStatItem(
+private fun SocialStatColumn(
     count: Int,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = count.toString(),
@@ -384,9 +386,11 @@ private fun SocialStatItem(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
