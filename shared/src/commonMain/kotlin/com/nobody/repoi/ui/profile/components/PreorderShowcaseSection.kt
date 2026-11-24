@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -96,7 +95,7 @@ fun PreorderShowcaseSection(
                 )
 
                 ShowcaseStatItem(
-                    title = "待补款 ▾",
+                    title = "待补款",
                     value = supplementedRmb,
                     accentColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1.2f),
@@ -107,9 +106,7 @@ fun PreorderShowcaseSection(
             }
 
             if (preorderItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
