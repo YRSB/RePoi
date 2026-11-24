@@ -251,6 +251,7 @@ fun ExpressiveProfileHeader(
             ) {
                 Row(
                     modifier = Modifier
+                        .weight(1f, fill = false)
                         .clip(MaterialTheme.shapes.small)
                         .clickable {
                             if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
@@ -264,7 +265,8 @@ fun ExpressiveProfileHeader(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     Icon(
                         painter = painterResource(PoiIcons.Filled.ChevronRight),
