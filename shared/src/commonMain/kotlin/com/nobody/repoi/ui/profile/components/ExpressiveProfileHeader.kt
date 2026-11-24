@@ -22,7 +22,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -165,158 +168,166 @@ fun ExpressiveProfileHeader(
             }
         }
 
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(top = 12.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .clickable {
-                            if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "头像",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
-                            contentDescription = "默认头像",
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable {
-                                if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                            },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = profile?.displayName ?: "点击登录",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.ChevronRight),
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    if (isLoggedIn) {
+                ListItem(
+                    leadingContent = {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .clickable {
+                                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (avatarUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = "头像",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
+                                    contentDescription = "默认头像",
+                                    modifier = Modifier.size(36.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    headlineContent = {
                         Row(
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.small)
+                                .clickable {
+                                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                                },
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "Lv.${profile.level}",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = profile?.displayName ?: "点击登录",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.ChevronRight),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    supportingContent = {
+                        if (isLoggedIn) {
+                            Row(
+                                modifier = Modifier.padding(top = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Lv.${profile.level}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "H币 ${if (userMp > 0) userMp else 0}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
                             Text(
-                                text = "H币 ${if (userMp > 0) userMp else 0}",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "登录后同步心愿与手账",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    } else {
-                        Text(
-                            text = "登录后同步心愿与手账",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (isLoggedIn) {
-                    CheckInSpringButton(
-                        isSignedInToday = isSignedInToday,
-                        isCheckingIn = isCheckingIn,
-                        onClick = onCheckInClick
+                    },
+                    trailingContent = {
+                        if (isLoggedIn) {
+                            CheckInSpringButton(
+                                isSignedInToday = isSignedInToday,
+                                isCheckingIn = isCheckingIn,
+                                onClick = onCheckInClick
+                            )
+                        } else {
+                            Button(
+                                onClick = onLoginClick,
+                                shape = MaterialTheme.shapes.pill,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Text(
+                                    text = "登录",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent
                     )
-                } else {
-                    Button(
-                        onClick = onLoginClick,
-                        shape = MaterialTheme.shapes.pill,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text(
-                            text = "登录",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SocialStatColumn(
+                        count = fellow?.friendCount ?: 0,
+                        label = "关注",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                        }
+                    )
+
+                    SocialStatColumn(
+                        count = fellow?.fanCount ?: 0,
+                        label = "粉丝",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                        }
+                    )
+
+                    SocialStatColumn(
+                        count = fellow?.praiseCount ?: 0,
+                        label = "获赞",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                        }
+                    )
                 }
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SocialStatColumn(
-                    count = fellow?.friendCount ?: 0,
-                    label = "关注",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                    }
-                )
-
-                SocialStatColumn(
-                    count = fellow?.fanCount ?: 0,
-                    label = "粉丝",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                    }
-                )
-
-                SocialStatColumn(
-                    count = fellow?.praiseCount ?: 0,
-                    label = "获赞",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
         }
     }
 }
