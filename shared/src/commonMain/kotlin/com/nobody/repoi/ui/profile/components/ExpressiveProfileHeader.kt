@@ -171,45 +171,51 @@ fun ExpressiveProfileHeader(
             }
         }
 
+        Box(
+            modifier = Modifier
+                .padding(top = bannerHeight - avatarOverlap)
+                .padding(start = 16.dp)
+                .size(avatarSize)
+                .shadow(elevation = 4.dp, shape = CircleShape)
+                .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .clickable {
+                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (avatarUrl.isNotBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "头像",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
+                    contentDescription = "默认头像",
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = bannerHeight - avatarOverlap)
+                .padding(top = bannerHeight)
                 .padding(horizontal = 16.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .shadow(elevation = 4.dp, shape = CircleShape)
-                        .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .clickable {
-                            if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "头像",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
-                            contentDescription = "默认头像",
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.width(avatarSize))
 
                 if (isLoggedIn) {
                     CheckInSpringButton(
