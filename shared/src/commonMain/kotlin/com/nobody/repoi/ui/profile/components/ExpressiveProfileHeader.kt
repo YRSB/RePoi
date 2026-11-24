@@ -79,7 +79,7 @@ fun ExpressiveProfileHeader(
     }
 
     val isLoggedIn = profile != null
-    val bannerHeight = 172.dp
+    val bannerHeight = 200.dp
     val avatarSize = 74.dp
     val avatarOverlap = 36.dp
 
