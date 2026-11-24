@@ -36,6 +36,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiAsyncImage
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
@@ -416,23 +418,17 @@ private fun ProfileImmersiveHeader(
     onNavigateToFriendList: (userId: Long, initialType: Int) -> Unit = { _, _ -> },
     onNavigateToUserInfo: (userId: Long) -> Unit = {}
 ) {
-    val bannerUrl = remember(profile.bnr) {
-        MediaPipeline.Default.resolveUrl(profile.bnr, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
-    }
-    val avatarUrl = remember(profile.header) {
-        MediaPipeline.Default.resolveUrl(profile.header, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
-    }
-
     Box(modifier = Modifier.fillMaxWidth()) {
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .matchParentSize()
         ) {
-            if (bannerUrl.isNotBlank()) {
-                AsyncImage(
-                    model = bannerUrl,
+            if (!profile.bnr.isNullOrBlank()) {
+                PoiAsyncImage(
+                    path = profile.bnr,
+                    category = MediaCategory.BANNER,
+                    purpose = ImagePurpose.CARD_STANDARD,
                     contentDescription = "用户横幅",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -451,9 +447,10 @@ private fun ProfileImmersiveHeader(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.55f),
-                                Color.Black.copy(alpha = 0.40f),
-                                Color.Black.copy(alpha = 0.65f)
+                                Color.Black.copy(alpha = 0.45f),
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.35f),
+                                Color.Black.copy(alpha = 0.60f)
                             )
                         )
                     )
@@ -465,66 +462,81 @@ private fun ProfileImmersiveHeader(
                 .fillMaxWidth()
                 .statusBarsPadding()
         ) {
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onMailClick) {
-                    BadgedBox(
-                        badge = {
-                            if (hasUnreadNotice) {
-                                Badge(containerColor = MaterialTheme.colorScheme.error)
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.45f),
+                    contentColor = Color.White
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onMailClick, modifier = Modifier.size(36.dp)) {
+                            BadgedBox(
+                                badge = {
+                                    if (hasUnreadNotice) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(PoiIcons.Filled.Mail),
+                                    contentDescription = "消息中心",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
-                    ) {
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.Mail),
-                            contentDescription = "消息中心",
-                            tint = Color.White
-                        )
+
+                        IconButton(onClick = onToggleTheme, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
+                                contentDescription = "切换深浅色主题",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        IconButton(onClick = onSettingsClick, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Settings),
+                                contentDescription = "设置",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
-                }
-
-                IconButton(onClick = onToggleTheme) {
-                    Icon(
-                        painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
-                        contentDescription = "切换深浅色主题",
-                        tint = Color.White
-                    )
-                }
-
-                IconButton(onClick = onSettingsClick) {
-                    Icon(
-                        painter = painterResource(PoiIcons.Filled.Settings),
-                        contentDescription = "设置",
-                        tint = Color.White
-                    )
                 }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 6.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Box(
                     modifier = Modifier
-                        .size(62.dp)
-                        .clip(CircleShape)
-                        .border(width = 2.dp, color = Color.White.copy(alpha = 0.9f), shape = CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .size(66.dp)
+                        .clip(MaterialTheme.shapes.largeIncreased)
+                        .border(
+                            width = 2.dp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            shape = MaterialTheme.shapes.largeIncreased
+                        )
+                        .background(Color.White.copy(alpha = 0.15f))
                         .clickable { onNavigateToUserInfo(profile.id) },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = avatarUrl,
+                    if (!profile.header.isNullOrBlank()) {
+                        PoiAsyncImage(
+                            path = profile.header,
+                            category = MediaCategory.AVATAR,
+                            purpose = ImagePurpose.CARD_STANDARD,
                             contentDescription = "头像",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -547,7 +559,7 @@ private fun ProfileImmersiveHeader(
                             .clip(MaterialTheme.shapes.small)
                             .clickable { onNavigateToUserInfo(profile.id) },
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             text = profile.displayName,
@@ -565,75 +577,88 @@ private fun ProfileImmersiveHeader(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-
                         Surface(
                             shape = MaterialTheme.shapes.small,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 1.dp)
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Text(
                                 text = "Lv.${profile.level}",
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Color(0xFFFFB300),
-                                modifier = Modifier.size(16.dp)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "H",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = Color.Black
-                                    )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFFFB300),
+                                    modifier = Modifier.size(14.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "H",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.Black
+                                        )
+                                    }
                                 }
+                                Text(
+                                    text = if (userMp > 0) userMp.toString() else "0",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
-                            Text(
-                                text = if (userMp > 0) userMp.toString() else "0",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White.copy(alpha = 0.92f)
-                            )
                         }
 
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.QrCode),
-                            contentDescription = "个人二维码",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.White.copy(alpha = 0.85f)
-                        )
+                        IconButton(
+                            onClick = { onNavigateToUserInfo(profile.id) },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.QrCode),
+                                contentDescription = "个人二维码",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
                     }
                 }
 
-                Surface(
+                Button(
+                    onClick = onCheckInClick,
+                    enabled = !isSignedInToday && !isCheckingIn,
                     shape = CircleShape,
-                    color = if (isSignedInToday) Color.White.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(enabled = !isSignedInToday && !isCheckingIn) {
-                        onCheckInClick()
-                    }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSignedInToday) Color.White.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary,
+                        contentColor = if (isSignedInToday) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = if (isSignedInToday) Color.White.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        disabledContentColor = if (isSignedInToday) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
                 ) {
                     Text(
                         text = if (isSignedInToday) "已签到" else if (isCheckingIn) "签到中…" else "签到",
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSignedInToday) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -659,7 +684,7 @@ private fun ProfileImmersiveHeader(
                     modifier = Modifier
                         .fillMaxHeight(0.55f)
                         .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = Color.White.copy(alpha = 0.20f)
                 )
 
                 SocialStatColumn(
@@ -673,7 +698,7 @@ private fun ProfileImmersiveHeader(
                     modifier = Modifier
                         .fillMaxHeight(0.55f)
                         .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = Color.White.copy(alpha = 0.20f)
                 )
 
                 SocialStatColumn(
@@ -703,7 +728,7 @@ private fun SocialStatColumn(
     ) {
         Text(
             text = count.toString(),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
@@ -711,7 +736,7 @@ private fun SocialStatColumn(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.78f)
+            color = Color.White.copy(alpha = 0.80f)
         )
     }
 }
@@ -1589,6 +1614,7 @@ private fun UnauthenticatedImmersiveHeader(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Black.copy(alpha = 0.45f),
+                                Color.Black.copy(alpha = 0.15f),
                                 Color.Black.copy(alpha = 0.35f),
                                 Color.Black.copy(alpha = 0.60f)
                             )
@@ -1605,45 +1631,60 @@ private fun UnauthenticatedImmersiveHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onMailClick) {
-                    Icon(
-                        painter = painterResource(PoiIcons.Filled.Mail),
-                        contentDescription = "消息中心",
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onToggleTheme) {
-                    Icon(
-                        painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
-                        contentDescription = "切换深浅色主题",
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onSettingsClick) {
-                    Icon(
-                        painter = painterResource(PoiIcons.Filled.Settings),
-                        contentDescription = "设置",
-                        tint = Color.White
-                    )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.45f),
+                    contentColor = Color.White
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onMailClick, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Mail),
+                                contentDescription = "消息中心",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = onToggleTheme, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
+                                contentDescription = "切换深浅色主题",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = onSettingsClick, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Settings),
+                                contentDescription = "设置",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 6.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(62.dp)
-                        .clip(CircleShape)
-                        .border(width = 2.dp, color = Color.White.copy(alpha = 0.9f), shape = CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .size(66.dp)
+                        .clip(MaterialTheme.shapes.largeIncreased)
+                        .border(
+                            width = 2.dp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            shape = MaterialTheme.shapes.largeIncreased
+                        )
+                        .background(Color.White.copy(alpha = 0.15f))
                         .clickable { onLoginClick() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1663,7 +1704,7 @@ private fun UnauthenticatedImmersiveHeader(
                             .clip(MaterialTheme.shapes.small)
                             .clickable { onLoginClick() },
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             text = "点击登录",
@@ -1688,17 +1729,20 @@ private fun UnauthenticatedImmersiveHeader(
                     )
                 }
 
-                Surface(
+                Button(
+                    onClick = onLoginClick,
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onLoginClick() }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
                 ) {
                     Text(
                         text = "登录",
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -1723,7 +1767,7 @@ private fun UnauthenticatedImmersiveHeader(
                     modifier = Modifier
                         .fillMaxHeight(0.55f)
                         .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = Color.White.copy(alpha = 0.20f)
                 )
                 SocialStatColumn(
                     count = 0,
@@ -1735,7 +1779,7 @@ private fun UnauthenticatedImmersiveHeader(
                     modifier = Modifier
                         .fillMaxHeight(0.55f)
                         .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = Color.White.copy(alpha = 0.20f)
                 )
                 SocialStatColumn(
                     count = 0,
