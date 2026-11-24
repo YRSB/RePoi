@@ -1,5 +1,7 @@
 package com.nobody.repoi.ui.profile.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,14 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -62,6 +66,7 @@ fun PreorderShowcaseSection(
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -69,51 +74,119 @@ fun PreorderShowcaseSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 14.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ShowcaseStatItem(
-                    title = "想买",
-                    value = careCount.toString(),
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) onNavigateToCollect("want") else onLoginClick()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp, 16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                    Text(
+                        text = "预定与手账",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = "${preorderCount}笔预定",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
                     }
-                )
+                }
 
-                ShowcaseStatItem(
-                    title = "预定",
-                    value = preorderCount.toString(),
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) onNavigateToCollect("preorder") else onLoginClick()
+                Surface(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable {
+                            if (isLoggedIn) onMoneyClick() else onLoginClick()
+                        },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "折算明细",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.ChevronRight),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                )
+                }
+            }
 
-                ShowcaseStatItem(
-                    title = "待补款 ▼",
-                    value = supplementedRmb,
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) onMoneyClick() else onLoginClick()
-                    }
-                )
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp, horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ShowcaseStatItem(
+                        title = "想买",
+                        value = careCount.toString(),
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (isLoggedIn) onNavigateToCollect("want") else onLoginClick()
+                        }
+                    )
+
+                    ShowcaseStatItem(
+                        title = "预定",
+                        value = preorderCount.toString(),
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (isLoggedIn) onNavigateToCollect("preorder") else onLoginClick()
+                        }
+                    )
+
+                    ShowcaseStatItem(
+                        title = "待补款 ▾",
+                        value = supplementedRmb,
+                        accentColor = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1.2f),
+                        onClick = {
+                            if (isLoggedIn) onMoneyClick() else onLoginClick()
+                        }
+                    )
+                }
             }
 
             if (preorderItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(horizontal = 2.dp)
                 ) {
                     items(
@@ -151,14 +224,14 @@ internal fun ShowcaseStatItem(
 ) {
     Column(
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
+            .clip(MaterialTheme.shapes.medium)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(vertical = 4.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -166,7 +239,7 @@ internal fun ShowcaseStatItem(
         Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = accentColor,
             maxLines = 1,
@@ -186,8 +259,11 @@ internal fun ShowcaseFigureCard(
 
     Card(
         onClick = onClick,
-        modifier = Modifier.size(72.dp),
-        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .width(78.dp)
+            .height(96.dp),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )

@@ -1,5 +1,6 @@
 package com.nobody.repoi.ui.profile.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -47,8 +49,6 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.common.PoiIcons
-import com.nobody.repoi.ui.theme.bottomSheet
-import com.nobody.repoi.ui.theme.largeCard
 import com.nobody.repoi.ui.theme.pill
 import org.jetbrains.compose.resources.painterResource
 
@@ -87,7 +87,7 @@ fun ExpressiveProfileHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.bottomSheet)
+            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
     ) {
         Box(
             modifier = Modifier
@@ -115,9 +115,9 @@ fun ExpressiveProfileHeader(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.55f),
-                                Color.Black.copy(alpha = 0.40f),
-                                Color.Black.copy(alpha = 0.68f)
+                                Color.Black.copy(alpha = 0.52f),
+                                Color.Black.copy(alpha = 0.38f),
+                                Color.Black.copy(alpha = 0.72f)
                             )
                         )
                     )
@@ -132,54 +132,83 @@ fun ExpressiveProfileHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onMailClick) {
-                    BadgedBox(
-                        badge = {
-                            if (hasUnreadNotice) {
-                                Badge(containerColor = MaterialTheme.colorScheme.error)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.28f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                    ) {
+                        IconButton(onClick = onMailClick, modifier = Modifier.size(38.dp)) {
+                            BadgedBox(
+                                badge = {
+                                    if (hasUnreadNotice) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(PoiIcons.Filled.Mail),
+                                    contentDescription = "消息中心",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
-                    ) {
-                        Icon(
-                            painter = painterResource(PoiIcons.Filled.Mail),
-                            contentDescription = "消息中心",
-                            tint = Color.White
-                        )
                     }
-                }
 
-                IconButton(onClick = onToggleTheme) {
-                    Icon(
-                        painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
-                        contentDescription = "切换深浅色主题",
-                        tint = Color.White
-                    )
-                }
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.28f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                    ) {
+                        IconButton(onClick = onToggleTheme, modifier = Modifier.size(38.dp)) {
+                            Icon(
+                                painter = painterResource(if (isDark) PoiIcons.Filled.WbSunny else PoiIcons.Filled.NightsStay),
+                                contentDescription = "切换深浅色主题",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
 
-                IconButton(onClick = onSettingsClick) {
-                    Icon(
-                        painter = painterResource(PoiIcons.Filled.Settings),
-                        contentDescription = "设置",
-                        tint = Color.White
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.28f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                    ) {
+                        IconButton(onClick = onSettingsClick, modifier = Modifier.size(38.dp)) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Settings),
+                                contentDescription = "设置",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 6.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
-                        .clip(MaterialTheme.shapes.largeCard)
-                        .border(width = 2.dp, color = Color.White.copy(alpha = 0.85f), shape = MaterialTheme.shapes.largeCard)
+                        .size(68.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .border(
+                            width = 2.dp,
+                            brush = Brush.linearGradient(
+                                listOf(Color.White, Color.White.copy(alpha = 0.45f))
+                            ),
+                            shape = RoundedCornerShape(22.dp)
+                        )
                         .background(Color.White.copy(alpha = 0.15f))
                         .clickable {
                             if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
@@ -197,7 +226,7 @@ fun ExpressiveProfileHeader(
                         Icon(
                             painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
                             contentDescription = "默认头像",
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(38.dp),
                             tint = Color.White
                         )
                     }
@@ -231,7 +260,7 @@ fun ExpressiveProfileHeader(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     if (isLoggedIn) {
                         Row(
@@ -239,43 +268,42 @@ fun ExpressiveProfileHeader(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier.padding(vertical = 1.dp)
                             ) {
                                 Text(
                                     text = "Lv.${profile.level}",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                 )
                             }
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.35f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(16.dp)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = "H",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = MaterialTheme.colorScheme.onSecondary
-                                        )
-                                    }
+                                    Text(
+                                        text = "H",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    )
+                                    Text(
+                                        text = if (userMp > 0) userMp.toString() else "0",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
                                 }
-                                Text(
-                                    text = if (userMp > 0) userMp.toString() else "0",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White.copy(alpha = 0.92f)
-                                )
                             }
 
                             Icon(
@@ -318,56 +346,66 @@ fun ExpressiveProfileHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.32f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
             ) {
-                SocialStatColumn(
-                    count = fellow?.friendCount ?: 0,
-                    label = "关注",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                    }
-                )
-
-                VerticalDivider(
+                Row(
                     modifier = Modifier
-                        .fillMaxHeight(0.55f)
-                        .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
-                )
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
+                        .padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SocialStatColumn(
+                        count = fellow?.friendCount ?: 0,
+                        label = "关注",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                        }
+                    )
 
-                SocialStatColumn(
-                    count = fellow?.fanCount ?: 0,
-                    label = "粉丝",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                    }
-                )
+                    VerticalDivider(
+                        modifier = Modifier
+                            .fillMaxHeight(0.6f)
+                            .width(1.dp),
+                        color = Color.White.copy(alpha = 0.25f)
+                    )
 
-                VerticalDivider(
-                    modifier = Modifier
-                        .fillMaxHeight(0.55f)
-                        .width(1.dp),
-                    color = Color.White.copy(alpha = 0.25f)
-                )
+                    SocialStatColumn(
+                        count = fellow?.fanCount ?: 0,
+                        label = "粉丝",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                        }
+                    )
 
-                SocialStatColumn(
-                    count = fellow?.praiseCount ?: 0,
-                    label = "获赞",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                    }
-                )
+                    VerticalDivider(
+                        modifier = Modifier
+                            .fillMaxHeight(0.6f)
+                            .width(1.dp),
+                        color = Color.White.copy(alpha = 0.25f)
+                    )
+
+                    SocialStatColumn(
+                        count = fellow?.praiseCount ?: 0,
+                        label = "获赞",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                        }
+                    )
+                }
             }
         }
     }
@@ -378,26 +416,27 @@ private fun SocialStatColumn(
     count: Int,
     label: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     Column(
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
-            .clickable { onClick() }
-            .padding(vertical = 4.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = count.toString(),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Black,
             color = Color.White
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.82f)
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.8f)
         )
     }
 }

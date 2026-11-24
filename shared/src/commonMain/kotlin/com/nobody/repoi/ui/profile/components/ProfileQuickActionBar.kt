@@ -6,16 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,199 +40,149 @@ fun ProfileQuickActionBar(
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (isCompact) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp, horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                QuickActionButton(
-                    icon = PoiIcons.Filled.Star,
-                    label = "我的收藏",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) {
-                            onNavigateToCollect(
-                                UserCollectNavParam(
-                                    userId = profileId,
-                                    initialCategory = UserCollectCategory.HOBBY.key
-                                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExpressiveBentoTile(
+                icon = PoiIcons.Filled.Star,
+                title = "我的收藏",
+                subtitle = "手办周边",
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    if (isLoggedIn) {
+                        onNavigateToCollect(
+                            UserCollectNavParam(
+                                userId = profileId,
+                                initialCategory = UserCollectCategory.HOBBY.key
                             )
-                        } else {
-                            onLoginClick()
-                        }
+                        )
+                    } else {
+                        onLoginClick()
                     }
-                )
+                }
+            )
 
-                QuickActionButton(
-                    icon = PoiIcons.Filled.PhotoLibrary,
-                    label = "我的发布",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) {
-                            onNavigateToCreation(
-                                UserCreationNavParam(
-                                    userId = profileId,
-                                    initialCategory = UserCreationCategory.ALBUM.key
-                                )
+            ExpressiveBentoTile(
+                icon = PoiIcons.Filled.PhotoLibrary,
+                title = "我的发布",
+                subtitle = "图集摄影",
+                tint = MaterialTheme.colorScheme.secondary,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    if (isLoggedIn) {
+                        onNavigateToCreation(
+                            UserCreationNavParam(
+                                userId = profileId,
+                                initialCategory = UserCreationCategory.ALBUM.key
                             )
-                        } else {
-                            onLoginClick()
-                        }
+                        )
+                    } else {
+                        onLoginClick()
                     }
-                )
-
-                QuickActionButton(
-                    icon = PoiIcons.Filled.ShoppingBag,
-                    label = "我的二手",
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) {
-                            onShowMessage("二手闲置市场功能即将上线")
-                        } else {
-                            onLoginClick()
-                        }
-                    }
-                )
-
-                QuickActionButton(
-                    icon = PoiIcons.Filled.History,
-                    label = "浏览历史",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) onNavigateToHistory() else onLoginClick()
-                    }
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    QuickActionButton(
-                        icon = PoiIcons.Filled.Star,
-                        label = "我的收藏",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isLoggedIn) {
-                                onNavigateToCollect(
-                                    UserCollectNavParam(
-                                        userId = profileId,
-                                        initialCategory = UserCollectCategory.HOBBY.key
-                                    )
-                                )
-                            } else {
-                                onLoginClick()
-                            }
-                        }
-                    )
-                    QuickActionButton(
-                        icon = PoiIcons.Filled.PhotoLibrary,
-                        label = "我的发布",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isLoggedIn) {
-                                onNavigateToCreation(
-                                    UserCreationNavParam(
-                                        userId = profileId,
-                                        initialCategory = UserCreationCategory.ALBUM.key
-                                    )
-                                )
-                            } else {
-                                onLoginClick()
-                            }
-                        }
-                    )
                 }
+            )
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    QuickActionButton(
-                        icon = PoiIcons.Filled.ShoppingBag,
-                        label = "我的二手",
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isLoggedIn) {
-                                onShowMessage("二手闲置市场功能即将上线")
-                            } else {
-                                onLoginClick()
-                            }
-                        }
-                    )
-                    QuickActionButton(
-                        icon = PoiIcons.Filled.History,
-                        label = "浏览历史",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isLoggedIn) onNavigateToHistory() else onLoginClick()
-                        }
-                    )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExpressiveBentoTile(
+                icon = PoiIcons.Filled.ShoppingBag,
+                title = "我的二手",
+                subtitle = "闲置集市",
+                tint = MaterialTheme.colorScheme.tertiary,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    if (isLoggedIn) {
+                        onShowMessage("二手闲置市场功能即将上线")
+                    } else {
+                        onLoginClick()
+                    }
                 }
-            }
+            )
+
+            ExpressiveBentoTile(
+                icon = PoiIcons.Filled.History,
+                title = "浏览历史",
+                subtitle = "足迹回溯",
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    if (isLoggedIn) onNavigateToHistory() else onLoginClick()
+                }
+            )
         }
     }
 }
 
 @Composable
-private fun QuickActionButton(
+private fun ExpressiveBentoTile(
     icon: DrawableResource,
-    label: String,
+    title: String,
+    subtitle: String,
     tint: Color,
+    containerColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Column(
+    Surface(
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .clip(MaterialTheme.shapes.large)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
+        tonalElevation = 2.dp
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = label,
-                modifier = Modifier.size(24.dp),
-                tint = tint
-            )
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(tint.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = title,
+                    modifier = Modifier.size(20.dp),
+                    tint = tint
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
