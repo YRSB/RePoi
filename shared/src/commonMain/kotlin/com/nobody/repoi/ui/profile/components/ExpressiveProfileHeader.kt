@@ -174,8 +174,8 @@ fun ExpressiveProfileHeader(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp)
-                .clip(MaterialTheme.shapes.large),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+                .clip(MaterialTheme.shapes.extraLarge),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             ListItem(
                 leadingContent = {
@@ -284,7 +284,7 @@ fun ExpressiveProfileHeader(
                     }
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             )
 
@@ -324,7 +324,7 @@ fun ExpressiveProfileHeader(
                     }
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             )
         }
