@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -77,6 +79,9 @@ fun ExpressiveProfileHeader(
     }
 
     val isLoggedIn = profile != null
+    val bannerHeight = 172.dp
+    val avatarSize = 74.dp
+    val avatarOverlap = 36.dp
 
     Box(
         modifier = modifier.fillMaxWidth()
@@ -84,7 +89,8 @@ fun ExpressiveProfileHeader(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp)
+                .height(bannerHeight)
+                .clip(RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp))
         ) {
             if (bannerUrl.isNotBlank()) {
                 AsyncImage(
@@ -168,7 +174,7 @@ fun ExpressiveProfileHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 124.dp)
+                .padding(top = bannerHeight - avatarOverlap)
                 .padding(horizontal = 16.dp)
         ) {
             Row(
@@ -178,8 +184,9 @@ fun ExpressiveProfileHeader(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
-                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        .size(avatarSize)
+                        .shadow(elevation = 4.dp, shape = CircleShape)
+                        .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .clickable {
@@ -231,37 +238,36 @@ fun ExpressiveProfileHeader(
             Spacer(modifier = Modifier.height(10.dp))
 
             Row(
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.small)
-                    .clickable {
-                        if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                    },
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = profile?.displayName ?: "点击登录",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Icon(
-                    painter = painterResource(PoiIcons.Filled.ChevronRight),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            if (isLoggedIn) {
                 Row(
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable {
+                            if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                        },
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Text(
+                        text = profile?.displayName ?: "点击登录",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Icon(
+                        painter = painterResource(PoiIcons.Filled.ChevronRight),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (isLoggedIn) {
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primaryContainer
@@ -302,11 +308,17 @@ fun ExpressiveProfileHeader(
                     Icon(
                         painter = painterResource(PoiIcons.Filled.QrCode),
                         contentDescription = "个人二维码",
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .clickable { onNavigateToUserInfo(profile.id) },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else {
+            }
+
+            if (!isLoggedIn) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "登录后同步心愿与手账",
                     style = MaterialTheme.typography.bodyMedium,
@@ -314,11 +326,11 @@ fun ExpressiveProfileHeader(
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SocialStatItem(
