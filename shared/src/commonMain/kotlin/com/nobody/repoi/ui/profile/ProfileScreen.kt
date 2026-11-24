@@ -3,6 +3,7 @@ package com.nobody.repoi.ui.profile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,9 +66,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import com.nobody.repoi.platform.isLandscapeOrientation
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -522,11 +525,11 @@ private fun ProfileImmersiveHeader(
                 Box(
                     modifier = Modifier
                         .size(66.dp)
-                        .clip(MaterialTheme.shapes.largeIncreased)
+                        .clip(CircleShape)
                         .border(
                             width = 2.dp,
                             color = Color.White.copy(alpha = 0.85f),
-                            shape = MaterialTheme.shapes.largeIncreased
+                            shape = CircleShape
                         )
                         .background(Color.White.copy(alpha = 0.15f))
                         .clickable { onNavigateToUserInfo(profile.id) },
@@ -606,20 +609,7 @@ private fun ProfileImmersiveHeader(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Color(0xFFFFB300),
-                                    modifier = Modifier.size(14.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = "H",
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color.Black
-                                        )
-                                    }
-                                }
+                                HCoinIcon()
                                 Text(
                                     text = if (userMp > 0) userMp.toString() else "0",
                                     style = MaterialTheme.typography.labelSmall,
@@ -737,6 +727,48 @@ private fun SocialStatColumn(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = Color.White.copy(alpha = 0.80f)
+        )
+    }
+}
+
+@Composable
+private fun HCoinIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(14.dp)) {
+        val radius = size.minDimension / 2f
+        val centerOffset = Offset(size.width / 2f, size.height / 2f)
+        drawCircle(
+            color = Color(0xFFFFB300),
+            radius = radius,
+            center = centerOffset
+        )
+        val strokeWidth = 1.6.dp.toPx()
+        val hHalfWidth = 2.6.dp.toPx()
+        val hHalfHeight = 3.2.dp.toPx()
+        val left = centerOffset.x - hHalfWidth
+        val right = centerOffset.x + hHalfWidth
+        val top = centerOffset.y - hHalfHeight
+        val bottom = centerOffset.y + hHalfHeight
+
+        drawLine(
+            color = Color.Black,
+            start = Offset(left, top),
+            end = Offset(left, bottom),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Square
+        )
+        drawLine(
+            color = Color.Black,
+            start = Offset(right, top),
+            end = Offset(right, bottom),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Square
+        )
+        drawLine(
+            color = Color.Black,
+            start = Offset(left, centerOffset.y),
+            end = Offset(right, centerOffset.y),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Square
         )
     }
 }
@@ -1678,11 +1710,11 @@ private fun UnauthenticatedImmersiveHeader(
                 Box(
                     modifier = Modifier
                         .size(66.dp)
-                        .clip(MaterialTheme.shapes.largeIncreased)
+                        .clip(CircleShape)
                         .border(
                             width = 2.dp,
                             color = Color.White.copy(alpha = 0.85f),
-                            shape = MaterialTheme.shapes.largeIncreased
+                            shape = CircleShape
                         )
                         .background(Color.White.copy(alpha = 0.15f))
                         .clickable { onLoginClick() },
