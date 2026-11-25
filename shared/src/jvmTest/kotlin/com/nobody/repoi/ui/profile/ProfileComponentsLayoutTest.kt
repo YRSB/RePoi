@@ -11,8 +11,10 @@ import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.profile.components.CheckInSpringButton
 import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
+import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import com.nobody.repoi.ui.profile.components.ShowcaseStatItem
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
@@ -141,5 +143,62 @@ class ProfileComponentsLayoutTest {
         assertTrue(friendListType == 0)
         onNodeWithText("粉丝").assertIsDisplayed()
         onNodeWithText("获赞").assertIsDisplayed()
+    }
+
+    @Test
+    fun quickActionBar_rendersAllEntriesAndDispatchesWhenLoggedIn() = runComposeUiTest {
+        var collectUserId = -1L
+        var creationUserId = -1L
+        var historyClicked = false
+        var shownMessage = ""
+
+        setContent {
+            ProfileQuickActionBar(
+                profileId = 42L,
+                isLoggedIn = true,
+                isCompact = true,
+                onNavigateToCollect = { collectUserId = it.userId },
+                onNavigateToCreation = { creationUserId = it.userId },
+                onNavigateToHistory = { historyClicked = true },
+                onShowMessage = { shownMessage = it },
+                onLoginClick = {}
+            )
+        }
+
+        onNodeWithText("我的收藏").assertIsDisplayed().performClick()
+        assertEquals(42L, collectUserId)
+
+        onNodeWithText("我的发布").assertIsDisplayed().performClick()
+        assertEquals(42L, creationUserId)
+
+        onNodeWithText("我的二手").assertIsDisplayed().performClick()
+        assertTrue(shownMessage.isNotBlank())
+
+        onNodeWithText("浏览历史").assertIsDisplayed().performClick()
+        assertTrue(historyClicked)
+    }
+
+    @Test
+    fun quickActionBar_redirectsToLoginWhenLoggedOut() = runComposeUiTest {
+        var loginCount = 0
+
+        setContent {
+            ProfileQuickActionBar(
+                profileId = 0L,
+                isLoggedIn = false,
+                isCompact = false,
+                onNavigateToCollect = {},
+                onNavigateToCreation = {},
+                onNavigateToHistory = {},
+                onShowMessage = {},
+                onLoginClick = { loginCount++ }
+            )
+        }
+
+        onNodeWithText("我的收藏").assertIsDisplayed().performClick()
+        onNodeWithText("我的发布").assertIsDisplayed().performClick()
+        onNodeWithText("我的二手").assertIsDisplayed().performClick()
+        onNodeWithText("浏览历史").assertIsDisplayed().performClick()
+        assertEquals(4, loginCount)
     }
 }
