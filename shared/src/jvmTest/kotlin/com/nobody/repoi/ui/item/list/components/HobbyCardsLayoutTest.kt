@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import coil3.serviceLoaderEnabled
 import com.nobody.repoi.data.remote.model.HobbyItemSummary
 import com.nobody.repoi.data.remote.model.UserCollectHobbyItem
 import com.nobody.repoi.ui.collect.subpage.HobbyCardField
@@ -28,7 +29,9 @@ class HobbyCardsLayoutTest {
     @BeforeTest
     fun installOfflineImageLoader() {
         SingletonImageLoader.setUnsafe(
-            ImageLoader.Builder(PlatformContext.INSTANCE).build()
+            ImageLoader.Builder(PlatformContext.INSTANCE)
+                .serviceLoaderEnabled(false)
+                .build()
         )
     }
 

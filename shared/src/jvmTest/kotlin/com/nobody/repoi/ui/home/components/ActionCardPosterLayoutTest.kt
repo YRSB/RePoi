@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.width
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import coil3.serviceLoaderEnabled
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
@@ -32,7 +33,9 @@ class ActionCardPosterLayoutTest {
     @BeforeTest
     fun installOfflineImageLoader() {
         SingletonImageLoader.setUnsafe(
-            ImageLoader.Builder(PlatformContext.INSTANCE).build()
+            ImageLoader.Builder(PlatformContext.INSTANCE)
+                .serviceLoaderEnabled(false)
+                .build()
         )
     }
 
