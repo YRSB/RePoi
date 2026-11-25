@@ -6,10 +6,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import com.nobody.repoi.data.remote.model.CollectTopItem
 import com.nobody.repoi.data.remote.model.FellowCountData
+import com.nobody.repoi.data.remote.model.OrderCount
+import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.ui.profile.components.AssetShowcaseSection
 import com.nobody.repoi.ui.profile.components.CheckInSpringButton
 import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
+import com.nobody.repoi.ui.profile.components.PreorderShowcaseSection
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import com.nobody.repoi.ui.profile.components.ShowcaseStatItem
@@ -200,5 +205,76 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("我的二手").assertIsDisplayed().performClick()
         onNodeWithText("浏览历史").assertIsDisplayed().performClick()
         assertEquals(4, loginCount)
+    }
+
+    @Test
+    fun preorderShowcaseSection_rendersStatsAndCarouselItems() = runComposeUiTest {
+        var collectState = ""
+        var moneyClicked = false
+        var clickedItemId = -1L
+
+        setContent {
+            PreorderShowcaseSection(
+                order = OrderCount(care = 2, preorder = 3),
+                finance = OrderFinanceSummary(supplementedTotalRmb = 3428.0),
+                preorderItems = listOf(
+                    CollectTopItem(itemId = 101L, nameCN = "初音未来手办")
+                ),
+                isLoggedIn = true,
+                onNavigateToCollect = { collectState = it },
+                onMoneyClick = { moneyClicked = true },
+                onItemClick = { clickedItemId = it.itemId },
+                onLoginClick = {}
+            )
+        }
+
+        onNodeWithText("想买").assertIsDisplayed().performClick()
+        assertEquals("want", collectState)
+
+        onNodeWithText("预定").assertIsDisplayed().performClick()
+        assertEquals("preorder", collectState)
+
+        onNodeWithText("¥3,428").assertIsDisplayed().performClick()
+        assertTrue(moneyClicked)
+
+        onNodeWithContentDescription("初音未来手办").assertIsDisplayed().performClick()
+        assertEquals(101L, clickedItemId)
+    }
+
+    @Test
+    fun assetShowcaseSection_rendersStatsAndCarouselItems() = runComposeUiTest {
+        var collectState = ""
+        var moneyClicked = false
+        var clickedItemId = -1L
+
+        setContent {
+            AssetShowcaseSection(
+                order = OrderCount(buy = 17),
+                finance = OrderFinanceSummary(
+                    historyTotalRmb = 15000.0,
+                    amazonFluctuation = "-3%"
+                ),
+                buyItems = listOf(
+                    CollectTopItem(itemId = 202L, nameCN = "樱花初音")
+                ),
+                isLoggedIn = true,
+                onNavigateToCollect = { collectState = it },
+                onMoneyClick = { moneyClicked = true },
+                onItemClick = { clickedItemId = it.itemId },
+                onLoginClick = {}
+            )
+        }
+
+        onNodeWithText("已入").assertIsDisplayed().performClick()
+        assertEquals("buy", collectState)
+
+        onNodeWithText("¥1.5万").assertIsDisplayed().performClick()
+        assertTrue(moneyClicked)
+
+        onNodeWithText("日亚浮动").assertIsDisplayed()
+        onNodeWithText("-3%").assertIsDisplayed()
+
+        onNodeWithContentDescription("樱花初音").assertIsDisplayed().performClick()
+        assertEquals(202L, clickedItemId)
     }
 }

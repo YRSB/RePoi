@@ -1,42 +1,13 @@
 package com.nobody.repoi.ui.profile.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import com.nobody.repoi.data.media.ImagePurpose
-import com.nobody.repoi.data.media.MediaCategory
-import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.CollectTopItem
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
-import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.util.PriceFormatter
-import org.jetbrains.compose.resources.painterResource
 import kotlin.math.abs
 
 @Composable
@@ -54,87 +25,44 @@ fun AssetShowcaseSection(
     val buyCount = order?.buy ?: buyItems.size
     val historyRmb = formatCompactRmb(finance?.historyTotalRmb)
     val fluctuation = finance?.amazonFluctuation ?: "0%"
+    val colorScheme = MaterialTheme.colorScheme
     val fluctuationColor = when {
-        fluctuation.startsWith("+") -> MaterialTheme.colorScheme.error
-        fluctuation.startsWith("-") -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        fluctuation.startsWith("+") -> colorScheme.error
+        fluctuation.startsWith("-") -> colorScheme.primary
+        else -> colorScheme.onSurfaceVariant
     }
 
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 14.dp, horizontal = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ShowcaseStatItem(
-                    title = "已入",
-                    value = buyCount.toString(),
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (isLoggedIn) onNavigateToCollect("buy") else onLoginClick()
-                    }
-                )
-
-                ShowcaseStatItem(
-                    title = "总投入",
-                    value = historyRmb,
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1.2f),
-                    onClick = {
-                        if (isLoggedIn) onMoneyClick() else onLoginClick()
-                    }
-                )
-
-                ShowcaseStatItem(
-                    title = "日亚浮动",
-                    value = fluctuation,
-                    accentColor = fluctuationColor,
-                    modifier = Modifier.weight(1f),
-                    onClick = null
-                )
-            }
-
-            if (buyItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(14.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = buyItems,
-                        key = { it.itemId },
-                        contentType = { "buy_figure" }
-                    ) { item ->
-                        ShowcaseFigureCard(
-                            item = item,
-                            onClick = {
-                                onItemClick(
-                                    DetailNavParam(
-                                        itemId = item.itemId,
-                                        itemType = item.itemType ?: "hobby",
-                                        initialName = item.nameCN?.ifBlank { null } ?: item.name,
-                                        initialCover = item.cover
-                                    )
-                                )
-                            }
-                        )
-                    }
+    SegmentedShowcasePanel(
+        stats = listOf(
+            ShowcaseStatSpec(
+                title = "已入",
+                value = buyCount.toString(),
+                accentColor = colorScheme.onSurface,
+                onClick = {
+                    if (isLoggedIn) onNavigateToCollect("buy") else onLoginClick()
                 }
-            }
-        }
-    }
+            ),
+            ShowcaseStatSpec(
+                title = "总投入",
+                value = historyRmb,
+                weight = 1.25f,
+                accentColor = colorScheme.onSecondaryContainer,
+                containerColor = colorScheme.secondaryContainer,
+                onClick = {
+                    if (isLoggedIn) onMoneyClick() else onLoginClick()
+                }
+            ),
+            ShowcaseStatSpec(
+                title = "日亚浮动",
+                value = fluctuation,
+                accentColor = fluctuationColor,
+                onClick = null
+            )
+        ),
+        items = buyItems,
+        onItemClick = onItemClick,
+        modifier = modifier
+    )
 }
 
 internal fun formatCompactRmb(amount: Double?): String {
