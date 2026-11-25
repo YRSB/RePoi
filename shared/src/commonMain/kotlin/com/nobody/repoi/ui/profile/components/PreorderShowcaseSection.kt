@@ -153,11 +153,11 @@ internal fun SegmentedShowcasePanel(
                 val carouselState = rememberCarouselState { items.size }
                 HorizontalUncontainedCarousel(
                     state = carouselState,
-                    itemWidth = 84.dp,
+                    itemWidth = 100.dp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp)
-                        .height(84.dp),
+                        .height(144.dp),
                     itemSpacing = 8.dp,
                     contentPadding = PaddingValues(horizontal = 12.dp)
                 ) { index ->
@@ -166,7 +166,7 @@ internal fun SegmentedShowcasePanel(
                         MediaPipeline.Default.resolveUrl(
                             item.cover,
                             MediaCategory.HOBBY,
-                            ImagePurpose.THUMBNAIL
+                            ImagePurpose.CARD_STANDARD
                         )
                     }
                     val itemShape = MaterialTheme.shapes.medium
