@@ -1,6 +1,7 @@
 package com.nobody.repoi.ui.profile.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,8 +53,8 @@ internal data class ShowcaseStatSpec(
     val title: String,
     val value: String,
     val weight: Float = 1f,
-    val accentColor: Color,
-    val containerColor: Color? = null,
+    val titleColor: Color? = null,
+    val valueColor: Color = Color.Unspecified,
     val onClick: (() -> Unit)? = null
 )
 
@@ -79,7 +80,7 @@ fun PreorderShowcaseSection(
             ShowcaseStatSpec(
                 title = "想买",
                 value = careCount.toString(),
-                accentColor = colorScheme.onSurface,
+                valueColor = colorScheme.onSurface,
                 onClick = {
                     if (isLoggedIn) onNavigateToCollect("want") else onLoginClick()
                 }
@@ -87,7 +88,7 @@ fun PreorderShowcaseSection(
             ShowcaseStatSpec(
                 title = "预定",
                 value = preorderCount.toString(),
-                accentColor = colorScheme.onSurface,
+                valueColor = colorScheme.onSurface,
                 onClick = {
                     if (isLoggedIn) onNavigateToCollect("preorder") else onLoginClick()
                 }
@@ -96,8 +97,8 @@ fun PreorderShowcaseSection(
                 title = "待补款",
                 value = supplementedRmb,
                 weight = 1.25f,
-                accentColor = colorScheme.onPrimaryContainer,
-                containerColor = colorScheme.primaryContainer,
+                titleColor = colorScheme.primary.copy(alpha = 0.85f),
+                valueColor = colorScheme.primary,
                 onClick = {
                     if (isLoggedIn) onMoneyClick() else onLoginClick()
                 }
@@ -134,8 +135,9 @@ internal fun SegmentedShowcasePanel(
                 ShowcaseStatItem(
                     title = spec.title,
                     value = spec.value,
-                    accentColor = spec.accentColor,
-                    containerColor = spec.containerColor ?: MaterialTheme.colorScheme.surfaceContainerLow,
+                    titleColor = spec.titleColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    valueColor = spec.valueColor,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     onClick = spec.onClick,
                     modifier = Modifier
                         .weight(spec.weight)
@@ -148,16 +150,16 @@ internal fun SegmentedShowcasePanel(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraSmall,
-                color = MaterialTheme.colorScheme.surfaceContainerLow
+                color = MaterialTheme.colorScheme.surfaceContainerLowest
             ) {
                 val carouselState = rememberCarouselState { items.size }
                 HorizontalUncontainedCarousel(
                     state = carouselState,
-                    itemWidth = 100.dp,
+                    itemWidth = 110.dp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp)
-                        .height(144.dp),
+                        .height(158.dp),
                     itemSpacing = 8.dp,
                     contentPadding = PaddingValues(horizontal = 12.dp)
                 ) { index ->
@@ -174,10 +176,11 @@ internal fun SegmentedShowcasePanel(
                         modifier = Modifier
                             .fillMaxSize()
                             .maskClip(itemShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .maskBorder(
                                 border = BorderStroke(
-                                    width = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
                                 ),
                                 shape = itemShape
                             )
@@ -201,19 +204,12 @@ internal fun SegmentedShowcasePanel(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.surfaceContainer
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(PoiIcons.Filled.AccountBox),
-                                        contentDescription = item.nameCN ?: item.name,
-                                        modifier = Modifier.size(32.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                    )
-                                }
-                            }
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.AccountBox),
+                                contentDescription = item.nameCN ?: item.name,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
                         }
                     }
                 }
@@ -228,8 +224,9 @@ internal fun ShowcaseStatItem(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = MaterialTheme.colorScheme.onSurface,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    titleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
     onClick: (() -> Unit)? = null
 ) {
     val contentBlock: @Composable () -> Unit = {
@@ -241,11 +238,7 @@ internal fun ShowcaseStatItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,
-                color = if (containerColor == MaterialTheme.colorScheme.surfaceContainerLow) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    accentColor.copy(alpha = 0.8f)
-                },
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -254,7 +247,7 @@ internal fun ShowcaseStatItem(
                 text = value,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = accentColor,
+                color = valueColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

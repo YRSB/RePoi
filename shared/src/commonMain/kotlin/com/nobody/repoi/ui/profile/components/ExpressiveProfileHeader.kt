@@ -250,7 +250,7 @@ fun ExpressiveProfileHeader(
                     }
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
 
@@ -290,7 +290,7 @@ fun ExpressiveProfileHeader(
                     }
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }

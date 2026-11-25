@@ -93,7 +93,7 @@ fun ProfileScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,

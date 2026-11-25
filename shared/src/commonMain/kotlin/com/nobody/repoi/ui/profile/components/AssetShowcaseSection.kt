@@ -37,7 +37,7 @@ fun AssetShowcaseSection(
             ShowcaseStatSpec(
                 title = "已入",
                 value = buyCount.toString(),
-                accentColor = colorScheme.onSurface,
+                valueColor = colorScheme.onSurface,
                 onClick = {
                     if (isLoggedIn) onNavigateToCollect("buy") else onLoginClick()
                 }
@@ -46,8 +46,8 @@ fun AssetShowcaseSection(
                 title = "总投入",
                 value = historyRmb,
                 weight = 1.25f,
-                accentColor = colorScheme.onSecondaryContainer,
-                containerColor = colorScheme.secondaryContainer,
+                titleColor = colorScheme.secondary.copy(alpha = 0.85f),
+                valueColor = colorScheme.secondary,
                 onClick = {
                     if (isLoggedIn) onMoneyClick() else onLoginClick()
                 }
@@ -55,7 +55,7 @@ fun AssetShowcaseSection(
             ShowcaseStatSpec(
                 title = "日亚浮动",
                 value = fluctuation,
-                accentColor = fluctuationColor,
+                valueColor = fluctuationColor,
                 onClick = null
             )
         ),

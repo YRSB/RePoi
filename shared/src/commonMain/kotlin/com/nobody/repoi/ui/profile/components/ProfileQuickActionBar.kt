@@ -154,7 +154,7 @@ private fun QuickActionSegmentedCell(
         modifier = modifier,
         shapes = ListItemDefaults.shapes(),
         colors = ListItemDefaults.segmentedColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         ),
         contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 10.dp),
         leadingContent = {
