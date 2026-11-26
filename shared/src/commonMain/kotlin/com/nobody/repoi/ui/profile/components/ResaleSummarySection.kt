@@ -11,21 +11,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.theme.pill
 import org.jetbrains.compose.resources.painterResource
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ResaleSummarySection(
     isLoggedIn: Boolean,
@@ -33,40 +36,45 @@ fun ResaleSummarySection(
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+    val colorScheme = MaterialTheme.colorScheme
+    val gap = ListItemDefaults.SegmentedGap
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large),
+        verticalArrangement = Arrangement.spacedBy(gap)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraSmall,
+            color = colorScheme.surfaceContainerLowest
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     Column {
                         Text(
                             text = "出售",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "0",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFeatureSettings = "tnum"
+                            ),
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colorScheme.onSurface
                         )
                     }
 
@@ -74,14 +82,16 @@ fun ResaleSummarySection(
                         Text(
                             text = "收购",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "0",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFeatureSettings = "tnum"
+                            ),
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colorScheme.onSurface
                         )
                     }
                 }
@@ -107,19 +117,23 @@ fun ResaleSummarySection(
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraSmall,
+            color = colorScheme.surfaceContainerLowest
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 14.dp),
+                    .padding(horizontal = 14.dp, vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "暂无二手数据",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                 )
             }
         }
