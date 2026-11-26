@@ -7,7 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.v2.runComposeUiTest
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.CurrencyItem
 import com.nobody.repoi.data.remote.model.FellowCountData
@@ -247,7 +247,7 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("¥15,000").assertIsDisplayed().performClick()
         assertEquals(1, moneyTab)
 
-        onNodeWithText("日亚浮动 -3%").assertIsDisplayed()
+        onNodeWithText("日亚浮动 -3%").assertDoesNotExist()
         onNodeWithText("手办 ¥12,000").assertIsDisplayed()
         onNodeWithText("已入").assertIsDisplayed().performClick()
         assertEquals("buy", collectState)

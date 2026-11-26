@@ -10,7 +10,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,16 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.OrderCount
@@ -114,9 +112,6 @@ fun FigureAssetHubSection(
             onSelect = { selectedTabIndex = it }
         )
 
-        val gap = ListItemDefaults.SegmentedGap
-        val colorScheme = MaterialTheme.colorScheme
-
         AnimatedContent(
             targetState = activeTab,
             transitionSpec = {
@@ -135,7 +130,7 @@ fun FigureAssetHubSection(
             },
             label = "asset_hub_content"
         ) { tab ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .let { base ->
@@ -150,8 +145,7 @@ fun FigureAssetHubSection(
                             lockedContentHeightPx = size.height
                         }
                     }
-                    .clip(MaterialTheme.shapes.large),
-                verticalArrangement = Arrangement.spacedBy(gap)
+                    .clip(MaterialTheme.shapes.large)
             ) {
                 when (tab) {
                     AssetHubTab.PREORDER -> {
@@ -163,9 +157,8 @@ fun FigureAssetHubSection(
                             isMoneyActive = isLoggedIn && totalAmount > 0.0,
                             countTitle = "已预定",
                             countValue = if (isLoggedIn) preorderCount.toString() else "—",
-                            subNote = null,
-                            reserveSubNoteSlot = isLoggedIn,
-                            subNoteColor = colorScheme.onSurfaceVariant,
+                            groups = groups,
+                            showCategoryStrip = isLoggedIn,
                             onMoneyClick = {
                                 if (isLoggedIn) onMoneyClick(0) else onLoginClick()
                             },
@@ -173,32 +166,19 @@ fun FigureAssetHubSection(
                                 if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
                             }
                         )
-                        if (isLoggedIn) {
-                            CategoryBreakdownStrip(
-                                groups = groups,
-                                onClick = { onMoneyClick(0) }
-                            )
-                        }
                     }
 
                     AssetHubTab.BUY -> {
                         val totalAmount = finance?.historyTotalRmb ?: 0.0
                         val groups = finance?.historyGroups.orEmpty()
-                        val fluctuation = finance?.amazonFluctuation ?: "0%"
-                        val fluctuationColor = when {
-                            fluctuation.startsWith("+") -> colorScheme.error
-                            fluctuation.startsWith("-") -> colorScheme.primary
-                            else -> colorScheme.onSurfaceVariant
-                        }
                         AssetMetricDualRow(
                             moneyTitle = "历史总投入",
                             moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
                             isMoneyActive = isLoggedIn && totalAmount > 0.0,
                             countTitle = "已入",
                             countValue = if (isLoggedIn) buyCount.toString() else "—",
-                            subNote = if (isLoggedIn) "日亚浮动 $fluctuation" else null,
-                            reserveSubNoteSlot = isLoggedIn,
-                            subNoteColor = fluctuationColor,
+                            groups = groups,
+                            showCategoryStrip = isLoggedIn,
                             onMoneyClick = {
                                 if (isLoggedIn) onMoneyClick(1) else onLoginClick()
                             },
@@ -206,12 +186,6 @@ fun FigureAssetHubSection(
                                 if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
                             }
                         )
-                        if (isLoggedIn) {
-                            CategoryBreakdownStrip(
-                                groups = groups,
-                                onClick = { onMoneyClick(1) }
-                            )
-                        }
                     }
 
                     AssetHubTab.WANT -> {
@@ -298,9 +272,8 @@ private fun AssetMetricDualRow(
     isMoneyActive: Boolean,
     countTitle: String,
     countValue: String,
-    subNote: String?,
-    reserveSubNoteSlot: Boolean,
-    subNoteColor: Color,
+    groups: List<CategoryMoneyGroup>,
+    showCategoryStrip: Boolean,
     onMoneyClick: () -> Unit,
     onCountClick: () -> Unit
 ) {
@@ -316,13 +289,13 @@ private fun AssetMetricDualRow(
         SegmentedListItem(
             onClick = onMoneyClick,
             modifier = Modifier
-                .weight(1.48f)
+                .weight(1.56f)
                 .fillMaxHeight(),
             shapes = ListItemDefaults.shapes(),
             colors = ListItemDefaults.segmentedColors(
                 containerColor = colorScheme.surfaceContainerLowest
             ),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             content = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -358,7 +331,7 @@ private fun AssetMetricDualRow(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = moneyValue,
@@ -370,6 +343,11 @@ private fun AssetMetricDualRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    if (showCategoryStrip) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        CategoryBreakdownInline(groups = groups)
+                    }
                 }
             }
         )
@@ -383,7 +361,7 @@ private fun AssetMetricDualRow(
             colors = ListItemDefaults.segmentedColors(
                 containerColor = colorScheme.surfaceContainerLowest
             ),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
             content = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -409,7 +387,7 @@ private fun AssetMetricDualRow(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Row(
                         verticalAlignment = Alignment.Bottom
@@ -434,27 +412,6 @@ private fun AssetMetricDualRow(
                             )
                         }
                     }
-
-                    if (!subNote.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = subNote,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFeatureSettings = "tnum"
-                            ),
-                            color = subNoteColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    } else if (reserveSubNoteSlot) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = " ",
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            modifier = Modifier.clearAndSetSemantics {}
-                        )
-                    }
                 }
             }
         )
@@ -462,9 +419,8 @@ private fun AssetMetricDualRow(
 }
 
 @Composable
-private fun CategoryBreakdownStrip(
-    groups: List<CategoryMoneyGroup>,
-    onClick: () -> Unit
+private fun CategoryBreakdownInline(
+    groups: List<CategoryMoneyGroup>
 ) {
     val positiveGroups = groups
         .filter { it.totalRmb > 0.0 }
@@ -481,101 +437,90 @@ private fun CategoryBreakdownStrip(
     )
     val visibleLegendGroups = positiveGroups.take(2)
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.extraSmall,
-        color = colorScheme.surfaceContainerLowest
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .height(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                if (positiveGroups.isEmpty()) {
+            if (positiveGroups.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .clip(MaterialTheme.shapes.pill)
+                        .background(colorScheme.surfaceContainerHighest)
+                )
+            } else {
+                positiveGroups.forEachIndexed { index, group ->
+                    val fraction = (group.totalRmb / total).toFloat().coerceAtLeast(0.04f)
+                    val color = segmentColors[index % segmentColors.size]
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(fraction)
                             .fillMaxHeight()
                             .clip(MaterialTheme.shapes.pill)
-                            .background(colorScheme.surfaceContainerHighest)
+                            .background(color)
                     )
-                } else {
-                    positiveGroups.forEachIndexed { index, group ->
-                        val fraction = (group.totalRmb / total).toFloat().coerceAtLeast(0.04f)
-                        val color = segmentColors[index % segmentColors.size]
-                        Box(
-                            modifier = Modifier
-                                .weight(fraction)
-                                .fillMaxHeight()
-                                .clip(MaterialTheme.shapes.pill)
-                                .background(color)
-                        )
-                    }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (positiveGroups.isEmpty()) {
-                    Text(
-                        text = "暂无品类金额明细",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Row(
-                        modifier = Modifier.weight(1f, fill = false),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        visibleLegendGroups.forEachIndexed { index, group ->
-                            val color = segmentColors[index % segmentColors.size]
-                            Row(
-                                modifier = Modifier.weight(1f, fill = false),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(color)
-                                )
-                                Text(
-                                    text = "${group.categoryName} ${formatRmb(group.totalRmb)}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontFeatureSettings = "tnum"
-                                    ),
-                                    color = colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (positiveGroups.isEmpty()) {
+                Text(
+                    text = "暂无品类明细",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    visibleLegendGroups.forEachIndexed { index, group ->
+                        val color = segmentColors[index % segmentColors.size]
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                            Text(
+                                text = "${group.categoryName} ${formatRmb(group.totalRmb)}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFeatureSettings = "tnum"
+                                ),
+                                color = colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
-                    if (positiveGroups.size > visibleLegendGroups.size) {
-                        Text(
-                            text = "等 ${positiveGroups.size} 类",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            maxLines = 1
-                        )
-                    }
+                }
+                if (positiveGroups.size > visibleLegendGroups.size) {
+                    Text(
+                        text = "等 ${positiveGroups.size} 类",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1
+                    )
                 }
             }
         }
@@ -586,7 +531,7 @@ private fun CategoryBreakdownStrip(
 private fun WantSummaryRow(
     wantCount: Int,
     isLoggedIn: Boolean,
-    minHeight: androidx.compose.ui.unit.Dp,
+    minHeight: Dp,
     onClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -603,7 +548,7 @@ private fun WantSummaryRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(
