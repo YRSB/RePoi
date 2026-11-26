@@ -3,7 +3,9 @@ package com.nobody.repoi.ui.profile
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -326,6 +328,12 @@ class ProfileComponentsLayoutTest {
                             categoryName = "手办",
                             items = listOf(CurrencyItem("rmb", 3428.0)),
                             totalRmb = 3428.0
+                        ),
+                        CategoryMoneyGroup(
+                            categoryKey = "category_200",
+                            categoryName = "动漫模型",
+                            items = listOf(CurrencyItem("rmb", 0.0)),
+                            totalRmb = 0.0
                         )
                     ),
                     historyGroups = listOf(
@@ -338,7 +346,7 @@ class ProfileComponentsLayoutTest {
                         CategoryMoneyGroup(
                             categoryKey = "category_1000",
                             categoryName = "GK/个人创作",
-                            items = listOf(CurrencyItem("rmb", 1200.0)),
+                            items = listOf(CurrencyItem("jpy", 20000.0)),
                             totalRmb = 1200.0
                         )
                     )
@@ -349,14 +357,17 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("待补款总折合").assertIsDisplayed()
-        onNodeWithText("¥3,428").assertIsDisplayed()
+        onAllNodesWithText("¥3,428").assertCountEquals(2)
         onNodeWithText("手办").assertIsDisplayed()
+        onNodeWithText("动漫模型").assertDoesNotExist()
+        onNodeWithText("人民币: 3,428").assertDoesNotExist()
 
         onNodeWithText("已入总额明细").assertIsDisplayed().performClick()
-        onNodeWithText("已入手办总折合").assertIsDisplayed()
+        onNodeWithText("已入总投入").assertIsDisplayed()
         onNodeWithText("¥15,000").assertIsDisplayed()
         onNodeWithText("动漫周边").assertIsDisplayed()
         onNodeWithText("GK/个人创作").assertIsDisplayed()
+        onNodeWithText("日元: 20,000").assertIsDisplayed()
 
         onNodeWithContentDescription("关闭").performClick()
         assertTrue(dismissed)

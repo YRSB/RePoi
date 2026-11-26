@@ -22,10 +22,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryTabRow
@@ -40,17 +43,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
+import com.nobody.repoi.data.remote.model.CurrencyType
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.theme.bottomSheet
 import com.nobody.repoi.util.PriceFormatter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,7 +205,7 @@ internal fun FinanceDetailContent(
         ) { page ->
             val totalRmb = if (page == 0) finance.supplementedTotalRmb else finance.historyTotalRmb
             val groups = if (page == 0) finance.supplementedGroups else finance.historyGroups
-            val summaryLabel = if (page == 0) "待补款总折合" else "已入手办总折合"
+            val summaryLabel = if (page == 0) "待补款总折合" else "已入总投入"
 
             FinanceDetailPage(
                 page = page,
@@ -211,6 +217,7 @@ internal fun FinanceDetailContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FinanceDetailPage(
     page: Int,
@@ -218,24 +225,35 @@ private fun FinanceDetailPage(
     totalRmb: Double,
     groups: List<CategoryMoneyGroup>
 ) {
+    val positiveGroups = groups
+        .filter { it.totalRmb > 0.0 || it.items.any { item -> item.money > 0.0 } }
+        .sortedByDescending { it.totalRmb }
+    val hasForeignCurrency = positiveGroups.any { group ->
+        group.items.any { it.money > 0.0 && it.currencyType != CurrencyType.CNY }
+    }
+    val positiveTotal = positiveGroups.sumOf { it.totalRmb }
+    val showSharePercent = positiveGroups.size > 1 && positiveTotal > 0.0
+
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
         item(
             key = "summary_$page",
             contentType = "summary"
         ) {
             Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     Text(
                         text = summaryLabel,
@@ -251,61 +269,94 @@ private fun FinanceDetailPage(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "注：外币折算按近似固定汇率估算（JPY×0.06、USD×6.4、EUR×6.9、HKD×0.92）",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                        lineHeight = 14.sp
-                    )
+                    if (hasForeignCurrency) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "注：外币折算按近似固定汇率估算（JPY×0.06、USD×6.4、EUR×6.9、HKD×0.92）",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            lineHeight = 14.sp
+                        )
+                    }
                 }
             }
         }
 
-        if (groups.isEmpty()) {
+        if (positiveGroups.isEmpty()) {
             item(
                 key = "empty_$page",
                 contentType = "empty"
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 28.dp),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "暂无对应币种明细",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "暂无对应金额记录",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                        )
+                    }
                 }
             }
         } else {
             itemsIndexed(
-                items = groups,
+                items = positiveGroups,
                 key = { index, group -> "${page}_${index}_${group.categoryKey}" },
                 contentType = { _, _ -> "category_group" }
-            ) { _, group ->
-                FinanceCategoryCard(group = group)
+            ) { index, group ->
+                val sharePercent = if (showSharePercent) {
+                    ((group.totalRmb / positiveTotal) * 100.0).roundToInt()
+                } else {
+                    null
+                }
+                FinanceCategoryCard(
+                    group = group,
+                    sharePercent = sharePercent,
+                    shape = segmentedCardShape(index = index, count = positiveGroups.size)
+                )
             }
         }
+    }
+}
+
+private fun segmentedCardShape(index: Int, count: Int): Shape {
+    val outer = 16.dp
+    val inner = 4.dp
+    return when {
+        count <= 1 -> RoundedCornerShape(outer)
+        index == 0 -> RoundedCornerShape(topStart = outer, topEnd = outer, bottomStart = inner, bottomEnd = inner)
+        index == count - 1 -> RoundedCornerShape(topStart = inner, topEnd = inner, bottomStart = outer, bottomEnd = outer)
+        else -> RoundedCornerShape(inner)
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FinanceCategoryCard(
-    group: CategoryMoneyGroup
+    group: CategoryMoneyGroup,
+    sharePercent: Int?,
+    shape: Shape
 ) {
+    val positiveItems = group.items.filter { it.money > 0.0 }
+    val isSingleCny = positiveItems.size == 1 && positiveItems.first().currencyType == CurrencyType.CNY
+
     Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
@@ -313,14 +364,28 @@ private fun FinanceCategoryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = group.categoryName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (sharePercent != null) {
+                        Text(
+                            text = "${sharePercent}%",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFeatureSettings = "tnum"
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Text(
-                    text = group.categoryName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "折合 " + formatRmb(group.totalRmb),
+                    text = if (isSingleCny) formatRmb(group.totalRmb) else "折合 " + formatRmb(group.totalRmb),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontFeatureSettings = "tnum"
                     ),
@@ -329,13 +394,13 @@ private fun FinanceCategoryCard(
                 )
             }
 
-            if (group.items.isNotEmpty()) {
+            if (!isSingleCny && positiveItems.isNotEmpty()) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    group.items.forEach { currencyItem ->
+                    positiveItems.forEach { currencyItem ->
                         val formattedCurrency = PriceFormatter.formatCurrency(currencyItem.currency)
                         val moneyText = if (currencyItem.money % 1.0 == 0.0) {
                             formatGrouped(currencyItem.money.toLong())
