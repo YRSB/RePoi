@@ -6,18 +6,17 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import com.nobody.repoi.data.remote.model.CollectTopItem
+import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
+import com.nobody.repoi.data.remote.model.CurrencyItem
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.OrderCount
 import com.nobody.repoi.data.remote.model.OrderFinanceSummary
 import com.nobody.repoi.data.remote.model.UserProfile
-import com.nobody.repoi.ui.profile.components.AssetShowcaseSection
 import com.nobody.repoi.ui.profile.components.CheckInSpringButton
 import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
-import com.nobody.repoi.ui.profile.components.PreorderShowcaseSection
+import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
-import com.nobody.repoi.ui.profile.components.ShowcaseStatItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -51,22 +50,6 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("已签到 ✓").assertIsDisplayed()
-    }
-
-    @Test
-    fun showcaseStatItem_rendersLabelAndValue() = runComposeUiTest {
-        var clicked = false
-        setContent {
-            ShowcaseStatItem(
-                title = "待补款",
-                value = "¥1,234",
-                onClick = { clicked = true }
-            )
-        }
-
-        onNodeWithText("待补款").assertIsDisplayed()
-        onNodeWithText("¥1,234").assertIsDisplayed().performClick()
-        assertTrue(clicked)
     }
 
     @Test
@@ -208,73 +191,84 @@ class ProfileComponentsLayoutTest {
     }
 
     @Test
-    fun preorderShowcaseSection_rendersStatsAndCarouselItems() = runComposeUiTest {
+    fun figureAssetHubSection_switchesTabsAndDispatchesActions() = runComposeUiTest {
         var collectState = ""
-        var moneyClicked = false
-        var clickedItemId = -1L
+        var moneyTab = -1
 
         setContent {
-            PreorderShowcaseSection(
-                order = OrderCount(care = 2, preorder = 3),
-                finance = OrderFinanceSummary(supplementedTotalRmb = 3428.0),
-                preorderItems = listOf(
-                    CollectTopItem(itemId = 101L, nameCN = "初音未来手办")
+            FigureAssetHubSection(
+                order = OrderCount(care = 2, preorder = 3, buy = 17),
+                finance = OrderFinanceSummary(
+                    supplementedTotalRmb = 3428.0,
+                    historyTotalRmb = 15000.0,
+                    amazonFluctuation = "-3%",
+                    supplementedGroups = listOf(
+                        CategoryMoneyGroup(
+                            categoryKey = "category_100",
+                            categoryName = "手办",
+                            items = listOf(CurrencyItem("rmb", 2800.0)),
+                            totalRmb = 2800.0
+                        )
+                    ),
+                    historyGroups = listOf(
+                        CategoryMoneyGroup(
+                            categoryKey = "category_100",
+                            categoryName = "手办",
+                            items = listOf(CurrencyItem("rmb", 12000.0)),
+                            totalRmb = 12000.0
+                        )
+                    )
                 ),
                 isLoggedIn = true,
                 onNavigateToCollect = { collectState = it },
-                onMoneyClick = { moneyClicked = true },
-                onItemClick = { clickedItemId = it.itemId },
+                onMoneyClick = { moneyTab = it },
                 onLoginClick = {}
             )
         }
 
-        onNodeWithText("想买").assertIsDisplayed().performClick()
-        assertEquals("want", collectState)
+        onNodeWithText("待补款总折合").assertIsDisplayed()
+        onNodeWithText("¥3,428").assertIsDisplayed().performClick()
+        assertEquals(0, moneyTab)
 
-        onNodeWithText("预定").assertIsDisplayed().performClick()
+        onNodeWithText("手办 ¥2,800").assertIsDisplayed()
+        onNodeWithText("预定手办").assertIsDisplayed().performClick()
         assertEquals("preorder", collectState)
 
-        onNodeWithText("¥3,428").assertIsDisplayed().performClick()
-        assertTrue(moneyClicked)
+        onNodeWithText("已入 17").assertIsDisplayed().performClick()
+        onNodeWithText("历史总投入").assertIsDisplayed()
+        onNodeWithText("¥1.5万").assertIsDisplayed().performClick()
+        assertEquals(1, moneyTab)
 
-        onNodeWithContentDescription("初音未来手办").assertIsDisplayed().performClick()
-        assertEquals(101L, clickedItemId)
+        onNodeWithText("日亚浮动 -3%").assertIsDisplayed()
+        onNodeWithText("手办 ¥1.2万").assertIsDisplayed()
+        onNodeWithText("已入藏品").assertIsDisplayed().performClick()
+        assertEquals("buy", collectState)
+
+        onNodeWithText("想买 2").assertIsDisplayed().performClick()
+        onNodeWithText("想买心愿清单").assertIsDisplayed()
+        onNodeWithText("查看清单").assertIsDisplayed().performClick()
+        assertEquals("want", collectState)
     }
 
     @Test
-    fun assetShowcaseSection_rendersStatsAndCarouselItems() = runComposeUiTest {
-        var collectState = ""
-        var moneyClicked = false
-        var clickedItemId = -1L
+    fun figureAssetHubSection_redirectsToLoginWhenLoggedOut() = runComposeUiTest {
+        var loginCount = 0
 
         setContent {
-            AssetShowcaseSection(
-                order = OrderCount(buy = 17),
-                finance = OrderFinanceSummary(
-                    historyTotalRmb = 15000.0,
-                    amazonFluctuation = "-3%"
-                ),
-                buyItems = listOf(
-                    CollectTopItem(itemId = 202L, nameCN = "樱花初音")
-                ),
-                isLoggedIn = true,
-                onNavigateToCollect = { collectState = it },
-                onMoneyClick = { moneyClicked = true },
-                onItemClick = { clickedItemId = it.itemId },
-                onLoginClick = {}
+            FigureAssetHubSection(
+                order = null,
+                finance = null,
+                isLoggedIn = false,
+                onNavigateToCollect = {},
+                onMoneyClick = {},
+                onLoginClick = { loginCount++ }
             )
         }
 
-        onNodeWithText("已入").assertIsDisplayed().performClick()
-        assertEquals("buy", collectState)
-
-        onNodeWithText("¥1.5万").assertIsDisplayed().performClick()
-        assertTrue(moneyClicked)
-
-        onNodeWithText("日亚浮动").assertIsDisplayed()
-        onNodeWithText("-3%").assertIsDisplayed()
-
-        onNodeWithContentDescription("樱花初音").assertIsDisplayed().performClick()
-        assertEquals(202L, clickedItemId)
+        onNodeWithText("待补款总折合").assertIsDisplayed().performClick()
+        onNodeWithText("预定手办").assertIsDisplayed().performClick()
+        onNodeWithText("想买 0").assertIsDisplayed().performClick()
+        onNodeWithText("去登录").assertIsDisplayed().performClick()
+        assertEquals(3, loginCount)
     }
 }

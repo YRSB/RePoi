@@ -34,10 +34,9 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
-import com.nobody.repoi.ui.profile.components.AssetShowcaseSection
 import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
+import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
 import com.nobody.repoi.ui.profile.components.FinanceDetailBottomSheet
-import com.nobody.repoi.ui.profile.components.PreorderShowcaseSection
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import com.nobody.repoi.ui.profile.components.ResaleSummarySection
@@ -158,10 +157,9 @@ fun ProfileScreen(
                                 onLoginClick = onNavigateToLogin
                             )
 
-                            PreorderShowcaseSection(
+                            FigureAssetHubSection(
                                 order = uiState.order,
                                 finance = uiState.finance,
-                                preorderItems = uiState.preorderItems,
                                 isLoggedIn = isLoggedIn,
                                 onNavigateToCollect = { state ->
                                     onNavigateToCollect(
@@ -171,32 +169,10 @@ fun ProfileScreen(
                                         )
                                     )
                                 },
-                                onMoneyClick = {
-                                    financeDialogInitialTab = 0
+                                onMoneyClick = { tabIndex ->
+                                    financeDialogInitialTab = tabIndex
                                     showFinanceDialog = true
                                 },
-                                onItemClick = onNavigateToHobby,
-                                onLoginClick = onNavigateToLogin
-                            )
-
-                            AssetShowcaseSection(
-                                order = uiState.order,
-                                finance = uiState.finance,
-                                buyItems = uiState.buyItems,
-                                isLoggedIn = isLoggedIn,
-                                onNavigateToCollect = { state ->
-                                    onNavigateToCollect(
-                                        UserCollectNavParam(
-                                            userId = profileId,
-                                            initialCollectState = state
-                                        )
-                                    )
-                                },
-                                onMoneyClick = {
-                                    financeDialogInitialTab = 1
-                                    showFinanceDialog = true
-                                },
-                                onItemClick = onNavigateToHobby,
                                 onLoginClick = onNavigateToLogin
                             )
 
@@ -281,10 +257,9 @@ fun ProfileScreen(
                                 modifier = Modifier.weight(0.58f),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                PreorderShowcaseSection(
+                                FigureAssetHubSection(
                                     order = uiState.order,
                                     finance = uiState.finance,
-                                    preorderItems = uiState.preorderItems,
                                     isLoggedIn = isLoggedIn,
                                     onNavigateToCollect = { state ->
                                         onNavigateToCollect(
@@ -294,32 +269,10 @@ fun ProfileScreen(
                                             )
                                         )
                                     },
-                                    onMoneyClick = {
-                                        financeDialogInitialTab = 0
+                                    onMoneyClick = { tabIndex ->
+                                        financeDialogInitialTab = tabIndex
                                         showFinanceDialog = true
                                     },
-                                    onItemClick = onNavigateToHobby,
-                                    onLoginClick = onNavigateToLogin
-                                )
-
-                                AssetShowcaseSection(
-                                    order = uiState.order,
-                                    finance = uiState.finance,
-                                    buyItems = uiState.buyItems,
-                                    isLoggedIn = isLoggedIn,
-                                    onNavigateToCollect = { state ->
-                                        onNavigateToCollect(
-                                            UserCollectNavParam(
-                                                userId = profileId,
-                                                initialCollectState = state
-                                            )
-                                        )
-                                    },
-                                    onMoneyClick = {
-                                        financeDialogInitialTab = 1
-                                        showFinanceDialog = true
-                                    },
-                                    onItemClick = onNavigateToHobby,
                                     onLoginClick = onNavigateToLogin
                                 )
                             }
