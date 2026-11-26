@@ -1,5 +1,7 @@
 package com.nobody.repoi.ui.profile
 
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -276,6 +278,45 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("想买 0").assertIsDisplayed().performClick()
         onNodeWithText("去登录").assertIsDisplayed().performClick()
         assertEquals(3, loginCount)
+    }
+
+    @Test
+    fun figureAssetHubSection_keepsConstantHeightAcrossTabs() = runComposeUiTest {
+        var measuredHeight = 0
+
+        setContent {
+            FigureAssetHubSection(
+                order = OrderCount(care = 2, preorder = 0, buy = 17),
+                finance = OrderFinanceSummary(
+                    supplementedTotalRmb = 0.0,
+                    historyTotalRmb = 15000.0,
+                    amazonFluctuation = "-3%",
+                    supplementedGroups = emptyList(),
+                    historyGroups = listOf(
+                        CategoryMoneyGroup("category_100", "手办", listOf(CurrencyItem("rmb", 12000.0)), 12000.0),
+                        CategoryMoneyGroup("category_900", "动漫周边", listOf(CurrencyItem("rmb", 2000.0)), 2000.0),
+                        CategoryMoneyGroup("category_1000", "GK/个人创作", listOf(CurrencyItem("rmb", 1000.0)), 1000.0)
+                    )
+                ),
+                isLoggedIn = true,
+                onNavigateToCollect = {},
+                onMoneyClick = {},
+                onLoginClick = {},
+                modifier = Modifier.onSizeChanged { measuredHeight = it.height }
+            )
+        }
+
+        waitForIdle()
+        val preorderHeight = measuredHeight
+        assertTrue(preorderHeight > 0)
+
+        onNodeWithText("已入 17").performClick()
+        waitForIdle()
+        assertEquals(preorderHeight, measuredHeight)
+
+        onNodeWithText("想买 2").performClick()
+        waitForIdle()
+        assertEquals(preorderHeight, measuredHeight)
     }
 
     @Test
