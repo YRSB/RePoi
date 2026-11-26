@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -136,6 +137,12 @@ class ProfileComponentsLayoutTest {
         assertTrue(friendListType == 0)
         onNodeWithText("粉丝").assertIsDisplayed()
         onNodeWithText("获赞").assertIsDisplayed()
+
+        waitForIdle()
+        val identityHeight = onNodeWithTag("profile_header_identity_row").fetchSemanticsNode().size.height
+        val statsHeight = onNodeWithTag("profile_header_stats_row").fetchSemanticsNode().size.height
+        assertTrue(identityHeight > 0)
+        assertEquals(identityHeight, statsHeight)
     }
 
     @Test

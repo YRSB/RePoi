@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -30,13 +31,19 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,6 +88,18 @@ fun ExpressiveProfileHeader(
 
     val isLoggedIn = profile != null
     val bannerHeight = 180.dp
+    val density = LocalDensity.current
+    var syncedCardHeightPx by remember(isLoggedIn) { mutableIntStateOf(0) }
+    val syncedCardMinHeight = if (syncedCardHeightPx > 0) {
+        with(density) { syncedCardHeightPx.toDp() }
+    } else {
+        0.dp
+    }
+    val cardHeightModifier = if (syncedCardMinHeight > 0.dp) {
+        Modifier.heightIn(min = syncedCardMinHeight)
+    } else {
+        Modifier
+    }
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -174,7 +193,7 @@ fun ExpressiveProfileHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 12.dp)
+                .padding(top = 14.dp)
                 .clip(MaterialTheme.shapes.large),
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
         ) {
@@ -182,16 +201,24 @@ fun ExpressiveProfileHeader(
                 onClick = {
                     if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(cardHeightModifier)
+                    .onSizeChanged { size ->
+                        if (size.height > syncedCardHeightPx) {
+                            syncedCardHeightPx = size.height
+                        }
+                    }
+                    .testTag("profile_header_identity_row"),
                 shapes = ListItemDefaults.shapes(),
                 colors = ListItemDefaults.segmentedColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 leadingContent = {
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                         contentAlignment = Alignment.Center
@@ -207,7 +234,7 @@ fun ExpressiveProfileHeader(
                             Icon(
                                 painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
                                 contentDescription = "默认头像",
-                                modifier = Modifier.size(36.dp),
+                                modifier = Modifier.size(34.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -256,43 +283,56 @@ fun ExpressiveProfileHeader(
             )
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(cardHeightModifier)
+                    .onSizeChanged { size ->
+                        if (size.height > syncedCardHeightPx) {
+                            syncedCardHeightPx = size.height
+                        }
+                    }
+                    .testTag("profile_header_stats_row"),
                 shape = ListItemDefaults.shapes().shape,
                 color = MaterialTheme.colorScheme.surfaceContainerLowest
             ) {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                    contentAlignment = Alignment.Center
                 ) {
-                    SocialStatColumn(
-                        count = fellow?.friendCount ?: 0,
-                        label = "关注",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                        }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SocialStatColumn(
+                            count = fellow?.friendCount ?: 0,
+                            label = "关注",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                            }
+                        )
 
-                    SocialStatColumn(
-                        count = fellow?.fanCount ?: 0,
-                        label = "粉丝",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                        }
-                    )
+                        SocialStatColumn(
+                            count = fellow?.fanCount ?: 0,
+                            label = "粉丝",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                            }
+                        )
 
-                    SocialStatColumn(
-                        count = fellow?.praiseCount ?: 0,
-                        label = "获赞",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                        }
-                    )
+                        SocialStatColumn(
+                            count = fellow?.praiseCount ?: 0,
+                            label = "获赞",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                            }
+                        )
+                    }
                 }
             }
         }

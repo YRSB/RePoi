@@ -139,7 +139,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .padding(top = 14.dp, bottom = bottomPadding),
+                                .padding(top = 10.dp, bottom = bottomPadding),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             FigureAssetHubSection(
@@ -177,12 +177,14 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp)
-                                .padding(top = 14.dp, bottom = bottomPadding),
+                                .padding(bottom = bottomPadding),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.Top
                         ) {
                             Column(
-                                modifier = Modifier.weight(0.54f),
+                                modifier = Modifier
+                                    .weight(0.54f)
+                                    .padding(top = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 FigureAssetHubSection(
@@ -206,7 +208,9 @@ fun ProfileScreen(
                             }
 
                             Column(
-                                modifier = Modifier.weight(0.46f),
+                                modifier = Modifier
+                                    .weight(0.46f)
+                                    .padding(top = 14.dp),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 ProfileQuickActionBar(

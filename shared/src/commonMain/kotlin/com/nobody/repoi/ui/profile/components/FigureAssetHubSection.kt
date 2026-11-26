@@ -86,7 +86,7 @@ fun FigureAssetHubSection(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         AssetHubTabRow(
             tabs = tabs,
