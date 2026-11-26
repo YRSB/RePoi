@@ -57,7 +57,6 @@ class ProfileListDetailHostTest {
                     onShowMessage = {},
                     onNavigateToSettings = {},
                     onNavigateToLogin = { loginCount++ },
-                    onNavigateToFriendList = { _, _ -> },
                     onNavigateToUserInfo = {},
                     onNavigateToMessage = {},
                     collectPaneContent = { _, _, _ -> },
@@ -89,7 +88,6 @@ class ProfileListDetailHostTest {
                     onShowMessage = { shownMessage = it },
                     onNavigateToSettings = {},
                     onNavigateToLogin = {},
-                    onNavigateToFriendList = { _, _ -> },
                     onNavigateToUserInfo = {},
                     onNavigateToMessage = {},
                     collectPaneContent = { param, showBackButton, _ ->
@@ -105,6 +103,11 @@ class ProfileListDetailHostTest {
                     historyPaneContent = { showBackButton, _ ->
                         Column(modifier = Modifier.fillMaxSize()) {
                             Text("DETAIL_HISTORY_back=$showBackButton")
+                        }
+                    },
+                    friendListPaneContent = { param, showBackButton, _ ->
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text("DETAIL_FRIEND_${param.userId}_${param.initialType}_back=$showBackButton")
                         }
                     }
                 )
@@ -149,6 +152,19 @@ class ProfileListDetailHostTest {
         waitForIdle()
         assertEquals("二手闲置市场功能即将上线", shownMessage)
         onNodeWithText("DETAIL_HISTORY_back=false").assertIsDisplayed()
+
+        onNodeWithText("关注").performClick()
+        waitForIdle()
+        onNodeWithText("DETAIL_FRIEND_42_0_back=false").assertIsDisplayed()
+        onNodeWithText("我的收藏").assertIsNotSelected()
+
+        onNodeWithText("粉丝").performClick()
+        waitForIdle()
+        onNodeWithText("DETAIL_FRIEND_42_1_back=false").assertIsDisplayed()
+
+        onNodeWithText("获赞").performClick()
+        waitForIdle()
+        onNodeWithText("DETAIL_FRIEND_42_3_back=false").assertIsDisplayed()
     }
 
     @Test
@@ -156,7 +172,6 @@ class ProfileListDetailHostTest {
         var settingsClicks = 0
         var mailClicks = 0
         var userInfoId = -1L
-        var friendListPair: Pair<Long, Int>? = null
 
         setContent {
             Box(modifier = Modifier.size(1000.dp, 800.dp)) {
@@ -169,7 +184,6 @@ class ProfileListDetailHostTest {
                     onShowMessage = {},
                     onNavigateToSettings = { settingsClicks++ },
                     onNavigateToLogin = {},
-                    onNavigateToFriendList = { uid, type -> friendListPair = uid to type },
                     onNavigateToUserInfo = { userInfoId = it },
                     onNavigateToMessage = { mailClicks++ },
                     collectPaneContent = { _, _, _ -> },
@@ -182,12 +196,10 @@ class ProfileListDetailHostTest {
         waitForIdle()
         onNodeWithContentDescription("设置").performClick()
         onNodeWithContentDescription("消息中心").performClick()
-        onNodeWithText("关注").performClick()
         onNodeWithTag("profile_header_identity_row").performClick()
 
         assertEquals(1, settingsClicks)
         assertEquals(1, mailClicks)
-        assertEquals(77L to 0, friendListPair)
         assertEquals(77L, userInfoId)
         onNodeWithText("收藏、发布与浏览历史").assertIsDisplayed()
     }
@@ -205,7 +217,6 @@ class ProfileListDetailHostTest {
                     onShowMessage = {},
                     onNavigateToSettings = {},
                     onNavigateToLogin = {},
-                    onNavigateToFriendList = { _, _ -> },
                     onNavigateToUserInfo = {},
                     onNavigateToMessage = {},
                     collectPaneContent = { param, showBackButton, onBack ->
@@ -219,7 +230,17 @@ class ProfileListDetailHostTest {
                         }
                     },
                     creationPaneContent = { _, _, _ -> },
-                    historyPaneContent = { _, _ -> }
+                    historyPaneContent = { _, _ -> },
+                    friendListPaneContent = { param, showBackButton, onBack ->
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text("NARROW_FRIEND_${param.userId}_${param.initialType}_back=$showBackButton")
+                            if (showBackButton) {
+                                Button(onClick = onBack) {
+                                    Text("返回个人中心")
+                                }
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -235,6 +256,14 @@ class ProfileListDetailHostTest {
 
         onNodeWithText("我的收藏").assertIsDisplayed()
         onNodeWithText("NARROW_COLLECT_42_back=true").assertDoesNotExist()
+
+        onNodeWithText("粉丝").performClick()
+        waitForIdle()
+        onNodeWithText("NARROW_FRIEND_42_1_back=true").assertIsDisplayed()
+        onNodeWithText("返回个人中心").performClick()
+        waitForIdle()
+        onNodeWithText("粉丝").assertIsDisplayed()
+        onNodeWithText("NARROW_FRIEND_42_1_back=true").assertDoesNotExist()
     }
 
     @Test
@@ -253,7 +282,6 @@ class ProfileListDetailHostTest {
                     onShowMessage = {},
                     onNavigateToSettings = {},
                     onNavigateToLogin = {},
-                    onNavigateToFriendList = { _, _ -> },
                     onNavigateToUserInfo = {},
                     onNavigateToMessage = {},
                     collectPaneContent = { _, _, _ -> },

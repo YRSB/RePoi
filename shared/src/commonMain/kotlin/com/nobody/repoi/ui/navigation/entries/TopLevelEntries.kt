@@ -92,9 +92,6 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
                 }
             },
             onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(AlbumNavParam(albumId = albumId)) },
-            onNavigateToFriendList = { userId, initialType ->
-                navigator.navigateToFriendList(FriendListNavParam(userId = userId, initialType = initialType))
-            },
             onNavigateToUserInfo = { userId -> navigator.navigateToUser(userId) },
             onNavigateToMessage = { navigator.navigateToMessageCenter() },
             onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },

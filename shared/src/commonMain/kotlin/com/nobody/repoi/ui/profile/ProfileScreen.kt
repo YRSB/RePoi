@@ -55,7 +55,9 @@ import com.nobody.repoi.ui.collect.UserCollectScreen
 import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.detail.DetailNavParam
+import com.nobody.repoi.ui.friend.FriendListScreen
 import com.nobody.repoi.ui.navigation.CharacterNavParam
+import com.nobody.repoi.ui.navigation.FriendListNavParam
 import com.nobody.repoi.ui.navigation.PictureGalleryNavParam
 import com.nobody.repoi.ui.navigation.RePoiNavDisplay
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
@@ -70,6 +72,7 @@ import com.nobody.repoi.ui.profile.components.ProfileQuickAction
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import com.nobody.repoi.ui.profile.navigation.ProfileCollectNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileCreationNavKey
+import com.nobody.repoi.ui.profile.navigation.ProfileFriendListNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileHistoryNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileListNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileSubNavKey
@@ -94,7 +97,6 @@ fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToHobby: (DetailNavParam) -> Unit,
     onNavigateToAlbum: (Long) -> Unit = {},
-    onNavigateToFriendList: (userId: Long, initialType: Int) -> Unit = { _, _ -> },
     onNavigateToUserInfo: (userId: Long) -> Unit = {},
     onNavigateToMessage: () -> Unit = {},
     onNavigateToVendor: (VendorNavParam) -> Unit = {},
@@ -139,7 +141,6 @@ fun ProfileScreen(
         onShowMessage = { appMessages.show(it) },
         onNavigateToSettings = onNavigateToSettings,
         onNavigateToLogin = onNavigateToLogin,
-        onNavigateToFriendList = onNavigateToFriendList,
         onNavigateToUserInfo = onNavigateToUserInfo,
         onNavigateToMessage = onNavigateToMessage,
         collectPaneContent = { param, showBackButton, onBack ->
@@ -175,6 +176,22 @@ fun ProfileScreen(
                 showBackButton = showBackButton
             )
         },
+        friendListPaneContent = { param, showBackButton, onBack ->
+            FriendListScreen(
+                userId = param.userId,
+                initialType = param.initialType,
+                onNavigateBack = onBack,
+                onNavigateToUser = onNavigateToUserInfo,
+                onNavigateToItem = { itemId, itemType ->
+                    if (itemType == "album") {
+                        onNavigateToAlbum(itemId)
+                    } else {
+                        onNavigateToHobby(DetailNavParam(itemId = itemId, itemType = itemType ?: "hobby"))
+                    }
+                },
+                showBackButton = showBackButton
+            )
+        },
         modifier = modifier
     )
 }
@@ -191,12 +208,12 @@ internal fun ProfileListDetailContent(
     onShowMessage: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToFriendList: (userId: Long, initialType: Int) -> Unit,
     onNavigateToUserInfo: (userId: Long) -> Unit,
     onNavigateToMessage: () -> Unit,
     collectPaneContent: @Composable (param: UserCollectNavParam, showBackButton: Boolean, onBack: () -> Unit) -> Unit,
     creationPaneContent: @Composable (param: UserCreationNavParam, showBackButton: Boolean, onBack: () -> Unit) -> Unit,
     historyPaneContent: @Composable (showBackButton: Boolean, onBack: () -> Unit) -> Unit,
+    friendListPaneContent: @Composable (param: FriendListNavParam, showBackButton: Boolean, onBack: () -> Unit) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -267,7 +284,13 @@ internal fun ProfileListDetailContent(
                 onCheckInClick = onCheckInClick,
                 onMailClick = { if (isAuthenticated && profile != null) onNavigateToMessage() else onNavigateToLogin() },
                 onSettingsClick = onNavigateToSettings,
-                onNavigateToFriendList = onNavigateToFriendList,
+                onOpenFriendList = { userId, initialType ->
+                    openProfileSubRoute(
+                        backStack,
+                        ProfileFriendListNavKey(FriendListNavParam(userId = userId, initialType = initialType)),
+                        isWide = isWide
+                    )
+                },
                 onNavigateToUserInfo = onNavigateToUserInfo,
                 onLoginClick = onNavigateToLogin,
                 onOpenCollect = { param ->
@@ -306,6 +329,13 @@ internal fun ProfileListDetailContent(
         ) {
             historyPaneContent(!isWide, localOnBack)
         }
+
+        entry<ProfileFriendListNavKey>(
+            clazzContentKey = { "profile_friend_list" },
+            metadata = ListDetailSceneStrategy.detailPane()
+        ) { key ->
+            friendListPaneContent(key.param, !isWide, localOnBack)
+        }
     }
 
     RePoiNavDisplay(
@@ -337,7 +367,7 @@ private fun ProfileListPane(
     onCheckInClick: () -> Unit,
     onMailClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onNavigateToFriendList: (userId: Long, initialType: Int) -> Unit,
+    onOpenFriendList: (userId: Long, initialType: Int) -> Unit,
     onNavigateToUserInfo: (userId: Long) -> Unit,
     onLoginClick: () -> Unit,
     onOpenCollect: (UserCollectNavParam) -> Unit,
@@ -395,7 +425,7 @@ private fun ProfileListPane(
                         onCheckInClick = onCheckInClick,
                         onMailClick = onMailClick,
                         onSettingsClick = onSettingsClick,
-                        onNavigateToFriendList = onNavigateToFriendList,
+                        onNavigateToFriendList = onOpenFriendList,
                         onNavigateToUserInfo = onNavigateToUserInfo,
                         onLoginClick = onLoginClick
                     )

@@ -2,11 +2,13 @@ package com.nobody.repoi.ui.profile
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.navigation.FriendListNavParam
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.profile.components.ProfileQuickAction
 import com.nobody.repoi.ui.profile.navigation.ProfileCollectNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileCreationNavKey
+import com.nobody.repoi.ui.profile.navigation.ProfileFriendListNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileHistoryNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileListNavKey
 import com.nobody.repoi.ui.profile.navigation.ProfileSubNavKey
@@ -47,7 +49,13 @@ class ProfileSubNavKeysTest {
                     initialCategory = 70000
                 )
             ),
-            ProfileHistoryNavKey
+            ProfileHistoryNavKey,
+            ProfileFriendListNavKey(
+                FriendListNavParam(
+                    userId = 1001L,
+                    initialType = 3
+                )
+            )
         )
 
         keys.forEach { key ->
@@ -68,7 +76,8 @@ class ProfileSubNavKeysTest {
             ProfileListNavKey,
             ProfileCollectNavKey(UserCollectNavParam(userId = 2002L, initialCollectState = "buy")),
             ProfileCreationNavKey(UserCreationNavParam(userId = 2002L, initialCategory = 70001)),
-            ProfileHistoryNavKey
+            ProfileHistoryNavKey,
+            ProfileFriendListNavKey(FriendListNavParam(userId = 2002L, initialType = 1))
         )
 
         keys.forEach { key ->
@@ -98,6 +107,7 @@ class ProfileSubNavKeysTest {
             ProfileQuickAction.HISTORY,
             ProfileHistoryNavKey.toQuickAction()
         )
+        assertNull(ProfileFriendListNavKey(FriendListNavParam(userId = 1L, initialType = 0)).toQuickAction())
         assertNull(ProfileListNavKey.toQuickAction())
         assertNull((null as ProfileSubNavKey?).toQuickAction())
     }
@@ -109,6 +119,7 @@ class ProfileSubNavKeysTest {
         val preorderKey = ProfileCollectNavKey(UserCollectNavParam(userId = 42L, initialCollectState = "preorder"))
         val buyKey = ProfileCollectNavKey(UserCollectNavParam(userId = 42L, initialCollectState = "buy"))
         val creationKey = ProfileCreationNavKey(UserCreationNavParam(userId = 42L))
+        val friendKey = ProfileFriendListNavKey(FriendListNavParam(userId = 42L, initialType = 1))
 
         openProfileSubRoute(stack, preorderKey, isWide = true)
         assertEquals(listOf<NavKey>(ProfileListNavKey, preorderKey), stack.toList())
@@ -124,6 +135,9 @@ class ProfileSubNavKeysTest {
 
         openProfileSubRoute(stack, ProfileHistoryNavKey, isWide = true)
         assertEquals(listOf<NavKey>(ProfileListNavKey, ProfileHistoryNavKey), stack.toList())
+
+        openProfileSubRoute(stack, friendKey, isWide = true)
+        assertEquals(listOf<NavKey>(ProfileListNavKey, friendKey), stack.toList())
     }
 
     @Test

@@ -24,6 +24,8 @@ import com.nobody.repoi.ui.collect.UserCollectScreen
 import com.nobody.repoi.ui.collect.UserCollectViewModel
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.NoOpImageViewerController
+import com.nobody.repoi.ui.friend.FriendListScreen
+import com.nobody.repoi.ui.friend.FriendListViewModel
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.user.creation.UserCreationScreen
@@ -188,5 +190,37 @@ class ProfileDetailScreensTopBarTest {
         onNodeWithText("管理").assertIsDisplayed()
         onNodeWithContentDescription("返回").performClick()
         assertEquals(2, backClicks)
+    }
+
+    @Test
+    fun friendListScreen_togglesTopBarBackButtonAndSwitchesInitialTab() = runComposeUiTest {
+        val mock = MockApi()
+        mock.route("api/user/fellow", """{"success":true,"code":200,"data":{"list":[]}}""")
+        mock.route("api/item/praise/forUser", """{"success":true,"code":200,"data":{"list":[]}}""")
+        val vm = buildKoin(mock).koin.get<FriendListViewModel>()
+        var showBack by mutableStateOf(true)
+        var initialType by mutableStateOf(0)
+        var backClicks = 0
+
+        setContent {
+            FriendListScreen(
+                userId = 42L,
+                initialType = initialType,
+                onNavigateBack = { backClicks++ },
+                showBackButton = showBack,
+                viewModel = vm
+            )
+        }
+
+        waitForIdle()
+        onNodeWithText("暂无关注的用户").assertIsDisplayed()
+        onNodeWithContentDescription("返回").assertIsDisplayed().performClick()
+        assertEquals(1, backClicks)
+
+        showBack = false
+        initialType = 3
+        waitForIdle()
+        onNodeWithContentDescription("返回").assertDoesNotExist()
+        onNodeWithText("暂无获赞条目").assertIsDisplayed()
     }
 }

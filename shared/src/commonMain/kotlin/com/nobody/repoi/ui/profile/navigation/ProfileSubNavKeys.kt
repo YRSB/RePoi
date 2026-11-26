@@ -2,6 +2,7 @@ package com.nobody.repoi.ui.profile.navigation
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.nobody.repoi.ui.navigation.FriendListNavParam
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
 import com.nobody.repoi.ui.profile.components.ProfileQuickAction
@@ -29,18 +30,25 @@ internal data class ProfileCreationNavKey(
 @Serializable
 internal data object ProfileHistoryNavKey : ProfileSubNavKey
 
+@Serializable
+internal data class ProfileFriendListNavKey(
+    val param: FriendListNavParam,
+) : ProfileSubNavKey
+
 internal val ProfileSubNavSerializersModule: SerializersModule = SerializersModule {
     polymorphic(NavKey::class) {
         subclass(ProfileListNavKey::class)
         subclass(ProfileCollectNavKey::class)
         subclass(ProfileCreationNavKey::class)
         subclass(ProfileHistoryNavKey::class)
+        subclass(ProfileFriendListNavKey::class)
     }
     polymorphic(ProfileSubNavKey::class) {
         subclass(ProfileListNavKey::class)
         subclass(ProfileCollectNavKey::class)
         subclass(ProfileCreationNavKey::class)
         subclass(ProfileHistoryNavKey::class)
+        subclass(ProfileFriendListNavKey::class)
     }
 }
 

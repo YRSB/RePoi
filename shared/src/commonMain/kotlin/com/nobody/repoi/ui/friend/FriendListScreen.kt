@@ -65,6 +65,8 @@ import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.ui.common.PoiIcons
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarExtraPadding
 import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +77,7 @@ fun FriendListScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToUser: (Long) -> Unit = {},
     onNavigateToItem: (Long, String?) -> Unit = { _, _ -> },
+    showBackButton: Boolean = true,
     viewModel: FriendListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,12 +119,14 @@ fun FriendListScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -129,7 +134,12 @@ fun FriendListScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = rememberBottomBarExtraPadding())
+            )
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -233,12 +243,16 @@ fun FriendListScreen(
                         }
 
                         else -> {
+                            val bottomContentPadding = maxOf(
+                                innerPadding.calculateBottomPadding() + 24.dp,
+                                rememberBottomBarContentPadding(24.dp)
+                            )
                             LazyColumn(
                                 state = listState,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .consumeWindowInsets(PaddingValues(bottom = innerPadding.calculateBottomPadding())),
-                                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp + innerPadding.calculateBottomPadding()),
+                                contentPadding = PaddingValues(top = 8.dp, bottom = bottomContentPadding),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(

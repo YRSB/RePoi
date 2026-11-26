@@ -25,9 +25,10 @@ RePoi 的「我的」Tab（`ProfileScreen`）此前采用单/双列混排布局�
 - **迁入 `detailPane` 的页面**：
   - **我的收藏 (`UserCollectScreen`)**：包含 `FigureAssetHubSection` 点击「已预定 / 已入」与 `ProfileQuickActionBar` 点击「我的收藏」两条入口；
   - **我的发布 (`UserCreationScreen`)**；
-  - **浏览历史 (`UserHistoryScreen`)**。
+  - **浏览历史 (`UserHistoryScreen`)**；
+  - **社交关系 (`FriendListScreen`)**：包含 `ExpressiveProfileHeader` 点击「关注 / 粉丝 / 获赞」三条入口。
 - **保持全局 `rootBackStack` 整页跳转的页面**：
-  - **设置 (`SettingsNavKey`)**、**信箱 / 消息中心 (`MessageCenterNavKey`)**、**用户个人主页 (`UserInfoNavKey`)**、**社交关系 (`FriendListNavKey`)**、**登录 (`LoginNavKey`)**，以及详情页内部二次下钻的目标（如手办详情、相册详情等）。
+  - **设置 (`SettingsNavKey`)**、**信箱 / 消息中心 (`MessageCenterNavKey`)**、**用户个人主页 (`UserInfoNavKey`)**、**登录 (`LoginNavKey`)**，以及详情页内部二次下钻的目标（如手办详情、相册详情、其他用户主页等）。
 - **保持原有局部交互形式**：
   - **资金明细 (`FinanceDetailBottomSheet`)** 保留窄屏 BottomSheet / 宽屏居中 Dialog 形式；
   - **我的二手** 保持当前「即将上线」提示占位。
@@ -42,7 +43,7 @@ RePoi 的「我的」Tab（`ProfileScreen`）此前采用单/双列混排布局�
   - **已登录态**：标题「收藏、发布与浏览历史」+ 副标题「点击左侧对应入口，即可在这里展开查看」；
   - **未登录态**：标题「登录后查看你的收藏与发布」+ 副标题「可同步预定清单、已入收藏、个人发布与浏览历史」+「去登录」按钮。
 - **左侧选中态与参数联动**：宽屏双窗格下，`ProfileQuickActionBar` 对应条目展示选中高亮（从「已预定 / 已入」进入同样高亮「我的收藏」）；已在收藏详情态时切换「已预定 / 已入 / 我的收藏」，通过栈顶参数更新驱动 `UserCollectViewModel.initParam` 即时切换。
-- **复用页面顶栏返回键控制**：`UserCollectScreen`、`UserCreationScreen`、`UserHistoryScreen` 新增可选参数 `showBackButton: Boolean = true`。全局整页路由（含 `UserInfoScreen` 跳转）与个人中心窄屏模式保持 `true`；宽屏双窗格传入 `false` 隐藏左上角返回箭头（`UserHistoryScreen` 管理态仍保留右侧「完成」操作）。
+- **复用页面顶栏返回键控制**：`UserCollectScreen`、`UserCreationScreen`、`UserHistoryScreen`、`FriendListScreen` 新增可选参数 `showBackButton: Boolean = true`。全局整页路由（含 `UserInfoScreen` 跳转）与个人中心窄屏模式保持 `true`；宽屏双窗格传入 `false` 隐藏左上角返回箭头（`UserHistoryScreen` 管理态仍保留右侧「完成」操作）。
 - **账号切换与登出重置**：监听 `ProfileViewModel` 的登录态与用户 ID 变化，一旦退出登录或切换账号，自动将局部子栈重置回个人中心根页。
 
 ## 影响
