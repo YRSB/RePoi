@@ -287,7 +287,7 @@ private fun AssetStackedDetailRows(
                             }
                         }
                         Icon(
-                            painter = painterResource(PoiIcons.ChevronRight),
+                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                             tint = colorScheme.onSurfaceVariant
@@ -337,7 +337,7 @@ private fun AssetStackedDetailRows(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Icon(
-                                painter = painterResource(PoiIcons.ChevronRight),
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowForwardIos),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = if (isMoneyActive) colorScheme.primary else colorScheme.onSurfaceVariant

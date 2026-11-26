@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -165,7 +164,6 @@ private fun QuickActionSegmentedRow(
     val rowContainerColor = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerLowest
     val titleColor = if (isSelected) colorScheme.onSecondaryContainer else colorScheme.onSurface
     val subtitleColor = if (isSelected) colorScheme.onSecondaryContainer.copy(alpha = 0.8f) else colorScheme.onSurfaceVariant
-    val chevronColor = if (isSelected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
 
     SegmentedListItem(
         onClick = entry.onClick,
@@ -202,30 +200,19 @@ private fun QuickActionSegmentedRow(
                 overflow = TextOverflow.Ellipsis
             )
         },
-        trailingContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (entry.statusBadge != null) {
-                    Surface(
-                        shape = CircleShape,
-                        color = colorScheme.secondaryContainer
-                    ) {
-                        Text(
-                            text = entry.statusBadge,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
-                    }
+        trailingContent = entry.statusBadge?.let { badge ->
+            {
+                Surface(
+                    shape = CircleShape,
+                    color = colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
                 }
-                Icon(
-                    painter = painterResource(PoiIcons.ChevronRight),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = chevronColor
-                )
             }
         },
         content = {
