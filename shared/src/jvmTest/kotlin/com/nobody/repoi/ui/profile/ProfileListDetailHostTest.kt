@@ -11,9 +11,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -119,9 +121,9 @@ class ProfileListDetailHostTest {
         onNodeWithText("我的收藏").assertIsSelected()
         onNodeWithText("我的发布").assertIsNotSelected()
 
-        onNodeWithText("已入 17").performClick()
-        waitForIdle()
         onNodeWithText("已入").performClick()
+        waitForIdle()
+        onAllNodesWithText("已入").assertCountEquals(2)[1].performClick()
         waitForIdle()
         onNodeWithText("DETAIL_COLLECT_42_buy_null_back=false").assertIsDisplayed()
         onNodeWithText("我的收藏").assertIsSelected()

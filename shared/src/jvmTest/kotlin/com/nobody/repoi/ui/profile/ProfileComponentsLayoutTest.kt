@@ -264,6 +264,9 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("想买", substring = true).assertDoesNotExist()
+        onNodeWithText("预定").assertIsDisplayed()
+        onNodeWithText("预定 3").assertDoesNotExist()
+        onNodeWithText("已入 17").assertDoesNotExist()
         onNodeWithText("待补款总折合").assertIsDisplayed()
         onNodeWithText("¥3,428").assertIsDisplayed().performClick()
         assertEquals(0, moneyTab)
@@ -272,14 +275,14 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("已预定").assertIsDisplayed().performClick()
         assertEquals("preorder", collectState)
 
-        onNodeWithText("已入 17").assertIsDisplayed().performClick()
+        onNodeWithText("已入").assertIsDisplayed().performClick()
         onNodeWithText("历史总投入").assertIsDisplayed()
         onNodeWithText("¥15,000").assertIsDisplayed().performClick()
         assertEquals(1, moneyTab)
 
         onNodeWithText("手办 ¥12,000").assertIsDisplayed()
         onNodeWithText("动漫周边 ¥3,000").assertIsDisplayed()
-        onNodeWithText("已入").assertIsDisplayed().performClick()
+        onAllNodesWithText("已入").assertCountEquals(2)[1].assertIsDisplayed().performClick()
         assertEquals("buy", collectState)
     }
 
@@ -330,7 +333,7 @@ class ProfileComponentsLayoutTest {
         val preorderHeight = measuredHeight
         assertTrue(preorderHeight > 0)
 
-        onNodeWithText("已入 17").performClick()
+        onNodeWithText("已入").performClick()
         waitForIdle()
         assertEquals(preorderHeight, measuredHeight)
     }

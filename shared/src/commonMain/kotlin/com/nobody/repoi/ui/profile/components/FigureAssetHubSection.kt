@@ -91,7 +91,6 @@ fun FigureAssetHubSection(
         AssetHubTabRow(
             tabs = tabs,
             selectedIndex = selectedTabIndex,
-            tabCounts = listOf(preorderCount, buyCount),
             onSelectTab = { selectedTabIndex = it }
         )
 
@@ -163,7 +162,6 @@ fun FigureAssetHubSection(
 private fun AssetHubTabRow(
     tabs: List<AssetHubTab>,
     selectedIndex: Int,
-    tabCounts: List<Int>,
     onSelectTab: (Int) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -176,7 +174,6 @@ private fun AssetHubTabRow(
     ) {
         tabs.forEachIndexed { index, tab ->
             val checked = index == selectedIndex
-            val countText = tabCounts.getOrElse(index) { 0 }
             ToggleButton(
                 checked = checked,
                 onCheckedChange = { if (!checked) onSelectTab(index) },
@@ -205,10 +202,8 @@ private fun AssetHubTabRow(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "${tab.label} $countText",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontFeatureSettings = "tnum"
-                    ),
+                    text = tab.label,
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
