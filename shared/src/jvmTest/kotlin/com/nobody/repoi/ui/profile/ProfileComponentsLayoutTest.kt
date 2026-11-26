@@ -15,6 +15,7 @@ import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.profile.components.CheckInSpringButton
 import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
 import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
+import com.nobody.repoi.ui.profile.components.FinanceDetailContent
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
 import kotlin.test.Test
@@ -270,5 +271,55 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("想买 0").assertIsDisplayed().performClick()
         onNodeWithText("去登录").assertIsDisplayed().performClick()
         assertEquals(3, loginCount)
+    }
+
+    @Test
+    fun financeDetailContent_switchesBetweenTabsAndDisplaysAllCategories() = runComposeUiTest {
+        var dismissed = false
+        setContent {
+            FinanceDetailContent(
+                finance = OrderFinanceSummary(
+                    supplementedTotalRmb = 3428.0,
+                    historyTotalRmb = 15000.0,
+                    supplementedGroups = listOf(
+                        CategoryMoneyGroup(
+                            categoryKey = "category_100",
+                            categoryName = "手办",
+                            items = listOf(CurrencyItem("rmb", 3428.0)),
+                            totalRmb = 3428.0
+                        )
+                    ),
+                    historyGroups = listOf(
+                        CategoryMoneyGroup(
+                            categoryKey = "category_900",
+                            categoryName = "动漫周边",
+                            items = listOf(CurrencyItem("rmb", 500.0)),
+                            totalRmb = 500.0
+                        ),
+                        CategoryMoneyGroup(
+                            categoryKey = "category_1000",
+                            categoryName = "GK/个人创作",
+                            items = listOf(CurrencyItem("rmb", 1200.0)),
+                            totalRmb = 1200.0
+                        )
+                    )
+                ),
+                initialTab = 0,
+                onDismissRequest = { dismissed = true }
+            )
+        }
+
+        onNodeWithText("待补款总折合").assertIsDisplayed()
+        onNodeWithText("¥3,428").assertIsDisplayed()
+        onNodeWithText("手办").assertIsDisplayed()
+
+        onNodeWithText("已入总额明细").assertIsDisplayed().performClick()
+        onNodeWithText("已入手办总折合").assertIsDisplayed()
+        onNodeWithText("¥15,000").assertIsDisplayed()
+        onNodeWithText("动漫周边").assertIsDisplayed()
+        onNodeWithText("GK/个人创作").assertIsDisplayed()
+
+        onNodeWithContentDescription("关闭").performClick()
+        assertTrue(dismissed)
     }
 }
