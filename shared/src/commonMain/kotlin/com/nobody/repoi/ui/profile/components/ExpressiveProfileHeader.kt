@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,9 +24,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -38,7 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
@@ -175,18 +176,24 @@ fun ExpressiveProfileHeader(
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp)
                 .clip(MaterialTheme.shapes.large),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
         ) {
-            ListItem(
+            SegmentedListItem(
+                onClick = {
+                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shapes = ListItemDefaults.shapes(),
+                colors = ListItemDefaults.segmentedColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 leadingContent = {
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .clickable {
-                                if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                            },
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                         contentAlignment = Alignment.Center
                     ) {
                         if (avatarUrl.isNotBlank()) {
@@ -205,18 +212,6 @@ fun ExpressiveProfileHeader(
                             )
                         }
                     }
-                },
-                headlineContent = {
-                    Text(
-                        text = profile?.displayName ?: "点击登录",
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable {
-                                if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
-                            },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 },
                 supportingContent = {
                     Text(
@@ -249,50 +244,57 @@ fun ExpressiveProfileHeader(
                         }
                     }
                 },
-                colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                )
+                content = {
+                    Text(
+                        text = profile?.displayName ?: "点击登录",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             )
 
-            ListItem(
-                headlineContent = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SocialStatColumn(
-                            count = fellow?.friendCount ?: 0,
-                            label = "关注",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
-                            }
-                        )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = ListItemDefaults.shapes().shape,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SocialStatColumn(
+                        count = fellow?.friendCount ?: 0,
+                        label = "关注",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                        }
+                    )
 
-                        SocialStatColumn(
-                            count = fellow?.fanCount ?: 0,
-                            label = "粉丝",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
-                            }
-                        )
+                    SocialStatColumn(
+                        count = fellow?.fanCount ?: 0,
+                        label = "粉丝",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                        }
+                    )
 
-                        SocialStatColumn(
-                            count = fellow?.praiseCount ?: 0,
-                            label = "获赞",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
-                            }
-                        )
-                    }
-                },
-                colors = ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                )
-            )
+                    SocialStatColumn(
+                        count = fellow?.praiseCount ?: 0,
+                        label = "获赞",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                        }
+                    )
+                }
+            }
         }
     }
 }
