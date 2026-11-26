@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,23 +38,18 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.OrderCount
@@ -71,8 +65,7 @@ private enum class AssetHubTab(
     val collectStateKey: String
 ) {
     PREORDER("预定", "preorder"),
-    BUY("已入", "buy"),
-    WANT("想买", "want")
+    BUY("已入", "buy")
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -93,23 +86,20 @@ fun FigureAssetHubSection(
     val preorderCount = order?.preorder ?: 0
     val buyCount = order?.buy ?: 0
     val wantCount = order?.actualWant ?: 0
-    val density = LocalDensity.current
-    var lockedContentHeightPx by remember(isLoggedIn) { mutableIntStateOf(0) }
-    val lockedContentMinHeight = if (lockedContentHeightPx > 0) {
-        with(density) { lockedContentHeightPx.toDp() }
-    } else {
-        0.dp
-    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        AssetHubTabRow(
+        AssetHubHeaderRow(
             tabs = tabs,
             selectedIndex = selectedTabIndex,
-            counts = listOf(preorderCount, buyCount, wantCount),
-            onSelect = { selectedTabIndex = it }
+            tabCounts = listOf(preorderCount, buyCount),
+            wantCount = wantCount,
+            onSelectTab = { selectedTabIndex = it },
+            onWantClick = {
+                if (isLoggedIn) onNavigateToCollect("want") else onLoginClick()
+            }
         )
 
         AnimatedContent(
@@ -130,74 +120,45 @@ fun FigureAssetHubSection(
             },
             label = "asset_hub_content"
         ) { tab ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .let { base ->
-                        if (lockedContentMinHeight > 0.dp) {
-                            base.heightIn(min = lockedContentMinHeight)
-                        } else {
-                            base
+            when (tab) {
+                AssetHubTab.PREORDER -> {
+                    val totalAmount = finance?.supplementedTotalRmb ?: 0.0
+                    val groups = finance?.supplementedGroups.orEmpty()
+                    AssetStackedDetailRows(
+                        countTitle = "已预定",
+                        countValue = if (isLoggedIn) preorderCount.toString() else "—",
+                        moneyTitle = "待补款总折合",
+                        moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
+                        isMoneyActive = isLoggedIn && totalAmount > 0.0,
+                        groups = groups,
+                        showCategoryStrip = isLoggedIn,
+                        onCountClick = {
+                            if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
+                        },
+                        onMoneyClick = {
+                            if (isLoggedIn) onMoneyClick(0) else onLoginClick()
                         }
-                    }
-                    .onSizeChanged { size ->
-                        if (tab != AssetHubTab.WANT && size.height > lockedContentHeightPx) {
-                            lockedContentHeightPx = size.height
+                    )
+                }
+
+                AssetHubTab.BUY -> {
+                    val totalAmount = finance?.historyTotalRmb ?: 0.0
+                    val groups = finance?.historyGroups.orEmpty()
+                    AssetStackedDetailRows(
+                        countTitle = "已入",
+                        countValue = if (isLoggedIn) buyCount.toString() else "—",
+                        moneyTitle = "历史总投入",
+                        moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
+                        isMoneyActive = isLoggedIn && totalAmount > 0.0,
+                        groups = groups,
+                        showCategoryStrip = isLoggedIn,
+                        onCountClick = {
+                            if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
+                        },
+                        onMoneyClick = {
+                            if (isLoggedIn) onMoneyClick(1) else onLoginClick()
                         }
-                    }
-                    .clip(MaterialTheme.shapes.large)
-            ) {
-                when (tab) {
-                    AssetHubTab.PREORDER -> {
-                        val totalAmount = finance?.supplementedTotalRmb ?: 0.0
-                        val groups = finance?.supplementedGroups.orEmpty()
-                        AssetMetricDualRow(
-                            moneyTitle = "待补款总折合",
-                            moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
-                            isMoneyActive = isLoggedIn && totalAmount > 0.0,
-                            countTitle = "已预定",
-                            countValue = if (isLoggedIn) preorderCount.toString() else "—",
-                            groups = groups,
-                            showCategoryStrip = isLoggedIn,
-                            onMoneyClick = {
-                                if (isLoggedIn) onMoneyClick(0) else onLoginClick()
-                            },
-                            onCountClick = {
-                                if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
-                            }
-                        )
-                    }
-
-                    AssetHubTab.BUY -> {
-                        val totalAmount = finance?.historyTotalRmb ?: 0.0
-                        val groups = finance?.historyGroups.orEmpty()
-                        AssetMetricDualRow(
-                            moneyTitle = "历史总投入",
-                            moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
-                            isMoneyActive = isLoggedIn && totalAmount > 0.0,
-                            countTitle = "已入",
-                            countValue = if (isLoggedIn) buyCount.toString() else "—",
-                            groups = groups,
-                            showCategoryStrip = isLoggedIn,
-                            onMoneyClick = {
-                                if (isLoggedIn) onMoneyClick(1) else onLoginClick()
-                            },
-                            onCountClick = {
-                                if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
-                            }
-                        )
-                    }
-
-                    AssetHubTab.WANT -> {
-                        WantSummaryRow(
-                            wantCount = wantCount,
-                            isLoggedIn = isLoggedIn,
-                            minHeight = lockedContentMinHeight,
-                            onClick = {
-                                if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
-                            }
-                        )
-                    }
+                    )
                 }
             }
         }
@@ -206,58 +167,104 @@ fun FigureAssetHubSection(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssetHubTabRow(
+private fun AssetHubHeaderRow(
     tabs: List<AssetHubTab>,
     selectedIndex: Int,
-    counts: List<Int>,
-    onSelect: (Int) -> Unit
+    tabCounts: List<Int>,
+    wantCount: Int,
+    onSelectTab: (Int) -> Unit,
+    onWantClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            .height(IntrinsicSize.Max),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        tabs.forEachIndexed { index, tab ->
-            val checked = index == selectedIndex
-            val countText = counts.getOrElse(index) { 0 }
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = { if (!checked) onSelect(index) },
-                colors = if (checked) {
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = colorScheme.primaryContainer,
-                        contentColor = colorScheme.onPrimaryContainer
-                    )
-                } else {
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = colorScheme.surfaceContainerLowest,
-                        contentColor = colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics {
-                        role = Role.RadioButton
-                        this.selected = checked
+        Row(
+            modifier = Modifier
+                .weight(2f)
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEachIndexed { index, tab ->
+                val checked = index == selectedIndex
+                val countText = tabCounts.getOrElse(index) { 0 }
+                ToggleButton(
+                    checked = checked,
+                    onCheckedChange = { if (!checked) onSelectTab(index) },
+                    colors = if (checked) {
+                        ToggleButtonDefaults.toggleButtonColors(
+                            containerColor = colorScheme.primaryContainer,
+                            contentColor = colorScheme.onPrimaryContainer
+                        )
+                    } else {
+                        ToggleButtonDefaults.toggleButtonColors(
+                            containerColor = colorScheme.surfaceContainerLowest,
+                            contentColor = colorScheme.onSurfaceVariant
+                        )
                     },
-                shapes = when (index) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    tabs.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            role = Role.RadioButton
+                            this.selected = checked
+                        },
+                    shapes = if (index == 0) {
+                        ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    } else {
+                        ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "${tab.label} $countText",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFeatureSettings = "tnum"
+                        ),
+                        fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Surface(
+            onClick = onWantClick,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            shape = MaterialTheme.shapes.pill,
+            color = colorScheme.surfaceContainerLowest
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${tab.label} $countText",
+                    text = "想买 $wantCount",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontFeatureSettings = "tnum"
                     ),
-                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = FontWeight.Medium,
+                    color = colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    painter = painterResource(PoiIcons.ChevronRight),
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -266,31 +273,87 @@ private fun AssetHubTabRow(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssetMetricDualRow(
+private fun AssetStackedDetailRows(
+    countTitle: String,
+    countValue: String,
     moneyTitle: String,
     moneyValue: String,
     isMoneyActive: Boolean,
-    countTitle: String,
-    countValue: String,
     groups: List<CategoryMoneyGroup>,
     showCategoryStrip: Boolean,
-    onMoneyClick: () -> Unit,
-    onCountClick: () -> Unit
+    onCountClick: () -> Unit,
+    onMoneyClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val gap = ListItemDefaults.SegmentedGap
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(gap)
+            .clip(MaterialTheme.shapes.large),
+        verticalArrangement = Arrangement.spacedBy(gap)
     ) {
         SegmentedListItem(
+            onClick = onCountClick,
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ListItemDefaults.shapes(),
+            colors = ListItemDefaults.segmentedColors(
+                containerColor = colorScheme.surfaceContainerLowest
+            ),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            content = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = countTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = countValue,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFeatureSettings = "tnum"
+                                ),
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            if (countValue != "—") {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = "件",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 1.dp)
+                                )
+                            }
+                        }
+                        Icon(
+                            painter = painterResource(PoiIcons.ChevronRight),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        )
+
+        SegmentedListItem(
             onClick = onMoneyClick,
-            modifier = Modifier
-                .weight(1.56f)
-                .fillMaxHeight(),
+            modifier = Modifier.fillMaxWidth(),
             shapes = ListItemDefaults.shapes(),
             colors = ListItemDefaults.segmentedColors(
                 containerColor = colorScheme.surfaceContainerLowest
@@ -299,7 +362,7 @@ private fun AssetMetricDualRow(
             content = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -308,109 +371,36 @@ private fun AssetMetricDualRow(
                     ) {
                         Text(
                             text = moneyTitle,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "明细",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = colorScheme.primary
+                                text = moneyValue,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFeatureSettings = "tnum"
+                                ),
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMoneyActive) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Icon(
                                 painter = painterResource(PoiIcons.ChevronRight),
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = colorScheme.primary
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isMoneyActive) colorScheme.primary else colorScheme.onSurfaceVariant
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = moneyValue,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontFeatureSettings = "tnum"
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = if (isMoneyActive) colorScheme.primary else colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
 
                     if (showCategoryStrip) {
-                        Spacer(modifier = Modifier.height(8.dp))
                         CategoryBreakdownInline(groups = groups)
-                    }
-                }
-            }
-        )
-
-        SegmentedListItem(
-            onClick = onCountClick,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            shapes = ListItemDefaults.shapes(),
-            colors = ListItemDefaults.segmentedColors(
-                containerColor = colorScheme.surfaceContainerLowest
-            ),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-            content = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = countTitle,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Icon(
-                            painter = painterResource(PoiIcons.ChevronRight),
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = countValue,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontFeatureSettings = "tnum"
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (countValue != "—") {
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "件",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -444,7 +434,7 @@ private fun CategoryBreakdownInline(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp),
+                .height(6.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             if (positiveGroups.isEmpty()) {
@@ -521,106 +511,6 @@ private fun CategoryBreakdownInline(
                         color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WantSummaryRow(
-    wantCount: Int,
-    isLoggedIn: Boolean,
-    minHeight: Dp,
-    onClick: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .let { base ->
-                if (minHeight > 0.dp) base.heightIn(min = minHeight) else base
-            },
-        shape = MaterialTheme.shapes.large,
-        color = colorScheme.surfaceContainerLowest
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "想买心愿清单",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = if (isLoggedIn) wantCount.toString() else "—",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontFeatureSettings = "tnum"
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface
-                        )
-                        if (isLoggedIn) {
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "件",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
-                    }
-                    if (!isLoggedIn) {
-                        Text(
-                            text = "登录后同步想买收藏与发售提醒",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Surface(
-                    shape = MaterialTheme.shapes.pill,
-                    color = colorScheme.secondaryContainer
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = if (isLoggedIn) "查看清单" else "去登录",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colorScheme.onSecondaryContainer
-                        )
-                        Icon(
-                            painter = painterResource(PoiIcons.ChevronRight),
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = colorScheme.onSecondaryContainer
-                        )
-                    }
                 }
             }
         }

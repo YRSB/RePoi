@@ -247,14 +247,11 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("¥15,000").assertIsDisplayed().performClick()
         assertEquals(1, moneyTab)
 
-        onNodeWithText("日亚浮动 -3%").assertDoesNotExist()
         onNodeWithText("手办 ¥12,000").assertIsDisplayed()
         onNodeWithText("已入").assertIsDisplayed().performClick()
         assertEquals("buy", collectState)
 
         onNodeWithText("想买 2").assertIsDisplayed().performClick()
-        onNodeWithText("想买心愿清单").assertIsDisplayed()
-        onNodeWithText("查看清单").assertIsDisplayed().performClick()
         assertEquals("want", collectState)
     }
 
@@ -276,7 +273,6 @@ class ProfileComponentsLayoutTest {
         onNodeWithText("待补款总折合").assertIsDisplayed().performClick()
         onNodeWithText("已预定").assertIsDisplayed().performClick()
         onNodeWithText("想买 0").assertIsDisplayed().performClick()
-        onNodeWithText("去登录").assertIsDisplayed().performClick()
         assertEquals(3, loginCount)
     }
 
@@ -311,10 +307,6 @@ class ProfileComponentsLayoutTest {
         assertTrue(preorderHeight > 0)
 
         onNodeWithText("已入 17").performClick()
-        waitForIdle()
-        assertEquals(preorderHeight, measuredHeight)
-
-        onNodeWithText("想买 2").performClick()
         waitForIdle()
         assertEquals(preorderHeight, measuredHeight)
     }
