@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,8 +36,10 @@ import org.jetbrains.compose.resources.painterResource
 private data class QuickActionEntry(
     val icon: DrawableResource,
     val label: String,
+    val subtitle: String,
     val containerColor: Color,
     val contentColor: Color,
+    val statusBadge: String? = null,
     val onClick: () -> Unit
 )
 
@@ -58,6 +61,7 @@ fun ProfileQuickActionBar(
         QuickActionEntry(
             icon = PoiIcons.Filled.Star,
             label = "我的收藏",
+            subtitle = "手办、周边与各类维基条目",
             containerColor = colorScheme.primaryContainer,
             contentColor = colorScheme.onPrimaryContainer,
             onClick = {
@@ -76,6 +80,7 @@ fun ProfileQuickActionBar(
         QuickActionEntry(
             icon = PoiIcons.Filled.PhotoLibrary,
             label = "我的发布",
+            subtitle = "相册、评测与个人创作",
             containerColor = colorScheme.secondaryContainer,
             contentColor = colorScheme.onSecondaryContainer,
             onClick = {
@@ -94,8 +99,10 @@ fun ProfileQuickActionBar(
         QuickActionEntry(
             icon = PoiIcons.Filled.ShoppingBag,
             label = "我的二手",
+            subtitle = "闲置发布与交易管理",
             containerColor = colorScheme.tertiaryContainer,
             contentColor = colorScheme.onTertiaryContainer,
+            statusBadge = "即将上线",
             onClick = {
                 if (isLoggedIn) onShowMessage("二手闲置市场功能即将上线") else onLoginClick()
             }
@@ -103,6 +110,7 @@ fun ProfileQuickActionBar(
         QuickActionEntry(
             icon = PoiIcons.Filled.History,
             label = "浏览历史",
+            subtitle = "近期查看过的条目记录",
             containerColor = colorScheme.surfaceContainerHighest,
             contentColor = colorScheme.onSurfaceVariant,
             onClick = {
@@ -111,52 +119,41 @@ fun ProfileQuickActionBar(
         )
     )
 
-    val gap = ListItemDefaults.SegmentedGap
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large),
-        verticalArrangement = Arrangement.spacedBy(gap)
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
-        entries.chunked(2).forEach { rowEntries ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(gap)
-            ) {
-                rowEntries.forEach { entry ->
-                    QuickActionSegmentedCell(
-                        entry = entry,
-                        isCompact = isCompact,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (rowEntries.size < 2) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+        entries.forEach { entry ->
+            QuickActionSegmentedRow(
+                entry = entry,
+                isCompact = isCompact
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun QuickActionSegmentedCell(
+private fun QuickActionSegmentedRow(
     entry: QuickActionEntry,
     isCompact: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val badgeSize = if (isCompact) 38.dp else 34.dp
+    val colorScheme = MaterialTheme.colorScheme
+    val badgeSize = if (isCompact) 40.dp else 36.dp
     val iconSize = if (isCompact) 20.dp else 18.dp
-    val horizontalPadding = if (isCompact) 14.dp else 10.dp
+    val verticalPadding = if (isCompact) 14.dp else 12.dp
 
     SegmentedListItem(
         onClick = entry.onClick,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         shapes = ListItemDefaults.shapes(),
         colors = ListItemDefaults.segmentedColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            containerColor = colorScheme.surfaceContainerLowest
         ),
-        contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 10.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = verticalPadding),
         leadingContent = {
             Box(
                 modifier = Modifier
@@ -173,10 +170,45 @@ private fun QuickActionSegmentedCell(
                 )
             }
         },
+        supportingContent = {
+            Text(
+                text = entry.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        trailingContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (entry.statusBadge != null) {
+                    Surface(
+                        shape = CircleShape,
+                        color = colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = entry.statusBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Icon(
+                    painter = painterResource(PoiIcons.ChevronRight),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = colorScheme.onSurfaceVariant
+                )
+            }
+        },
         content = {
             Text(
                 text = entry.label,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

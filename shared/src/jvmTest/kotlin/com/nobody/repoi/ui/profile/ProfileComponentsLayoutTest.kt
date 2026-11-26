@@ -6,7 +6,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import com.nobody.repoi.data.remote.model.AlbumListItem
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.CurrencyItem
 import com.nobody.repoi.data.remote.model.FellowCountData
@@ -19,8 +18,6 @@ import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
 import com.nobody.repoi.ui.profile.components.FinanceDetailContent
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
-import com.nobody.repoi.ui.profile.components.ResaleSummarySection
-import com.nobody.repoi.ui.profile.components.UserCreationSection
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -158,15 +155,20 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("我的收藏").assertIsDisplayed().performClick()
+        onNodeWithText("手办、周边与各类维基条目").assertIsDisplayed()
         assertEquals(42L, collectUserId)
 
         onNodeWithText("我的发布").assertIsDisplayed().performClick()
+        onNodeWithText("相册、评测与个人创作").assertIsDisplayed()
         assertEquals(42L, creationUserId)
 
         onNodeWithText("我的二手").assertIsDisplayed().performClick()
+        onNodeWithText("闲置发布与交易管理").assertIsDisplayed()
+        onNodeWithText("即将上线").assertIsDisplayed()
         assertTrue(shownMessage.isNotBlank())
 
         onNodeWithText("浏览历史").assertIsDisplayed().performClick()
+        onNodeWithText("近期查看过的条目记录").assertIsDisplayed()
         assertTrue(historyClicked)
     }
 
@@ -324,60 +326,5 @@ class ProfileComponentsLayoutTest {
 
         onNodeWithContentDescription("关闭").performClick()
         assertTrue(dismissed)
-    }
-
-    @Test
-    fun userCreationSection_rendersAlbumsWithoutPraiseAndHandlesNavigation() = runComposeUiTest {
-        var moreClicked = false
-        var publishClicked = false
-        var clickedAlbumId = -1L
-
-        setContent {
-            UserCreationSection(
-                userAlbums = listOf(
-                    AlbumListItem(
-                        id = 88L,
-                        nameCN = "还是中招了",
-                        cover = "",
-                        praiseCount = kotlinx.serialization.json.JsonPrimitive(2)
-                    )
-                ),
-                isLoggedIn = true,
-                onMoreClick = { moreClicked = true },
-                onAlbumClick = { clickedAlbumId = it },
-                onPublishClick = { publishClicked = true },
-                onLoginClick = {}
-            )
-        }
-
-        onNodeWithText("我的相册").assertIsDisplayed()
-        onNodeWithText("还是中招了").assertIsDisplayed().performClick()
-        assertEquals(88L, clickedAlbumId)
-
-        onNodeWithContentDescription("获赞").assertDoesNotExist()
-        onNodeWithText("全部").assertIsDisplayed().performClick()
-        assertTrue(moreClicked)
-
-        onNodeWithContentDescription("发布").performClick()
-        assertTrue(publishClicked)
-    }
-
-    @Test
-    fun resaleSummarySection_rendersStatsAndEmptyState() = runComposeUiTest {
-        var publishClicked = false
-
-        setContent {
-            ResaleSummarySection(
-                isLoggedIn = true,
-                onPublishClick = { publishClicked = true },
-                onLoginClick = {}
-            )
-        }
-
-        onNodeWithText("出售").assertIsDisplayed()
-        onNodeWithText("收购").assertIsDisplayed()
-        onNodeWithText("暂无二手数据").assertIsDisplayed()
-        onNodeWithText("发布").assertIsDisplayed().performClick()
-        assertTrue(publishClicked)
     }
 }

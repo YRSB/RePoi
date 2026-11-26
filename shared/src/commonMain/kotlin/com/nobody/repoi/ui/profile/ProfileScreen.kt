@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
-import com.nobody.repoi.data.remote.model.UserCollectCategory
 import com.nobody.repoi.platform.LocalAppMessages
 import com.nobody.repoi.platform.isLandscapeOrientation
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -39,9 +38,6 @@ import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
 import com.nobody.repoi.ui.profile.components.FinanceDetailBottomSheet
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
-import com.nobody.repoi.ui.profile.components.ResaleSummarySection
-import com.nobody.repoi.ui.profile.components.UserCreationSection
-import com.nobody.repoi.ui.user.creation.UserCreationCategory
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,17 +142,6 @@ fun ProfileScreen(
                                 .padding(top = 14.dp, bottom = bottomPadding),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            ProfileQuickActionBar(
-                                profileId = profileId,
-                                isLoggedIn = isLoggedIn,
-                                isCompact = true,
-                                onNavigateToCollect = onNavigateToCollect,
-                                onNavigateToCreation = onNavigateToCreation,
-                                onNavigateToHistory = onNavigateToHistory,
-                                onShowMessage = { appMessages.show(it) },
-                                onLoginClick = onNavigateToLogin
-                            )
-
                             FigureAssetHubSection(
                                 order = uiState.order,
                                 finance = uiState.finance,
@@ -176,29 +161,14 @@ fun ProfileScreen(
                                 onLoginClick = onNavigateToLogin
                             )
 
-                            UserCreationSection(
-                                userAlbums = uiState.userAlbums,
+                            ProfileQuickActionBar(
+                                profileId = profileId,
                                 isLoggedIn = isLoggedIn,
-                                onMoreClick = {
-                                    onNavigateToCreation(
-                                        UserCreationNavParam(
-                                            userId = profileId,
-                                            initialCategory = UserCreationCategory.ALBUM.key
-                                        )
-                                    )
-                                },
-                                onAlbumClick = onNavigateToAlbum,
-                                onPublishClick = {
-                                    appMessages.show("相册投稿功能即将上线")
-                                },
-                                onLoginClick = onNavigateToLogin
-                            )
-
-                            ResaleSummarySection(
-                                isLoggedIn = isLoggedIn,
-                                onPublishClick = {
-                                    appMessages.show("二手发布与交易即将推出")
-                                },
+                                isCompact = true,
+                                onNavigateToCollect = onNavigateToCollect,
+                                onNavigateToCreation = onNavigateToCreation,
+                                onNavigateToHistory = onNavigateToHistory,
+                                onShowMessage = { appMessages.show(it) },
                                 onLoginClick = onNavigateToLogin
                             )
                         }
@@ -212,49 +182,7 @@ fun ProfileScreen(
                             verticalAlignment = Alignment.Top
                         ) {
                             Column(
-                                modifier = Modifier.weight(0.42f),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                ProfileQuickActionBar(
-                                    profileId = profileId,
-                                    isLoggedIn = isLoggedIn,
-                                    isCompact = false,
-                                    onNavigateToCollect = onNavigateToCollect,
-                                    onNavigateToCreation = onNavigateToCreation,
-                                    onNavigateToHistory = onNavigateToHistory,
-                                    onShowMessage = { appMessages.show(it) },
-                                    onLoginClick = onNavigateToLogin
-                                )
-
-                                UserCreationSection(
-                                    userAlbums = uiState.userAlbums,
-                                    isLoggedIn = isLoggedIn,
-                                    onMoreClick = {
-                                        onNavigateToCreation(
-                                            UserCreationNavParam(
-                                                userId = profileId,
-                                                initialCategory = UserCreationCategory.ALBUM.key
-                                            )
-                                        )
-                                    },
-                                    onAlbumClick = onNavigateToAlbum,
-                                    onPublishClick = {
-                                        appMessages.show("相册投稿功能即将上线")
-                                    },
-                                    onLoginClick = onNavigateToLogin
-                                )
-
-                                ResaleSummarySection(
-                                    isLoggedIn = isLoggedIn,
-                                    onPublishClick = {
-                                        appMessages.show("二手发布与交易即将推出")
-                                    },
-                                    onLoginClick = onNavigateToLogin
-                                )
-                            }
-
-                            Column(
-                                modifier = Modifier.weight(0.58f),
+                                modifier = Modifier.weight(0.54f),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 FigureAssetHubSection(
@@ -273,6 +201,22 @@ fun ProfileScreen(
                                         financeDialogInitialTab = tabIndex
                                         showFinanceDialog = true
                                     },
+                                    onLoginClick = onNavigateToLogin
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(0.46f),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                ProfileQuickActionBar(
+                                    profileId = profileId,
+                                    isLoggedIn = isLoggedIn,
+                                    isCompact = false,
+                                    onNavigateToCollect = onNavigateToCollect,
+                                    onNavigateToCreation = onNavigateToCreation,
+                                    onNavigateToHistory = onNavigateToHistory,
+                                    onShowMessage = { appMessages.show(it) },
                                     onLoginClick = onNavigateToLogin
                                 )
                             }
