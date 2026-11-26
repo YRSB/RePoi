@@ -108,6 +108,8 @@ class UserFinanceRepository(
             "category_300", "300", "category_doll", "doll", "doll娃娃", "娃娃" -> "Doll娃娃"
             "category_400", "400", "category_moppet", "moppet", "毛绒布偶", "布偶", "毛绒" -> "毛绒布偶"
             "category_500", "500", "category_real", "real", "真实模型", "周边" -> "真实模型"
+            "category_900", "900", "hobby_other", "category_other", "动漫周边", "谷子周边" -> "动漫周边"
+            "category_1000", "1000", "category_gk", "gk", "gkdiy", "gk/个人创作" -> "GK/个人创作"
             else -> key.ifBlank { "其他" }
         }
     }

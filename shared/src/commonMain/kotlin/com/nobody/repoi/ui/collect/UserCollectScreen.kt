@@ -46,6 +46,8 @@ import com.nobody.repoi.ui.detail.DetailNavParam
 import com.nobody.repoi.ui.navigation.CharacterNavParam
 import com.nobody.repoi.ui.navigation.PictureGalleryNavParam
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarExtraPadding
 import com.nobody.repoi.ui.person.PersonNavParam
 import com.nobody.repoi.ui.series.SeriesNavParam
 import com.nobody.repoi.ui.vendor.VendorNavParam
@@ -68,6 +70,7 @@ fun UserCollectScreen(
     onNavigateToCharacter: ((CharacterNavParam) -> Unit)? = null,
 
     onNavigateToPictureGallery: ((PictureGalleryNavParam) -> Unit)? = null,
+    showBackButton: Boolean = true,
     viewModel: UserCollectViewModel = koinViewModel()
 ) {
     LaunchedEffect(param) {
@@ -112,12 +115,14 @@ fun UserCollectScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -137,10 +142,18 @@ fun UserCollectScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = rememberBottomBarExtraPadding())
+            )
+        },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        val navBarBottomPadding = innerPadding.calculateBottomPadding()
+        val navBarBottomPadding = maxOf(
+            innerPadding.calculateBottomPadding(),
+            rememberBottomBarContentPadding(0.dp)
+        )
 
         Column(
             modifier = Modifier

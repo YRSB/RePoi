@@ -58,6 +58,14 @@
 #                                    禁止在 Kotlin 源码中新增注释；存量注释遵循 scripts/comment-ratchet.json
 #                                    棘轮上限只降不升。
 #
+#   [错误] NATIVE-DEFAULT-SHAPE    原生组件显式传递默认 shape
+#                                  → CODING_STANDARDS.md §5：Button/Card 等自动消费 MaterialTheme.shapes，
+#                                    禁止新增显式默认 shape（如 Button(shape = MaterialTheme.shapes.pill)）。
+#
+#   [错误] HARDCODED-ROUNDED-CORNER 新增硬编码 RoundedCornerShape(X.dp)
+#                                  → CODING_STANDARDS.md §5：通用圆角统一使用 MaterialTheme.shapes.*，
+#                                    仅 relative main 新增或新建文件中的硬编码 .dp 圆角报错，存量豁免。
+#
 # 用法：
 #   pwsh -File scripts/check-ui-rules.ps1                 # 检查全库（有 warning 仍返回 0）
 #   pwsh -File scripts/check-ui-rules.ps1 -Strict         # warning 也视为失败
@@ -69,7 +77,8 @@
 param(
     [switch]$Verbose,
     [switch]$Strict,
-    [switch]$UpdateRatchet
+    [switch]$UpdateRatchet,
+    [string[]]$TargetFiles = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,9 +89,50 @@ Set-Location $root
 $errors = @()
 $warnings = @()
 
-# 同时收录已跟踪与新增未提交文件：`git ls-files` 单独使用时不含 untracked，
-# 会让「本地刚写的新文件」漏检（CI 检出后是新文件也已跟踪，但本地开发会漏）。
-$uiFiles = git ls-files --cached --others --exclude-standard 'shared/src/commonMain/**/*.kt'
+$isTargeted = $TargetFiles.Count -gt 0
+if ($isTargeted) {
+    $allSourceFiles = @($TargetFiles | ForEach-Object { $_ -replace '\\', '/' })
+    $untrackedAll = $allSourceFiles
+} else {
+    $allSourceFiles = @(git ls-files --cached --others --exclude-standard '*.kt' '*.kts' '*.xml' '*.toml' '*.yml' '*.yaml')
+    $untrackedAll = @(git ls-files --others --exclude-standard)
+}
+
+$uiFiles = @($allSourceFiles | Where-Object { $_ -like 'shared/src/commonMain/*.kt' })
+$codeFiles = $allSourceFiles
+$stateFiles = @($allSourceFiles | Where-Object {
+    $_ -like 'shared/src/*.kt' -or $_ -like 'androidApp/src/*.kt' -or $_ -like 'desktopApp/src/*.kt'
+})
+$ktFiles = @($allSourceFiles | Where-Object { $_ -like '*.kt' })
+$scopedKtFiles = $stateFiles
+$repoFiles = @($allSourceFiles | Where-Object { $_ -like 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/*.kt' })
+$diFiles = @($allSourceFiles | Where-Object { $_ -like 'shared/src/commonMain/kotlin/com/nobody/repoi/di/*Module.kt' })
+$untrackedKt = @($untrackedAll | Where-Object {
+    $_ -like 'shared/*.kt' -or $_ -like 'androidApp/*.kt' -or $_ -like 'desktopApp/*.kt'
+})
+
+$script:fileRawCache = @{}
+$script:fileLinesCache = @{}
+
+function Get-CachedRaw {
+    param([string]$RelPath)
+    if ($script:fileRawCache.ContainsKey($RelPath)) { return $script:fileRawCache[$RelPath] }
+    $full = Join-Path $root $RelPath
+    if (-not [System.IO.File]::Exists($full)) { return $null }
+    $raw = [System.IO.File]::ReadAllText($full)
+    $script:fileRawCache[$RelPath] = $raw
+    return $raw
+}
+
+function Get-CachedLines {
+    param([string]$RelPath)
+    if ($script:fileLinesCache.ContainsKey($RelPath)) { return $script:fileLinesCache[$RelPath] }
+    $full = Join-Path $root $RelPath
+    if (-not [System.IO.File]::Exists($full)) { return @() }
+    $lines = [System.IO.File]::ReadAllLines($full)
+    $script:fileLinesCache[$RelPath] = $lines
+    return $lines
+}
 
 # 从 $lines[$start] 起收集一个调用的完整实参文本（按括号深度，最多 30 行）
 function Get-CallArguments {
@@ -117,7 +167,9 @@ function Test-NamedArgument {
 }
 
 foreach ($file in $uiFiles) {
-    $lines = Get-Content -LiteralPath $file
+    $raw = Get-CachedRaw -RelPath $file
+    if (-not $raw -or $raw.IndexOf('items', [System.StringComparison]::Ordinal) -lt 0) { continue }
+    $lines = Get-CachedLines -RelPath $file
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
 
@@ -191,9 +243,12 @@ foreach ($gradleFile in $gradleFiles) {
 # ---------------------------------------------------------------- 规则 4：冲突标记
 # 冲突标记被误提交后，编译器报错位置与真实问题无关，且 IDE 折叠后极易漏看。
 # 资源与配置（.xml / .toml / .yml）同样会被冲突标记污染，且 AAPT 的报错更晦涩，故一并扫描。
-$codeFiles = git ls-files --cached --others --exclude-standard '*.kt' '*.kts' '*.xml' '*.toml' '*.yml' '*.yaml'
 foreach ($file in $codeFiles) {
-    $lines = Get-Content -LiteralPath $file
+    $raw = Get-CachedRaw -RelPath $file
+    if (-not $raw -or ($raw.IndexOf('<<<<<<<', [System.StringComparison]::Ordinal) -lt 0 -and
+        $raw.IndexOf('>>>>>>>', [System.StringComparison]::Ordinal) -lt 0 -and
+        $raw.IndexOf('=======', [System.StringComparison]::Ordinal) -lt 0)) { continue }
+    $lines = Get-CachedLines -RelPath $file
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ($line -match '^\s*(<{7}|>{7})(\s|$)' -or $line -match '^\s*={7}\s*$') {
@@ -211,10 +266,9 @@ foreach ($file in $codeFiles) {
 # （EnumType.Member），而非枚举类型本身；之后 `state.value = EnumType.Other` 即
 # `Assignment type mismatch`，只能等编译才发现。issue #103 的修正提交 77762b2 即此坑。
 # 判据：同一文件内该变量被赋了「同枚举、不同成员」的字面量。
-$stateFiles = git ls-files --cached --others --exclude-standard 'shared/src/**/*.kt' 'androidApp/src/**/*.kt' 'desktopApp/src/**/*.kt'
 foreach ($file in $stateFiles) {
-    $text = Get-Content -LiteralPath $file -Raw
-    if ($text -notmatch 'mutableStateOf') { continue }
+    $text = Get-CachedRaw -RelPath $file
+    if (-not $text -or $text.IndexOf('mutableStateOf', [System.StringComparison]::Ordinal) -lt 0) { continue }
 
     # 形态 A：val/var x = mutableStateOf(Type.Member) → 赋值写作 `x.value = Type.Other`
     # 形态 B：var x by remember { mutableStateOf(Type.Member) } → 赋值写作 `x = Type.Other`
@@ -249,7 +303,7 @@ foreach ($file in $stateFiles) {
 # 写错时只有 AAPT link 阶段的晦涩报错（且要等整个 :androidApp 编译）。
 # 定义位置：同名文件（values*/xxx.xml）或 values 里的 <style name / <color name / <string name。
 $androidResDir = 'androidApp/src/main/res'
-if (Test-Path $androidResDir) {
+if (-not $isTargeted -and (Test-Path $androidResDir)) {
     $resDefs = @{
         style   = New-Object System.Collections.Generic.HashSet[string]
         color   = New-Object System.Collections.Generic.HashSet[string]
@@ -269,7 +323,7 @@ if (Test-Path $androidResDir) {
             else { [void]$resDefs['xml'].Add($baseName) }
         }
         if ($dirName -like 'values*') {
-            $content = Get-Content -LiteralPath $resFile.FullName -Raw
+            $content = [System.IO.File]::ReadAllText($resFile.FullName)
             foreach ($m in [regex]::Matches($content, '<(?<tag>style|color|string)\s+name="(?<name>[^"]+)"')) {
                 $tag = $m.Groups['tag'].Value
                 $key = switch ($tag) { 'style' { 'style' } 'color' { 'color' } default { 'string' } }
@@ -281,8 +335,10 @@ if (Test-Path $androidResDir) {
     $refFiles = @('androidApp/src/main/AndroidManifest.xml') +
         (Get-ChildItem -LiteralPath $androidResDir -Recurse -File -Filter '*.xml' | ForEach-Object { $_.FullName })
     foreach ($refFile in $refFiles) {
-        if (-not (Test-Path $refFile)) { continue }
-        $lines = Get-Content -LiteralPath $refFile
+        if (-not [System.IO.File]::Exists($refFile)) { continue }
+        $rawRef = [System.IO.File]::ReadAllText($refFile)
+        if ($rawRef.IndexOf('@', [System.StringComparison]::Ordinal) -lt 0) { continue }
+        $lines = [System.IO.File]::ReadAllLines($refFile)
         for ($i = 0; $i -lt $lines.Count; $i++) {
             foreach ($m in [regex]::Matches($lines[$i], '@(?<kind>style|color|string|mipmap|drawable|xml)/(?<name>[A-Za-z0-9_.]+)')) {
                 $kind = $m.Groups['kind'].Value
@@ -315,16 +371,18 @@ if (Test-Path '.git') {
         if ($LASTEXITCODE -eq 0) { $baseRef = 'main' }
     }
 }
-if ($baseRef) {
-    $changed = git diff --name-only --diff-filter=ACMR "$baseRef...HEAD"
-    $changed += git diff --name-only --diff-filter=ACMR
-    # 新增但尚未提交的文件不在任何 diff 里，恰恰是最容易出现缺末尾换行的一类
-    $changed += git ls-files --others --exclude-standard
+$changedFilesSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($u in $untrackedAll) { [void]$changedFilesSet.Add(($u -replace '\\', '/')) }
+if (-not $isTargeted -and $baseRef) {
+    $changed = @(git diff --name-only --diff-filter=ACMR "$baseRef...HEAD")
+    $changed += @(git diff --name-only --diff-filter=ACMR)
+    $changed += $untrackedAll
     foreach ($file in ($changed | Sort-Object -Unique)) {
-        if (-not (Test-Path -LiteralPath $file)) { continue }
+        [void]$changedFilesSet.Add(($file -replace '\\', '/'))
+        if (-not [System.IO.File]::Exists((Join-Path $root $file))) { continue }
         # 只关心文本类文件；二进制资源跳过
         if ($file -notmatch '\.(kt|kts|xml|toml|yml|yaml|md|properties|json)$') { continue }
-        $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $file))
+        $bytes = [System.IO.File]::ReadAllBytes((Join-Path $root $file))
         if ($bytes.Length -eq 0) { continue }
         if ($bytes[-1] -ne 10) {
             $errors += [pscustomobject]@{
@@ -342,10 +400,9 @@ if ($baseRef) {
 # 背景：Kotlin 函数式接口 (fun interface) 要求恰好包含一个无方法体的单抽象方法 (SAM)。
 # 若误给该方法添加了默认实现（`= ...` 或 `{ ... }`），会导致 SAM 抽象方法数为 0，
 # 触发 `Fun interface must have exactly one abstract method` 编译报错。
-$ktFiles = git ls-files --cached --others --exclude-standard '*.kt'
 foreach ($file in $ktFiles) {
-    $text = Get-Content -LiteralPath $file -Raw
-    if ($text -notmatch '\bfun\s+interface\b') { continue }
+    $text = Get-CachedRaw -RelPath $file
+    if (-not $text -or $text.IndexOf('interface', [System.StringComparison]::Ordinal) -lt 0 -or $text -notmatch '\bfun\s+interface\b') { continue }
 
     $matches = [regex]::Matches($text, '(?m)^\s*(?:public|private|internal|protected)?\s*fun\s+interface\s+(\w+)\s*\{([\s\S]*?)\}')
     foreach ($m in $matches) {
@@ -399,7 +456,7 @@ function Get-CleanCodeLine {
 
 $seamFile = 'shared/src/commonMain/kotlin/com/nobody/repoi/data/remote/api/HpoiApi.kt'
 if (Test-Path -LiteralPath $seamFile) {
-    $seamLines = Get-Content -LiteralPath $seamFile
+    $seamLines = Get-CachedLines -RelPath $seamFile
     for ($i = 0; $i -lt $seamLines.Count; $i++) {
         $code = Get-CleanCodeLine -Line $seamLines[$i]
         if ($code -cmatch '^\s{4}suspend\s+fun\s+\w+' -and $code -match ':\s*CommonResponse\s*<') {
@@ -412,11 +469,12 @@ if (Test-Path -LiteralPath $seamFile) {
     }
 }
 
-$repoFiles = git ls-files --cached --others --exclude-standard 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/*.kt' 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/**/*.kt'
 $bypassPattern = '\bCommonResponse\s*<|\b(?:isSuccess|isTokenExpired|isCommentNotFound)\b|\b(?:snapshotToken|notifyTokenExpired)\b|\bmsg\s*\?\s*\.\s*contains\s*\('
 $recoveryPattern = '\.\s*recover(?:Catching)?\s*\{'
 foreach ($file in $repoFiles) {
-    $repoLines = Get-Content -LiteralPath $file
+    $rawRepo = Get-CachedRaw -RelPath $file
+    if (-not $rawRepo -or ($rawRepo -notmatch $bypassPattern -and $rawRepo -notmatch $recoveryPattern)) { continue }
+    $repoLines = Get-CachedLines -RelPath $file
     for ($i = 0; $i -lt $repoLines.Count; $i++) {
         $code = Get-CleanCodeLine -Line $repoLines[$i]
         if ($code -match $bypassPattern) {
@@ -447,7 +505,6 @@ foreach ($file in $repoFiles) {
 # 背景：#181 实现中两个 ViewModel 从 viewModelOf(::Xxx) 退化为显式 get() 注册，
 #       违反 CODING_STANDARDS.md §2；编译与单测都放行，只有 diff 审查才抓到。
 # 判据：只拦相对 main 新增的「实参全是裸 get()」注册，存量注册作为基线豁免。
-$diFiles = git ls-files --cached --others --exclude-standard 'shared/src/commonMain/kotlin/com/nobody/repoi/di/*Module.kt' 'shared/src/commonMain/kotlin/com/nobody/repoi/di/**/*Module.kt'
 function Get-BareViewModelRegistrations {
     param([string[]]$Lines)
     $found = @()
@@ -463,7 +520,8 @@ function Get-BareViewModelRegistrations {
     return $found
 }
 foreach ($diFile in $diFiles) {
-    if (-not (Test-Path -LiteralPath $diFile)) { continue }
+    $rawDi = Get-CachedRaw -RelPath $diFile
+    if (-not $rawDi -or $rawDi.IndexOf('viewModel', [System.StringComparison]::Ordinal) -lt 0) { continue }
     $baselineBodies = @()
     if ($baseRef) {
         $baseText = @(git show "${baseRef}:${diFile}" 2>$null)
@@ -471,7 +529,7 @@ foreach ($diFile in $diFiles) {
             $baselineBodies = @(Get-BareViewModelRegistrations -Lines $baseText | ForEach-Object { $_.Body })
         }
     }
-    foreach ($reg in (Get-BareViewModelRegistrations -Lines (Get-Content -LiteralPath $diFile))) {
+    foreach ($reg in (Get-BareViewModelRegistrations -Lines (Get-CachedLines -RelPath $diFile))) {
         if ($reg.Body -in $baselineBodies) { continue }
         $errors += [pscustomobject]@{
             File = $diFile; Line = $reg.Line; Tag = 'KOIN-VIEWMODEL-OF'
@@ -490,13 +548,12 @@ foreach ($diFile in $diFiles) {
 
 $ratchetFile = Join-Path $root 'scripts/comment-ratchet.json'
 function Get-KotlinCommentStats {
-    $ktFiles = git ls-files --cached --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt'
     $totalLines = 0
     $totalCount = 0
-    foreach ($f in $ktFiles) {
-        if (-not (Test-Path -LiteralPath $f)) { continue }
+    foreach ($f in $scopedKtFiles) {
         if ($f -like '*zzprobe*') { continue }
-        $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $f))
+        $lines = Get-CachedLines -RelPath $f
+        if ($lines.Count -eq 0) { continue }
         $inBlock = $false
         foreach ($line in $lines) {
             $t = $line.Trim()
@@ -535,39 +592,39 @@ if ($UpdateRatchet) {
 
 # 1. 增量检查（改动文件新增注释拦截）
 if ($baseRef) {
-    # 一次性批量执行 git diff，避免对数百个改动文件逐一启动进程
-    $diffOutput = @(git diff -U0 "$baseRef...HEAD" -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
-    $diffOutput += @(git diff -U0 -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+    if (-not $isTargeted) {
+        $diffOutput = @(git diff -U0 "$baseRef...HEAD" -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
+        $diffOutput += @(git diff -U0 -- 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
 
-    $curFile = ''
-    $curLine = 1
-    foreach ($dLine in $diffOutput) {
-        if ($dLine -match '^\+\+\+ b/(.*)') {
-            $curFile = $matches[1]
-            continue
-        }
-        if ($dLine -match '^\@\@ -\d+(?:,\d+)? \+(\d+)') {
-            $curLine = [int]$matches[1]
-            continue
-        }
-        if ($dLine.StartsWith('+') -and -not $dLine.StartsWith('+++')) {
-            $added = $dLine.Substring(1).Trim()
-            if ($added.StartsWith('//') -or $added.StartsWith('/*') -or $added.StartsWith('/**')) {
-                $errors += [pscustomobject]@{
-                    File = $curFile; Line = $curLine; Tag = 'NO-CODE-COMMENTS'
-                    Text = "新增代码注释: $added"
-                    Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
-                }
+        $curFile = ''
+        $curLine = 1
+        foreach ($dLine in $diffOutput) {
+            if ($dLine -match '^\+\+\+ b/(.*)') {
+                $curFile = $matches[1]
+                continue
             }
-            $curLine++
+            if ($dLine -match '^\@\@ -\d+(?:,\d+)? \+(\d+)') {
+                $curLine = [int]$matches[1]
+                continue
+            }
+            if ($dLine.StartsWith('+') -and -not $dLine.StartsWith('+++')) {
+                $added = $dLine.Substring(1).Trim()
+                if ($added.StartsWith('//') -or $added.StartsWith('/*') -or $added.StartsWith('/**')) {
+                    $errors += [pscustomobject]@{
+                        File = $curFile; Line = $curLine; Tag = 'NO-CODE-COMMENTS'
+                        Text = "新增代码注释: $added"
+                        Hint = "代码注释禁令：架构决策请入 ADR，缺陷/待办请提 Issue；代码保持自解释，严禁新增注释"
+                    }
+                }
+                $curLine++
+            }
         }
     }
 
-    # 全新未跟踪文件
-    $untrackedKt = @(git ls-files --others --exclude-standard 'shared/**/*.kt' 'androidApp/**/*.kt' 'desktopApp/**/*.kt')
     foreach ($uFile in $untrackedKt) {
-        if (-not (Test-Path -LiteralPath $uFile)) { continue }
-        $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $uFile))
+        if ($uFile -like '*zzprobe*' -and $uFile -notlike '*CommentProbe*') { continue }
+        $lines = Get-CachedLines -RelPath $uFile
+        if ($lines.Count -eq 0) { continue }
         for ($idx = 0; $idx -lt $lines.Count; $idx++) {
             $t = $lines[$idx].Trim()
             if ($t.StartsWith('//') -or $t.StartsWith('/*') -or $t.StartsWith('/**')) {
@@ -582,7 +639,7 @@ if ($baseRef) {
 }
 
 # 2. 全量棘轮检查
-if (Test-Path -LiteralPath $ratchetFile) {
+if (-not $isTargeted -and (Test-Path -LiteralPath $ratchetFile)) {
     $baseline = Get-Content -LiteralPath $ratchetFile -Raw | ConvertFrom-Json
     $stats = Get-KotlinCommentStats
     if ($stats.Lines -gt $baseline.max_comment_lines -or $stats.Count -gt $baseline.max_comments) {
@@ -594,6 +651,86 @@ if (Test-Path -LiteralPath $ratchetFile) {
     } elseif ($stats.Lines -lt $baseline.max_comment_lines -or $stats.Count -lt $baseline.max_comments) {
         if ($Verbose) {
             Write-Host "  棘轮进步：全库注释由 $($baseline.max_comments) 条 ($($baseline.max_comment_lines) 行) 下降至 $($stats.Count) 条 ($($stats.Lines) 行)！" -ForegroundColor Green
+        }
+    }
+}
+
+# ---------------------------------------------------------------- 规则 12：Shape 规范（原生组件零传参 & 禁止新增硬编码 RoundedCornerShape）
+function Get-ShapeViolations {
+    param([string[]]$Lines, [string]$FilePath)
+    $found = @()
+    if ($FilePath -replace '\\', '/' -like '*/ui/theme/Shapes.kt') { return $found }
+    for ($i = 0; $i -lt $Lines.Count; $i++) {
+        $code = Get-CleanCodeLine -Line $Lines[$i]
+        if ($code -cmatch '\b(?:Button|FilledTonalButton|OutlinedButton|TextButton)\s*\(') {
+            $call = Get-CallArguments -Lines $Lines -Start $i
+            $cleanArgs = [regex]::Replace($call.Args, '"[^"]*"', '""')
+            if ($cleanArgs -cmatch '\bshape\s*=\s*(?:MaterialTheme\.shapes\.(?:pill|full)|CircleShape)\b') {
+                $sig = "NATIVE-DEFAULT-SHAPE::" + ($cleanArgs -replace '\s+', '')
+                $found += [pscustomobject]@{
+                    Tag = 'NATIVE-DEFAULT-SHAPE'; Line = $i + 1; Sig = $sig
+                    Text = "$($Lines[$i].Trim())  ── 原生按钮显式传递默认 shape"
+                    Hint = 'Button 系列默认即为全圆角（pill/CircleShape），移除多余的 shape = ... 参数'
+                }
+            }
+        }
+        if ($code -cmatch '\b(?:Card|ElevatedCard|OutlinedCard)\s*\(') {
+            $call = Get-CallArguments -Lines $Lines -Start $i
+            $cleanArgs = [regex]::Replace($call.Args, '"[^"]*"', '""')
+            if ($cleanArgs -cmatch '\bshape\s*=\s*MaterialTheme\.shapes\.medium\b') {
+                $sig = "NATIVE-DEFAULT-SHAPE::" + ($cleanArgs -replace '\s+', '')
+                $found += [pscustomobject]@{
+                    Tag = 'NATIVE-DEFAULT-SHAPE'; Line = $i + 1; Sig = $sig
+                    Text = "$($Lines[$i].Trim())  ── 原生卡片显式传递默认 shape"
+                    Hint = 'Card 系列默认消费 MaterialTheme.shapes.medium，移除多余的 shape = ... 参数'
+                }
+            }
+        }
+        if ($code -cmatch '\bRoundedCornerShape\s*\(') {
+            $call = Get-CallArguments -Lines $Lines -Start $i
+            $cleanArgs = [regex]::Replace($call.Args, '"[^"]*"', '""')
+            if ($cleanArgs -cmatch '\b\d+(?:\.\d+)?\.dp\b') {
+                $sig = "HARDCODED-ROUNDED-CORNER::" + ($cleanArgs -replace '\s+', '')
+                $found += [pscustomobject]@{
+                    Tag = 'HARDCODED-ROUNDED-CORNER'; Line = $i + 1; Sig = $sig
+                    Text = "$($Lines[$i].Trim())  ── 新增硬编码 RoundedCornerShape"
+                    Hint = '改用 MaterialTheme.shapes.*（如 small / medium / large / bottomSheet / topBarScrolled）'
+                }
+            }
+        }
+    }
+    return $found
+}
+
+foreach ($file in $uiFiles) {
+    $normFile = $file -replace '\\', '/'
+    if ($changedFilesSet.Count -gt 0 -and -not $changedFilesSet.Contains($normFile)) { continue }
+    $rawShape = Get-CachedRaw -RelPath $file
+    if (-not $rawShape -or ($rawShape.IndexOf('RoundedCornerShape', [System.StringComparison]::Ordinal) -lt 0 -and
+        $rawShape.IndexOf('shape', [System.StringComparison]::Ordinal) -lt 0)) { continue }
+    $currentViolations = @(Get-ShapeViolations -Lines (Get-CachedLines -RelPath $file) -FilePath $file)
+    if ($currentViolations.Count -eq 0) { continue }
+
+    $baselineCounts = @{}
+    if ($baseRef) {
+        $baseText = @(git show "${baseRef}:${normFile}" 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $baseText.Count -gt 0) {
+            foreach ($bv in (Get-ShapeViolations -Lines $baseText -FilePath $normFile)) {
+                $baselineCounts[$bv.Sig] = ($baselineCounts[$bv.Sig] -as [int]) + 1
+            }
+        }
+    }
+
+    foreach ($v in $currentViolations) {
+        $remain = ($baselineCounts[$v.Sig] -as [int])
+        if ($remain -gt 0) {
+            $baselineCounts[$v.Sig] = $remain - 1
+            continue
+        }
+        $errors += [pscustomobject]@{
+            File = $file; Line = $v.Line; Tag = $v.Tag
+            Text = $v.Text
+            Hint = $v.Hint
         }
     }
 }

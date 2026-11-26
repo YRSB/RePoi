@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
@@ -69,6 +67,7 @@ import com.nobody.repoi.ui.collect.subpage.UserCollectPicCard
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.navigation.UserCreationNavParam
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaPipeline
 import androidx.compose.foundation.shape.CircleShape
@@ -81,6 +80,7 @@ fun UserCreationScreen(
     param: UserCreationNavParam,
     onNavigateBack: () -> Unit = {},
     onNavigateToAlbum: (Long) -> Unit = {},
+    showBackButton: Boolean = true,
     viewModel: UserCreationViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -141,11 +141,13 @@ fun UserCreationScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                                contentDescription = "返回"
-                            )
+                        if (showBackButton) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                    contentDescription = "返回"
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -314,7 +316,7 @@ private fun <T> CreationSubPageContent(
                     EmptyCollectView(title = emptyMessage)
                 }
                 else -> {
-                    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
                     LazyVerticalStaggeredGrid(
                         columns = rememberAlbumStaggeredGridColumns(),
                         state = gridState,
@@ -322,7 +324,7 @@ private fun <T> CreationSubPageContent(
                             start = 8.dp,
                             top = 8.dp,
                             end = 8.dp,
-                            bottom = 16.dp + navBarBottom
+                            bottom = bottomContentPadding
                         ),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalItemSpacing = 8.dp,

@@ -195,6 +195,8 @@ class UserFinanceRepositoryTest {
         assertEquals("Doll娃娃", repository.mapCategoryName("doll"))
         assertEquals("毛绒布偶", repository.mapCategoryName("category_400"))
         assertEquals("真实模型", repository.mapCategoryName("周边"))
+        assertEquals("动漫周边", repository.mapCategoryName("category_900"))
+        assertEquals("GK/个人创作", repository.mapCategoryName("category_1000"))
         assertEquals("自定义", repository.mapCategoryName("自定义"))
     }
 }

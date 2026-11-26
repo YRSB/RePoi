@@ -91,15 +91,16 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
                     navigator.navigateToDetail(param)
                 }
             },
-            onNavigateToCollect = { param -> navigator.navigateToUserCollect(param) },
-            onNavigateToCreation = { creationParam -> navigator.navigateToUserCreation(creationParam) },
-            onNavigateToHistory = { navigator.navigateToUserHistory() },
             onNavigateToAlbum = { albumId -> navigator.navigateToAlbum(AlbumNavParam(albumId = albumId)) },
-            onNavigateToFriendList = { userId, initialType ->
-                navigator.navigateToFriendList(FriendListNavParam(userId = userId, initialType = initialType))
-            },
             onNavigateToUserInfo = { userId -> navigator.navigateToUser(userId) },
-            onNavigateToMessage = { navigator.navigateToMessageCenter() }
+            onNavigateToMessage = { navigator.navigateToMessageCenter() },
+            onNavigateToVendor = { vendorParam -> navigator.navigateToVendor(vendorParam) },
+            onNavigateToSeries = { seriesParam -> navigator.navigateToSeries(seriesParam) },
+            onNavigateToWorks = { worksParam -> navigator.navigateToWorks(worksParam) },
+            onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
+            onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
+            onNavigateToCollectAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
+            onNavigateToPictureGallery = { galleryParam -> navigator.navigateToPictureGallery(galleryParam) }
         )
     }
 }

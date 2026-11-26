@@ -98,7 +98,7 @@ class FriendListViewModel(
     private val _uiState = MutableStateFlow(FriendListUiState())
     val uiState: StateFlow<FriendListUiState> = _uiState.asStateFlow()
 
-    private var initialized = false
+    private var appliedInitParams: Pair<Long, Int>? = null
     var currentUserId: Long = 0L
         private set
 
@@ -141,12 +141,18 @@ class FriendListViewModel(
     }
 
     fun init(userId: Long, initialType: Int = 0) {
-        if (initialized && currentUserId == userId) {
+        val validTab = if (initialType in listOf(0, 1, 3)) initialType else 0
+        val targetParams = userId to validTab
+        if (appliedInitParams == targetParams) {
             return
         }
-        initialized = true
+        val isSameUser = appliedInitParams != null && currentUserId == userId
+        appliedInitParams = targetParams
+        if (isSameUser) {
+            switchTab(validTab)
+            return
+        }
         currentUserId = userId
-        val validTab = if (initialType in listOf(0, 1, 3)) initialType else 0
         _uiState.update {
             it.copy(
                 currentTab = validTab,

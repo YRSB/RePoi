@@ -23,15 +23,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 class ZoneRepository(
     private val api: HpoiApi,
     private val viewPreferencesManager: ViewPreferencesManager,
     private val visitReportScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val focusCacheMutex = Mutex()
+    private val settingsCacheMutex = Mutex()
+    private val focusUpdated = AtomicBoolean(false)
+    private val settingsUpdated = AtomicBoolean(false)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -49,14 +58,17 @@ class ZoneRepository(
     val settingsFlow: StateFlow<ZoneTabsSettings> = _settingsFlow.asStateFlow()
 
     init {
-
         repositoryScope.launch {
             val cachedFocusJson = viewPreferencesManager.getCachedFocusZones()
             if (!cachedFocusJson.isNullOrBlank()) {
                 runCatching {
                     json.decodeFromString<List<ZoneItem>>(cachedFocusJson)
                 }.onSuccess { cachedList ->
-                    _focusZonesFlow.value = cachedList
+                    focusCacheMutex.withLock {
+                        if (!focusUpdated.load()) {
+                            _focusZonesFlow.value = cachedList
+                        }
+                    }
                 }
             }
 
@@ -65,7 +77,11 @@ class ZoneRepository(
                 runCatching {
                     json.decodeFromString<ZoneTabsSettings>(cachedSettingsJson)
                 }.onSuccess { cachedSettings ->
-                    _settingsFlow.value = cachedSettings
+                    settingsCacheMutex.withLock {
+                        if (!settingsUpdated.load()) {
+                            _settingsFlow.value = cachedSettings
+                        }
+                    }
                 }
             }
         }
@@ -75,7 +91,10 @@ class ZoneRepository(
         val payload = api.getZoneHomeTabs()
 
         payload.focusZones?.let { focusList ->
-            _focusZonesFlow.value = focusList
+            focusCacheMutex.withLock {
+                focusUpdated.store(true)
+                _focusZonesFlow.value = focusList
+            }
             viewPreferencesManager.setCachedFocusZonesJson(json.encodeToString(focusList))
         }
 
@@ -84,7 +103,10 @@ class ZoneRepository(
         }
 
         payload.settings?.let { settings ->
-            _settingsFlow.value = settings
+            settingsCacheMutex.withLock {
+                settingsUpdated.store(true)
+                _settingsFlow.value = settings
+            }
             viewPreferencesManager.setCachedZoneSettingsJson(json.encodeToString(settings))
         }
 
@@ -107,25 +129,29 @@ class ZoneRepository(
         zoneIcon: String? = null
     ): Result<ZoneFocusPayload> = runCatching {
         val payload = api.toggleZoneFocus(nodeId = nodeId)
-        val currentList = _focusZonesFlow.value.toMutableList()
+        val updatedList = focusCacheMutex.withLock {
+            focusUpdated.store(true)
+            val currentList = _focusZonesFlow.value.toMutableList()
 
-        if (payload.focus) {
-            if (currentList.none { it.nodeId == nodeId }) {
-                currentList.add(
-                    ZoneItem(
-                        nodeId = nodeId,
-                        name = zoneName,
-                        nameCN = zoneName,
-                        icon = zoneIcon
+            if (payload.focus) {
+                if (currentList.none { it.nodeId == nodeId }) {
+                    currentList.add(
+                        ZoneItem(
+                            nodeId = nodeId,
+                            name = zoneName,
+                            nameCN = zoneName,
+                            icon = zoneIcon
+                        )
                     )
-                )
+                }
+            } else {
+                currentList.removeAll { it.nodeId == nodeId }
             }
-        } else {
-            currentList.removeAll { it.nodeId == nodeId }
-        }
 
-        _focusZonesFlow.value = currentList
-        viewPreferencesManager.setCachedFocusZonesJson(json.encodeToString(currentList))
+            _focusZonesFlow.value = currentList
+            currentList
+        }
+        viewPreferencesManager.setCachedFocusZonesJson(json.encodeToString(updatedList))
 
         payload
     }
@@ -146,14 +172,18 @@ class ZoneRepository(
             customOrder = orderStr
         )
 
-        val updatedSettings = ZoneTabsSettings(
-            showAll = showAll,
-            sort = sort,
-            hiddenZoneIds = hiddenZoneIds,
-            customOrder = customOrder,
-            recentZoneIds = _settingsFlow.value.recentZoneIds
-        )
-        _settingsFlow.value = updatedSettings
+        val updatedSettings = settingsCacheMutex.withLock {
+            settingsUpdated.store(true)
+            val nextSettings = ZoneTabsSettings(
+                showAll = showAll,
+                sort = sort,
+                hiddenZoneIds = hiddenZoneIds,
+                customOrder = customOrder,
+                recentZoneIds = _settingsFlow.value.recentZoneIds
+            )
+            _settingsFlow.value = nextSettings
+            nextSettings
+        }
         viewPreferencesManager.setCachedZoneSettingsJson(json.encodeToString(updatedSettings))
     }
 

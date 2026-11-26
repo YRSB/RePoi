@@ -91,6 +91,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -115,6 +116,8 @@ import com.nobody.repoi.ui.album.components.AlbumFeedCard
 import com.nobody.repoi.ui.common.LocalImageViewer
 import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.common.UserAvatar
+import com.nobody.repoi.ui.common.bannerAspectRatio
+import com.nobody.repoi.ui.common.calculateBannerHeight
 import com.nobody.repoi.ui.common.plainTextClipEntry
 import com.nobody.repoi.ui.home.components.ActionCard
 import com.nobody.repoi.ui.navigation.UserCollectNavParam
@@ -352,7 +355,8 @@ fun UserInfoScreen(
                         val tabRowHeight = 48.dp
 
                         val topBarHeightPx = with(density) { topBarHeight.toPx() }
-                        val bannerHeightPx = with(density) { 200.dp.toPx() }
+                        val bannerHeightDp = calculateBannerHeight(minOf(maxWidth, 720.dp))
+                        val bannerHeightPx = with(density) { bannerHeightDp.toPx() }
                         val bannerThresholdPx = remember(bannerHeightPx, topBarHeightPx) {
                             (bannerHeightPx - topBarHeightPx).coerceAtLeast(1f)
                         }
@@ -1050,7 +1054,7 @@ private fun UserProfileIdentityPane(
 }
 
 @Composable
-private fun UserProfileBanner(
+internal fun UserProfileBanner(
     profile: UserProfile,
     isSelf: Boolean,
     onBack: () -> Unit = {},
@@ -1065,7 +1069,8 @@ private fun UserProfileBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .bannerAspectRatio()
+            .testTag("user_profile_banner")
     ) {
         if (bannerUrl.isNotBlank()) {
             AsyncImage(

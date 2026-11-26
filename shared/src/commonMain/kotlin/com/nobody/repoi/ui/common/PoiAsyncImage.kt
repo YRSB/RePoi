@@ -17,6 +17,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -182,13 +186,27 @@ private fun PoiAsyncImageCore(
         contentAlignment = Alignment.Center
     ) {
         if (request == null || loadFailed) {
-
-            Icon(
-                painter = painterResource(PoiIcons.Filled.BrokenImage),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.size(BrokenImageIconSize)
-            )
+            val fallbackSemantics = if (contentDescription != null) {
+                Modifier.semantics {
+                    this.contentDescription = contentDescription
+                    this.role = Role.Image
+                }
+            } else {
+                Modifier
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(fallbackSemantics),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(PoiIcons.Filled.BrokenImage),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    modifier = Modifier.size(BrokenImageIconSize)
+                )
+            }
         } else {
             AsyncImage(
                 model = request,

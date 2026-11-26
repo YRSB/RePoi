@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.width
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import coil3.serviceLoaderEnabled
 import com.nobody.repoi.data.media.ImagePurpose
 import com.nobody.repoi.data.media.MediaCategory
 import kotlin.test.AfterTest
@@ -31,7 +33,9 @@ class PoiAsyncImageLayoutTest {
     fun installOfflineImageLoader() {
 
         SingletonImageLoader.setUnsafe(
-            ImageLoader.Builder(PlatformContext.INSTANCE).build()
+            ImageLoader.Builder(PlatformContext.INSTANCE)
+                .serviceLoaderEnabled(false)
+                .build()
         )
     }
 
@@ -127,6 +131,25 @@ class PoiAsyncImageLayoutTest {
         val bounds = onNodeWithTag(TAG).getUnclippedBoundsInRoot()
         assertEquals(60f, bounds.width.value, 1f)
         assertEquals(60f, bounds.height.value, 1f)
+    }
+
+    @Test
+    fun failedImage_preservesContentDescriptionAndContainerBounds() = runComposeUiTest {
+        setContent {
+            Box(modifier = Modifier.size(68.dp)) {
+                PoiAsyncImage(
+                    path = "2024/missing.jpg",
+                    category = MediaCategory.HOBBY,
+                    purpose = ImagePurpose.THUMBNAIL,
+                    contentDescription = "失败手办",
+                    modifier = Modifier.size(68.dp)
+                )
+            }
+        }
+
+        val bounds = onNodeWithContentDescription("失败手办", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(68f, bounds.width.value, 1f)
+        assertEquals(68f, bounds.height.value, 1f)
     }
 
     private companion object {

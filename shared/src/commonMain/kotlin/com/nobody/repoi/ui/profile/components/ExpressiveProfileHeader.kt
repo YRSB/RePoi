@@ -1,0 +1,369 @@
+package com.nobody.repoi.ui.profile.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.data.media.MediaCategory
+import com.nobody.repoi.data.media.MediaPipeline
+import com.nobody.repoi.data.remote.model.FellowCountData
+import com.nobody.repoi.data.remote.model.UserProfile
+import com.nobody.repoi.ui.common.PoiIcons
+import com.nobody.repoi.ui.common.bannerAspectRatio
+import com.nobody.repoi.ui.theme.topBarScrolled
+import org.jetbrains.compose.resources.painterResource
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ExpressiveProfileHeader(
+    profile: UserProfile?,
+    fellow: FellowCountData?,
+    userMp: Int,
+    isSignedInToday: Boolean,
+    isCheckingIn: Boolean,
+    hasUnreadNotice: Boolean,
+    onCheckInClick: () -> Unit,
+    onMailClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onNavigateToFriendList: (userId: Long, initialType: Int) -> Unit,
+    onNavigateToUserInfo: (userId: Long) -> Unit,
+    onLoginClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bannerUrl = remember(profile?.bnr) {
+        profile?.bnr?.let {
+            MediaPipeline.Default.resolveUrl(it, MediaCategory.BANNER, ImagePurpose.CARD_STANDARD)
+        }.orEmpty()
+    }
+
+    val avatarUrl = remember(profile?.header) {
+        profile?.header?.let {
+            MediaPipeline.Default.resolveUrl(it, MediaCategory.AVATAR, ImagePurpose.CARD_STANDARD)
+        }.orEmpty()
+    }
+
+    val isLoggedIn = profile != null
+    val density = LocalDensity.current
+    var syncedCardHeightPx by remember(isLoggedIn) { mutableIntStateOf(0) }
+    val syncedCardMinHeight = if (syncedCardHeightPx > 0) {
+        with(density) { syncedCardHeightPx.toDp() }
+    } else {
+        0.dp
+    }
+    val cardHeightModifier = if (syncedCardMinHeight > 0.dp) {
+        Modifier.heightIn(min = syncedCardMinHeight)
+    } else {
+        Modifier
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bannerAspectRatio()
+                .clip(MaterialTheme.shapes.topBarScrolled)
+                .testTag("profile_header_banner")
+        ) {
+            if (bannerUrl.isNotBlank()) {
+                AsyncImage(
+                    model = bannerUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Black.copy(alpha = 0.35f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalIconButton(
+                        onClick = onMailClick,
+                        modifier = Modifier.size(38.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (hasUnreadNotice) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(PoiIcons.Filled.Mail),
+                                contentDescription = "消息中心",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    FilledTonalIconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(38.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(PoiIcons.Filled.Settings),
+                            contentDescription = "设置",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 14.dp)
+                .clip(MaterialTheme.shapes.large),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+        ) {
+            SegmentedListItem(
+                onClick = {
+                    if (profile != null) onNavigateToUserInfo(profile.id) else onLoginClick()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(cardHeightModifier)
+                    .onSizeChanged { size ->
+                        if (size.height > syncedCardHeightPx) {
+                            syncedCardHeightPx = size.height
+                        }
+                    }
+                    .testTag("profile_header_identity_row"),
+                shapes = ListItemDefaults.shapes(),
+                colors = ListItemDefaults.segmentedColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                leadingContent = {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (avatarUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = "头像",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(if (isLoggedIn) PoiIcons.Filled.AccountBox else PoiIcons.Filled.Person),
+                                contentDescription = "默认头像",
+                                modifier = Modifier.size(34.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                supportingContent = {
+                    Text(
+                        text = if (isLoggedIn) "Lv.${profile.level}   H币 ${if (userMp > 0) userMp else 0}" else "登录后同步心愿与手账",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                trailingContent = {
+                    if (isLoggedIn) {
+                        CheckInSpringButton(
+                            isSignedInToday = isSignedInToday,
+                            isCheckingIn = isCheckingIn,
+                            onClick = onCheckInClick
+                        )
+                    } else {
+                        Button(
+                            onClick = onLoginClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text(
+                                text = "登录",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                content = {
+                    Text(
+                        text = profile?.displayName ?: "点击登录",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(cardHeightModifier)
+                    .onSizeChanged { size ->
+                        if (size.height > syncedCardHeightPx) {
+                            syncedCardHeightPx = size.height
+                        }
+                    }
+                    .testTag("profile_header_stats_row"),
+                shape = ListItemDefaults.shapes().shape,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SocialStatColumn(
+                            count = fellow?.friendCount ?: 0,
+                            label = "关注",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 0) else onLoginClick()
+                            }
+                        )
+
+                        SocialStatColumn(
+                            count = fellow?.fanCount ?: 0,
+                            label = "粉丝",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 1) else onLoginClick()
+                            }
+                        )
+
+                        SocialStatColumn(
+                            count = fellow?.praiseCount ?: 0,
+                            label = "获赞",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (profile != null) onNavigateToFriendList(profile.id, 3) else onLoginClick()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SocialStatColumn(
+    count: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
