@@ -17,14 +17,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -79,7 +77,10 @@ import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobody.repoi.data.media.ImagePurpose
+import com.nobody.repoi.platform.PoiShelfBackHandler
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
+import com.nobody.repoi.ui.navigation.rememberBottomBarExtraPadding
 import com.nobody.repoi.data.media.MediaCategory
 import com.nobody.repoi.data.remote.model.UserHistoryItem
 import com.nobody.repoi.ui.album.rememberAlbumStaggeredGridColumns
@@ -99,12 +100,17 @@ fun UserHistoryScreen(
     onNavigateToHobbyDetail: (Long) -> Unit,
     onNavigateToAlbumDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    showBackButton: Boolean = true,
     viewModel: UserHistoryViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    PoiShelfBackHandler(enabled = uiState.isManageMode) {
+        viewModel.toggleManageMode(false)
+    }
 
     val categories = remember { UserHistoryCategory.entries.toTypedArray() }
     val pagerState = rememberPagerState(
@@ -145,17 +151,19 @@ fun UserHistoryScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (uiState.isManageMode) {
-                            viewModel.toggleManageMode(false)
-                        } else {
-                            onBackClick()
+                    if (showBackButton) {
+                        IconButton(onClick = {
+                            if (uiState.isManageMode) {
+                                viewModel.toggleManageMode(false)
+                            } else {
+                                onBackClick()
+                            }
+                        }) {
+                            Icon(
+                                painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
+                                contentDescription = "返回"
+                            )
                         }
-                    }) {
-                        Icon(
-                            painter = painterResource(PoiIcons.AutoMirrored.Filled.ArrowBack),
-                            contentDescription = "返回"
-                        )
                     }
                 },
                 actions = {
@@ -171,7 +179,12 @@ fun UserHistoryScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = rememberBottomBarExtraPadding())
+            )
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -242,8 +255,12 @@ fun UserHistoryScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(
+                            start = 16.dp,
+                            top = 12.dp,
+                            end = 16.dp,
+                            bottom = rememberBottomBarContentPadding(12.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     ExpressiveFloatingToolbar(modifier = Modifier.widthIn(max = 560.dp)) {
@@ -397,8 +414,7 @@ private fun HobbyHistoryGridContent(
             }
         }
 
-        val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val bottomPadding = (if (isManageMode) 96.dp else 24.dp) + navBarBottom
+        val bottomPadding = rememberBottomBarContentPadding(if (isManageMode) 96.dp else 24.dp)
 
         LazyColumn(
             state = listState,
@@ -505,8 +521,7 @@ private fun AlbumHistoryStaggeredGridContent(
         }
     }
 
-    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomPadding = (if (isManageMode) 96.dp else 24.dp) + navBarBottom
+    val bottomPadding = rememberBottomBarContentPadding(if (isManageMode) 96.dp else 24.dp)
 
     LazyVerticalStaggeredGrid(
         columns = rememberAlbumStaggeredGridColumns(),

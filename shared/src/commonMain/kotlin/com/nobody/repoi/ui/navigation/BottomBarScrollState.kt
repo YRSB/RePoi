@@ -68,3 +68,18 @@ fun rememberBottomBarFabPadding(
         calculateBottomBarFabPadding(bottomBarHeightDp, navBarBottomPadding, compactPadding, wideScreenPadding)
     }
 }
+
+@Composable
+fun rememberBottomBarExtraPadding(): Dp {
+    val bottomBarState = LocalBottomBarScrollState.current
+    val density = LocalDensity.current
+    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottomBarHeightDp = with(density) { (bottomBarState?.barHeightPx ?: 0f).toDp() }
+    return remember(bottomBarHeightDp, navBarBottomPadding) {
+        if (bottomBarHeightDp > 0.dp) {
+            (bottomBarHeightDp - navBarBottomPadding).coerceAtLeast(0.dp)
+        } else {
+            0.dp
+        }
+    }
+}

@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,7 +35,15 @@ import com.nobody.repoi.ui.user.creation.UserCreationCategory
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
+enum class ProfileQuickAction {
+    COLLECT,
+    CREATION,
+    RESALE,
+    HISTORY
+}
+
 private data class QuickActionEntry(
+    val action: ProfileQuickAction,
     val icon: DrawableResource,
     val label: String,
     val subtitle: String,
@@ -54,11 +64,13 @@ fun ProfileQuickActionBar(
     onNavigateToHistory: () -> Unit,
     onShowMessage: (String) -> Unit,
     onLoginClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedAction: ProfileQuickAction? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val entries = listOf(
         QuickActionEntry(
+            action = ProfileQuickAction.COLLECT,
             icon = PoiIcons.Filled.Star,
             label = "我的收藏",
             subtitle = "手办、周边与各类维基条目",
@@ -78,6 +90,7 @@ fun ProfileQuickActionBar(
             }
         ),
         QuickActionEntry(
+            action = ProfileQuickAction.CREATION,
             icon = PoiIcons.Filled.PhotoLibrary,
             label = "我的发布",
             subtitle = "相册、评测与个人创作",
@@ -97,6 +110,7 @@ fun ProfileQuickActionBar(
             }
         ),
         QuickActionEntry(
+            action = ProfileQuickAction.RESALE,
             icon = PoiIcons.Filled.ShoppingBag,
             label = "我的二手",
             subtitle = "闲置发布与交易管理",
@@ -108,6 +122,7 @@ fun ProfileQuickActionBar(
             }
         ),
         QuickActionEntry(
+            action = ProfileQuickAction.HISTORY,
             icon = PoiIcons.Filled.History,
             label = "浏览历史",
             subtitle = "近期查看过的条目记录",
@@ -128,7 +143,8 @@ fun ProfileQuickActionBar(
         entries.forEach { entry ->
             QuickActionSegmentedRow(
                 entry = entry,
-                isCompact = isCompact
+                isCompact = isCompact,
+                isSelected = entry.action == selectedAction
             )
         }
     }
@@ -139,19 +155,26 @@ fun ProfileQuickActionBar(
 private fun QuickActionSegmentedRow(
     entry: QuickActionEntry,
     isCompact: Boolean,
+    isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val badgeSize = if (isCompact) 40.dp else 36.dp
     val iconSize = if (isCompact) 20.dp else 18.dp
     val verticalPadding = if (isCompact) 14.dp else 12.dp
+    val rowContainerColor = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerLowest
+    val titleColor = if (isSelected) colorScheme.onSecondaryContainer else colorScheme.onSurface
+    val subtitleColor = if (isSelected) colorScheme.onSecondaryContainer.copy(alpha = 0.8f) else colorScheme.onSurfaceVariant
+    val chevronColor = if (isSelected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
 
     SegmentedListItem(
         onClick = entry.onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { selected = isSelected },
         shapes = ListItemDefaults.shapes(),
         colors = ListItemDefaults.segmentedColors(
-            containerColor = colorScheme.surfaceContainerLowest
+            containerColor = rowContainerColor
         ),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = verticalPadding),
         leadingContent = {
@@ -174,7 +197,7 @@ private fun QuickActionSegmentedRow(
             Text(
                 text = entry.subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant,
+                color = subtitleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -201,7 +224,7 @@ private fun QuickActionSegmentedRow(
                     painter = painterResource(PoiIcons.ChevronRight),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = colorScheme.onSurfaceVariant
+                    tint = chevronColor
                 )
             }
         },
@@ -209,7 +232,8 @@ private fun QuickActionSegmentedRow(
             Text(
                 text = entry.label,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                color = titleColor,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

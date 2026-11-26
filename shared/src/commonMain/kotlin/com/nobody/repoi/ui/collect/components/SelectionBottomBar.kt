@@ -3,7 +3,6 @@ package com.nobody.repoi.ui.collect.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.widthIn
 import com.nobody.repoi.ui.common.ExpressiveFloatingToolbar
+import com.nobody.repoi.ui.navigation.rememberBottomBarContentPadding
 import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,8 +36,12 @@ internal fun SelectionBottomBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = rememberBottomBarContentPadding(12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         ExpressiveFloatingToolbar(modifier = Modifier.widthIn(max = 560.dp)) {

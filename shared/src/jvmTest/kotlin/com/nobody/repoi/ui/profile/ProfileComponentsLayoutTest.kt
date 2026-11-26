@@ -1,16 +1,27 @@
 package com.nobody.repoi.ui.profile
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import com.nobody.repoi.data.remote.model.CategoryMoneyGroup
 import com.nobody.repoi.data.remote.model.CurrencyItem
 import com.nobody.repoi.data.remote.model.FellowCountData
@@ -22,7 +33,10 @@ import com.nobody.repoi.ui.profile.components.ExpressiveProfileHeader
 import com.nobody.repoi.ui.profile.components.FigureAssetHubSection
 import com.nobody.repoi.ui.profile.components.FinanceDetailContent
 import com.nobody.repoi.ui.profile.components.ProfileErrorCard
+import com.nobody.repoi.ui.profile.components.ProfileQuickAction
 import com.nobody.repoi.ui.profile.components.ProfileQuickActionBar
+import com.nobody.repoi.ui.user.UserProfileBanner
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -378,5 +392,80 @@ class ProfileComponentsLayoutTest {
 
         onNodeWithContentDescription("关闭").performClick()
         assertTrue(dismissed)
+    }
+
+    private fun ComposeUiTest.assertBannerTwoToOneAndCapped(
+        tag: String,
+        content: @Composable () -> Unit
+    ) {
+        var containerWidth by mutableStateOf(360.dp)
+        var expectedCompactHeightPx = 0
+        var expectedWideHeightPx = 0
+        setContent {
+            val density = LocalDensity.current
+            expectedCompactHeightPx = with(density) { 180.dp.toPx().roundToInt() }
+            expectedWideHeightPx = with(density) { 240.dp.toPx().roundToInt() }
+            Box(modifier = Modifier.width(containerWidth)) {
+                content()
+            }
+        }
+        waitForIdle()
+        assertEquals(expectedCompactHeightPx, onNodeWithTag(tag).fetchSemanticsNode().size.height)
+
+        containerWidth = 720.dp
+        waitForIdle()
+        assertEquals(expectedWideHeightPx, onNodeWithTag(tag).fetchSemanticsNode().size.height)
+    }
+
+    @Test
+    fun expressiveProfileHeader_bannerUsesTwoToOneRatioAndCapsAt240dp() = runComposeUiTest {
+        assertBannerTwoToOneAndCapped(tag = "profile_header_banner") {
+            ExpressiveProfileHeader(
+                profile = null,
+                fellow = null,
+                userMp = 0,
+                isSignedInToday = false,
+                isCheckingIn = false,
+                hasUnreadNotice = false,
+                onCheckInClick = {},
+                onMailClick = {},
+                onSettingsClick = {},
+                onNavigateToFriendList = { _, _ -> },
+                onNavigateToUserInfo = {},
+                onLoginClick = {}
+            )
+        }
+    }
+
+    @Test
+    fun userProfileBanner_usesTwoToOneRatioAndCapsAt240dp() = runComposeUiTest {
+        val sampleProfile = UserProfile(id = 1L, nickname = "测试用户")
+        assertBannerTwoToOneAndCapped(tag = "user_profile_banner") {
+            UserProfileBanner(
+                profile = sampleProfile,
+                isSelf = true
+            )
+        }
+    }
+
+    @Test
+    fun quickActionBar_exposesSelectedSemanticsForActiveEntry() = runComposeUiTest {
+        setContent {
+            ProfileQuickActionBar(
+                profileId = 42L,
+                isLoggedIn = true,
+                selectedAction = ProfileQuickAction.COLLECT,
+                onNavigateToCollect = {},
+                onNavigateToCreation = {},
+                onNavigateToHistory = {},
+                onShowMessage = {},
+                onLoginClick = {}
+            )
+        }
+
+        onNodeWithText("我的收藏").assertIsSelected()
+        onNodeWithText("我的发布").assertIsNotSelected()
+        onNodeWithText("我的二手").assertIsNotSelected()
+        onNodeWithText("浏览历史").assertIsNotSelected()
     }
 }

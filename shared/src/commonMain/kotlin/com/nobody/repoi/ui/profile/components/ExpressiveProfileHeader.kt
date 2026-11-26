@@ -54,6 +54,7 @@ import com.nobody.repoi.data.media.MediaPipeline
 import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.common.PoiIcons
+import com.nobody.repoi.ui.common.bannerAspectRatio
 import com.nobody.repoi.ui.theme.pill
 import org.jetbrains.compose.resources.painterResource
 
@@ -87,7 +88,6 @@ fun ExpressiveProfileHeader(
     }
 
     val isLoggedIn = profile != null
-    val bannerHeight = 180.dp
     val density = LocalDensity.current
     var syncedCardHeightPx by remember(isLoggedIn) { mutableIntStateOf(0) }
     val syncedCardMinHeight = if (syncedCardHeightPx > 0) {
@@ -107,8 +107,9 @@ fun ExpressiveProfileHeader(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(bannerHeight)
+                .bannerAspectRatio()
                 .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+                .testTag("profile_header_banner")
         ) {
             if (bannerUrl.isNotBlank()) {
                 AsyncImage(
