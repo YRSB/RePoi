@@ -49,7 +49,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -79,7 +78,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -1270,10 +1269,9 @@ fun CommentReplyDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isSubmitting) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
                                 Text(
@@ -1726,7 +1724,7 @@ fun CommentFeedPane(
                 }
             }
 
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = isCommentsLoading && (hotComments.isNotEmpty() || latestComments.isNotEmpty()),
                 onRefresh = { onRefreshComments?.invoke() },
                 modifier = Modifier

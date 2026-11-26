@@ -20,7 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -99,7 +99,7 @@ internal fun AlbumCollectSubPage(
                 onSelect = onSwitchOrder
             )
 
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = subPageData.isRefreshing,
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize()

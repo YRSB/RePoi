@@ -33,9 +33,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -424,20 +422,10 @@ private fun SearchResultTabContent(
         }
     }
 
-    val pullRefreshState = rememberPullToRefreshState()
-
-    PullToRefreshBox(
+    PoiPullToRefreshBox(
         isRefreshing = tabState.isRefreshing,
         onRefresh = onRefresh,
-        state = pullRefreshState,
         modifier = Modifier.fillMaxSize(),
-        indicator = {
-            PullToRefreshDefaults.LoadingIndicator(
-                state = pullRefreshState,
-                isRefreshing = tabState.isRefreshing,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {

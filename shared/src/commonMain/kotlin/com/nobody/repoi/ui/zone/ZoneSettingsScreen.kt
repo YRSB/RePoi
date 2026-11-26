@@ -22,7 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import com.nobody.repoi.platform.LocalAppMessages
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -89,11 +89,10 @@ fun ZoneSettingsScreen(
                 },
                 actions = {
                     if (uiState.isSaving) {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             modifier = Modifier
                                 .padding(end = 16.dp)
-                                .size(20.dp),
-                            strokeWidth = 2.dp
+                                .size(20.dp)
                         )
                     } else {
                         TextButton(onClick = { viewModel.saveSettings() }) {

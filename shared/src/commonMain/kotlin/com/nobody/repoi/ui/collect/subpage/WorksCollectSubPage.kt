@@ -21,7 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -165,7 +165,7 @@ internal fun WorksCollectSubPage(
             }
         }
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = subPageData.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()

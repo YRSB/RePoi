@@ -38,9 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -134,7 +132,6 @@ internal fun HobbyCollectSubPage(
     }
 
     val controlBarHeightDp = with(density) { controlBarHeightPx.toDp() }
-    val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
 
     val shouldLoadMore by remember(gridState) {
@@ -203,7 +200,7 @@ internal fun HobbyCollectSubPage(
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = hobbyData.isRefreshing,
             onRefresh = {
 
@@ -214,17 +211,8 @@ internal fun HobbyCollectSubPage(
                 }
                 onRefresh()
             },
-            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = hobbyData.isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = controlBarHeightDp + 4.dp)
-                )
-            }
+            indicatorPaddingTop = controlBarHeightDp + 4.dp,
         ) {
 
             Box(

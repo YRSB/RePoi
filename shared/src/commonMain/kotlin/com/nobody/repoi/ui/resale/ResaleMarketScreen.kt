@@ -32,8 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
@@ -94,7 +93,6 @@ fun ResaleMarketScreen(
     }
 
     val gridState = rememberLazyStaggeredGridState()
-    val pullRefreshState = rememberPullToRefreshState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -189,10 +187,9 @@ fun ResaleMarketScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = { viewModel.loadInitial(isRefresh = true) },
-                state = pullRefreshState,
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {

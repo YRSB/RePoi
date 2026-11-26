@@ -41,7 +41,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,7 +55,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -281,9 +280,8 @@ fun UserHistoryScreen(
                             )
                         ) {
                             if (uiState.isDeleting) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -334,7 +332,7 @@ private fun HistoryTabContent(
     onCoverLoadFailed: (rowId: Long, detailId: Long, category: UserHistoryCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    PullToRefreshBox(
+    PoiPullToRefreshBox(
         isRefreshing = tabState.isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize()

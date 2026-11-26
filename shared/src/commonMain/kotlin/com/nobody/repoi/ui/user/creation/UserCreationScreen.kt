@@ -40,7 +40,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -300,7 +300,7 @@ private fun <T> CreationSubPageContent(
             onSelectOrder = onSwitchOrder
         )
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = tabState.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()

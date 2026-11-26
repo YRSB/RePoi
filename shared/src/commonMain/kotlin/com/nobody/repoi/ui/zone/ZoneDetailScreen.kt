@@ -29,7 +29,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,9 +45,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -157,7 +155,6 @@ fun ZoneDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeSnapshot by viewModel.activeSnapshot.collectAsStateWithLifecycle()
     val categoryTree by viewModel.categoryTree.collectAsStateWithLifecycle()
-    val pullRefreshState = rememberPullToRefreshState()
     val messages = LocalAppMessages.current
     val focusManager = LocalFocusManager.current
     val imageViewer = LocalImageViewer.current
@@ -479,9 +476,8 @@ fun ZoneDetailScreen(
                                 .padding(end = 8.dp)
                         ) {
                             if (isFocusToggling) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(14.dp),
-                                    strokeWidth = 2.dp
+                                LoadingIndicator(
+                                    modifier = Modifier.size(14.dp)
                                 )
                             } else {
                                 Text(
@@ -505,10 +501,9 @@ fun ZoneDetailScreen(
                                 .padding(end = 8.dp)
                         ) {
                             if (isFocusToggling) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(14.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
                                 Text(
@@ -544,23 +539,14 @@ fun ZoneDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            PullToRefreshBox(
+            PoiPullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
                     scope.launch { scrollCurrentBoardToTop() }
                     viewModel.refresh()
                 },
-                state = pullRefreshState,
                 modifier = Modifier.fillMaxSize(),
-                indicator = {
-                    PullToRefreshDefaults.LoadingIndicator(
-                        state = pullRefreshState,
-                        isRefreshing = isRefreshing,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = headerStack.totalHeaderHeight)
-                    )
-                }
+                indicatorPaddingTop = headerStack.totalHeaderHeight,
             ) {
                 Box(
                     modifier = Modifier

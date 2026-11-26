@@ -32,7 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -254,7 +254,7 @@ fun MessageChatScreen(
                 .padding(innerPadding)
         ) {
             if (uiState.isLoading && uiState.messages.isEmpty()) {
-                CircularProgressIndicator(
+                LoadingIndicator(
                     modifier = Modifier
                         .size(36.dp)
                         .align(Alignment.Center)
@@ -290,7 +290,7 @@ fun MessageChatScreen(
                                     enabled = !uiState.isLoadingMore
                                 ) {
                                     if (uiState.isLoadingMore) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                        LoadingIndicator(modifier = Modifier.size(16.dp))
                                     } else {
                                         Text("加载更多历史消息", fontSize = 12.sp)
                                     }
@@ -563,7 +563,7 @@ private fun ChatBottomInputBar(
                     enabled = !isUploadingPicture
                 ) {
                     if (isUploadingPicture) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        LoadingIndicator(modifier = Modifier.size(20.dp))
                     } else {
                         Icon(
                             painter = painterResource(PoiIcons.Filled.AddPhotoAlternate),
@@ -603,7 +603,7 @@ private fun ChatBottomInputBar(
                     enabled = inputContent.isNotBlank() && !isSending
                 ) {
                     if (isSending) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        LoadingIndicator(modifier = Modifier.size(20.dp))
                     } else {
                         Icon(
                             painter = painterResource(PoiIcons.AutoMirrored.Filled.Send),
