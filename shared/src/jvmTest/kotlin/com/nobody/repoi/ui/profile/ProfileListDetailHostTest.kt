@@ -206,6 +206,7 @@ class ProfileListDetailHostTest {
 
     @Test
     fun narrowScreen_pushesDetailWithBackButtonAndPopsBackToList() = runComposeUiTest {
+        val subRouteStates = mutableListOf<Boolean>()
         setContent {
             Box(modifier = Modifier.size(412.dp, 800.dp)) {
                 ProfileListDetailContent(
@@ -219,6 +220,11 @@ class ProfileListDetailHostTest {
                     onNavigateToLogin = {},
                     onNavigateToUserInfo = {},
                     onNavigateToMessage = {},
+                    onSubRouteActiveChange = { active ->
+                        if (subRouteStates.lastOrNull() != active) {
+                            subRouteStates += active
+                        }
+                    },
                     collectPaneContent = { param, showBackButton, onBack ->
                         Column(modifier = Modifier.fillMaxSize()) {
                             Text("NARROW_COLLECT_${param.userId}_back=$showBackButton")
@@ -246,22 +252,27 @@ class ProfileListDetailHostTest {
         }
 
         waitForIdle()
+        assertEquals(listOf(false), subRouteStates)
         onNodeWithText("收藏、发布与浏览历史").assertDoesNotExist()
         onNodeWithText("我的收藏").performClick()
         waitForIdle()
 
+        assertEquals(listOf(false, true), subRouteStates)
         onNodeWithText("NARROW_COLLECT_42_back=true").assertIsDisplayed()
         onNodeWithText("返回个人中心").performClick()
         waitForIdle()
 
+        assertEquals(listOf(false, true, false), subRouteStates)
         onNodeWithText("我的收藏").assertIsDisplayed()
         onNodeWithText("NARROW_COLLECT_42_back=true").assertDoesNotExist()
 
         onNodeWithText("粉丝").performClick()
         waitForIdle()
+        assertEquals(listOf(false, true, false, true), subRouteStates)
         onNodeWithText("NARROW_FRIEND_42_1_back=true").assertIsDisplayed()
         onNodeWithText("返回个人中心").performClick()
         waitForIdle()
+        assertEquals(listOf(false, true, false, true, false), subRouteStates)
         onNodeWithText("粉丝").assertIsDisplayed()
         onNodeWithText("NARROW_FRIEND_42_1_back=true").assertDoesNotExist()
     }

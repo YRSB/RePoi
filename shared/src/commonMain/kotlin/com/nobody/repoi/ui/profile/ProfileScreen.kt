@@ -106,6 +106,7 @@ fun ProfileScreen(
     onNavigateToCharacter: (CharacterNavParam) -> Unit = {},
     onNavigateToCollectAlbum: (AlbumNavParam) -> Unit = { onNavigateToAlbum(it.albumId) },
     onNavigateToPictureGallery: (PictureGalleryNavParam) -> Unit = {},
+    onSubRouteActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel()
 ) {
@@ -192,6 +193,7 @@ fun ProfileScreen(
                 showBackButton = showBackButton
             )
         },
+        onSubRouteActiveChange = onSubRouteActiveChange,
         modifier = modifier
     )
 }
@@ -214,6 +216,7 @@ internal fun ProfileListDetailContent(
     creationPaneContent: @Composable (param: UserCreationNavParam, showBackButton: Boolean, onBack: () -> Unit) -> Unit,
     historyPaneContent: @Composable (showBackButton: Boolean, onBack: () -> Unit) -> Unit,
     friendListPaneContent: @Composable (param: FriendListNavParam, showBackButton: Boolean, onBack: () -> Unit) -> Unit = { _, _, _ -> },
+    onSubRouteActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -231,6 +234,13 @@ internal fun ProfileListDetailContent(
         }
     }
     val backStack = rememberNavBackStack(savedStateConfiguration, ProfileListNavKey)
+    val syncSubRouteActive = {
+        onSubRouteActiveChange(backStack.size > 1)
+    }
+
+    LaunchedEffect(backStack.size) {
+        syncSubRouteActive()
+    }
 
     val profile = uiState.profile
     val profileId = profile?.id ?: 0L
@@ -248,6 +258,7 @@ internal fun ProfileListDetailContent(
         lastAuthenticatedUserId = decision.nextAuthenticatedUserId
         if (decision.shouldResetSubStack) {
             resetProfileSubStack(backStack)
+            syncSubRouteActive()
         }
     }
 
@@ -256,6 +267,12 @@ internal fun ProfileListDetailContent(
 
     val localOnBack: () -> Unit = {
         popProfileSubRoute(backStack)
+        syncSubRouteActive()
+    }
+
+    val openSubRoute: (ProfileSubNavKey) -> Unit = { target ->
+        openProfileSubRoute(backStack, target, isWide = isWide)
+        syncSubRouteActive()
     }
 
     val selectedAction = if (isWide) {
@@ -285,22 +302,20 @@ internal fun ProfileListDetailContent(
                 onMailClick = { if (isAuthenticated && profile != null) onNavigateToMessage() else onNavigateToLogin() },
                 onSettingsClick = onNavigateToSettings,
                 onOpenFriendList = { userId, initialType ->
-                    openProfileSubRoute(
-                        backStack,
-                        ProfileFriendListNavKey(FriendListNavParam(userId = userId, initialType = initialType)),
-                        isWide = isWide
+                    openSubRoute(
+                        ProfileFriendListNavKey(FriendListNavParam(userId = userId, initialType = initialType))
                     )
                 },
                 onNavigateToUserInfo = onNavigateToUserInfo,
                 onLoginClick = onNavigateToLogin,
                 onOpenCollect = { param ->
-                    openProfileSubRoute(backStack, ProfileCollectNavKey(param), isWide = isWide)
+                    openSubRoute(ProfileCollectNavKey(param))
                 },
                 onOpenCreation = { param ->
-                    openProfileSubRoute(backStack, ProfileCreationNavKey(param), isWide = isWide)
+                    openSubRoute(ProfileCreationNavKey(param))
                 },
                 onOpenHistory = {
-                    openProfileSubRoute(backStack, ProfileHistoryNavKey, isWide = isWide)
+                    openSubRoute(ProfileHistoryNavKey)
                 },
                 onOpenFinanceDialog = { tabIndex ->
                     financeDialogInitialTab = tabIndex

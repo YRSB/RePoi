@@ -19,9 +19,11 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 class RePoiNavigationState(
     val startDestination: AppDestinations = AppDestinations.HOME,
     private val currentDestinationState: MutableState<AppDestinations>,
-    val backStacks: Map<AppDestinations, NavBackStack<NavKey>>
+    val backStacks: Map<AppDestinations, NavBackStack<NavKey>>,
+    private val profileSubRouteActiveState: MutableState<Boolean> = mutableStateOf(false)
 ) {
     var currentDestination: AppDestinations by currentDestinationState
+    var isProfileSubRouteActive: Boolean by profileSubRouteActiveState
 
     @Composable
     fun toDecoratedEntries(
@@ -51,6 +53,7 @@ fun rememberRePoiNavigationState(
     }
 ): RePoiNavigationState {
     val currentDestinationState = rememberSaveable { mutableStateOf(startDestination) }
+    val profileSubRouteActiveState = rememberSaveable { mutableStateOf(false) }
 
     val homeStack = rememberNavBackStack(configuration, HomeNavKey)
     val itemsStack = rememberNavBackStack(configuration, ItemsNavKey)
@@ -68,11 +71,12 @@ fun rememberRePoiNavigationState(
         )
     }
 
-    return remember(startDestination, currentDestinationState, backStacks) {
+    return remember(startDestination, currentDestinationState, profileSubRouteActiveState, backStacks) {
         RePoiNavigationState(
             startDestination = startDestination,
             currentDestinationState = currentDestinationState,
-            backStacks = backStacks
+            backStacks = backStacks,
+            profileSubRouteActiveState = profileSubRouteActiveState
         )
     }
 }
