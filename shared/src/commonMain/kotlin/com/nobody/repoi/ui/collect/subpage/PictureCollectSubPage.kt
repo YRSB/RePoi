@@ -16,7 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -80,7 +80,7 @@ internal fun PictureCollectSubPage(
             onSelect = onSwitchOrder
         )
 
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = subPageData.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()

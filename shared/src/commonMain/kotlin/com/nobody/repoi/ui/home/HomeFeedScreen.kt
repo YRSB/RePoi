@@ -30,9 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -333,7 +331,6 @@ private fun HomeFeedReadyContent(
         }
     }
 
-    val pullRefreshState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
@@ -403,23 +400,14 @@ private fun HomeFeedReadyContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
                 scope.launch { scrollCurrentBoardToTop() }
                 viewModel.refreshFeed()
             },
-            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = headerStack.totalHeaderHeight)
-                )
-            }
+            indicatorPaddingTop = headerStack.totalHeaderHeight,
         ) {
             Box(
                 modifier = Modifier

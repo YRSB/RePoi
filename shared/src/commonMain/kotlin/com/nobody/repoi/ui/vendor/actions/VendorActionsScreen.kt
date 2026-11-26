@@ -35,7 +35,7 @@ import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
 import androidx.compose.runtime.LaunchedEffect
@@ -192,7 +192,7 @@ fun VendorActionsScreen(
             }
         }
     ) { innerPadding ->
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = pagedState.stage == LoadStage.Refreshing,
             onRefresh = { viewModel.refresh() },
             modifier = Modifier

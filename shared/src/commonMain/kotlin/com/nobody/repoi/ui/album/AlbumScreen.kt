@@ -44,7 +44,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import com.nobody.repoi.ui.common.loading.PoiLoadingView
@@ -63,8 +63,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -178,7 +176,6 @@ fun AlbumScreen(
 
     val bottomContentPadding = rememberBottomBarContentPadding(16.dp)
     val fabBottomPadding = rememberBottomBarFabPadding()
-    val pullRefreshState = rememberPullToRefreshState()
     val isAnyRefreshing = uiState.isRefreshing || (uiState.showRanking && uiState.isSectionsLoading && uiState.sections.isEmpty())
 
     var wasRefreshing by remember { mutableStateOf(false) }
@@ -196,7 +193,7 @@ fun AlbumScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = isAnyRefreshing,
             onRefresh = {
                 scope.launch {
@@ -206,17 +203,8 @@ fun AlbumScreen(
                 }
                 viewModel.refresh()
             },
-            state = pullRefreshState,
             modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = isAnyRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = totalHeaderHeight)
-                )
-            }
+            indicatorPaddingTop = totalHeaderHeight,
         ) {
             Box(
                 modifier = Modifier

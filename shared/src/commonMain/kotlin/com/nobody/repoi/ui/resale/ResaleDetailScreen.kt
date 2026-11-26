@@ -22,7 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -34,9 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.nobody.repoi.ui.common.PoiPullToRefreshBox
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.LaunchedEffect
@@ -89,7 +87,6 @@ fun ResaleDetailScreen(
         viewModel.setResaleId(resaleId)
     }
 
-    val pullRefreshState = rememberPullToRefreshState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -204,19 +201,10 @@ fun ResaleDetailScreen(
             }
         }
     ) { innerPadding ->
-        PullToRefreshBox(
+        PoiPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
-            state = pullRefreshState,
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = innerPadding.calculateTopPadding())
-                )
-            },
+            indicatorPaddingTop = innerPadding.calculateTopPadding(),
             modifier = Modifier.fillMaxSize()
         ) {
             when {
@@ -227,7 +215,7 @@ fun ResaleDetailScreen(
                             .padding(innerPadding),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(36.dp)
                         )
