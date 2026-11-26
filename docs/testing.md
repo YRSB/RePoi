@@ -126,6 +126,10 @@ fun initialState_loadsBindingStatus() = runTest(testDispatcher) {
 ## 反馈回路与本地测试
 
 允许在本地运行 Gradle 单元测试（例如针对指定类或方法运行 `./gradlew :shared:jvmTest --tests ...` 或跑全量单测 `./gradlew :shared:jvmTest`），作为快速红绿迭代与定位逻辑回归的手段。但全量构建、Android APK 与桌面端安装包打包依然严禁在本地执行，统一由 CI 权威执行。
+本地迭代提效约定：
+- 仅校验编译与类型推导时，优先运行 `./gradlew :shared:compileTestKotlinJvm --console=plain -q`；排查截断报错可追加 `--console=plain`；
+- 新建 Compose UI 测试统一导入 `androidx.compose.ui.test.v2.runComposeUiTest`（避免旧版 `runComposeUiTest` 废弃告警淹没真实报错）；
+- 启用本地提交前门禁：运行 `pwsh -File scripts/install-hooks.ps1` 将仓库 `core.hooksPath` 指向 `.githooks`，在 `git commit` 前自动运行 `scripts/check-ui-rules.ps1` 与 `git diff --cached --check`。
 本机 `JAVA_HOME` 可能指向失效的 scoop `current` 目录；Gradle 命令统一加 `env -u JAVA_HOME ` 前缀，或在 `pwsh` 中先置 `$env:JAVA_HOME = $null`，避免重复排查 JDK 路径。
 
 诊断打印用 `println("DIAG-<tag> ...")` 输出，

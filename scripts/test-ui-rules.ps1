@@ -24,7 +24,8 @@ $Body
 }
 "@
     [System.IO.File]::WriteAllText($f, "$src`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script -Verbose 2>&1 | Out-String
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe/Probe.kt'
+    $out = & $script -Verbose -TargetFiles @($rel) *>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[LAZY-ITEM-KEY\] [^:]*zzprobe')).Count
     $warnCount = ([regex]::Matches($out, '\[LAZY-CONTENT-TYPE\] [^:]*zzprobe')).Count
@@ -117,7 +118,8 @@ function Run-FunInterfaceCase {
     New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
     $f = Join-Path $probeDir 'ProbeInterface.kt'
     [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script 2>&1 | Out-String
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe/ProbeInterface.kt'
+    $out = & $script -TargetFiles @($rel) *>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[KOTLIN-FUN-INTERFACE-BODY\] [^:]*zzprobe')).Count
     $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
@@ -161,7 +163,8 @@ function Run-DataLayerCase {
     New-Item -ItemType Directory -Path $dataProbeDir -Force | Out-Null
     $f = Join-Path $dataProbeDir 'ProbeRepository.kt'
     [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script 2>&1 | Out-String
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/data/repository/zzprobe/ProbeRepository.kt'
+    $out = & $script -TargetFiles @($rel) *>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[(?:DATA-PIPELINE-BYPASS|DATA-SILENT-RECOVERY|API-PUBLIC-ENVELOPE)\] [^:]*zzprobe')).Count
     $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
@@ -249,6 +252,7 @@ class ProbeRepository {
 }
 '@ 0
 
+if (Test-Path $dataProbeDir) { Remove-Item $dataProbeDir -Recurse -Force }
 
 Write-Host ""
 Write-Host "=== Koin ViewModel 注册测试 ===" -ForegroundColor Cyan
@@ -259,7 +263,8 @@ function Run-DiCase {
     New-Item -ItemType Directory -Path $diProbeDir -Force | Out-Null
     $f = Join-Path $diProbeDir 'ProbeModule.kt'
     [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script 2>&1 | Out-String
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/di/zzprobe/ProbeModule.kt'
+    $out = & $script -TargetFiles @($rel) *>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[KOIN-VIEWMODEL-OF\] [^:]*zzprobe')).Count
     $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
@@ -299,13 +304,16 @@ val probeModule = module {
 }
 '@ 0
 
+if (Test-Path $diProbeDir) { Remove-Item $diProbeDir -Recurse -Force }
+
 function Run-CommentCase {
     param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
     if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
     New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
     $f = Join-Path $probeDir 'CommentProbe.kt'
     [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
-    $out = & pwsh -File $script 2>&1 | Out-String
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe/CommentProbe.kt'
+    $out = & $script -TargetFiles @($rel) *>&1 | Out-String
     $code = $LASTEXITCODE
     $errCount = ([regex]::Matches($out, '\[NO-CODE-COMMENTS\] [^:]*zzprobe')).Count
     $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
@@ -326,6 +334,58 @@ Run-CommentCase '29 纯洁自解释代码（不应报）' @'
 package com.nobody.repoi.ui.zzprobe
 
 fun cleanCode(): Int = 42
+'@ 0
+
+Write-Host ""
+Write-Host "=== Shape 规范测试 ===" -ForegroundColor Cyan
+
+function Run-ShapeCase {
+    param([string]$Name, [string]$FileContent, [int]$ExpectErrors)
+    if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+    $f = Join-Path $probeDir 'ShapeProbe.kt'
+    [System.IO.File]::WriteAllText($f, "$FileContent`n", [System.Text.Encoding]::UTF8)
+    $rel = 'shared/src/commonMain/kotlin/com/nobody/repoi/ui/zzprobe/ShapeProbe.kt'
+    $out = & $script -TargetFiles @($rel) *>&1 | Out-String
+    $code = $LASTEXITCODE
+    $errCount = ([regex]::Matches($out, '\[(?:NATIVE-DEFAULT-SHAPE|HARDCODED-ROUNDED-CORNER)\] [^:]*zzprobe')).Count
+    $ok = ($errCount -eq $ExpectErrors) -and ($code -eq $(if ($ExpectErrors -gt 0) { 1 } else { 0 }))
+    $status = if ($ok) { 'PASS' } else { 'FAIL' }
+    $detail = "err=$errCount(want $ExpectErrors) exit=$code"
+    Write-Host ("{0,-6} {1,-52} {2}" -f $status, $Name, $detail) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+    if (-not $ok) { Write-Host $out }
+}
+
+Run-ShapeCase '30 Button 显式传 pill 默认 shape（应报错误）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun BadButton() {
+    Button(onClick = {}, shape = MaterialTheme.shapes.pill) {}
+}
+'@ 1
+
+Run-ShapeCase '31 Button 零传参默认 shape（不应报）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun GoodButton() {
+    Button(onClick = {}) {}
+}
+'@ 0
+
+Run-ShapeCase '32 新增硬编码 RoundedCornerShape(16.dp)（应报错误）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun BadCorner() {
+    Box(modifier = Modifier.clip(RoundedCornerShape(16.dp))) {}
+}
+'@ 1
+
+Run-ShapeCase '33 使用 MaterialTheme.shapes.large（不应报）' @'
+package com.nobody.repoi.ui.zzprobe
+
+fun GoodCorner() {
+    Box(modifier = Modifier.clip(MaterialTheme.shapes.large)) {}
+}
 '@ 0
 
 if (Test-Path $probeDir) { Remove-Item $probeDir -Recurse -Force }

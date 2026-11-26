@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -55,7 +54,7 @@ import com.nobody.repoi.data.remote.model.FellowCountData
 import com.nobody.repoi.data.remote.model.UserProfile
 import com.nobody.repoi.ui.common.PoiIcons
 import com.nobody.repoi.ui.common.bannerAspectRatio
-import com.nobody.repoi.ui.theme.pill
+import com.nobody.repoi.ui.theme.topBarScrolled
 import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -108,7 +107,7 @@ fun ExpressiveProfileHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .bannerAspectRatio()
-                .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+                .clip(MaterialTheme.shapes.topBarScrolled)
                 .testTag("profile_header_banner")
         ) {
             if (bannerUrl.isNotBlank()) {
@@ -258,7 +257,6 @@ fun ExpressiveProfileHeader(
                     } else {
                         Button(
                             onClick = onLoginClick,
-                            shape = MaterialTheme.shapes.pill,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary

@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.nobody.repoi.ui.theme.pill
 
 @Composable
 fun ProfileErrorCard(
@@ -53,7 +52,6 @@ fun ProfileErrorCard(
             Spacer(modifier = Modifier.height(14.dp))
             Button(
                 onClick = onRetry,
-                shape = MaterialTheme.shapes.pill,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )

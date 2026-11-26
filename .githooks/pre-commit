@@ -1,0 +1,2 @@
+#!/bin/sh
+pwsh -NoProfile -File scripts/check-ui-rules.ps1 && git diff --cached --check

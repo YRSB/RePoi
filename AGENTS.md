@@ -1,7 +1,7 @@
 # RePoi — 项目宪章与导航索引
 
 RePoi 是基于 Kotlin Multiplatform 的 Hpoi 维基跨平台客户端（包名 `com.nobody.repoi`，支持 Android 与 Windows Desktop）。
-所有用户可见文本、代码注释及 Commit 信息**一律使用中文（简体）**。
+与用户交流、所有用户可见文本及 Commit 信息**一律使用中文（简体）**。代码保持自解释，禁止在源码中新增注释（由 [check-ui-rules.ps1](scripts/check-ui-rules.ps1) 的 `NO-CODE-COMMENTS` 校验；架构决策沉淀入 `docs/adr/`，待办与缺陷提 GitHub Issue）。
 
 应用代码只在本仓库根目录：`shared/`、`androidApp/`、`desktopApp/`、`docs/`、`scripts/`。
 `Zhihu-Hyperion/`、`PodAura-ref/`、`PoiShelf/` 是 gitignored 的参考实现，递归搜索与 `git ls-files` 请限定上述目录，避免几十 MB 的无关输出。
