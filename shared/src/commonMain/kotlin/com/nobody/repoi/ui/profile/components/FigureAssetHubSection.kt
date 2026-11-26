@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
@@ -85,21 +83,16 @@ fun FigureAssetHubSection(
 
     val preorderCount = order?.preorder ?: 0
     val buyCount = order?.buy ?: 0
-    val wantCount = order?.actualWant ?: 0
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        AssetHubHeaderRow(
+        AssetHubTabRow(
             tabs = tabs,
             selectedIndex = selectedTabIndex,
             tabCounts = listOf(preorderCount, buyCount),
-            wantCount = wantCount,
-            onSelectTab = { selectedTabIndex = it },
-            onWantClick = {
-                if (isLoggedIn) onNavigateToCollect("want") else onLoginClick()
-            }
+            onSelectTab = { selectedTabIndex = it }
         )
 
         AnimatedContent(
@@ -131,7 +124,7 @@ fun FigureAssetHubSection(
                         moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
                         isMoneyActive = isLoggedIn && totalAmount > 0.0,
                         groups = groups,
-                        showCategoryStrip = isLoggedIn,
+                        isLoggedIn = isLoggedIn,
                         onCountClick = {
                             if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
                         },
@@ -151,7 +144,7 @@ fun FigureAssetHubSection(
                         moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
                         isMoneyActive = isLoggedIn && totalAmount > 0.0,
                         groups = groups,
-                        showCategoryStrip = isLoggedIn,
+                        isLoggedIn = isLoggedIn,
                         onCountClick = {
                             if (isLoggedIn) onNavigateToCollect(tab.collectStateKey) else onLoginClick()
                         },
@@ -167,104 +160,58 @@ fun FigureAssetHubSection(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssetHubHeaderRow(
+private fun AssetHubTabRow(
     tabs: List<AssetHubTab>,
     selectedIndex: Int,
     tabCounts: List<Int>,
-    wantCount: Int,
-    onSelectTab: (Int) -> Unit,
-    onWantClick: () -> Unit
+    onSelectTab: (Int) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .weight(2f)
-                .selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            tabs.forEachIndexed { index, tab ->
-                val checked = index == selectedIndex
-                val countText = tabCounts.getOrElse(index) { 0 }
-                ToggleButton(
-                    checked = checked,
-                    onCheckedChange = { if (!checked) onSelectTab(index) },
-                    colors = if (checked) {
-                        ToggleButtonDefaults.toggleButtonColors(
-                            containerColor = colorScheme.primaryContainer,
-                            contentColor = colorScheme.onPrimaryContainer
-                        )
-                    } else {
-                        ToggleButtonDefaults.toggleButtonColors(
-                            containerColor = colorScheme.surfaceContainerLowest,
-                            contentColor = colorScheme.onSurfaceVariant
-                        )
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics {
-                            role = Role.RadioButton
-                            this.selected = checked
-                        },
-                    shapes = if (index == 0) {
-                        ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    } else {
-                        ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "${tab.label} $countText",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFeatureSettings = "tnum"
-                        ),
-                        fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+        tabs.forEachIndexed { index, tab ->
+            val checked = index == selectedIndex
+            val countText = tabCounts.getOrElse(index) { 0 }
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { if (!checked) onSelectTab(index) },
+                colors = if (checked) {
+                    ToggleButtonDefaults.toggleButtonColors(
+                        containerColor = colorScheme.primaryContainer,
+                        contentColor = colorScheme.onPrimaryContainer
                     )
-                }
-            }
-        }
-
-        Surface(
-            onClick = onWantClick,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            shape = MaterialTheme.shapes.pill,
-            color = colorScheme.surfaceContainerLowest
-        ) {
-            Row(
+                } else {
+                    ToggleButtonDefaults.toggleButtonColors(
+                        containerColor = colorScheme.surfaceContainerLowest,
+                        contentColor = colorScheme.onSurfaceVariant
+                    )
+                },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .padding(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                    .weight(1f)
+                    .semantics {
+                        role = Role.RadioButton
+                        this.selected = checked
+                    },
+                shapes = if (index == 0) {
+                    ButtonGroupDefaults.connectedLeadingButtonShapes()
+                } else {
+                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "想买 $wantCount",
+                    text = "${tab.label} $countText",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontFeatureSettings = "tnum"
                     ),
-                    fontWeight = FontWeight.Medium,
-                    color = colorScheme.onSurface,
+                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    painter = painterResource(PoiIcons.ChevronRight),
-                    contentDescription = null,
-                    modifier = Modifier.size(15.dp),
-                    tint = colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -280,12 +227,16 @@ private fun AssetStackedDetailRows(
     moneyValue: String,
     isMoneyActive: Boolean,
     groups: List<CategoryMoneyGroup>,
-    showCategoryStrip: Boolean,
+    isLoggedIn: Boolean,
     onCountClick: () -> Unit,
     onMoneyClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val gap = ListItemDefaults.SegmentedGap
+    val positiveGroups = groups
+        .filter { it.totalRmb > 0.0 }
+        .sortedByDescending { it.totalRmb }
+    val showCategoryStrip = isLoggedIn && positiveGroups.size > 1
 
     Column(
         modifier = Modifier
@@ -400,7 +351,7 @@ private fun AssetStackedDetailRows(
                     }
 
                     if (showCategoryStrip) {
-                        CategoryBreakdownInline(groups = groups)
+                        CategoryBreakdownInline(positiveGroups = positiveGroups)
                     }
                 }
             }
@@ -410,12 +361,8 @@ private fun AssetStackedDetailRows(
 
 @Composable
 private fun CategoryBreakdownInline(
-    groups: List<CategoryMoneyGroup>
+    positiveGroups: List<CategoryMoneyGroup>
 ) {
-    val positiveGroups = groups
-        .filter { it.totalRmb > 0.0 }
-        .sortedByDescending { it.totalRmb }
-
     val total = positiveGroups.sumOf { it.totalRmb }.coerceAtLeast(1e-5)
     val colorScheme = MaterialTheme.colorScheme
     val segmentColors = listOf(
@@ -437,26 +384,16 @@ private fun CategoryBreakdownInline(
                 .height(6.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            if (positiveGroups.isEmpty()) {
+            positiveGroups.forEachIndexed { index, group ->
+                val fraction = (group.totalRmb / total).toFloat().coerceAtLeast(0.04f)
+                val color = segmentColors[index % segmentColors.size]
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(fraction)
                         .fillMaxHeight()
                         .clip(MaterialTheme.shapes.pill)
-                        .background(colorScheme.surfaceContainerHighest)
+                        .background(color)
                 )
-            } else {
-                positiveGroups.forEachIndexed { index, group ->
-                    val fraction = (group.totalRmb / total).toFloat().coerceAtLeast(0.04f)
-                    val color = segmentColors[index % segmentColors.size]
-                    Box(
-                        modifier = Modifier
-                            .weight(fraction)
-                            .fillMaxHeight()
-                            .clip(MaterialTheme.shapes.pill)
-                            .background(color)
-                    )
-                }
             }
         }
 
@@ -465,53 +402,43 @@ private fun CategoryBreakdownInline(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (positiveGroups.isEmpty()) {
-                Text(
-                    text = "暂无品类明细",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            } else {
-                Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    visibleLegendGroups.forEachIndexed { index, group ->
-                        val color = segmentColors[index % segmentColors.size]
-                        Row(
-                            modifier = Modifier.weight(1f, fill = false),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(color)
-                            )
-                            Text(
-                                text = "${group.categoryName} ${formatRmb(group.totalRmb)}",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFeatureSettings = "tnum"
-                                ),
-                                color = colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                visibleLegendGroups.forEachIndexed { index, group ->
+                    val color = segmentColors[index % segmentColors.size]
+                    Row(
+                        modifier = Modifier.weight(1f, fill = false),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                        )
+                        Text(
+                            text = "${group.categoryName} ${formatRmb(group.totalRmb)}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFeatureSettings = "tnum"
+                            ),
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
-                if (positiveGroups.size > visibleLegendGroups.size) {
-                    Text(
-                        text = "等 ${positiveGroups.size} 类",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1
-                    )
-                }
+            }
+            if (positiveGroups.size > visibleLegendGroups.size) {
+                Text(
+                    text = "等 ${positiveGroups.size} 类",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1
+                )
             }
         }
     }

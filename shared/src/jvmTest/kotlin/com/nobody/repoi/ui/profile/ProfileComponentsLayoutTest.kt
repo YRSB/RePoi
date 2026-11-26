@@ -224,6 +224,12 @@ class ProfileComponentsLayoutTest {
                             categoryName = "手办",
                             items = listOf(CurrencyItem("rmb", 12000.0)),
                             totalRmb = 12000.0
+                        ),
+                        CategoryMoneyGroup(
+                            categoryKey = "category_900",
+                            categoryName = "动漫周边",
+                            items = listOf(CurrencyItem("rmb", 3000.0)),
+                            totalRmb = 3000.0
                         )
                     )
                 ),
@@ -234,11 +240,12 @@ class ProfileComponentsLayoutTest {
             )
         }
 
+        onNodeWithText("想买", substring = true).assertDoesNotExist()
         onNodeWithText("待补款总折合").assertIsDisplayed()
         onNodeWithText("¥3,428").assertIsDisplayed().performClick()
         assertEquals(0, moneyTab)
 
-        onNodeWithText("手办 ¥2,800").assertIsDisplayed()
+        onNodeWithText("手办 ¥2,800").assertDoesNotExist()
         onNodeWithText("已预定").assertIsDisplayed().performClick()
         assertEquals("preorder", collectState)
 
@@ -248,11 +255,9 @@ class ProfileComponentsLayoutTest {
         assertEquals(1, moneyTab)
 
         onNodeWithText("手办 ¥12,000").assertIsDisplayed()
+        onNodeWithText("动漫周边 ¥3,000").assertIsDisplayed()
         onNodeWithText("已入").assertIsDisplayed().performClick()
         assertEquals("buy", collectState)
-
-        onNodeWithText("想买 2").assertIsDisplayed().performClick()
-        assertEquals("want", collectState)
     }
 
     @Test
@@ -272,26 +277,22 @@ class ProfileComponentsLayoutTest {
 
         onNodeWithText("待补款总折合").assertIsDisplayed().performClick()
         onNodeWithText("已预定").assertIsDisplayed().performClick()
-        onNodeWithText("想买 0").assertIsDisplayed().performClick()
-        assertEquals(3, loginCount)
+        assertEquals(2, loginCount)
     }
 
     @Test
-    fun figureAssetHubSection_keepsConstantHeightAcrossTabs() = runComposeUiTest {
+    fun figureAssetHubSection_keepsConstantHeightWhenBothTabsLackBreakdown() = runComposeUiTest {
         var measuredHeight = 0
 
         setContent {
             FigureAssetHubSection(
-                order = OrderCount(care = 2, preorder = 0, buy = 17),
+                order = OrderCount(care = 2, preorder = 3, buy = 17),
                 finance = OrderFinanceSummary(
                     supplementedTotalRmb = 0.0,
-                    historyTotalRmb = 15000.0,
-                    amazonFluctuation = "-3%",
+                    historyTotalRmb = 12000.0,
                     supplementedGroups = emptyList(),
                     historyGroups = listOf(
-                        CategoryMoneyGroup("category_100", "手办", listOf(CurrencyItem("rmb", 12000.0)), 12000.0),
-                        CategoryMoneyGroup("category_900", "动漫周边", listOf(CurrencyItem("rmb", 2000.0)), 2000.0),
-                        CategoryMoneyGroup("category_1000", "GK/个人创作", listOf(CurrencyItem("rmb", 1000.0)), 1000.0)
+                        CategoryMoneyGroup("category_100", "手办", listOf(CurrencyItem("rmb", 12000.0)), 12000.0)
                     )
                 ),
                 isLoggedIn = true,
