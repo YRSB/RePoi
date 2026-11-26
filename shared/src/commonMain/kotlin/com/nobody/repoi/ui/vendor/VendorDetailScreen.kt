@@ -156,12 +156,12 @@ fun VendorDetailScreen(
                 },
                 floatingToolbar = {
                     if (company != null) {
-                        val baseCollect = uiState.collectCountBase ?: (company?.collect ?: 0L)
+                        val baseCollect = uiState.collectCountBase ?: company.collect
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         VendorFloatingActionBar(
                             collectCount = displayCollect,
                             isCollected = uiState.isCollected,
-                            commentCount = company?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
+                            commentCount = company.commentCount,
                             showCommentButton = !isWidePane,
                             onToggleCollect = {
                                 viewModel.toggleCollect()
@@ -175,13 +175,13 @@ fun VendorDetailScreen(
                                     HobbyCommentsNavParam(
                                         nodeId = nodeId,
                                         itemType = "company",
-                                        title = company?.displayName ?: navParam.initialName ?: "评论",
-                                        initialCommentCount = company?.commentCount ?: 0
+                                        title = company.displayName,
+                                        initialCommentCount = company.commentCount
                                     )
                                 )
                             },
                             onShareClick = {
-                                val shareName = company?.displayName ?: "厂商"
+                                val shareName = company.displayName
                                 textSharing.share("【PoiShelf 厂商分享】$shareName\n了解更多手办企划与出荷情报！")
                             },
                             isDark = isDark

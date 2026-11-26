@@ -153,12 +153,12 @@ fun CharacterDetailScreen(
                 },
                 floatingToolbar = {
                     if (character != null) {
-                        val baseCollect = (uiState.collectCountBase ?: (character?.collect ?: 0)).toLong()
+                        val baseCollect = (uiState.collectCountBase ?: character.collect).toLong()
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         CharacterFloatingActionBar(
                             collectCount = displayCollect,
                             isCollected = uiState.isCollected,
-                            commentCount = character?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
+                            commentCount = character.commentCount,
                             showCommentButton = !isWidePane,
                             onToggleCollect = {
                                 viewModel.toggleCollect()
@@ -172,8 +172,8 @@ fun CharacterDetailScreen(
                                     HobbyCommentsNavParam(
                                         nodeId = nodeId,
                                         itemType = "charactar",
-                                        title = character?.displayName?.ifBlank { null } ?: navParam.initialName ?: "评论",
-                                        initialCommentCount = character?.commentCount ?: 0
+                                        title = character.displayName.ifBlank { null } ?: navParam.initialName ?: "评论",
+                                        initialCommentCount = character.commentCount
                                     )
                                 )
                             },

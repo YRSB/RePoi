@@ -262,8 +262,8 @@ fun PostDetailScreen(
 
                 ExpressiveToolbarButton(
                     onClick = {
-                        val title = detail?.title ?: initialTitle ?: "讨论"
-                        val shareItemId = detail?.itemId?.takeIf { it > 0L } ?: postId
+                        val title = detail.title
+                        val shareItemId = detail.itemId.takeIf { it > 0L } ?: postId
                         textSharing.share("【$title】PoiShelf 讨论：https://www.hpoi.net.cn/posts/$shareItemId")
                     },
                     icon = PoiIcons.Filled.Share,

@@ -301,9 +301,9 @@ fun AlbumDetailScreen(
                         AlbumFloatingActionBar(
                             isLiked = uiState.isLiked,
                             isCollected = uiState.isCollected,
-                            likeCount = (curAlbum?.praiseCount ?: 0L) + uiState.praiseCountDelta,
-                            collectCount = (uiState.collectCountBase ?: (curAlbum?.collect ?: 0L)) + uiState.collectCountDelta,
-                            commentCount = curAlbum?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
+                            likeCount = (curAlbum.praiseCount ?: 0L) + uiState.praiseCountDelta,
+                            collectCount = (uiState.collectCountBase ?: (curAlbum.collect ?: 0L)) + uiState.collectCountDelta,
+                            commentCount = curAlbum.commentCount,
                             hasRelatedHobby = firstRelatedHobby != null,
                             showCommentButton = !isWidePane,
                             onToggleLike = viewModel::toggleLike,
@@ -315,13 +315,13 @@ fun AlbumDetailScreen(
                                     HobbyCommentsNavParam(
                                         nodeId = nodeId,
                                         itemType = "album",
-                                        title = curAlbum?.name ?: param.initialTitle ?: "评论",
-                                        initialCommentCount = curAlbum?.commentCount ?: 0
+                                        title = curAlbum.name ?: param.initialTitle ?: "评论",
+                                        initialCommentCount = curAlbum.commentCount
                                     )
                                 )
                             },
                             onShareClick = {
-                                val title = curAlbum?.name ?: param.initialTitle ?: "相册"
+                                val title = curAlbum.name ?: param.initialTitle ?: "相册"
                                 textSharing.share("【$title】相册 - PoiShelf 推荐：https://www.hpoi.net.cn/album/${param.albumId}")
                             },
                             onNavigateToRelatedHobby = {

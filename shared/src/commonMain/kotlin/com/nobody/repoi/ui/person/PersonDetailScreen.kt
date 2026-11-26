@@ -149,12 +149,12 @@ fun PersonDetailScreen(
                 },
                 floatingToolbar = {
                     if (person != null) {
-                        val baseCollect = (uiState.collectCountBase ?: (person?.collect ?: 0)).toLong()
+                        val baseCollect = (uiState.collectCountBase ?: person.collect).toLong()
                         val displayCollect = (baseCollect + uiState.collectCountDelta).coerceAtLeast(0L)
                         PersonFloatingActionBar(
                             collectCount = displayCollect,
                             isCollected = uiState.isCollected,
-                            commentCount = person?.commentCount ?: (uiState.hotComments.size + uiState.latestComments.size),
+                            commentCount = person.commentCount,
                             showCommentButton = !isWidePane,
                             onToggleCollect = {
                                 viewModel.toggleCollect()
@@ -168,8 +168,8 @@ fun PersonDetailScreen(
                                     HobbyCommentsNavParam(
                                         nodeId = nodeId,
                                         itemType = "person",
-                                        title = person?.displayName ?: navParam.initialName ?: "评论",
-                                        initialCommentCount = person?.commentCount ?: 0
+                                        title = person.displayName,
+                                        initialCommentCount = person.commentCount
                                     )
                                 )
                             },
