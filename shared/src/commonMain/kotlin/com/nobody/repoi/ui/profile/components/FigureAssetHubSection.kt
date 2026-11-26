@@ -138,7 +138,7 @@ fun FigureAssetHubSection(
                             moneyTitle = "待补款总折合",
                             moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
                             isMoneyActive = isLoggedIn && totalAmount > 0.0,
-                            countTitle = "预定手办",
+                            countTitle = "已预定",
                             countValue = if (isLoggedIn) preorderCount.toString() else "—",
                             subNote = null,
                             subNoteColor = colorScheme.onSurfaceVariant,
@@ -168,9 +168,9 @@ fun FigureAssetHubSection(
                         }
                         AssetMetricDualRow(
                             moneyTitle = "历史总投入",
-                            moneyValue = if (isLoggedIn) formatCompactRmb(totalAmount) else "—",
+                            moneyValue = if (isLoggedIn) formatRmb(totalAmount) else "—",
                             isMoneyActive = isLoggedIn && totalAmount > 0.0,
-                            countTitle = "已入藏品",
+                            countTitle = "已入",
                             countValue = if (isLoggedIn) buyCount.toString() else "—",
                             subNote = if (isLoggedIn) "日亚浮动 $fluctuation" else null,
                             subNoteColor = fluctuationColor,
@@ -499,7 +499,7 @@ private fun CategoryBreakdownStrip(
                                 .background(color)
                         )
                         Text(
-                            text = "${group.categoryName} ${formatCompactRmb(group.totalRmb)}",
+                            text = "${group.categoryName} ${formatRmb(group.totalRmb)}",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFeatureSettings = "tnum"
                             ),
@@ -573,13 +573,15 @@ private fun WantSummaryRow(
                             )
                         }
                     }
-                    Text(
-                        text = if (isLoggedIn) "在收藏列表查看发售排期与参考价" else "登录后同步想买收藏与发售提醒",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (!isLoggedIn) {
+                        Text(
+                            text = "登录后同步想买收藏与发售提醒",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -620,19 +622,6 @@ internal fun formatRmb(amount: Double?): String {
         "¥" + formatGrouped(value.toLong())
     } else {
         "¥" + formatGrouped(value)
-    }
-}
-
-internal fun formatCompactRmb(amount: Double?): String {
-    val value = amount ?: 0.0
-    return when {
-        abs(value) < 1e-5 -> "¥0"
-        value >= 10000.0 -> {
-            val wan = value / 10000.0
-            "¥" + PriceFormatter.formatFixed(wan, 1).trimEnd('0').trimEnd('.') + "万"
-        }
-        value % 1.0 == 0.0 -> "¥" + formatGrouped(value.toLong())
-        else -> "¥" + formatGrouped(value)
     }
 }
 

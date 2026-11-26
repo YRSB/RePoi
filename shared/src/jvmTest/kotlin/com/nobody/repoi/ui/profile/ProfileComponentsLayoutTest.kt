@@ -231,17 +231,17 @@ class ProfileComponentsLayoutTest {
         assertEquals(0, moneyTab)
 
         onNodeWithText("手办 ¥2,800").assertIsDisplayed()
-        onNodeWithText("预定手办").assertIsDisplayed().performClick()
+        onNodeWithText("已预定").assertIsDisplayed().performClick()
         assertEquals("preorder", collectState)
 
         onNodeWithText("已入 17").assertIsDisplayed().performClick()
         onNodeWithText("历史总投入").assertIsDisplayed()
-        onNodeWithText("¥1.5万").assertIsDisplayed().performClick()
+        onNodeWithText("¥15,000").assertIsDisplayed().performClick()
         assertEquals(1, moneyTab)
 
         onNodeWithText("日亚浮动 -3%").assertIsDisplayed()
-        onNodeWithText("手办 ¥1.2万").assertIsDisplayed()
-        onNodeWithText("已入藏品").assertIsDisplayed().performClick()
+        onNodeWithText("手办 ¥12,000").assertIsDisplayed()
+        onNodeWithText("已入").assertIsDisplayed().performClick()
         assertEquals("buy", collectState)
 
         onNodeWithText("想买 2").assertIsDisplayed().performClick()
@@ -266,7 +266,7 @@ class ProfileComponentsLayoutTest {
         }
 
         onNodeWithText("待补款总折合").assertIsDisplayed().performClick()
-        onNodeWithText("预定手办").assertIsDisplayed().performClick()
+        onNodeWithText("已预定").assertIsDisplayed().performClick()
         onNodeWithText("想买 0").assertIsDisplayed().performClick()
         onNodeWithText("去登录").assertIsDisplayed().performClick()
         assertEquals(3, loginCount)
