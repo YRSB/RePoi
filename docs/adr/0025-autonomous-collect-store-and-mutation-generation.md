@@ -1,7 +1,7 @@
 # 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 (Autonomous Collect Store, Mutation Generation & Resumed Refresh)
 
-- 状态：已采纳 (Accepted) - 2026-11-18
-- 修订/取代：补充并演进 [ADR-0011](0011-collect-architecture-eventbus-decoupling.md)
+- 状态：已采纳并部分修订 (Accepted & Amended by [ADR-0031](0031-in-memory-collect-mutation-cursor.md)) - 2026-11-27
+- 修订/取代：补充并演进 [ADR-0011](0011-collect-architecture-eventbus-decoupling.md)（其中决策 3 的 DataStore 持久化游标已由 [ADR-0031](0031-in-memory-collect-mutation-cursor.md) 简化为纯内存游标）
 
 ## 背景与上下文 (Context)
 

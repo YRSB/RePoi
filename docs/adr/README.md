@@ -36,12 +36,13 @@
 | [ADR-0022](0022-home-zone-three-level-and-selector.md) | 首页三级信息架构与专区切换器重构 | **首页/层级导航/自适应**：顶栏纯文本专区切换器（底部抽屉/宽屏下拉）、二级 `PrimaryScrollableTabRow` 子板块、板块自带三级筛选、复用专区详情板块实现、商品与社群不做、取代 ADR-0020 分类栏条款 | 已采纳 (Accepted) - 2026-11-15 |
 | [ADR-0023](0023-zone-board-session-deep-module.md) | 专区子板块会话控制器 (ZoneBoardSession) 深模块化与散装适配器清理 | **深模块/子板块状态机/解耦**：单一响应式快照流 activeSnapshot、封闭意图 ZoneBoardIntent、统合 10 类板块生命周期与不变性、物理清除 17 参数适配器 ZoneBoardActions 与 HomeBoardProjection、宿主 UIState 平铺字段彻底清理 | 已采纳 (Accepted) - 2026-11-18 |
 | [ADR-0024](0024-deep-client-network-pipeline-and-token-self-healing.md) | 客户端网络管道深模块化、响应解包与令牌失效自愈下沉 | **深模块/网络管道/鉴权自愈/仓储净化**：HpoiApi 升级深接缝并暴露洁净载荷、在途凭据快照 Attribute、4001 惰性自愈回调、ADR-0005 候选验权显式旁路、收敛 ApiException 与 CommentNotFoundException、彻底删除 ResponseUnwrap.kt 并剥离 6 仓储会话注入、MockApi 测试断言增强 | 已采纳 (Accepted) - 2026-11-18 |
-| [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 通过 DataStore 持久化已消费代数游标并结合 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳 (Accepted) - 2026-11-18 |
+| [ADR-0025](0025-autonomous-collect-store-and-mutation-generation.md) | 收藏仓储自治化演进、变更代数闭环与跨 Tab 惰性恢复感知 | **深模块/收藏自治/变更代数/跨页对齐**：加深 CollectRepository 吸收 ToggleItemCollectUseCase、写侧成功自动原子推进 collectMutationGeneration、废除向外泄露的 markGalleryMutation、UserCollectViewModel 结合 dirtyCategories 实现跨 Tab 平滑惰性刷新 | 已采纳并部分修订 (Amended by ADR-0031) - 2026-11-27 |
 | [ADR-0026](0026-post-write-server-count-baseline.md) | 写后按服务端计数重置详情页基线与乐观增量归零 | **收藏/计数对齐/乐观增量**：服务端 collectCount 为唯一真相源、快照池带单调 revision 广播、编辑页写侧手动刷新接缝、六个 toggle 页面就地重置 | 已采纳 (Accepted) - 2026-11-19 |
 | [ADR-0027](0027-comment-reply-dialog-topology-and-keyboard-mutex.md) | 评论回复面板纵向拓扑重构与软键盘表情互斥联动 | **评论/回复面板/拓扑/软键盘互斥**：输入框自适应单/双行（44dp~120dp）、操作工具栏提升至表情面板上方、软键盘与表情面板严格互斥互换、固定 240dp 表情容器防抖、分级返回拦截 | 已采纳 (Accepted) - 2026-11-19 |
 | [ADR-0028](0028-zone-board-pane-host-isolation-and-render-invariants.md) | 专区与首页板块共享面板 (ZoneBoardPane) 宿主隔离与渲染不变式架构 | **UI/板块面板/宿主隔离/不变式**：纯渲染契约无嵌套Scaffold、宿主contentPadding注入、单StaggeredGrid与外部滚动状态复用、严格when分发、筛选弹层外置隔离 | 已采纳 (Accepted) - 2026-11-22 |
 | [ADR-0029](0029-history-snapshot-reactive-cover-repair.md) | 历史记录快照过期封面按需响应式自愈架构 | **历史记录/图片自愈/防N+1风暴**：按条失败响应式回源修复、精确rowId单条替换、规避整页详情N+1请求风暴、保持首屏零额外开销 | 已采纳 (Accepted) - 2026-11-22 |
 | [ADR-0030](0030-profile-list-detail-and-banner-ratio.md) | 个人中心 Navigation 3 自适应双窗格与双端横幅 2:1 比例重构 | **个人中心/自适应双窗格/Banner**：内嵌局部子栈、840dp 断点、收藏/发布/历史进 detailPane、设置/信箱/主页/社交保留整页、2:1 横幅与高度上限 | 已采纳 (Accepted) - 2026-11-26 |
+| [ADR-0031](0031-in-memory-collect-mutation-cursor.md) | 收藏已消费变更代数游标收归纯内存（简化 ADR-0025） | **收藏/同步简化/纯内存游标**：移除 DataStore 游标持久化、`consumedGenerationReady` 异步 Deferred 与 `resumeAwaitingCursor` 重入锁，保留纯内存变更代数比对与 `dirtyCategories` | 已采纳 (Accepted) - 2026-11-27 |
 
 
 

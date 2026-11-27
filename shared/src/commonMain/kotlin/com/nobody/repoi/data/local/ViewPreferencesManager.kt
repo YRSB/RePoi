@@ -160,15 +160,6 @@ class ViewPreferencesManager(
             if (order == null || sortType == null) null else Pair(order, sortType)
         }
 
-    suspend fun getConsumedCollectMutationGeneration(): Long =
-        dataStore.data.first()[KEY_CONSUMED_COLLECT_MUTATION_GENERATION] ?: 0L
-
-    suspend fun setConsumedCollectMutationGeneration(generation: Long) {
-        dataStore.edit { prefs ->
-            prefs[KEY_CONSUMED_COLLECT_MUTATION_GENERATION] = generation
-        }
-    }
-
     fun getInitialFeedCategoryId(): Int = feedCategoryId
 
     fun getInitialFeedSubType(): String = ActionSubType.fromPersisted(feedSubType).apiValue
@@ -272,8 +263,6 @@ class ViewPreferencesManager(
         private val KEY_CACHED_ZONE_SETTINGS = stringPreferencesKey("cached_zone_settings_json")
         private val KEY_EXHOBBY_ENABLED = booleanPreferencesKey("is_exhobby_enabled")
         private val KEY_IMAGE_CACHE_MAX_BYTES = longPreferencesKey("image_cache_max_bytes")
-        private val KEY_CONSUMED_COLLECT_MUTATION_GENERATION =
-            longPreferencesKey("consumed_collect_mutation_generation")
 
         private fun keyOfCollectHobbyOrder(collectState: String) =
             stringPreferencesKey("collect_hobby_order_$collectState")
