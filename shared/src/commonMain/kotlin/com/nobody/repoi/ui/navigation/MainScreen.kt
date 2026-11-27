@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -39,12 +40,18 @@ fun MainScreen(
     snackbarHostState: SnackbarHostState,
     showSnackbarHost: Boolean,
     modifier: Modifier = Modifier,
+    layoutType: NavigationSuiteType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(
+        currentWindowAdaptiveInfoV2()
+    ),
 ) {
     val navigationState = navigator.tabState
-    val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     val itemColors = NavigationSuiteDefaults.itemColors()
-    val bottomBarState = remember { BottomBarScrollState() }
+    val showBottomBar = navigationState.currentDestination != AppDestinations.PROFILE ||
+        !navigationState.isProfileSubRouteActive
+    val currentShowBottomBar = rememberUpdatedState(showBottomBar)
+    val bottomBarState = remember {
+        BottomBarScrollState(isVisibleProvider = { currentShowBottomBar.value })
+    }
 
     if (layoutType == NavigationSuiteType.NavigationBar) {
         CompositionLocalProvider(LocalBottomBarScrollState provides bottomBarState) {
@@ -53,29 +60,31 @@ fun MainScreen(
                     if (showSnackbarHost) SnackbarHost(hostState = snackbarHostState)
                 },
                 bottomBar = {
-                    ShortNavigationBar(
-                        modifier = Modifier
-                            .onSizeChanged { bottomBarState.barHeightPx = it.height.toFloat() }
-                    ) {
-                        AppDestinations.entries.forEach { destination ->
-                            val isSelected = destination == navigationState.currentDestination
-                            ShortNavigationBarItem(
-                                selected = isSelected,
-                                onClick = { navigator.selectTab(destination) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(if (isSelected) destination.selectedIcon else destination.unselectedIcon),
-                                        contentDescription = destination.label,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = destination.label,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                }
-                            )
+                    if (showBottomBar) {
+                        ShortNavigationBar(
+                            modifier = Modifier
+                                .onSizeChanged { bottomBarState.barHeightPx = it.height.toFloat() }
+                        ) {
+                            AppDestinations.entries.forEach { destination ->
+                                val isSelected = destination == navigationState.currentDestination
+                                ShortNavigationBarItem(
+                                    selected = isSelected,
+                                    onClick = { navigator.selectTab(destination) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(if (isSelected) destination.selectedIcon else destination.unselectedIcon),
+                                            contentDescription = destination.label,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = destination.label,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 },

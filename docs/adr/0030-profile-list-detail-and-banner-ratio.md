@@ -36,7 +36,7 @@ RePoi 的「我的」Tab（`ProfileScreen`）此前采用单/双列混排布局�
 ### 3. Tab 内局部子栈、断点与左侧单列收敛
 - `ProfileScreen` 内部维护私有 `ProfileSubNavKey` 返回栈与 `rememberListDetailSceneStrategy<NavKey>`，外部 `MainScreen` 的 `ProfileNavKey` 保持不变。
 - **双窗格断点对齐 `>= 840dp`（`WIDTH_DP_EXPANDED_LOWER_BOUND`）**：由于 `MainScreen` 在 `>= 600dp` 已挂载左侧 `NavigationRail`，以 `840dp` 作为双窗格展开阈值与 `calculatePaneScaffoldDirective` 默认分栏规则一致，避免 600–839dp 下左右窗格过窄。
-- 左侧 `listPane` 移除原手写 `isDualPane` 两列 `Row`，统一收敛为单列纵向流；窄屏推入 `detailPane` 时保留 `MainScreen` 底栏并通过 `rememberBottomBarContentPadding` 适配底部安全距离。
+- 左侧 `listPane` 移除原手写 `isDualPane` 两列 `Row`，统一收敛为单列纵向流；窄屏推入 `detailPane` 时同步隐藏 `MainScreen` 底栏，并通过 `BottomBarScrollState` 通知列表、悬浮操作栏与 `SnackbarHost` 回退至 `WindowInsets.navigationBars` 边距，保持与全局压栈一致的全屏阅读体验。
 
 ### 4. 宽屏默认占位、高亮联动与复用兼容
 - **初始默认占位 (`detailPlaceholder`)**：宽屏初始不自动加载重列表，右侧展示柔和引导占位：

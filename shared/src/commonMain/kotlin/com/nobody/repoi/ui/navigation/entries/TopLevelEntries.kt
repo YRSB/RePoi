@@ -100,7 +100,8 @@ fun EntryProviderScope<NavKey>.topLevelEntries(navigator: RePoiNavigator) {
             onNavigateToPerson = { personParam -> navigator.navigateToPerson(personParam) },
             onNavigateToCharacter = { characterParam -> navigator.navigateToCharacter(characterParam) },
             onNavigateToCollectAlbum = { albumParam -> navigator.navigateToAlbum(albumParam) },
-            onNavigateToPictureGallery = { galleryParam -> navigator.navigateToPictureGallery(galleryParam) }
+            onNavigateToPictureGallery = { galleryParam -> navigator.navigateToPictureGallery(galleryParam) },
+            onSubRouteActiveChange = { active -> navigator.tabState.isProfileSubRouteActive = active }
         )
     }
 }
