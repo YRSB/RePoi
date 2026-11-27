@@ -65,8 +65,8 @@ _Avoid_: 收藏夹 (Favorites), 喜爱 (Likes), 标记 (Bookmarks)
 _Avoid_: 画廊写操作计数 (GalleryMutationCount), 刷新广播, 收藏失效事件, 脏位标志
 
 **已消费代数游标 (ConsumedMutationGeneration)**:
-收藏中心上次已处理的收藏变更代数，由 `ViewPreferencesManager` 持久化于 DataStore；页面重建后读回并按仓储当前代数夹逼，避免旧进程游标阻塞新进程刷新。
-_Avoid_: SavedStateHandle 游标, tick 计数, 恢复槽注入
+收藏中心在内存中持有的上次已处理收藏变更代数游标，在首屏装载、页面恢复刷新及批量取消成功后同步对齐当前变更代数，确保恢复感知刷新的幂等性。
+_Avoid_: SavedStateHandle 游标, tick 计数, 恢复槽注入, DataStore 持久化游标
 
 **恢复感知刷新 (Resumed Refresh)**:
 页面重新获得焦点时读取收藏变更代数，仅当代数较上次消费值增长才静默重载受影响列表，避免出栈返回时无谓请求。

@@ -2,8 +2,9 @@
 
 收藏是 RePoi 最容易改坏的领域：**8 个列表 × 6 档收藏状态 × 3 种排序 × 写侧跨页同步**。
 本文只记录代码里读不出来、但改错就会静默失效的约定。设计动因见
-[ADR-0011](adr/0011-collect-architecture-eventbus-decoupling.md) 与
-[ADR-0025](adr/0025-autonomous-collect-store-and-mutation-generation.md)。
+[ADR-0011](adr/0011-collect-architecture-eventbus-decoupling.md)、
+[ADR-0025](adr/0025-autonomous-collect-store-and-mutation-generation.md) 与
+[ADR-0031](adr/0031-in-memory-collect-mutation-cursor.md)。
 
 ---
 
@@ -31,9 +32,7 @@ private val stateFlows = MutableStateFlow<Map<Long, MutableStateFlow<CollectData
 - 创建新条目的 `getOrPut` 必须放在**同一个** `flows.update { }` 闭包内，否则并发首次观察会造出两个实例，
   破坏「同 nodeId 同实例」这条被单测锁定的契约。
 
-**跨进程恢复**：`commonMain` 没有 androidx `SavedStateHandle`；恢复槽由 NavKey 字段 + 内存 `savedState` 承担，
-真正跨进程的游标落在 `ViewPreferencesManager.get/setConsumedCollectMutationGeneration`（DataStore）：
-`UserCollectViewModel` 构造期读回并按仓储当前代数夹逼，恢复时不会阻塞新进程的刷新。详见 §4。
+**跨进程恢复**：`commonMain` 没有 androidx `SavedStateHandle`；`consumedMutationGeneration` 为 `UserCollectViewModel` 持有的纯内存游标，VM 重建后 `applyInitParam` 会重拉首屏并同步对齐仓储当前代数。详见 §4。
 
 ### 1.2 写操作与状态池
 
@@ -144,7 +143,7 @@ ADR-0025 确立的链路：
 
 - **不要用共享流 / Channel 做这件事**。ADR-0011 明确拒绝事件总线；代数是**状态**，可重读、不丢、无订阅者也能观察。
 - **写侧严禁保留外部手动 mark 方法**。所有写操作成功后必须在仓储内部自动推进代数，调用端无法绕过。
-- `consumedMutationGeneration` 必须落 DataStore（`ViewPreferencesManager.get/setConsumedCollectMutationGeneration`），否则配置变更后 VM 重建会重复刷新；恢复时按仓储当前代数夹逼（进程重建后仓储代数从 0 重启）。批量取消成功后主动同步该游标并落盘以保证幂等。
+- `consumedMutationGeneration` 为 `UserCollectViewModel` 内的纯内存 `Long` 游标（ADR-0031），在构造期、`applyInitParam` 重载首屏及批量取消成功后同步对齐 `collectRepository.collectMutationGeneration.value`，无需 DataStore 持久化或异步等待锁。
 - `UserCollectScreen` 每次进入组合都派发 `OnResume`，不得用普通 `remember` 计数跳过首次组合：二级页覆盖使页面退出组合后计数重置，返回时的事件会被门槛吞掉；幂等由代数游标保证。
 
 ---

@@ -114,16 +114,7 @@ class UserCollectViewModel(
         persistHobbySortMemory()
     }
 
-    private var consumedMutationGeneration: Long = 0L
-
-    private val consumedGenerationReady: Deferred<Long> = viewModelScope.async {
-        val restored = viewPreferencesManager.getConsumedCollectMutationGeneration()
-        val clamped = restored.coerceAtMost(collectRepository.collectMutationGeneration.value)
-        consumedMutationGeneration = clamped
-        clamped
-    }
-
-    private var resumeAwaitingCursor = false
+    private var consumedMutationGeneration: Long = collectRepository.collectMutationGeneration.value
 
     private val dirtyCategories: MutableSet<UserCollectCategory> = mutableSetOf()
 
@@ -287,7 +278,6 @@ class UserCollectViewModel(
 
         viewModelScope.launch {
             persistedSortReady.await()
-            consumedGenerationReady.await()
             applyInitParam(param)
         }
     }
@@ -313,11 +303,7 @@ class UserCollectViewModel(
         )
         if (currentParam == normalizedParam && userId == param.userId) return
 
-        val generation = collectRepository.collectMutationGeneration.value
-        consumedMutationGeneration = generation
-        viewModelScope.launch {
-            viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
-        }
+        consumedMutationGeneration = collectRepository.collectMutationGeneration.value
         currentParam = normalizedParam
         userId = param.userId
         stateSet("userId", param.userId)
@@ -733,11 +719,7 @@ class UserCollectViewModel(
         viewModelScope.launch {
             batchCancelCollectUseCase(ids.toList(), ownerUserId = userId)
                 .onSuccess {
-                    val generation = collectRepository.collectMutationGeneration.value
-                    consumedMutationGeneration = generation
-                    viewModelScope.launch {
-                        viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
-                    }
+                    consumedMutationGeneration = collectRepository.collectMutationGeneration.value
                     dirtyCategories.remove(category)
                     dispatchToLoader(category) { it.refresh() }
                     _uiState.update {
@@ -790,22 +772,9 @@ class UserCollectViewModel(
     }
 
     private fun handleResume() {
-        if (!consumedGenerationReady.isCompleted) {
-            if (resumeAwaitingCursor) return
-            resumeAwaitingCursor = true
-            viewModelScope.launch {
-                consumedGenerationReady.await()
-                resumeAwaitingCursor = false
-                handleResume()
-            }
-            return
-        }
         val generation = collectRepository.collectMutationGeneration.value
         if (generation <= consumedMutationGeneration) return
         consumedMutationGeneration = generation
-        viewModelScope.launch {
-            viewPreferencesManager.setConsumedCollectMutationGeneration(generation)
-        }
         if (userId <= 0L) return
         val active = _uiState.value.selectedCategory
         val staged = mutableSetOf<UserCollectCategory>()

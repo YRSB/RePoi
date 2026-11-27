@@ -529,11 +529,10 @@ class UserCollectViewModelTest {
     }
 
     @Test
-    fun onResume_restoresConsumedCursorFromDataStore() = runTest(testDispatcher) {
+    fun recreatedViewModel_consumesCurrentGenerationWithoutExtraResumeRefresh() = runTest(testDispatcher) {
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             enqueue(hobbies(2, startId = 41))
-            enqueue(hobbies(1))
             enqueue(hobbies(2, startId = 41))
             routeCollectWrite()
         }
@@ -543,7 +542,6 @@ class UserCollectViewModelTest {
         env.viewModel.onIntent(UserCollectIntent.OnResume)
         advanceUntilIdle()
         advanceMutationGeneration(env.collectRepository)
-        assertEquals(1L, env.viewPreferencesManager.getConsumedCollectMutationGeneration())
 
         val recreated = recreateViewModel(env)
         awaitInitialized(recreated)
@@ -553,34 +551,7 @@ class UserCollectViewModelTest {
         advanceUntilIdle()
 
         assertEquals(requestsBeforeResume, mock.requestCount)
-        assertEquals(1, recreated.uiState.value.hobbyData.items.size)
-        assertEquals(2L, env.viewPreferencesManager.getConsumedCollectMutationGeneration())
-
-        recreated.onIntent(UserCollectIntent.OnResume)
-        advanceUntilIdle()
-        assertEquals(requestsBeforeResume, mock.requestCount)
-    }
-
-    @Test
-    fun onResume_afterProcessRestart_discardsStalePersistedCursor() = runTest(testDispatcher) {
-        val viewPrefs = TestDataStore.inMemory()
-        ViewPreferencesManager(viewPrefs).setConsumedCollectMutationGeneration(5L)
-        val mock = MockApi().apply {
-            enqueue(hobbies(1))
-            enqueue(hobbies(2, startId = 71))
-            routeCollectWrite()
-        }
-
-        val env = buildEnv(mock = mock, viewPrefs = viewPrefs)
-        awaitInitialized(env.viewModel)
-        advanceMutationGeneration(env.collectRepository)
-        val requestsBeforeResume = mock.requestCount
-
-        env.viewModel.onIntent(UserCollectIntent.OnResume)
-        advanceUntilIdle()
-
-        assertEquals(requestsBeforeResume + 1, mock.requestCount)
-        assertEquals(2, env.viewModel.uiState.value.hobbyData.items.size)
+        assertEquals(2, recreated.uiState.value.hobbyData.items.size)
     }
 
     @Test
@@ -608,13 +579,11 @@ class UserCollectViewModelTest {
 
     @Test
     fun initParam_firstLoadConsumesPendingGenerationWithoutExtraRefresh() = runTest(testDispatcher) {
-        val viewPrefs = TestDataStore.inMemory()
-        ViewPreferencesManager(viewPrefs).setConsumedCollectMutationGeneration(0L)
         val mock = MockApi().apply {
             enqueue(hobbies(1))
             routeCollectWrite()
         }
-        val env = buildEnv(mock = mock, viewPrefs = viewPrefs, autoInit = false)
+        val env = buildEnv(mock = mock, autoInit = false)
         assertTrue(env.collectRepository.collectItemAdd(9000L).isSuccess)
         assertEquals(1L, env.collectRepository.collectMutationGeneration.value)
 
