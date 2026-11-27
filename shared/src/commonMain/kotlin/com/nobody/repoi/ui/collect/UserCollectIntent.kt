@@ -6,6 +6,8 @@ sealed interface UserCollectIntent {
 
     data class SwitchCategory(val category: UserCollectCategory) : UserCollectIntent
 
+    data class EnsureLoaded(val category: UserCollectCategory) : UserCollectIntent
+
     data object ToggleViewMode : UserCollectIntent
 
     data class SwitchCollectState(val state: String) : UserCollectIntent

@@ -628,4 +628,66 @@ class UserCollectViewModelTest {
 
         assertEquals(requestsBeforeResume, mock.requestCount)
     }
+
+    @Test
+    fun ensureLoaded_loadsNeverLoadedCategoryOnceEvenWhenEmpty() = runTest(testDispatcher) {
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            enqueue(albums(0))
+        }
+        val env = buildEnv(mock = mock)
+        awaitInitialized(env.viewModel)
+        val requestsAfterInit = mock.requestCount
+
+        env.viewModel.onIntent(UserCollectIntent.EnsureLoaded(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+
+        assertEquals(requestsAfterInit + 1, mock.requestCount)
+        assertFalse(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+
+        env.viewModel.onIntent(UserCollectIntent.EnsureLoaded(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+
+        assertEquals(requestsAfterInit + 1, mock.requestCount)
+    }
+
+    @Test
+    fun ensureLoaded_refreshesDirtyCategoryWithoutSwitchingSelection() = runTest(testDispatcher) {
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            enqueue(albums(1))
+            enqueue(hobbies(2, startId = 10))
+            enqueue(albums(2, startId = 20))
+            routeCollectWrite()
+        }
+        val env = buildEnv(mock = mock)
+        awaitInitialized(env.viewModel)
+        env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+        env.viewModel.onIntent(UserCollectIntent.SwitchCategory(UserCollectCategory.HOBBY))
+        advanceUntilIdle()
+        advanceMutationGeneration(env.collectRepository)
+        env.viewModel.onIntent(UserCollectIntent.OnResume)
+        advanceUntilIdle()
+
+        val requestsBeforePreload = mock.requestCount
+        env.viewModel.onIntent(UserCollectIntent.EnsureLoaded(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+
+        assertEquals(requestsBeforePreload + 1, mock.requestCount)
+        assertEquals(UserCollectCategory.HOBBY, env.viewModel.uiState.value.selectedCategory)
+        assertEquals(listOf(20L, 21L), env.viewModel.uiState.value.albumData.items.map { it.id })
+    }
+
+    @Test
+    fun ensureLoaded_ignoresBeforeInitialized() = runTest(testDispatcher) {
+        val mock = MockApi()
+        val env = buildEnv(mock = mock, autoInit = false)
+
+        env.viewModel.onIntent(UserCollectIntent.EnsureLoaded(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+
+        assertEquals(0, mock.requestCount)
+        assertTrue(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+    }
 }
