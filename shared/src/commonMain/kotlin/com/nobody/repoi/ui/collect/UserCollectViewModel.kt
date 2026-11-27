@@ -74,7 +74,15 @@ class UserCollectViewModel(
             order = HobbyOrderOption.effective(initialCollectState, initialOrder),
             isListView = !viewPreferencesManager.isCollectListGridMode,
             isSelf = resolveIsSelf(userId),
-            albumType = resolveAlbumType(stateGet<String>("albumType"))
+            albumType = resolveAlbumType(stateGet<String>("albumType")),
+            hobbyData = SubPageData(isLoading = true),
+            albumData = SubPageData(isLoading = true),
+            picData = SubPageData(isLoading = true),
+            vendorData = SubPageData(isLoading = true),
+            seriesData = SubPageData(isLoading = true),
+            worksData = SubPageData(isLoading = true),
+            characterData = SubPageData(isLoading = true),
+            personData = SubPageData(isLoading = true)
         )
     )
     val uiState: StateFlow<UserCollectUiState> = _uiState.asStateFlow()
@@ -237,6 +245,7 @@ class UserCollectViewModel(
     fun onIntent(intent: UserCollectIntent) {
         when (intent) {
             is UserCollectIntent.SwitchCategory -> applyCategorySwitch(intent.category)
+            is UserCollectIntent.EnsureLoaded -> applyEnsureLoaded(intent.category)
             UserCollectIntent.ToggleViewMode -> applyToggleViewMode()
             is UserCollectIntent.SwitchCollectState -> applyCollectState(intent.state)
             is UserCollectIntent.SwitchOrder -> applyHobbyOrder(intent.order)
@@ -406,11 +415,20 @@ class UserCollectViewModel(
     private fun applyCategorySwitch(category: UserCollectCategory) {
         if (_uiState.value.selectedCategory == category) return
         _uiState.update { it.copy(selectedCategory = category) }
+        ensureCategoryData(category)
+    }
+
+    private fun applyEnsureLoaded(category: UserCollectCategory) {
+        if (!_uiState.value.isInitialized) return
+        ensureCategoryData(category)
+    }
+
+    private fun ensureCategoryData(category: UserCollectCategory) {
         if (dirtyCategories.remove(category)) {
             dispatchToLoader(category) { it.refresh() }
             return
         }
-        if (isLoaderIdleAndEmpty(category)) {
+        if (isLoaderNeverLoaded(category)) {
             loadFirstPage(category)
         }
     }
@@ -793,7 +811,7 @@ class UserCollectViewModel(
         val staged = mutableSetOf<UserCollectCategory>()
         UserCollectCategory.entries.forEach { category ->
 
-            if (category != active && isLoaderIdleAndEmpty(category)) return@forEach
+            if (category != active && isLoaderNeverLoaded(category)) return@forEach
             if (category == active) {
                 dispatchToLoader(category) { it.refresh() }
             } else {
@@ -823,17 +841,21 @@ class UserCollectViewModel(
         } else {
             listState.initialError ?: listState.appendError
         }
+        val isPendingInitial = isLoaderStateNeverLoaded(listState)
         return SubPageData(
             items = listState.items,
-            isLoading = listState.isLoading,
+            isLoading = listState.isLoading || (isPendingInitial && canAutoLoadNow()),
             isRefreshing = listState.isRefreshing,
             isPaging = listState.isLoadingMore,
             hasMore = listState.hasMore,
             page = listState.page,
             errorMessage = rawError,
-            isContentHidden = rawError?.contains(CONTENT_HIDDEN_KEYWORD) == true
+            isContentHidden = rawError?.contains(CONTENT_HIDDEN_KEYWORD) == true,
+            isPendingInitialLoad = isPendingInitial
         )
     }
+
+    private fun canAutoLoadNow(): Boolean = !_uiState.value.isInitialized || userId > 0L
 
     private fun dispatchToLoader(category: UserCollectCategory, action: (PagedListLoader<*>) -> Unit) {
         action(loaders.getValue(category))
@@ -852,10 +874,14 @@ class UserCollectViewModel(
         }
     }
 
-    private fun isLoaderIdleAndEmpty(category: UserCollectCategory): Boolean {
-        val listState = loaders.getValue(category).state.value
-        return listState.stage == LoadStage.Idle && listState.items.isEmpty()
-    }
+    private fun isLoaderNeverLoaded(category: UserCollectCategory): Boolean =
+        isLoaderStateNeverLoaded(loaders.getValue(category).state.value)
+
+    private fun isLoaderStateNeverLoaded(listState: PagedListState<*>): Boolean =
+        listState.stage == LoadStage.Idle &&
+            listState.items.isEmpty() &&
+            listState.hasMore &&
+            listState.initialError == null
 
     private suspend fun fetchCommonPage(
         category: UserCollectCategory,

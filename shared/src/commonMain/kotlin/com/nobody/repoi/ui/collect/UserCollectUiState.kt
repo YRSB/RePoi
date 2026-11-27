@@ -15,7 +15,8 @@ data class SubPageData<T>(
     val hasMore: Boolean = true,
     val page: Int = 1,
     val errorMessage: String? = null,
-    val isContentHidden: Boolean = false
+    val isContentHidden: Boolean = false,
+    val isPendingInitialLoad: Boolean = true
 )
 
 object CollectStateOption {
