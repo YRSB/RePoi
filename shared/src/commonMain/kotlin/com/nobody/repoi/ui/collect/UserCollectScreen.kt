@@ -216,9 +216,6 @@ fun UserCollectScreen(
                 }
             }
 
-            val effectiveUserId = param.userId.takeIf { it > 0L } ?: viewModel.userId
-            val canAutoLoad = !uiState.isInitialized || effectiveUserId > 0L
-
             HorizontalPager(
                 state = pagerState,
                 key = { index -> categories.getOrNull(index) ?: index },
@@ -233,15 +230,8 @@ fun UserCollectScreen(
                 }
                 when (category) {
                     UserCollectCategory.HOBBY -> {
-                        val hobbyUiState = remember(uiState, canAutoLoad) {
-                            if (canAutoLoad && uiState.hobbyData.isPendingInitialLoad && !uiState.hobbyData.isLoading) {
-                                uiState.copy(hobbyData = uiState.hobbyData.copy(isLoading = true))
-                            } else {
-                                uiState
-                            }
-                        }
                         HobbyCollectSubPage(
-                            uiState = hobbyUiState,
+                            uiState = uiState,
                             navBarBottomPadding = navBarBottomPadding,
                             onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.HOBBY)) },
                             onLoadNextPage = { viewModel.onIntent(UserCollectIntent.LoadNextPage(UserCollectCategory.HOBBY)) },
@@ -269,11 +259,8 @@ fun UserCollectScreen(
                     }
 
                     UserCollectCategory.ALBUM -> {
-                        val albumData = remember(uiState.albumData, canAutoLoad) {
-                            uiState.albumData.withPendingInitialLoading(canAutoLoad)
-                        }
                         AlbumCollectSubPage(
-                            subPageData = albumData,
+                            subPageData = uiState.albumData,
                             navBarBottomPadding = navBarBottomPadding,
                             currentOrder = uiState.albumOrder,
                             albumType = uiState.albumType,
@@ -308,11 +295,8 @@ fun UserCollectScreen(
                     }
 
                     UserCollectCategory.PICTURE -> {
-                        val picData = remember(uiState.picData, canAutoLoad) {
-                            uiState.picData.withPendingInitialLoading(canAutoLoad)
-                        }
                         PictureCollectSubPage(
-                            subPageData = picData,
+                            subPageData = uiState.picData,
                             navBarBottomPadding = navBarBottomPadding,
                             currentOrder = uiState.picOrder,
                             onRefresh = { viewModel.onIntent(UserCollectIntent.Refresh(UserCollectCategory.PICTURE)) },
@@ -339,11 +323,8 @@ fun UserCollectScreen(
                     }
 
                     UserCollectCategory.WORKS -> {
-                        val worksData = remember(uiState.worksData, canAutoLoad) {
-                            uiState.worksData.withPendingInitialLoading(canAutoLoad)
-                        }
                         WorksCollectSubPage(
-                            subPageData = worksData,
+                            subPageData = uiState.worksData,
                             worksState = uiState.worksState,
                             worksOrderAsc = uiState.worksOrderAsc,
                             worksTag = uiState.worksTag,
@@ -379,14 +360,11 @@ fun UserCollectScreen(
                     UserCollectCategory.SERIES,
                     UserCollectCategory.CHARACTER,
                     UserCollectCategory.PERSON -> {
-                        val rawData = when (category) {
+                        val subPageData = when (category) {
                             UserCollectCategory.VENDOR -> uiState.vendorData
                             UserCollectCategory.SERIES -> uiState.seriesData
                             UserCollectCategory.CHARACTER -> uiState.characterData
                             UserCollectCategory.PERSON -> uiState.personData
-                        }
-                        val subPageData = remember(rawData, canAutoLoad) {
-                            rawData.withPendingInitialLoading(canAutoLoad)
                         }
                         CommonCollectSubPage(
                             category = category,
@@ -478,6 +456,3 @@ internal fun CollectResumeEffect(onResume: () -> Unit) {
         onResume()
     }
 }
-
-private fun <T> SubPageData<T>.withPendingInitialLoading(canAutoLoad: Boolean): SubPageData<T> =
-    if (canAutoLoad && isPendingInitialLoad && !isLoading) copy(isLoading = true) else this

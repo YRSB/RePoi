@@ -689,5 +689,36 @@ class UserCollectViewModelTest {
 
         assertEquals(0, mock.requestCount)
         assertTrue(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+        assertTrue(env.viewModel.uiState.value.albumData.isLoading)
+    }
+
+    @Test
+    fun initializedWithValidUser_projectsUnloadedCategoriesAsLoadingUntilEmptyResponse() = runTest(testDispatcher) {
+        val mock = MockApi().apply {
+            enqueue(hobbies(1))
+            enqueue(albums(0))
+        }
+        val env = buildEnv(mock = mock)
+        awaitInitialized(env.viewModel)
+
+        assertTrue(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+        assertTrue(env.viewModel.uiState.value.albumData.isLoading)
+
+        env.viewModel.onIntent(UserCollectIntent.EnsureLoaded(UserCollectCategory.ALBUM))
+        advanceUntilIdle()
+
+        assertFalse(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+        assertFalse(env.viewModel.uiState.value.albumData.isLoading)
+    }
+
+    @Test
+    fun initializedWithoutValidUser_doesNotKeepUnloadedCategoriesLoading() = runTest(testDispatcher) {
+        val env = buildEnv(targetUserId = 0L)
+        awaitInitialized(env.viewModel)
+
+        assertTrue(env.viewModel.uiState.value.hobbyData.isPendingInitialLoad)
+        assertFalse(env.viewModel.uiState.value.hobbyData.isLoading)
+        assertTrue(env.viewModel.uiState.value.albumData.isPendingInitialLoad)
+        assertFalse(env.viewModel.uiState.value.albumData.isLoading)
     }
 }

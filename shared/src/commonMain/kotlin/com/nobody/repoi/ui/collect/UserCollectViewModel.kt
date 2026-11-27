@@ -74,7 +74,15 @@ class UserCollectViewModel(
             order = HobbyOrderOption.effective(initialCollectState, initialOrder),
             isListView = !viewPreferencesManager.isCollectListGridMode,
             isSelf = resolveIsSelf(userId),
-            albumType = resolveAlbumType(stateGet<String>("albumType"))
+            albumType = resolveAlbumType(stateGet<String>("albumType")),
+            hobbyData = SubPageData(isLoading = true),
+            albumData = SubPageData(isLoading = true),
+            picData = SubPageData(isLoading = true),
+            vendorData = SubPageData(isLoading = true),
+            seriesData = SubPageData(isLoading = true),
+            worksData = SubPageData(isLoading = true),
+            characterData = SubPageData(isLoading = true),
+            personData = SubPageData(isLoading = true)
         )
     )
     val uiState: StateFlow<UserCollectUiState> = _uiState.asStateFlow()
@@ -833,18 +841,21 @@ class UserCollectViewModel(
         } else {
             listState.initialError ?: listState.appendError
         }
+        val isPendingInitial = isLoaderStateNeverLoaded(listState)
         return SubPageData(
             items = listState.items,
-            isLoading = listState.isLoading,
+            isLoading = listState.isLoading || (isPendingInitial && canAutoLoadNow()),
             isRefreshing = listState.isRefreshing,
             isPaging = listState.isLoadingMore,
             hasMore = listState.hasMore,
             page = listState.page,
             errorMessage = rawError,
             isContentHidden = rawError?.contains(CONTENT_HIDDEN_KEYWORD) == true,
-            isPendingInitialLoad = isLoaderStateNeverLoaded(listState)
+            isPendingInitialLoad = isPendingInitial
         )
     }
+
+    private fun canAutoLoadNow(): Boolean = !_uiState.value.isInitialized || userId > 0L
 
     private fun dispatchToLoader(category: UserCollectCategory, action: (PagedListLoader<*>) -> Unit) {
         action(loaders.getValue(category))
